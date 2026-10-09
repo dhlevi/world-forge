@@ -2,10 +2,11 @@ import { Delaunay } from 'd3-delaunay';
 import { mulberry32 } from '../gen/rng';
 import { chaikin } from '../gen/rivers';
 import {
-  type Poly, type Pt, area, ccw, centroid, distToLine, distToSeg, hatch, inset, pointInPoly, rect, rectIn, strips, subdivide,
+  type Poly, type Pt, area, ccw, centroid, distToLine, distToSeg, inset, pointInPoly, rect, rectIn, strips, subdivide,
 } from './geom';
 import { addDocks } from './harbour';
 import type { PlanInput } from './plan';
+import { BUILD_GROUND, contourStrips, plantField } from './ground';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 const GATE_HALF = 6;
@@ -34,7 +35,7 @@ interface Patch {
  * the town grows onto gentle ground, streets avoid steep grades, blocks terrace along the
  * contours, the citadel and temple take the high ground, and shores get docks.
  */
-export function buildCity({ s, exits, water, terrain, out }: PlanInput): void {
+export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput): void {
   const rnd = mulberry32(s.seed);
   const town = s.tier !== 'city';
   const nInner = town ? clamp(Math.round(s.population / 500) + 2, 4, 14) : clamp(Math.round(s.population / 900) + 3, 8, 40);
@@ -315,21 +316,25 @@ export function buildCity({ s, exits, water, terrain, out }: PlanInput): void {
     if (!pt.inside) continue;
     switch (pt.kind) {
       case 'plaza': {
-        const q = inset(pt.poly, offsets(i, wallOff, 3, 3));
+        const q0 = inset(pt.poly, offsets(i, wallOff, 3, 3));
+        const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
         if (q) out.poly('plaza', q);
         break;
       }
       case 'temple': {
-        const q = inset(pt.poly, offsets(i, wallOff, 4, 3));
-        if (!q) break;
+        const q0 = inset(pt.poly, offsets(i, wallOff, 4, 3));
+        const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
+        if (!q0 || !q) break;
         out.poly('plaza', q);
-        const t = rectIn(q, 0.4);
-        if (t) out.poly('building', t, { use: 'temple' });
+        const t = rectIn(q0, 0.4);
+        if (t && ground.allOk(t, BUILD_GROUND)) out.poly('building', t, { use: 'temple' });
         break;
       }
       case 'citadel': {
-        const q = inset(pt.poly, offsets(i, 4, 6, 6));
-        if (!q) break;
+        // The citadel wall follows the shore rather than standing in the water.
+        const q0 = inset(pt.poly, offsets(i, 4, 6, 6));
+        const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
+        if (!q0 || !q) break;
         out.poly('plaza', q);
         out.line('wall', [...q, q[0]], { w: 3 });
         let last: Pt | null = null;
@@ -338,12 +343,13 @@ export function buildCity({ s, exits, water, terrain, out }: PlanInput): void {
           out.point('tower', v, { r: 4 });
           last = v;
         }
-        const keep = rectIn(q, 0.22);
-        if (keep) out.poly('building', keep, { use: 'keep' });
+        const keep = rectIn(q0, 0.22);
+        if (keep && ground.allOk(keep, BUILD_GROUND)) out.poly('building', keep, { use: 'keep' });
         break;
       }
       case 'park': {
-        const q = inset(pt.poly, offsets(i, wallOff, 4, 2));
+        const q0 = inset(pt.poly, offsets(i, wallOff, 4, 2));
+        const q = q0 && ground.fit(q0, { maxSlope: 1, marginM: 3 }, rnd, 0.8, 0.3);
         if (!q) break;
         out.poly('green', q);
         trees(q, Math.min(40, Math.round(area(q) / 300)), 2.5, 4.5);
@@ -369,7 +375,7 @@ export function buildCity({ s, exits, water, terrain, out }: PlanInput): void {
             });
             if (!onStreet && rnd() > 0.15) continue;
             if (rnd() < (rich ? 0.2 : 0.03)) continue;
-            if (water(centroid(lot))) continue;
+            if (!ground.allOk(lot, BUILD_GROUND)) continue;
             out.poly('building', lot);
           }
         }
@@ -388,7 +394,7 @@ export function buildCity({ s, exits, water, terrain, out }: PlanInput): void {
       if (!q) return;
       for (const lot of subdivide(q, 140, rnd)) {
         const lc = centroid(lot);
-        if (Math.min(...roadLines.map((l) => distToLine(l, lc[0], lc[1]))) > 32 || rnd() > 0.85 || water(lc)) continue;
+        if (Math.min(...roadLines.map((l) => distToLine(l, lc[0], lc[1]))) > 32 || rnd() > 0.85 || !ground.allOk(lot, BUILD_GROUND)) continue;
         out.poly('building', lot);
       }
       return;
@@ -403,32 +409,48 @@ export function buildCity({ s, exits, water, terrain, out }: PlanInput): void {
     const q = inset(pt.poly, offsets(i, 3, 5, 2.5));
     if (!q) return;
     if (r < 0.18 || steep) {
-      out.poly('green', q);
+      plantField(q, 'green', ground, out, rnd, 0.3);
       return;
     }
     for (const f of subdivide(q, 5000 + 6000 * rnd(), rnd)) {
       const fi = inset(f, 1.5);
-      if (!fi || water(centroid(fi))) continue;
-      out.poly('field', fi, { tone: rnd() });
-      for (const l of hatch(fi, 6)) out.line('furrow', l);
+      if (!fi) continue;
+      for (const st of contourStrips(fi, terrain, rnd, 0.2)) plantField(st, 'field', ground, out, rnd, 0.3);
     }
     if (rnd() < 0.25) {
       const k = Math.floor(rnd() * q.length);
       const v = toward(q[k], centroid(q), 14);
       const n = q[(k + 1) % q.length];
       const hc: Pt = [v[0], v[1]];
-      if (!water(hc)) out.poly('building', rect(hc[0], hc[1], Math.atan2(n[1] - q[k][1], n[0] - q[k][0]), 11, 7));
+      const farm = rect(hc[0], hc[1], Math.atan2(n[1] - q[k][1], n[0] - q[k][0]), 11, 7);
+      if (ground.allOk(farm, BUILD_GROUND)) out.poly('building', farm);
     }
   });
 
   if (s.walls) drawWall(wall, gates.map((g) => g.k), water, out, town);
 }
 
-function drawWall(wall: Pt[], gateIdx: number[], water: (p: Pt) => boolean, out: PlanInput['out'], town: boolean): void {
+/**
+ * Town wall with towers and gate gaps. The wall is walked in short pieces so it stops at the
+ * shore (with a tower at each end) instead of striding across a bay between two corners.
+ */
+function drawWall(corners: Pt[], gateIdx: number[], water: (p: Pt) => boolean, out: PlanInput['out'], town: boolean): void {
+  const wall: Pt[] = [];
+  const corner: boolean[] = [];
+  const gate = new Set<number>();
+  const gateSet = new Set(gateIdx);
+  corners.forEach((a, k) => {
+    const b = corners[(k + 1) % corners.length];
+    const m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 14));
+    if (gateSet.has(k)) gate.add(wall.length);
+    for (let t = 0; t < m; t++) {
+      wall.push([a[0] + ((b[0] - a[0]) * t) / m, a[1] + ((b[1] - a[1]) * t) / m]);
+      corner.push(t === 0);
+    }
+  });
   const n = wall.length;
-  const gate = new Set(gateIdx);
-  const segWater = wall.map((a, k) => water(mid(a, wall[(k + 1) % n])));
-  const start = gateIdx.length ? gateIdx[0] : Math.max(0, segWater.indexOf(true));
+  const segWater = wall.map((a, k) => water(mid(a, wall[(k + 1) % n])) || water(a));
+  const start = gate.size ? [...gate][0] : Math.max(0, segWater.indexOf(true));
   const w = town ? 3 : 4;
   let run: Pt[] = [];
   const flush = () => {
@@ -463,7 +485,10 @@ function drawWall(wall: Pt[], gateIdx: number[], water: (p: Pt) => boolean, out:
       last = wall[k];
       continue;
     }
-    if (last && Math.hypot(wall[k][0] - last[0], wall[k][1] - last[1]) < 22) continue;
+    // Towers at the corners, and where the wall meets the water.
+    const shoreEnd = segWater[k] !== segWater[prev];
+    if (!corner[k] && !shoreEnd) continue;
+    if (!shoreEnd && last && Math.hypot(wall[k][0] - last[0], wall[k][1] - last[1]) < 22) continue;
     out.point('tower', wall[k], { r: towerR });
     last = wall[k];
   }

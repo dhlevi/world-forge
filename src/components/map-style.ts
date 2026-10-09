@@ -71,6 +71,17 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'fill-color': '#bcc68a', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(13, 13.6) },
   },
   {
+    // Hedgerows: a dotted line of bushes round some fields.
+    id: 'plan-hedges', type: 'line', source: 'plans', minzoom: 13, filter: kind('hedge'),
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: {
+      'line-color': '#86a064',
+      'line-width': physWidth(0.8, 2.2),
+      'line-dasharray': [0.6, 0.9],
+      'line-opacity': fadeIn(13, 13.6),
+    },
+  },
+  {
     id: 'plan-spoil', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('spoil'),
     paint: { 'fill-color': '#c0b9a8', 'fill-outline-color': '#6f675a', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },

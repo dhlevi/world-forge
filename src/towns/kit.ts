@@ -1,7 +1,8 @@
 import { Delaunay } from 'd3-delaunay';
 import { mulberry32 } from '../gen/rng';
-import { type Poly, type Pt, area, ccw, centroid, distToLine, hatch, inset, pointInPoly, rect, segHitsPoly, split } from './geom';
+import { type Poly, type Pt, area, ccw, centroid, distToLine, inset, pointInPoly, rect, segHitsPoly, split } from './geom';
 import type { PlanInput } from './plan';
+import { BUILD_GROUND, FIELD_GROUND, contourStrips, plantField } from './ground';
 
 /** Steepest ground (m/m) a building goes on; fields and meadows stop at MAX_FIELD_SLOPE. */
 const MAX_BUILD_SLOPE = 0.35;
@@ -114,8 +115,11 @@ export class Kit {
       if (w < d && sl > 0.16) [w, d] = [d, w];
     }
     if (this.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + r - 1.5)) return false;
+    // Every corner must stand on dry, workable ground, not just the centre.
+    const fp = rect(c[0], c[1], ang, w, d);
+    if (!this.inp.ground.allOk(fp, BUILD_GROUND)) return false;
     this.houses.push({ c, r });
-    this.inp.out.poly('building', rect(c[0], c[1], ang, w, d), use ? { use } : {});
+    this.inp.out.poly('building', fp, use ? { use } : {});
     return true;
   }
 
@@ -155,12 +159,15 @@ export class Kit {
     const seeds: number[] = [];
     for (let t = 0; t < nF; t++) {
       const p = this.polar(r0 * 0.8 + rnd() * (r1 * 1.15 - r0 * 0.8), rnd() * 2 * Math.PI);
-      seeds.push(p[0], p[1]);
+      if (inp.ground.ok(p, FIELD_GROUND)) seeds.push(p[0], p[1]);
     }
+    // Barrier seeds just past usable ground: the cells beside a shore, bank or crag end along it.
+    const nReal = seeds.length / 2;
+    for (const p of inp.ground.barriers(r1 * 1.15, Math.max(14, Math.sqrt(cellArea) * 0.3), FIELD_GROUND)) seeds.push(p[0], p[1]);
     const B = r1 * 1.3;
     const vor = new Delaunay(Float64Array.from(seeds)).voronoi([-B, -B, B, B]);
     const coarse = this.lanes.map((l) => l.pts.filter((_, k) => k % 4 === 0 || k === l.pts.length - 1));
-    for (let i = 0; i < seeds.length / 2; i++) {
+    for (let i = 0; i < nReal; i++) {
       const cp = vor.cellPolygon(i);
       if (!cp) continue;
       const poly = ccw(cp.slice(0, -1).map(([x, y]) => [x, y] as Pt));
@@ -189,13 +196,15 @@ export class Kit {
           this.woodOn(q);
           continue;
         }
-        this.fields.push(q);
         if (rnd() < meadowProb || sl > MAX_PLOUGH_SLOPE) {
-          inp.out.poly('green', q);
+          const g = plantField(q, 'green', inp.ground, inp.out, rnd, 0.3);
+          if (g) this.fields.push(g);
           continue;
         }
-        inp.out.poly('field', q, { tone: rnd() });
-        for (const l of hatch(q, 6)) inp.out.line('furrow', l);
+        for (const f of contourStrips(q, inp.terrain, rnd, MAX_PLOUGH_SLOPE)) {
+          const g = plantField(f, 'field', inp.ground, inp.out, rnd, 0.45);
+          if (g) this.fields.push(g);
+        }
       }
     }
   }

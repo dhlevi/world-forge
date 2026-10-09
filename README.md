@@ -117,6 +117,12 @@ Everything below world scale is generated on demand in a dedicated web worker (`
   - Sea, lakes and rivers (at their true width) carve the plan; streets crossing a river become bridges.
   - **Terrain:** the walled core grows onto the gentlest nearby ground. Street routing penalises steep grades. On slopes, blocks are cut into terraces along the contours, and ground too steep to build on is left wooded. The citadel and temple take the high ground.
   - **Harbours** (`harbour.ts`): along the waterfront, piers (some with T-heads) reach out to open water, with boats moored alongside. Shore wards become warehouses, cities get a lighthouse and ships at anchor, and river towns get short jetties.
+- **Fitting plans to the ground** (`ground.ts`): every plan gets a usable-ground test built from its local terrain grid (distance to water by chamfer transform, slope, and the exact shoreline near the water).
+  - **Barrier seeds:** field Voronoi diagrams get extra seeds just past the edge of usable ground (shores, river banks, steep crags) whose cells are discarded, so the neighbouring fields end along the shore in short irregular steps, as on a hand-drawn map.
+  - **Fitting:** fields, meadows, parks, plazas and the citadel are densified and their offending vertices pulled in toward the centre until they stand on usable ground (at least 4 m from water for fields), with inward-only smoothing and a slight hand-drawn wobble; furrows are clipped to the fitted outline. Buildings and lots are kept only if every corner is on dry, workable ground.
+  - **Terraces:** on gentle slopes (6–14% in villages, up to 20% around towns) fields are cut into strips along the contour, with furrows following it.
+  - **Hedgerows:** some fields and meadows get a dotted hedge outline.
+  - **Walls** are walked in short pieces, so they stop at the shore with a tower instead of crossing a bay between two corners.
 - **Village plans** (from zoom 12.5, `village.ts`, shared pieces in `kit.ts`) follow [Watabou's Village Generator](https://watabou.github.io/village-generator/). Buildings stay off ground steeper than 35% and turn to run along the contour on hillsides; fields on slopes over 14% become pasture, and over 25% are left wooded. Each kind has its own layout:
   - **Farming:** winding lanes from each track to a common centre with side lanes, houses facing the lanes (densest at the centre), a chapel in larger villages, Voronoi fields with furrows cut by the lanes, and trees in clumps and gardens.
   - **Fishing:** houses crowd down to the shore, with jetties, moored and beached boats, paths to the water, and a few fields inland.
@@ -138,7 +144,7 @@ src/
                 biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
   render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
   towns/        manager.ts (villages, tracks, plan cache), city.ts, village.ts, kit.ts (village building blocks),
-                harbour.ts (piers, boats), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), geom.ts
+                harbour.ts (piers, boats), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), geom.ts
   worker/       world.worker.ts, towns.worker.ts, protocol.ts
   world/        client.ts (worker pool + map protocol), probe.ts
 scripts/        preview.ts (headless generation → PNG), png.ts

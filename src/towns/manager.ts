@@ -14,6 +14,7 @@ import { LocalFrame, type PlanFeature, PlanOut } from './plan';
 import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
 import { buildVillage } from './village';
+import { Ground } from './ground';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
 export const VILLAGE_ZOOM = 7.5;
@@ -534,8 +535,9 @@ export class TownManager {
         return this.sampler.isWater(ll[0], ll[1], h) ? SEA : LAND;
       },
     );
-    if (s.tier === 'village') buildVillage({ s, exits, water, terrain, out });
-    else buildCity({ s, exits, water, terrain, out });
+    const ground = new Ground(terrain, water);
+    if (s.tier === 'village') buildVillage({ s, exits, water, terrain, ground, out });
+    else buildCity({ s, exits, water, terrain, ground, out });
 
     // Contours show the lie of the land; the interval adapts to the relief.
     let lo = Infinity, hi = -Infinity;

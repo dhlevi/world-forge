@@ -1,5 +1,6 @@
 import type { Pt } from './geom';
 import type { LocalTerrain } from './terrain';
+import type { Ground } from './ground';
 import type { RoadClass, Settlement } from '../gen/settlements';
 
 const M_PER_DEG = (Math.PI * 6371000) / 180;
@@ -63,5 +64,7 @@ export interface PlanInput {
   exits: { p: Pt; cls: RoadClass }[];
   water: (p: Pt) => boolean;
   terrain: LocalTerrain;
+  /** Usable-ground tests and fitting over `terrain`. */
+  ground: Ground;
   out: PlanOut;
 }
