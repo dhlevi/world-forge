@@ -67,7 +67,7 @@ export class WorldClient {
       });
       if (res.type !== 'generated') throw new Error('Unexpected worker response');
       for (let i = 1; i < this.workers.length; i++) {
-        this.workers[i].postMessage({ type: 'setWorld', gen, raster: res.raster } satisfies WorkerRequest);
+        this.workers[i].postMessage({ type: 'setWorld', gen, raster: res.raster, rivers: res.rivers } satisfies WorkerRequest);
       }
       return {
         gen, raster: res.raster, rivers: res.rivers, wind: res.wind, currents: res.currents,
@@ -79,10 +79,10 @@ export class WorldClient {
     }
   }
 
-  renderTile(gen: number, layer: LayerId, z: number, x: number, y: number, signal: AbortSignal): Promise<ImageBitmap> {
+  renderTile(gen: number, layer: LayerId, rivers: boolean, z: number, x: number, y: number, signal: AbortSignal): Promise<ImageBitmap> {
     return new Promise((resolve, reject) => {
       const id = this.nextId++;
-      this.queue.push({ id, msg: { type: 'tile', id, gen, layer, z, x, y }, signal, resolve, reject });
+      this.queue.push({ id, msg: { type: 'tile', id, gen, layer, rivers, z, x, y }, signal, resolve, reject });
       this.pump();
     });
   }
@@ -90,9 +90,10 @@ export class WorldClient {
   /** Registers the `world://` protocol used by the map's raster source. */
   registerProtocol(): void {
     addProtocol('world', async (params, abort) => {
-      const m = /^world:\/\/(\d+)\/(\w+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+      // world://gen/layer/flags/z/x/y; flags: 'r' draws rivers into the tile, '-' leaves them out.
+      const m = /^world:\/\/(\d+)\/(\w+)\/([\w-]+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
       if (!m) throw new Error(`Bad world tile URL: ${params.url}`);
-      const bitmap = await this.renderTile(+m[1], m[2] as LayerId, +m[3], +m[4], +m[5], abort.signal);
+      const bitmap = await this.renderTile(+m[1], m[2] as LayerId, m[3].includes('r'), +m[4], +m[5], +m[6], abort.signal);
       // A render that finishes after MapLibre cancelled the request (layer/world switch) must not be shown.
       if (abort.signal.aborted) {
         bitmap.close();

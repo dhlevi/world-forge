@@ -3,8 +3,11 @@ import { hashString, mulberry32 } from './rng';
 import { EARTH_RADIUS_KM, smoothstep } from './grid';
 import { RENDER as RC } from './config';
 import type { RasterWorld } from './world';
+import { type RiverIndex, carveRiver } from './river-index';
 
 const DEG = Math.PI / 180;
+/** Farthest a river valley reaches from its bank (valleyM of the widest rivers). */
+export const RIVER_REACH_M = 1400;
 
 function catmullRom(t: number, out: Float64Array): void {
   const t2 = t * t, t3 = t2 * t;
@@ -26,7 +29,8 @@ export class DetailSampler {
   private cw = new Float64Array(4);
   private rw = new Float64Array(4);
 
-  constructor(private world: DetailWorld) {
+  /** With `rivers`, heights include the carved river valleys drawn by the tile renderer. */
+  constructor(private world: DetailWorld, readonly rivers: RiverIndex | null = null) {
     this.noise = new Simplex3(mulberry32(hashString(world.seed + '#detail')));
     this.lambda0Km = (2 * (2 * Math.PI * EARTH_RADIUS_KM)) / world.W;
   }
@@ -68,7 +72,14 @@ export class DetailSampler {
       if (ridge > 0) v += (0.6 - 1.6 * Math.abs(v) - v) * ridge;
       sum += Math.min(1, octF - k) * v * (rough * amp + coast * coastAmp);
     }
-    return base + sum;
+    const hh = base + sum;
+    if (!this.rivers || hh <= 0) return hh;
+    return carveRiver(hh, base, sum, this.rivers.nearest(lon, lat, RIVER_REACH_M));
+  }
+
+  /** Nearest river bank (signed metres, negative in the channel), or null beyond `maxM`. */
+  riverBank(lon: number, lat: number, maxM: number) {
+    return this.rivers?.nearest(lon, lat, maxM) ?? null;
   }
 
   /** Sea or lake at full detail, matching the drawn shoreline; pass the height if already known. */

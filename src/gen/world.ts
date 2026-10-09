@@ -10,6 +10,7 @@ import { extractRivers, type RiverCollection } from './rivers';
 import { traceStreamlines, type StreamCollection } from './streamlines';
 import { buildSettlements, type RoadCollection, type Settlement } from './settlements';
 import { DetailSampler } from './detail';
+import { RiverIndex } from './river-index';
 import { CLIMATE, HYDROLOGY } from './config';
 
 export interface WorldParams {
@@ -166,7 +167,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   });
 
   progress('Settlements & roads', 0.97);
-  const sampler = new DetailSampler({ seed: params.seed, W, H, height, lakeDepth, waterLevel });
+  const sampler = new DetailSampler({ seed: params.seed, W, H, height, lakeDepth, waterLevel }, new RiverIndex(rivers, params.seed));
   const { settlements, roads } = buildSettlements(g, {
     height, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, biome, lakeDepth, acc, flow,
   }, seedHash, sampler);

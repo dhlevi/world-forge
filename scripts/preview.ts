@@ -56,7 +56,7 @@ for (const [b, n] of [...counts].sort((a, b) => b[1] - a[1])) {
   console.log(`    ${BIOME_NAMES[b as keyof typeof BIOME_NAMES].padEnd(24)} ${((100 * n) / pN).toFixed(1)}%`);
 }
 
-const renderer = new TileRenderer(raster);
+const renderer = new TileRenderer(raster, world.rivers);
 for (const layer of layers) {
   const t = performance.now();
   const px = renderer.renderEquirect(imgWidth, imgWidth / 2, layer);

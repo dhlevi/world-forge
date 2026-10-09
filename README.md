@@ -23,7 +23,7 @@ npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # head
 | Erosion | 0–100% (default 50%) | Strength of stream-power river erosion. |
 | Detail | 512 / 1024 / 2048 wide | Simulation grid resolution. |
 | Map layer | Fantasy map (default), Terrain, Biomes, Köppen climate, Elevation, Temperature, Precipitation, Tectonic plates | Re-renders tiles without regenerating. |
-| Rivers | on/off | Vector river overlay. |
+| Rivers | on/off | Rivers. On the Fantasy map and Terrain layers they are drawn into the tiles (inked, clipped at lakes and the sea); on the other layers they are a vector overlay. River valleys stay carved into the terrain either way. |
 | Settlements & roads | on/off (default on) | Cities, towns, villages, roads and tracks; town and village plans at high zoom. |
 | Prevailing winds | on/off (default off) | Streamline overlay of the simulated surface winds. |
 | Ocean currents | on/off (default off) | Streamline overlay of surface currents, coloured red (warm) to blue (cold) by their temperature anomaly. |
@@ -56,7 +56,10 @@ The world is simulated on an equirectangular lon/lat grid that wraps east–west
    - **Temperature swing:** the warmest and coldest month differ from the mean by an amount that grows with latitude and with continentality (how far the wind has travelled from the sea), so coasts are mild and interiors are extreme.
    - **Seasonal rain:** the wind bands and rain belt shift toward the summer hemisphere, and a monsoon term turns winds onshore in summer and offshore in winter. Moisture transport runs once per season to give summer and winter precipitation; annual precipitation is their mean.
    - **Köppen–Geiger** (`koppen.ts`): the full set of 30 classes (Af…EF), from mean, warmest- and coldest-month temperature and seasonal precipitation, using the standard map colours. On test seeds the land shares come out close to Earth's: about 19% tropical, 27% arid, 18% temperate, 24% continental and 12% polar.
-5. **Rivers & lakes** (`rivers.ts`): flow is accumulated, weighted by precipitation. River polylines are split by discharge class, jittered, and Chaikin-smoothed. Lakes form in deep basins only where precipitation is high enough to keep them filled.
+5. **Rivers & lakes** (`rivers.ts`, `river-index.ts`): flow is accumulated, weighted by precipitation. River polylines are split by discharge class, jittered, and Chaikin-smoothed. Lakes form in deep basins only where precipitation is high enough to keep them filled.
+   - A shared **river index** bins the segments for fast distance queries. Widths taper smoothly downstream (each feature spans one discharge doubling, so its width grows from one class to the next along its length).
+   - **Meanders:** distances to a river are measured from a point displaced by a smooth noise field (domain warping, 9 km down to ~0.5 km wavelengths), so the straight coarse courses bend the same way in the tiles, the terrain sampler and the town plans.
+   - **Valleys:** within a floodplain that widens with the river, the sub-grid detail relief fades out, the floor sinks a few metres toward the banks and the channel is cut below them, so rivers never climb over noise ridges.
 6. **Biomes** (`biomes.ts`): a Whittaker-style classification from annual temperature and precipitation, refined by terrain and water:
    - **Ice:** ice caps where summers stay below freezing, or glaciers where cold summers meet heavy snowfall.
    - **Treeline:** trees need a warmest month of at least 10 °C, so cold, dry land stays tundra.
@@ -76,6 +79,7 @@ The world is simulated on an equirectangular lon/lat grid that wraps east–west
 
 - The map is MapLibre GL with the globe projection. A custom `world://` protocol serves raster tiles that a pool of Web Workers renders on demand. One worker generates the world, then shares it with the rest.
 - Tiles sample the grid with bicubic interpolation and add **fractal sub-grid detail**: more noise octaves as you zoom in, rough at coastlines and ridged in mountains. Coastlines and ranges keep showing structure down to ~10 m/pixel, and tiles stay consistent across zoom levels.
+- Raster tiles go to zoom 17 (overzoomed beyond).
 - Hillshading uses zoom-dependent vertical exaggeration. Terrain colour blends domain-warped biome colours with rock, snow (which needs both cold and enough precipitation) and sea ice.
 - **Fantasy map** (`fantasy.ts`) gives a hand-drawn atlas look, inspired by Watabou's Perilous Shores:
   - Land is drawn as parchment tinted by biome, with soft sepia hillshading, snow and paper grain.
@@ -85,8 +89,10 @@ The world is simulated on an equirectangular lon/lat grid that wraps east–west
     - mountains (hatched, with snow caps where cold), hills
     - round deciduous trees or conifers, by forest biome
     - marsh tufts
-  - Symbols are deterministic per seed and zoom, and are drawn up to zoom 11. Rivers switch to an ink-blue colour.
-- Rivers are a GeoJSON line layer whose width scales with discharge and zoom, growing into their true width (from ~12 m upstream to a few hundred metres on big rivers) at high zoom. Wind streamlines are a GeoJSON line layer drawn with a transparent-to-white gradient.
+  - Symbols are deterministic per seed and zoom. Mountains and hills are drawn up to zoom 11; trees and marsh tufts continue to the deepest tiles, growing a little and thinning out so forests still read as forests. Symbols keep off rivers and the fine shoreline.
+  - **Rivers** are drawn into the tiles: a single ink-blue line while thin, then a pale channel between inked banks (with a ripple line inside broad rivers). They never get thinner than a zoom-dependent minimum, grow into their true width at close zoom, show only the largest rivers on the globe, stop at lakes, and open into the sea without an inked coast across the mouth.
+  - **Contours** from zoom ~9: an interval that halves with each zoom (200 m at zoom 9 down to 2.5 m), every fifth line darker, fading out where lines crowd together. From zoom ~11.5 steep ground gets a rock stipple.
+- On the analytic layers rivers are a GeoJSON line layer whose width scales with discharge and zoom, growing into their true width (from ~12 m upstream to a few hundred metres on big rivers) at high zoom. The tile URL carries a river flag (`world://gen/layer/r|-/z/x/y`). Wind streamlines are a GeoJSON line layer drawn with a transparent-to-white gradient.
 
 ## Villages and town plans (`src/towns/`)
 
@@ -97,8 +103,9 @@ Everything below world scale is generated on demand in a dedicated web worker (`
   - **Logging camps** in forest biomes.
   - **Fishing villages** where there is sea or a lake within ~8 km; the village moves onto the shore.
   - **Keeps** on high ground, climbing to the local summit, and occasionally guarding a road in the lowlands.
-  - **Monasteries**, more often in the hills.
+  - **Monasteries**, more often in the hills, on a level terrace or knoll above the surrounding ground.
   - Otherwise, **farming villages**.
+  - **Slope-aware sites** (sampled at full terrain detail, ~60 m): mining camps need real relief and sit on workable ground at the foot of the steepest rise within ~1.5 km (none on flat plateaus); farming villages and lowland keeps move to the flattest ground within ~900 m and are dropped if it is all steeper than 16%; logging camps avoid slopes over ~35%.
 - **Markers:** cities show from the globe view, towns from zoom 5, villages from zoom 8, coloured by kind. They fade out as the plans fade in.
 - **City and town plans** (from zoom 11.5, `city.ts`) follow [Watabou's Medieval Fantasy City Generator](https://watabou.github.io/city-generator/):
   - Wards are Voronoi patches on a sunflower spiral (relaxed once), sized from population.
@@ -110,7 +117,7 @@ Everything below world scale is generated on demand in a dedicated web worker (`
   - Sea, lakes and rivers (at their true width) carve the plan; streets crossing a river become bridges.
   - **Terrain:** the walled core grows onto the gentlest nearby ground. Street routing penalises steep grades. On slopes, blocks are cut into terraces along the contours, and ground too steep to build on is left wooded. The citadel and temple take the high ground.
   - **Harbours** (`harbour.ts`): along the waterfront, piers (some with T-heads) reach out to open water, with boats moored alongside. Shore wards become warehouses, cities get a lighthouse and ships at anchor, and river towns get short jetties.
-- **Village plans** (from zoom 12.5, `village.ts`, shared pieces in `kit.ts`) follow [Watabou's Village Generator](https://watabou.github.io/village-generator/). Each kind has its own layout:
+- **Village plans** (from zoom 12.5, `village.ts`, shared pieces in `kit.ts`) follow [Watabou's Village Generator](https://watabou.github.io/village-generator/). Buildings stay off ground steeper than 35% and turn to run along the contour on hillsides; fields on slopes over 14% become pasture, and over 25% are left wooded. Each kind has its own layout:
   - **Farming:** winding lanes from each track to a common centre with side lanes, houses facing the lanes (densest at the centre), a chapel in larger villages, Voronoi fields with furrows cut by the lanes, and trees in clumps and gardens.
   - **Fishing:** houses crowd down to the shore, with jetties, moored and beached boats, paths to the water, and a few fields inland.
   - **Logging:** a clearing in dense forest with a sawmill (on the river bank if there is one), stacked logs, stumps and a few cabins.
@@ -127,7 +134,7 @@ src/
   main.ts, App.vue, store.ts, style.css
   components/   MapView.vue, map-style.ts (settlement layer styles), ControlPanel.vue, RangeField.vue
   gen/          world.ts (pipeline), tectonics.ts, climate.ts, ocean.ts, koppen.ts, advect.ts, streamlines.ts,
-                hydrology.ts, rivers.ts, settlements.ts (cities, towns, roads), detail.ts (sub-grid terrain sampler),
+                hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), detail.ts (sub-grid terrain sampler),
                 biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
   render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
   towns/        manager.ts (villages, tracks, plan cache), city.ts, village.ts, kit.ts (village building blocks),

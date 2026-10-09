@@ -20,13 +20,16 @@ let probeFrame = 0;
 let townsWorker: Worker | null = null;
 let townsGen = -1;
 
-const tileUrl = () => `world://${world.value?.gen ?? 0}/${store.layer}/{z}/{x}/{y}`;
+/** Layers whose tiles draw (and clip) the rivers themselves; the others use the vector river layer. */
+const RASTER_RIVER_LAYERS = new Set(['fantasy', 'terrain']);
+const rasterRivers = () => RASTER_RIVER_LAYERS.has(store.layer);
+const tileUrl = () => `world://${world.value?.gen ?? 0}/${store.layer}/${store.showRivers ? 'r' : '-'}/{z}/{x}/{y}`;
 
 function syncWorld(): void {
   if (!map || !ready || !world.value) return;
   const raster = map.getSource('world') as RasterTileSource | undefined;
   if (!raster) {
-    map.addSource('world', { type: 'raster', tiles: [tileUrl()], tileSize: 256, maxzoom: 15 });
+    map.addSource('world', { type: 'raster', tiles: [tileUrl()], tileSize: 256, maxzoom: 17 });
     map.addLayer(
       { id: 'world', type: 'raster', source: 'world', paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear' } },
       PLAN_GROUND_LAYERS[0].id,
@@ -34,7 +37,7 @@ function syncWorld(): void {
   } else {
     raster.setTiles([tileUrl()]);
   }
-  map.setPaintProperty('rivers', 'line-color', store.layer === 'fantasy' ? '#56788c' : '#2f6e9e');
+  setVisibility('rivers', store.showRivers);
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
   (map.getSource('wind') as GeoJSONSource).setData(world.value.wind);
   (map.getSource('currents') as GeoJSONSource).setData(world.value.currents);
@@ -83,6 +86,7 @@ const OVERLAY_LAYERS = {
 
 function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): void {
   if (!map || !ready) return;
+  if (overlay === 'rivers' && rasterRivers()) show = false;
   for (const id of OVERLAY_LAYERS[overlay]) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
 }
 
@@ -209,7 +213,7 @@ onBeforeUnmount(() => {
 });
 
 watch([world, () => store.layer], syncWorld);
-watch(() => store.showRivers, (show) => setVisibility('rivers', show));
+watch(() => store.showRivers, syncWorld);
 watch(() => store.showWind, (show) => setVisibility('wind', show));
 watch(() => store.showCurrents, (show) => setVisibility('currents', show));
 watch(() => store.showSettlements, (show) => {

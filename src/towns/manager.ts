@@ -4,11 +4,12 @@ import { CLIMATE, SETTLEMENTS as S } from '../gen/config';
 import { DetailSampler } from '../gen/detail';
 import { Biome } from '../gen/biomes';
 import { chaikin } from '../gen/rivers';
+import { RiverIndex } from '../gen/river-index';
 import {
   type RoadClass, type RoadFeature, type Settlement, type VillageKind, habitability, makeSettlement, trimEnds,
 } from '../gen/settlements';
 import type { GeneratedWorld } from '../gen/world';
-import { distToSeg, type Pt } from './geom';
+import type { Pt } from './geom';
 import { LocalFrame, type PlanFeature, PlanOut } from './plan';
 import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
@@ -73,12 +74,6 @@ class PointIndex<T> {
   }
 }
 
-interface RiverSeg {
-  a: number[];
-  b: number[];
-  halfM: number;
-}
-
 interface Block {
   villages: Settlement[];
   tracks: RoadFeature[];
@@ -123,26 +118,18 @@ export class TownManager {
   readonly sampler: DetailSampler;
   private sites = new PointIndex<Settlement>(1);
   private roadPts = new PointIndex<null>(0.25);
-  private riverPts = new PointIndex<RiverSeg>(0.25);
   private exits = new Map<string, { ll: number[]; cls: RoadClass }[]>();
   private blocks = new Map<number, Block>();
   private plans = new Map<string, PlanFeature[]>();
 
   constructor(private world: TownWorld) {
-    this.sampler = new DetailSampler(world.raster);
+    this.sampler = new DetailSampler(world.raster, new RiverIndex(world.rivers, world.raster.seed));
     for (const s of world.settlements) this.sites.add(s.lon, s.lat, s);
     for (const f of world.roads.features) {
       const c = f.geometry.coordinates;
       for (const p of c) this.roadPts.add(p[0], p[1], null);
       this.addExit(f.properties.a, c[0], f.properties.cls);
       this.addExit(f.properties.b, c[c.length - 1], f.properties.cls);
-    }
-    for (const f of world.rivers.features) {
-      const c = f.geometry.coordinates;
-      const halfM = f.properties.widthM / 2 + 8;
-      for (let k = 0; k + 1 < c.length; k++) {
-        this.riverPts.add((c[k][0] + c[k + 1][0]) / 2, (c[k][1] + c[k + 1][1]) / 2, { a: c[k], b: c[k + 1], halfM });
-      }
     }
   }
 
@@ -290,7 +277,8 @@ export class TownManager {
         const biome = raster.biome[c] as Biome;
         const base = habitability(tMean, tWarm, sample(raster.precip, lon, lat), h, Math.hypot(gx, gy), biome);
         const road = this.roadPts.nearest(lon, lat, S.villageLinkKm);
-        const river = this.riverPts.nearest(lon, lat, 12);
+        const riverHit = this.sampler.riverBank(lon, lat, 12000);
+        const river = riverHit ? { d: Math.max(0, riverHit.bankM) / 1000 } : null;
         // Camps go where ordinary villages can't: mines in the mountains, loggers in the forest.
         const mountain = biome === Biome.IceSheet ? 0 : smoothstep(800, 2000, h) * smoothstep(-2, 6, tWarm);
         // Sea or lake within ~8 km (coarse grid test; the fine shoreline is found later).
@@ -301,7 +289,9 @@ export class TownManager {
         }));
         let kind: VillageKind;
         let score = base;
-        if (mountain > 0 && rr(5) < 0.45 * mountain) kind = 'mining';
+        let minePos: [number, number] | null = null;
+        // Mines need real relief: a camp at the foot of a steep slope, not on a high plateau.
+        if (mountain > 0 && rr(5) < 0.35 * mountain && (minePos = this.mineSite(lon, lat))) kind = 'mining';
         else if (FOREST_BIOMES.has(biome) && base > 0.05 && rr(5) < 0.3) kind = 'logging';
         else {
           if (base <= 0) continue;
@@ -316,7 +306,7 @@ export class TownManager {
         });
         if (blocked || villages.some((v) => distKm(lon, lat, v.lon, v.lat) < 4)) continue;
         if (this.sampler.isWater(lon, lat)) continue;
-        let pos: [number, number] = [lon, lat];
+        let pos: [number, number] = minePos ?? [lon, lat];
         if (kind === 'farming') {
           const r6 = rr(6);
           const shore = r6 < 0.9 && coastal ? this.shoreline(lon, lat) : null;
@@ -331,8 +321,19 @@ export class TownManager {
             kind = 'keep';
           } else if (r6 >= 0.75 && r6 < 0.77 + 0.04 * smoothstep(300, 1200, h)) {
             kind = 'monastery';
+            // A quiet terrace or knoll: higher ground that is still level enough to build on.
+            pos = this.bestNear(lon, lat, 1200, (x, y, hh, sl) => hh * 0.004 - 6 * Math.max(0, sl - 0.08));
           }
         }
+        if (kind === 'farming' || (kind === 'keep' && pos[0] === lon && pos[1] === lat)) {
+          // Farmers settle the flattest ground nearby; too steep everywhere and there is no village.
+          pos = this.bestNear(lon, lat, 900, (x, y, hh, sl) => -sl - 0.00002 * distKm(lon, lat, x, y) * 1000);
+          if (this.slopeAt(pos[0], pos[1]) > 0.16) continue;
+        } else if (kind === 'logging') {
+          pos = this.bestNear(lon, lat, 600, (x, y, hh, sl) => -Math.max(0, sl - 0.12));
+          if (this.slopeAt(pos[0], pos[1]) > 0.35) continue;
+        }
+        if (this.sampler.isWater(pos[0], pos[1])) continue;
         const v = makeSettlement(
           'village', `v${key}_${villages.length}`, pos[0], pos[1], score, hash32(h0 ^ 7), kind === 'fishing', (river?.d ?? 99) < 1.5, kind,
         );
@@ -359,6 +360,70 @@ export class TownManager {
       }
     }
     return null;
+  }
+
+  /** Ground slope (m/m) over ~60 m, at full terrain detail (including carved river valleys). */
+  private slopeAt(lon: number, lat: number, m = 60): number {
+    const d = m / 111200, dx = d / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const h = (x: number, y: number) => this.sampler.height(x, y, 0.02);
+    return Math.hypot(h(lon + dx, lat) - h(lon - dx, lat), h(lon, lat + d) - h(lon, lat - d)) / (2 * m);
+  }
+
+  /** The best-scoring dry point on rings out to radiusM (the centre included). */
+  private bestNear(
+    lon: number, lat: number, radiusM: number, score: (lon: number, lat: number, h: number, slope: number) => number,
+  ): [number, number] {
+    const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    let best: [number, number] = [lon, lat];
+    let bestS = -Infinity;
+    for (const f of [0, 0.5, 1]) {
+      const n = f === 0 ? 1 : 8;
+      for (let q = 0; q < n; q++) {
+        const a = (q / 8) * 2 * Math.PI + f * 0.6;
+        const x = lon + Math.cos(a) * f * radiusM * kLon, y = lat + Math.sin(a) * f * radiusM * kLat;
+        const hh = this.sampler.height(x, y, 0.02);
+        if (hh <= 0 || this.sampler.isWater(x, y, hh)) continue;
+        const sc = score(x, y, hh, this.slopeAt(x, y));
+        if (sc > bestS) {
+          bestS = sc;
+          best = [x, y];
+        }
+      }
+    }
+    return best;
+  }
+
+  /**
+   * A mining camp site within ~1.5 km: workable ground (slope under ~25%) right below the
+   * steepest rise, so the adits can climb the hillside. Null if there is no real relief.
+   */
+  private mineSite(lon: number, lat: number): [number, number] | null {
+    const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const rise = (x: number, y: number, hh: number) => {
+      let r = 0;
+      for (let q = 0; q < 8; q++) {
+        const a = (q / 8) * 2 * Math.PI;
+        r = Math.max(r, this.sampler.height(x + Math.cos(a) * 400 * kLon, y + Math.sin(a) * 400 * kLat, 0.02) - hh);
+      }
+      return r;
+    };
+    let best: [number, number] | null = null;
+    let bestS = 30;
+    for (const f of [0, 0.5, 1]) {
+      const n = f === 0 ? 1 : 8;
+      for (let q = 0; q < n; q++) {
+        const a = (q / 8) * 2 * Math.PI + f;
+        const x = lon + Math.cos(a) * f * 1500 * kLon, y = lat + Math.sin(a) * f * 1500 * kLat;
+        const hh = this.sampler.height(x, y, 0.02);
+        if (hh <= 0 || this.sampler.isWater(x, y, hh)) continue;
+        const sc = rise(x, y, hh) - 400 * Math.max(0, this.slopeAt(x, y) - 0.25);
+        if (sc > bestS) {
+          bestS = sc;
+          best = [x, y];
+        }
+      }
+    }
+    return best;
   }
 
   /** Noticeably higher than the ground 3 km around (a hill or spur worth fortifying). */
@@ -445,11 +510,12 @@ export class TownManager {
     const frame = new LocalFrame(s.lon, s.lat);
     const out = new PlanOut(frame, pxPerMeterZ20(s.lat));
     const exits = (this.exits.get(s.id) ?? []).map((e) => ({ p: frame.fromLL(e.ll[0], e.ll[1]), cls: e.cls }));
-    const segs: { a: Pt; b: Pt; halfM: number }[] = [];
-    this.riverPts.forEach(s.lon, s.lat, s.radiusM / 1000 + 15, (sg) => {
-      segs.push({ a: frame.fromLL(sg.a[0], sg.a[1]), b: frame.fromLL(sg.b[0], sg.b[1]), halfM: sg.halfM });
-    });
-    const inRiver = (p: Pt) => segs.some((sg) => distToSeg(p[0], p[1], sg.a, sg.b) < sg.halfM);
+    // Plans keep 8 m clear of the true river bank (the same tapered width the tiles draw).
+    const inRiver = (p: Pt) => {
+      const ll = frame.toLL(p);
+      const hit = this.sampler.riverBank(ll[0], ll[1], 8);
+      return !!hit && hit.bankM < 8;
+    };
     const water = (p: Pt) => {
       if (inRiver(p)) return true;
       const ll = frame.toLL(p);

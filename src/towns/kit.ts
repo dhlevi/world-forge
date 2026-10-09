@@ -3,6 +3,11 @@ import { mulberry32 } from '../gen/rng';
 import { type Poly, type Pt, area, ccw, centroid, distToLine, hatch, inset, pointInPoly, rect, segHitsPoly, split } from './geom';
 import type { PlanInput } from './plan';
 
+/** Steepest ground (m/m) a building goes on; fields and meadows stop at MAX_FIELD_SLOPE. */
+const MAX_BUILD_SLOPE = 0.35;
+const MAX_FIELD_SLOPE = 0.25;
+const MAX_PLOUGH_SLOPE = 0.14;
+
 export interface Lane {
   pts: Pt[];
   w: number;
@@ -91,10 +96,23 @@ export class Kit {
     return this.blocked.some((b) => pointInPoly(b, p[0], p[1]));
   }
 
-  /** Places a w×d building at c if the spot is dry and clear. */
+  /**
+   * Places a w×d building at c if the spot is dry, clear and not too steep. On a hillside the
+   * building turns to run along the contour, as terraced houses do.
+   */
   house(c: Pt, ang: number, w: number, d: number, use?: string): boolean {
     const r = 0.5 * Math.hypot(w, d);
     if (this.inp.water(c) || this.inBlocked(c) || this.nearLane(c, Math.min(w, d) / 2 + 1)) return false;
+    const g = this.inp.terrain.grad(c), sl = Math.hypot(...g);
+    if (sl > MAX_BUILD_SLOPE) return false;
+    if (sl > 0.1) {
+      const along = Math.atan2(g[0], -g[1]);
+      // Snap to whichever contour-parallel orientation is closer, blending in as the slope steepens.
+      let delta = (((along - ang) % Math.PI) + 1.5 * Math.PI) % Math.PI - Math.PI / 2;
+      if (Math.abs(delta) > Math.PI / 2) delta -= Math.sign(delta) * Math.PI;
+      ang += delta * Math.min(1, (sl - 0.1) / 0.12);
+      if (w < d && sl > 0.16) [w, d] = [d, w];
+    }
     if (this.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + r - 1.5)) return false;
     this.houses.push({ c, r });
     this.inp.out.poly('building', rect(c[0], c[1], ang, w, d), use ? { use } : {});
@@ -165,14 +183,35 @@ export class Kit {
         if (area(q) < 800 || inp.water(centroid(q))) continue;
         if (this.houses.some((h) => pointInPoly(q, h.c[0], h.c[1]) || distToLine([...q, q[0]], h.c[0], h.c[1]) < h.r + 3)) continue;
         if (this.blocked.some((b) => b.some((v) => pointInPoly(q, v[0], v[1])) || q.some((v) => pointInPoly(b, v[0], v[1])))) continue;
+        // Steep ground stays wooded; moderate slopes are grazed rather than ploughed.
+        const sl = inp.terrain.slope(centroid(q));
+        if (sl > MAX_FIELD_SLOPE) {
+          this.woodOn(q);
+          continue;
+        }
         this.fields.push(q);
-        if (rnd() < meadowProb) {
+        if (rnd() < meadowProb || sl > MAX_PLOUGH_SLOPE) {
           inp.out.poly('green', q);
           continue;
         }
         inp.out.poly('field', q, { tone: rnd() });
         for (const l of hatch(q, 6)) inp.out.line('furrow', l);
       }
+    }
+  }
+
+  /** Scattered trees over a polygon left unfarmed. */
+  woodOn(q: Poly): void {
+    const { rnd } = this;
+    const n = Math.min(40, Math.round(area(q) / 260));
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const [x, y] of q) {
+      minX = Math.min(minX, x); maxX = Math.max(maxX, x);
+      minY = Math.min(minY, y); maxY = Math.max(maxY, y);
+    }
+    for (let t = 0, placed = 0; t < n * 3 && placed < n; t++) {
+      const p: Pt = [minX + rnd() * (maxX - minX), minY + rnd() * (maxY - minY)];
+      if (pointInPoly(q, p[0], p[1]) && this.tree(p, 2.5 + rnd() * 2.5)) placed++;
     }
   }
 

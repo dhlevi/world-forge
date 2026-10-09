@@ -8,8 +8,10 @@ import { hexToRgb, type RGB } from './palette';
 export const FANTASY = {
   /** Tile render margin (px) so coast distances and symbols match across tile edges. */
   marginPx: 16,
-  /** Symbols are drawn up to this zoom; beyond it only shading remains. */
+  /** Mountain and hill symbols are drawn up to this zoom; beyond it contours and rock stipple take over. */
   maxIconZoom: 11,
+  /** Trees and marsh tufts keep going (growing a little) up to the deepest tile zoom. */
+  maxTreeZoom: 18,
   rippleRadiiPx: [4, 8, 13],
   rippleAlpha: [0.6, 0.4, 0.22],
   grain: 0.07,
@@ -32,6 +34,41 @@ const TREE_SHADE = hexToRgb('#80975f');
 const CONIFER = hexToRgb('#7f9c74');
 const CONIFER_SHADE = hexToRgb('#62805b');
 const MARSH = hexToRgb('#5d7c6b');
+export const RIVER_FILL = hexToRgb('#adc6cd');
+export const RIVER_INK = hexToRgb('#34505e');
+export const RIVER_THIN = hexToRgb('#46687a');
+export const CONTOUR = hexToRgb('#8a6a46');
+
+const lerpStops = (stops: number[][], z: number, k: number) => {
+  if (z <= stops[0][0]) return stops[0][k];
+  for (let i = 1; i < stops.length; i++) {
+    if (z <= stops[i][0]) {
+      const t = (z - stops[i - 1][0]) / (stops[i][0] - stops[i - 1][0]);
+      return stops[i - 1][k] + (stops[i][k] - stops[i - 1][k]) * t;
+    }
+  }
+  return stops[stops.length - 1][k];
+};
+/** [zoom, base px, px per discharge order]: rivers grow bolder to zoom 11, then hand over to their true width. */
+const RIVER_MIN_W = [[2, 0.7, 0.25], [5, 1.2, 0.45], [8, 1.9, 0.6], [11, 2.6, 0.75], [13, 2.2, 0.5], [15, 1.5, 0.2], [17, 1, 0.05]];
+
+/** Narrowest a river of this order is drawn (px, full width) at an effective tile zoom. */
+export function riverMinWidthPx(z: number, order: number): number {
+  return lerpStops(RIVER_MIN_W, z, 1) + lerpStops(RIVER_MIN_W, z, 2) * order;
+}
+
+/** Only the big rivers show on the globe; the rest appear as you zoom in. */
+export function riverVisibility(z: number, order: number): number {
+  return Math.min(1, Math.max(0, order + 1 - (5 - z)));
+}
+
+const CONTOUR_STEPS = [2.5, 5, 10, 20, 25, 50, 100, 200, 250, 500];
+
+/** Contour interval (m) for an effective tile zoom: about one line per ~6 px on an 8% slope. */
+export function contourInterval(z: number): number {
+  const target = 0.5 * (40075016 / (256 * 2 ** z));
+  return CONTOUR_STEPS.find((v) => v >= target) ?? 1000;
+}
 
 /** Biome colours washed toward parchment. */
 export const FANTASY_BIOME_RGB = new Float32Array(
@@ -137,8 +174,14 @@ class WorldSampler {
 type Draw = () => void;
 
 /** Draws mountains, hills, trees and marsh tufts on a jittered grid anchored in global pixel space. */
-export function drawIcons(out: Uint8ClampedArray, w: number, h: number, ctx: IconContext, world: RasterWorld): void {
-  if (ctx.z > FANTASY.maxIconZoom) return;
+export function drawIcons(
+  out: Uint8ClampedArray, w: number, h: number, ctx: IconContext, world: RasterWorld,
+  clear: (x: number, y: number, r: number) => boolean = () => true,
+): void {
+  if (ctx.z > FANTASY.maxTreeZoom) return;
+  const terrainIcons = ctx.z <= FANTASY.maxIconZoom;
+  // Past the last mountain zoom trees grow a little and spread out, so forests still read as forests.
+  const grow = Math.min(1.8, 1 + 0.13 * Math.max(0, ctx.z - FANTASY.maxIconZoom));
   const sampler = new WorldSampler(world);
   const seed = hashString(world.seed + '#icons');
   const worldPx = ctx.size * 2 ** ctx.z;
@@ -170,24 +213,27 @@ export function drawIcons(out: Uint8ClampedArray, w: number, h: number, ctx: Ico
     return world.lakeDepth[c] > 0 ? -1 : sampler.bilinear(world.height, lon, lat);
   };
 
-  scan(16, 0x1111, (x, y, lon, lat, r, r2) => {
+  if (terrainIcons) scan(16, 0x1111, (x, y, lon, lat, r, r2) => {
     const hgt = landAt(lon, lat);
     if (hgt < 1100 || r > smoothstep(1100, 2300, hgt)) return null;
     const mw = 12 + 10 * smoothstep(1800, 4500, hgt) + 3 * r2;
     const mh = mw * (0.62 + 0.3 * r2);
     const snowy = sampler.bilinear(world.tempSea, lon, lat) - LAPSE * (hgt + 900) < -2;
+    if (!clear(x, y - mh * 0.3, mw * 0.35)) return null;
     return () => drawMountain(out, w, h, x, y, mw, mh, snowy);
   });
 
-  scan(16, 0x2222, (x, y, lon, lat, r) => {
+  if (terrainIcons) scan(16, 0x2222, (x, y, lon, lat, r) => {
     const hgt = landAt(lon, lat);
     if (r > 0.3 * smoothstep(450, 800, hgt) * (1 - smoothstep(1100, 1300, hgt))) return null;
+    if (!clear(x, y - 1.5, 6)) return null;
     return () => drawHill(out, w, h, x, y, 5.5, 3.2);
   });
 
   scan(8, 0x3333, (x, y, lon, lat, r, r2) => {
     const hgt = landAt(lon, lat);
     if (hgt < 30 || hgt > 2400) return null;
+    if (!clear(x, y - 2 * grow, 3 * grow + 1)) return null;
     // Dither the biome lookup by up to ±0.7 cells so forest edges don't trace the grid.
     const frac = (v: number) => v - Math.floor(v);
     const c = sampler.nearest(
@@ -196,13 +242,13 @@ export function drawIcons(out: Uint8ClampedArray, w: number, h: number, ctx: Ico
     );
     const b = world.biome[c] as Biome;
     if (b === Biome.Wetland) {
-      return r < 0.45 ? () => drawTuft(out, w, h, x, y) : null;
+      return r < 0.45 / grow ? () => drawTuft(out, w, h, x, y) : null;
     }
     const f = FORESTS[b];
-    if (!f || r > f.density) return null;
+    if (!f || r > f.density / (grow * grow)) return null;
     return f.conifer
-      ? () => drawTriangle(out, w, h, x, y, 4.6 + r2, 6.5 + 1.5 * r2, CONIFER, CONIFER_SHADE, false)
-      : () => drawTree(out, w, h, x, y, 2.6 + 0.8 * r2);
+      ? () => drawTriangle(out, w, h, x, y, (4.6 + r2) * grow, (6.5 + 1.5 * r2) * grow, CONIFER, CONIFER_SHADE, false)
+      : () => drawTree(out, w, h, x, y, (2.6 + 0.8 * r2) * grow);
   });
 
   icons.sort((p, q) => p.y - q.y);
