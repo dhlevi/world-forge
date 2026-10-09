@@ -509,7 +509,7 @@ export class TownManager {
 
   private plan(s: Settlement): PlanFeature[] {
     const frame = new LocalFrame(s.lon, s.lat);
-    const out = new PlanOut(frame, pxPerMeterZ20(s.lat));
+    const out = new PlanOut(frame, pxPerMeterZ20(s.lat), { sid: s.id, tier: s.tier, ctx: s.tier === 'village' ? s.kind ?? 'farming' : 'ward' });
     const exits = (this.exits.get(s.id) ?? []).map((e) => ({ p: frame.fromLL(e.ll[0], e.ll[1]), cls: e.cls }));
     // Plans keep 8 m clear of the true river bank (the same tapered width the tiles draw).
     const inRiver = (p: Pt) => {

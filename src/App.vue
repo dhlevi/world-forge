@@ -2,6 +2,7 @@
 import { onMounted } from 'vue';
 import ControlPanel from './components/ControlPanel.vue';
 import MapView from './components/MapView.vue';
+import DwellingView from './components/DwellingView.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -10,4 +11,5 @@ onMounted(regenerate);
 <template>
   <MapView />
   <ControlPanel />
+  <DwellingView />
 </template>

@@ -35,13 +35,25 @@ export interface PlanFeature {
 /** Collects plan geometry in local metres and emits lon/lat GeoJSON features tagged with `kind`. */
 export class PlanOut {
   readonly features: PlanFeature[] = [];
+  private nBuildings = 0;
 
-  constructor(private frame: LocalFrame, private ppm20: number) {}
+  /**
+   * `site` tags every building with a stable id (`bid`), its settlement, tier and context
+   * (ward kind, or the village kind), which the interiors use to pick a floor plan.
+   */
+  constructor(
+    private frame: LocalFrame, private ppm20: number,
+    private site: { sid: string; tier: string; ctx: string } = { sid: '', tier: '', ctx: '' },
+  ) {}
 
-  poly(kind: string, p: Pt[], props: Record<string, string | number> = {}): void {
+  poly(kind: string, p: Pt[], props: Record<string, string | number | undefined> = {}): void {
+    for (const k of Object.keys(props)) if (props[k] === undefined) delete props[k];
     const ring = p.map((q) => this.frame.toLL(q));
     ring.push(ring[0]);
-    this.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { kind, ppm20: this.ppm20, ...props } });
+    if (kind === 'building') {
+      props = { bid: `${this.site.sid}/${this.nBuildings++}`, sid: this.site.sid, tier: this.site.tier, ctx: this.site.ctx, ...props };
+    }
+    this.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { kind, ppm20: this.ppm20, ...(props as Record<string, string | number>) } });
   }
 
   line(kind: string, pts: Pt[], props: Record<string, string | number> = {}): void {

@@ -376,7 +376,7 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
             if (!onStreet && rnd() > 0.15) continue;
             if (rnd() < (rich ? 0.2 : 0.03)) continue;
             if (!ground.allOk(lot, BUILD_GROUND)) continue;
-            out.poly('building', lot);
+            out.poly('building', lot, { ctx: pt.kind, front: streetFront(lot, block) });
           }
         }
       }
@@ -395,7 +395,7 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
       for (const lot of subdivide(q, 140, rnd)) {
         const lc = centroid(lot);
         if (Math.min(...roadLines.map((l) => distToLine(l, lc[0], lc[1]))) > 32 || rnd() > 0.85 || !ground.allOk(lot, BUILD_GROUND)) continue;
-        out.poly('building', lot);
+        out.poly('building', lot, { ctx: 'suburb', front: roadFront(lc, roadLines) });
       }
       return;
     }
@@ -423,11 +423,46 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
       const n = q[(k + 1) % q.length];
       const hc: Pt = [v[0], v[1]];
       const farm = rect(hc[0], hc[1], Math.atan2(n[1] - q[k][1], n[0] - q[k][0]), 11, 7);
-      if (ground.allOk(farm, BUILD_GROUND)) out.poly('building', farm);
+      if (ground.allOk(farm, BUILD_GROUND)) out.poly('building', farm, { ctx: 'farm' });
     }
   });
 
   if (s.walls) drawWall(wall, gates.map((g) => g.k), water, out, town);
+}
+
+/** Outward direction (radians, local frame) of the lot edge lying on its block's edge: the street front. */
+function streetFront(lot: Poly, block: Poly): number | undefined {
+  const c = centroid(lot);
+  let best: number | undefined, bestLen = 0;
+  for (let k = 0; k < lot.length; k++) {
+    const a = lot[k], b = lot[(k + 1) % lot.length];
+    const m = mid(a, b);
+    if (!block.some((p, j) => distToSeg(m[0], m[1], p, block[(j + 1) % block.length]) < 0.3)) continue;
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len <= bestLen) continue;
+    bestLen = len;
+    best = Math.atan2(m[1] - c[1], m[0] - c[0]);
+  }
+  return best;
+}
+
+/** Direction (radians) from a point toward the nearest road. */
+function roadFront(c: Pt, roads: Pt[][]): number | undefined {
+  let best: Pt | null = null, bd = Infinity;
+  for (const l of roads) {
+    for (let k = 0; k + 1 < l.length; k++) {
+      const a = l[k], b = l[k + 1];
+      const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+      const t = l2 > 0 ? Math.max(0, Math.min(1, ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / l2)) : 0;
+      const p: Pt = [a[0] + dx * t, a[1] + dy * t];
+      const d = Math.hypot(p[0] - c[0], p[1] - c[1]);
+      if (d < bd) {
+        bd = d;
+        best = p;
+      }
+    }
+  }
+  return best ? Math.atan2(best[1] - c[1], best[0] - c[0]) : undefined;
 }
 
 /**

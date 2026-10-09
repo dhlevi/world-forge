@@ -101,7 +101,7 @@ export class Kit {
    * Places a w×d building at c if the spot is dry, clear and not too steep. On a hillside the
    * building turns to run along the contour, as terraced houses do.
    */
-  house(c: Pt, ang: number, w: number, d: number, use?: string): boolean {
+  house(c: Pt, ang: number, w: number, d: number, use?: string, front?: number): boolean {
     const r = 0.5 * Math.hypot(w, d);
     if (this.inp.water(c) || this.inBlocked(c) || this.nearLane(c, Math.min(w, d) / 2 + 1)) return false;
     const g = this.inp.terrain.grad(c), sl = Math.hypot(...g);
@@ -119,7 +119,9 @@ export class Kit {
     const fp = rect(c[0], c[1], ang, w, d);
     if (!this.inp.ground.allOk(fp, BUILD_GROUND)) return false;
     this.houses.push({ c, r });
-    this.inp.out.poly('building', fp, use ? { use } : {});
+    const props: Record<string, string | number> = use ? { use } : {};
+    if (front !== undefined) props.front = front;
+    this.inp.out.poly('building', fp, props);
     return true;
   }
 
@@ -144,7 +146,8 @@ export class Kit {
             let w = size[0] + rnd() * (size[1] - size[0]), d = size[0] + 1 + rnd() * (size[1] - size[0] + 1);
             if (rnd() < 0.3) [w, d] = [d, w];
             const off = lane.w / 2 + 2 + rnd() * 5 + d / 2;
-            this.house([p[0] - uy * side * off, p[1] + ux * side * off], Math.atan2(uy, ux) + (rnd() - 0.5) * 0.15, w, d);
+            // The front door faces the lane.
+            this.house([p[0] - uy * side * off, p[1] + ux * side * off], Math.atan2(uy, ux) + (rnd() - 0.5) * 0.15, w, d, undefined, Math.atan2(-ux * side, uy * side));
           }
         }
         along -= segLen;

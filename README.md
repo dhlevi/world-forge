@@ -28,7 +28,7 @@ npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # head
 | Prevailing winds | on/off (default off) | Streamline overlay of the simulated surface winds. |
 | Ocean currents | on/off (default off) | Streamline overlay of surface currents, coloured red (warm) to blue (cold) by their temperature anomaly. |
 
-The world regenerates when a slider is released or the seed changes. Hovering (or tapping on mobile) shows elevation, Köppen climate, temperature (mean, warmest and coldest month), precipitation (and how much falls in summer), prevailing wind, ocean current (at sea), biome and plate for that point. The globe button switches between globe and flat Mercator views. The URL hash (`#zoom/lat/lon`) saves the current view.
+The world regenerates when a slider is released or the seed changes. Hovering (or tapping on mobile) shows elevation, Köppen climate, temperature (mean, warmest and coldest month), precipitation (and how much falls in summer), prevailing wind, ocean current (at sea), biome and plate for that point. From zoom 17, hovering a building in a town or village draws its ground-floor plan over it; double-click it (on touch screens, tap it a second time) to go inside (see **Building interiors**). The globe button switches between globe and flat Mercator views. The URL hash (`#zoom/lat/lon`) saves the current view.
 
 ## Generation pipeline (`src/gen/`)
 
@@ -130,7 +130,24 @@ Everything below world scale is generated on demand in a dedicated web worker (`
   - **Mining:** adits up the slope with cart tracks, spoil heaps, a smelter and huts.
   - **Monastery:** a walled compound with a church, a cloister around a garth, ranges, vegetable beds and an orchard, surrounded by fields.
   - **Keep:** a ringwork on the hilltop with a ditch, a wall with towers and a gate, a keep tower and hall, and a hamlet along the approach.
-- **Styling** (`components/map-style.ts`): plans are vector layers drawn in true metres (each feature carries its pixels-per-metre at zoom 20). Roads and streets share one width expression, so world roads join the plan roads seamlessly. The map zooms to 19 (~0.3 m/pixel).
+- **Styling** (`components/map-style.ts`): plans are vector layers drawn in true metres (each feature carries its pixels-per-metre at zoom 20). Roads and streets share one width expression, so world roads join the plan roads seamlessly. The map zooms to 20 (~0.15 m/pixel).
+
+## Building interiors (`src/interiors/`)
+
+Every building on a town or village plan has a deterministic interior in the manner of [Watabou's Dwellings](https://watabou.github.io/dwelling.html), generated on demand from its footprint, its context and the world seed (`dwelling.ts`).
+
+- **Tagging:** plan buildings carry an id, their settlement, tier and context (ward kind in towns: ward, rich, harbour, suburb, farm; or the village kind) and, where known, the direction of their street front (the lot edge on the block's street, the nearest road, or the village lane).
+- **Grid:** the footprint is laid on a 1.5 m (5 ft) grid turned so the street front is at the bottom. Convex footprints (nearly all lots) keep their true outline: the plan is clipped to it and its edges are the outer walls, so slanted and triangular lots keep their shape. Furniture and stairs stay on whole cells.
+- **Type:** cottage, farmhouse, town house, mansion, warehouse, temple, keep, hall, storehouse, mill, monastic range, cabin or miner's hut, from the building's use and context. The type sets storeys (with storey heights), the chance of a basement, and the roof (gabled on rectangles, hipped otherwise, flat with battlements on keeps).
+- **Rooms:** a binary partition of the footprint shared by every storey, so walls line up floor to floor. Each floor's programme (for a town house: hall, a shop, workshop, smithy, bakery or taproom on the street, kitchen at the back, pantry, parlour; bedrooms and a landing above) is assigned to the partition by preference (the stair, front, back, large, small). Temples get a nave, sanctuary and vestry, and keeps a guardroom, great hall, lord's chamber and dungeon cells. Cellars are one vault.
+- **Stairs:** one stairwell through every floor (a ladder to cottage lofts, a spiral stair in keeps), placed under the ridge when there is an attic. The attic covers the cells with at least 1.7 m of headroom under the roof.
+- **Doors and windows:** a spanning tree of doors from the entrance (or stairwell) plus the odd extra door, a front entrance on the street side and sometimes a back door; windows along outside walls with piers between them (front and back only in terraced town houses, gable ends in attics, arrow slits in keeps, none underground).
+- **Furniture** by room: beds, chests, wardrobes, hearths and ovens on outside walls (with chimneys above), tables with chairs, counters, workbenches, shelves, bookcases, barrels, crates and sacks, pews and an altar, tombs in a crypt, straw in the cells.
+
+Views (`render.ts`, `building.ts`, `components/DwellingView.vue`):
+
+- **Hover preview:** from zoom 17, the ground floor is drawn into an image placed over the building's footprint on the map.
+- **Dwelling view:** double-click a building (or tap it twice) to open a full-screen view with a tab per floor (basement, ground floor, upper floors, attic or loft) and an **Exterior** tab. Plans are inked in a hand-drawn style with a 5 ft grid, room labels, a north arrow and a scale bar; Labels and Grid can be turned off, and **Download PNG** saves the current view for use as a battlemap. The exterior is an isometric drawing: timber-framed or stone walls with the plans' windows and doors, gable ends, the roof (thatch, tile, slate or shingle by type) shaded by slope, and chimneys over the hearths. **Leave building** or Esc returns to the map; the arrow keys change floors.
 
 ## Project structure
 
@@ -138,11 +155,12 @@ Everything below world scale is generated on demand in a dedicated web worker (`
 index.html
 src/
   main.ts, App.vue, store.ts, style.css
-  components/   MapView.vue, map-style.ts (settlement layer styles), ControlPanel.vue, RangeField.vue
+  components/   MapView.vue, map-style.ts (settlement layer styles), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
   gen/          world.ts (pipeline), tectonics.ts, climate.ts, ocean.ts, koppen.ts, advect.ts, streamlines.ts,
                 hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), detail.ts (sub-grid terrain sampler),
                 biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
   render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
+  interiors/    dwelling.ts (interior generator), render.ts (plan and exterior drawing), building.ts (map hover preview, cache)
   towns/        manager.ts (villages, tracks, plan cache), city.ts, village.ts, kit.ts (village building blocks),
                 harbour.ts (piers, boats), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), geom.ts
   worker/       world.worker.ts, towns.worker.ts, protocol.ts
@@ -187,7 +205,7 @@ Phase 2: zoom into sites. [Watabou's generators](https://watabou.github.io/) set
 | Region / realm | [Realm](https://watabou.github.io/realm.html) | **Done:** settlements, roads and villages. **Next:** borders and labels. |
 | City | [City](https://watabou.github.io/city.html) | **Done:** walls, wards, streets, buildings, rivers and coasts, slope-aware layout, harbours and docks. |
 | Village | [Village](https://watabou.github.io/village.html) | **Done:** farming and fishing villages, logging and mining camps, monasteries, keeps. |
-| Building interiors | [Dwelling](https://watabou.github.io/dwelling.html) | Floor plans for buildings picked on the city/village map. |
+| Building interiors | [Dwelling](https://watabou.github.io/dwelling.html) | **Done:** floor plans for every building (hover preview, double-click to go inside), with an isometric exterior. |
 | Caves | [Cave](https://watabou.github.io/cave.html) | Cave systems seeded from mountain and karst sites. |
 | Dungeons | [Dungeon](https://watabou.github.io/dungeon.html) | Grid battlemaps for ruins, tombs and lairs. |
 

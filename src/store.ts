@@ -3,6 +3,7 @@ import type { WorldParams, WorldSummary } from './gen/world';
 import type { LayerId } from './render/tiles';
 import { WorldClient, type ClientWorld } from './world/client';
 import type { ProbeInfo } from './world/probe';
+import type { BuildingView } from './interiors/building';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
 
@@ -33,6 +34,8 @@ export const store = reactive({
 });
 
 export const world = shallowRef<ClientWorld | null>(null);
+/** The building open in the Dwelling view, if any. */
+export const openBuilding = shallowRef<BuildingView | null>(null);
 export const client = new WorldClient();
 client.registerProtocol();
 

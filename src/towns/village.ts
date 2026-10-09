@@ -210,13 +210,13 @@ function keep(k: Kit): void {
   const kc = k.polar(rk * 0.25, ga + Math.PI + (rnd() - 0.5));
   out.poly('building', rect(kc[0], kc[1], rnd() * Math.PI, ks, ks), { use: 'keep' });
   const hc = k.polar(rk * 0.45, ga + Math.PI / 2 * (rnd() < 0.5 ? 1 : -1));
-  out.poly('building', rect(hc[0], hc[1], Math.atan2(hc[1], hc[0]) + Math.PI / 2, 18, 8));
+  out.poly('building', rect(hc[0], hc[1], Math.atan2(hc[1], hc[0]) + Math.PI / 2, 18, 8), { use: 'hall' });
   for (let i = 2; i < n - 1; i++) {
     if (rnd() > 0.35) continue;
     const p = at(g + i), q = at(g + i + 1);
     const m: Pt = [((p[0] + q[0]) / 2) * 0.82, ((p[1] + q[1]) / 2) * 0.82];
     if (Math.hypot(m[0] - kc[0], m[1] - kc[1]) < ks || Math.hypot(m[0] - hc[0], m[1] - hc[1]) < 12) continue;
-    out.poly('building', rect(m[0], m[1], Math.atan2(q[1] - p[1], q[0] - p[0]), 8, 5));
+    out.poly('building', rect(m[0], m[1], Math.atan2(q[1] - p[1], q[0] - p[0]), 8, 5), { use: 'store' });
   }
   const outside: Pt = [gate[0] * 1.5, gate[1] * 1.5];
   out.line('road', [outside, gate], { cls: 'track' });
