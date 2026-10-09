@@ -1,0 +1,214 @@
+import type { ExpressionSpecification, FilterSpecification, LayerSpecification } from 'maplibre-gl';
+import { TOWN_PLAN_ZOOM, VILLAGE_ZOOM } from '../towns/manager';
+
+const INK = '#3f3126';
+const PAPER = '#f4ecd8';
+const e = (x: unknown) => x as ExpressionSpecification;
+const ppm = (metres: unknown) => ['*', metres, ['get', 'ppm20']];
+
+/** Line width: `minPx` at zoom 12, growing into minPx + true width in metres (from `ppm20`) at high zoom. */
+const physWidth = (minPx: unknown, metres: unknown) =>
+  e(['interpolate', ['exponential', 2], ['zoom'], 12, minPx, 20, ['+', minPx, ppm(metres)]]);
+
+const ROAD_PX = ['match', ['get', 'cls'], 'major', 2.2, 'minor', 1.5, 'street', 1, 1];
+const ROAD_M = ['match', ['get', 'cls'], 'major', 7, 'minor', 5, 'street', 6, 3.5];
+const roadWidth = (casingPx: number) => e([
+  'interpolate', ['exponential', 2], ['zoom'],
+  3, ['*', ROAD_PX, 0.35],
+  7, ['*', ROAD_PX, 0.7],
+  12, ROAD_PX,
+  14, ['+', ROAD_PX, casingPx, ['/', ppm(ROAD_M), 64]],
+  20, ['+', ROAD_PX, casingPx, ppm(ROAD_M)],
+]);
+const ROAD_OPACITY = e([
+  'interpolate', ['linear'], ['zoom'],
+  2.5, ['match', ['get', 'cls'], 'major', 0.85, 0],
+  4.5, ['match', ['get', 'cls'], 'major', 0.85, 0],
+  5.5, 0.85,
+]);
+const LINE_LAYOUT = { 'line-cap': 'round', 'line-join': 'round' } as const;
+const fadeIn = (z0: number, z1: number) => e(['interpolate', ['linear'], ['zoom'], z0, 0, z1, 1]);
+const fadeOut = (z0: number, z1: number) => e(['interpolate', ['linear'], ['zoom'], z0, 1, z1, 0]);
+const kind = (...kinds: string[]) => e(['in', ['get', 'kind'], ['literal', kinds]]) as FilterSpecification;
+
+const roadCasing = (id: string, source: string, filter?: FilterSpecification): LayerSpecification => ({
+  id: `${id}-casing`, type: 'line', source, layout: LINE_LAYOUT, ...(filter ? { filter } : {}),
+  paint: { 'line-color': '#6b4f36', 'line-width': roadWidth(1.6), 'line-opacity': ROAD_OPACITY },
+});
+const roadFill = (id: string, source: string, filter?: FilterSpecification): LayerSpecification => ({
+  id: `${id}-fill`, type: 'line', source, minzoom: 12.5, layout: LINE_LAYOUT, ...(filter ? { filter } : {}),
+  paint: { 'line-color': '#f1e7cd', 'line-width': roadWidth(0), 'line-opacity': fadeIn(12.5, 13.5) },
+});
+
+const EMPTY = { type: 'geojson', data: { type: 'FeatureCollection', features: [] } } as const;
+
+export const SETTLEMENT_SOURCES = { roads: EMPTY, sites: EMPTY, regional: EMPTY, plans: EMPTY };
+
+/** Plan ground cover, drawn under the rivers. */
+export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
+  {
+    id: 'plan-fields', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('field'),
+    paint: {
+      'fill-color': e(['interpolate', ['linear'], ['get', 'tone'], 0, '#e2d8aa', 1, '#d0d49d']),
+      'fill-outline-color': '#b8a77c',
+      'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
+    },
+  },
+  {
+    id: 'plan-furrows', type: 'line', source: 'plans', minzoom: 13.5, filter: kind('furrow'),
+    paint: { 'line-color': '#c2b385', 'line-width': e(['interpolate', ['linear'], ['zoom'], 13.5, 0.4, 16, 0.8, 19, 1.4]) },
+  },
+  {
+    id: 'plan-green', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('green'),
+    paint: { 'fill-color': '#cfd8a4', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-plaza', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('plaza'),
+    paint: { 'fill-color': '#f4ecd9', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-garden', type: 'fill', source: 'plans', minzoom: 13, filter: kind('garden'),
+    paint: { 'fill-color': '#bcc68a', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(13, 13.6) },
+  },
+  {
+    id: 'plan-spoil', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('spoil'),
+    paint: { 'fill-color': '#c0b9a8', 'fill-outline-color': '#6f675a', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-ditch', type: 'line', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('ditch'), layout: LINE_LAYOUT,
+    paint: { 'line-color': '#a29d78', 'line-width': physWidth(1, ['get', 'w']), 'line-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-contours', type: 'line', source: 'plans', minzoom: 12.5, filter: kind('contour'), layout: LINE_LAYOUT,
+    paint: {
+      'line-color': '#9c8462',
+      'line-width': e(['interpolate', ['linear'], ['zoom'], 13, 0.5, 17, 0.9]),
+      'line-opacity': e(['interpolate', ['linear'], ['zoom'], 12.5, 0, 13.3, 0.45]),
+    },
+  },
+];
+
+/** Roads, tracks, streets, buildings, walls and trees, drawn above the rivers (so roads cross on bridges). */
+export const SETTLEMENT_LAYERS: LayerSpecification[] = [
+  roadCasing('roads', 'roads'),
+  roadCasing('tracks', 'regional', e(['==', ['geometry-type'], 'LineString']) as FilterSpecification),
+  roadCasing('plan-roads', 'plans', kind('road', 'street')),
+  roadFill('roads', 'roads'),
+  roadFill('tracks', 'regional', e(['==', ['geometry-type'], 'LineString']) as FilterSpecification),
+  roadFill('plan-roads', 'plans', kind('road', 'street')),
+  {
+    id: 'plan-piers', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('pier'),
+    paint: { 'fill-color': '#b39167', 'fill-outline-color': INK, 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-boats', type: 'fill', source: 'plans', minzoom: 12.5, filter: kind('boat'),
+    paint: { 'fill-color': '#8d6b47', 'fill-outline-color': INK, 'fill-opacity': fadeIn(12.5, 13.2) },
+  },
+  {
+    id: 'plan-logs', type: 'fill', source: 'plans', minzoom: 13, filter: kind('logs'),
+    paint: { 'fill-color': '#a57d52', 'fill-outline-color': INK, 'fill-opacity': fadeIn(13, 13.6) },
+  },
+  {
+    id: 'plan-mine', type: 'fill', source: 'plans', minzoom: 12.5, filter: kind('mine'),
+    paint: { 'fill-color': INK, 'fill-opacity': fadeIn(12.5, 13.2) },
+  },
+  {
+    id: 'plan-stumps', type: 'circle', source: 'plans', minzoom: 14, filter: kind('stump'),
+    paint: {
+      'circle-color': '#b48d5e',
+      'circle-radius': physWidth(0.5, ['get', 'r']),
+      'circle-stroke-color': INK,
+      'circle-stroke-width': 0.4,
+      'circle-opacity': fadeIn(14, 14.6),
+      'circle-stroke-opacity': fadeIn(14, 14.6),
+    },
+  },
+  {
+    id: 'plan-buildings', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('building'),
+    paint: {
+      'fill-color': e(['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', '#cdbd9c']),
+      'fill-outline-color': INK,
+      'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
+    },
+  },
+  {
+    id: 'plan-walls', type: 'line', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('wall'), layout: LINE_LAYOUT,
+    paint: { 'line-color': INK, 'line-width': physWidth(1.2, ['get', 'w']), 'line-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-towers', type: 'circle', source: 'plans', minzoom: 12.5, filter: kind('tower'),
+    paint: { 'circle-color': INK, 'circle-radius': physWidth(1, ['get', 'r']), 'circle-opacity': fadeIn(12.5, 13.3) },
+  },
+  {
+    id: 'plan-trees', type: 'circle', source: 'plans', minzoom: 13, filter: kind('tree'),
+    paint: {
+      'circle-color': '#97ad72',
+      'circle-radius': physWidth(0.8, ['get', 'r']),
+      'circle-stroke-color': INK,
+      'circle-stroke-width': e(['interpolate', ['linear'], ['zoom'], 13, 0.3, 17, 0.8]),
+      'circle-opacity': fadeIn(13, 13.8),
+      'circle-stroke-opacity': fadeIn(13, 13.8),
+    },
+  },
+];
+
+/** City, town and village markers; they fade out as the plans fade in. */
+export const MARKER_LAYERS: LayerSpecification[] = [
+  {
+    id: 'village-markers', type: 'circle', source: 'regional', minzoom: VILLAGE_ZOOM, maxzoom: 13.5,
+    filter: e(['==', ['geometry-type'], 'Point']) as FilterSpecification,
+    paint: {
+      // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
+      'circle-color': e(['match', ['get', 'kind'],
+        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, INK]),
+      'circle-radius': e(['interpolate', ['linear'], ['zoom'],
+        8, ['match', ['get', 'kind'], ['keep', 'monastery'], 2, 1.5],
+        12, ['match', ['get', 'kind'], ['keep', 'monastery'], 4, 3]]),
+      'circle-stroke-color': e(['match', ['get', 'kind'], 'monastery', INK, PAPER]),
+      'circle-stroke-width': e(['match', ['get', 'kind'], 'monastery', 1.2, 0.8]),
+      'circle-opacity': e(['interpolate', ['linear'], ['zoom'], VILLAGE_ZOOM, 0, 8.2, 1, 12.6, 1, 13.3, 0]),
+      'circle-stroke-opacity': e(['interpolate', ['linear'], ['zoom'], VILLAGE_ZOOM, 0, 8.2, 1, 12.6, 1, 13.3, 0]),
+    },
+  },
+  {
+    id: 'town-markers', type: 'circle', source: 'sites', minzoom: 4.5, maxzoom: 13,
+    filter: e(['==', ['get', 'tier'], 'town']) as FilterSpecification,
+    paint: {
+      'circle-color': PAPER,
+      'circle-radius': e(['interpolate', ['linear'], ['zoom'], 5, 2, 9, 4, 12, 5]),
+      'circle-stroke-color': INK,
+      'circle-stroke-width': e(['interpolate', ['linear'], ['zoom'], 5, 0.8, 9, 1.3]),
+      'circle-opacity': e(['interpolate', ['linear'], ['zoom'], 4.5, 0, 5.2, 1, 11.8, 1, 12.6, 0]),
+      'circle-stroke-opacity': e(['interpolate', ['linear'], ['zoom'], 4.5, 0, 5.2, 1, 11.8, 1, 12.6, 0]),
+    },
+  },
+  {
+    id: 'city-markers', type: 'circle', source: 'sites', maxzoom: 13,
+    filter: e(['==', ['get', 'tier'], 'city']) as FilterSpecification,
+    paint: {
+      'circle-color': PAPER,
+      'circle-radius': e(['interpolate', ['linear'], ['zoom'], 2, 2.5, 6, 4.5, 10, 6.5]),
+      'circle-stroke-color': INK,
+      'circle-stroke-width': e(['interpolate', ['linear'], ['zoom'], 2, 1, 8, 1.8]),
+      'circle-opacity': fadeOut(11.8, 12.6),
+      'circle-stroke-opacity': fadeOut(11.8, 12.6),
+    },
+  },
+  {
+    id: 'city-dots', type: 'circle', source: 'sites', maxzoom: 13,
+    filter: e(['==', ['get', 'tier'], 'city']) as FilterSpecification,
+    paint: {
+      'circle-color': INK,
+      'circle-radius': e(['interpolate', ['linear'], ['zoom'], 2, 0.9, 6, 1.8, 10, 2.6]),
+      'circle-opacity': fadeOut(11.8, 12.6),
+    },
+  },
+];
+
+export const RIVER_WIDTH = e([
+  'interpolate', ['exponential', 2], ['zoom'],
+  2, ['+', 0.4, ['*', 0.15, ['get', 'order']]],
+  7, ['+', 1, ['*', 0.6, ['get', 'order']]],
+  11, ['+', 2, ['get', 'order']],
+  20, ['+', 2, ['get', 'order'], ppm(['get', 'widthM'])],
+]);

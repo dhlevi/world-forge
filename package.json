@@ -1,0 +1,33 @@
+{
+  "name": "map-forge",
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "vite",
+    "build": "npm run typecheck && vite build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "preview": "tsx scripts/preview.ts",
+    "serve": "vite preview",
+    "earth:fetch": "tsx tuning/climate/fetch-data.ts",
+    "earth:eval": "tsx tuning/climate/evaluate.ts"
+  },
+  "license": "ISC",
+  "description": "Browser-based procedural fantasy world generator",
+  "dependencies": {
+    "d3-delaunay": "^6.0.4",
+    "maplibre-gl": "^6.13.0",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@types/d3-delaunay": "^6.0.4",
+    "@types/node": "^26.6.4",
+    "@vitejs/plugin-vue": "^6.0.9",
+    "fflate": "^0.8.3",
+    "geotiff": "^3.0.5",
+    "tsx": "^4.23.15",
+    "typescript": "^5.9.3",
+    "vite": "^8.3.4",
+    "vue-tsc": "^3.3.12"
+  },
+  "private": "true",
+  "type": "module"
+}

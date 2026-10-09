@@ -1,0 +1,20 @@
+html,
+body,
+#app {
+  margin: 0;
+  height: 100%;
+  overflow: hidden;
+  background: #0b1626;
+  font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+#app {
+  position: relative;
+}
+
+@media (max-width: 768px) {
+  /* Keep the scale bar clear of the collapsed bottom sheet. */
+  .maplibregl-ctrl-bottom-right {
+    bottom: 64px;
+  }
+}

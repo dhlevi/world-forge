@@ -1,0 +1,357 @@
+import { Simplex3 } from '../gen/noise';
+import { hashString, mulberry32 } from '../gen/rng';
+import { EARTH_RADIUS_KM, smoothstep } from '../gen/grid';
+import { BIOME_COLORS } from '../gen/biomes';
+import { KOPPEN_CLASSES } from '../gen/koppen';
+import { CLIMATE, RENDER as RC } from '../gen/config';
+import type { RasterWorld } from '../gen/world';
+import {
+  ELEVATION_RAMP, LAKE_RGB, OCEAN_RAMP, PRECIP_RAMP, ROCK_RGB, SEA_ICE_RGB, SNOW_RGB,
+  TEMPERATURE_RAMP, hexToRgb, plateColor, sampleRamp,
+} from './palette';
+import {
+  FANTASY, FANTASY_BIOME_RGB, FANTASY_ICE, FANTASY_SNOW, INK, RIPPLE, SEPIA, WATER, WATER_DEEP,
+  drawIcons, grain, maskDistance, type IconContext,
+} from './fantasy';
+
+export type LayerId = 'fantasy' | 'terrain' | 'biomes' | 'climate' | 'elevation' | 'temperature' | 'precipitation' | 'plates';
+
+export const LAYERS: { id: LayerId; label: string }[] = [
+  { id: 'fantasy', label: 'Fantasy map' },
+  { id: 'terrain', label: 'Terrain' },
+  { id: 'biomes', label: 'Biomes' },
+  { id: 'climate', label: 'Köppen climate' },
+  { id: 'elevation', label: 'Elevation' },
+  { id: 'temperature', label: 'Temperature' },
+  { id: 'precipitation', label: 'Precipitation' },
+  { id: 'plates', label: 'Tectonic plates' },
+];
+
+const BIOME_RGB = new Float32Array(Object.values(BIOME_COLORS).flatMap((c) => hexToRgb(c)));
+const KOPPEN_RGB = new Float32Array(KOPPEN_CLASSES.flatMap((k) => hexToRgb(k.color)));
+const LAPSE = CLIMATE.lapseRateCPerKm / 1000;
+const DEG = Math.PI / 180;
+
+function bilerp(f: ArrayLike<number>, o0: number, o1: number, a: number, b: number, tx: number, ty: number): number {
+  return (f[o0 + a] * (1 - tx) + f[o0 + b] * tx) * (1 - ty) + (f[o1 + a] * (1 - tx) + f[o1 + b] * tx) * ty;
+}
+
+function mix(col: Float64Array, rgb: ArrayLike<number>, t: number, offset = 0): void {
+  col[0] += (rgb[offset] - col[0]) * t;
+  col[1] += (rgb[offset + 1] - col[1]) * t;
+  col[2] += (rgb[offset + 2] - col[2]) * t;
+}
+
+function catmullRom(t: number, out: Float64Array, o: number): void {
+  const t2 = t * t, t3 = t2 * t;
+  out[o] = (-t3 + 2 * t2 - t) / 2;
+  out[o + 1] = (3 * t3 - 5 * t2 + 2) / 2;
+  out[o + 2] = (-3 * t3 + 4 * t2 + t) / 2;
+  out[o + 3] = (t3 - t2) / 2;
+}
+
+/**
+ * Renders map tiles from the generated grid. Below the grid resolution, fractal detail
+ * noise is added (more octaves at higher zoom) so coastlines and mountains keep revealing
+ * structure as you zoom in. The detail is a pure function of position, so tiles agree
+ * across zoom levels.
+ */
+export class TileRenderer {
+  private noise: Simplex3;
+  private lambda0Km: number;
+  private plateRgb: Float32Array;
+
+  constructor(private world: RasterWorld) {
+    this.noise = new Simplex3(mulberry32(hashString(world.seed + '#detail')));
+    this.lambda0Km = (2 * (2 * Math.PI * EARTH_RADIUS_KM)) / world.W;
+    this.plateRgb = new Float32Array(256 * 3);
+    for (let k = 0; k < 256; k++) this.plateRgb.set(plateColor(k), k * 3);
+  }
+
+  /** Web Mercator (XYZ) tile. */
+  renderTile(z: number, x: number, y: number, layer: LayerId, size = 256) {
+    const n = 2 ** z;
+    const B = layer === 'fantasy' ? FANTASY.marginPx : 1;
+    const S = size + 2 * B;
+    const lons = new Float64Array(S), lats = new Float64Array(S), px = new Float64Array(S);
+    const equatorPxKm = (2 * Math.PI * EARTH_RADIUS_KM) / (size * n);
+    for (let c = 0; c < S; c++) lons[c] = ((x + (c - B + 0.5) / size) / n) * 360 - 180;
+    for (let r = 0; r < S; r++) {
+      const my = (y + (r - B + 0.5) / size) / n;
+      const lat = Math.atan(Math.sinh(Math.PI * (1 - 2 * my))) / DEG;
+      lats[r] = lat;
+      px[r] = equatorPxKm * Math.cos(lat * DEG);
+    }
+    return this.render(lons, lats, px, px, size, size, layer, B, { z, originX: x * size, originY: y * size, size });
+  }
+
+  /** Whole-world equirectangular image (used by the preview script). */
+  renderEquirect(width: number, height: number, layer: LayerId) {
+    const B = layer === 'fantasy' ? FANTASY.marginPx : 1;
+    const lons = new Float64Array(width + 2 * B), lats = new Float64Array(height + 2 * B);
+    const pxX = new Float64Array(height + 2 * B), pxY = new Float64Array(height + 2 * B);
+    for (let c = 0; c < width + 2 * B; c++) lons[c] = ((c - B + 0.5) / width) * 360 - 180;
+    for (let r = 0; r < height + 2 * B; r++) {
+      lats[r] = Math.max(-90, Math.min(90, 90 - ((r - B + 0.5) / height) * 180));
+      pxX[r] = Math.max(1e-3, (2 * Math.PI * EARTH_RADIUS_KM * Math.abs(Math.cos(lats[r] * DEG))) / width);
+      pxY[r] = (Math.PI * EARTH_RADIUS_KM) / height;
+    }
+    return this.render(lons, lats, pxX, pxY, width, height, layer, B, null);
+  }
+
+  private render(
+    lons: Float64Array, lats: Float64Array, pxX: Float64Array, pxY: Float64Array,
+    w: number, h: number, layer: LayerId, B: number, icons: IconContext | null,
+  ) {
+    const { W, H, height, tempSea, precip, biome, plate, lakeDepth, waterLevel, koppen } = this.world;
+    const SW = w + 2 * B, SH = h + 2 * B;
+    const fantasy = layer === 'fantasy';
+
+    const ci0 = new Int32Array(SW), ci1 = new Int32Array(SW), ctx = new Float64Array(SW);
+    const cols4 = new Int32Array(SW * 4), colW = new Float64Array(SW * 4);
+    const cosLon = new Float64Array(SW), sinLon = new Float64Array(SW);
+    for (let c = 0; c < SW; c++) {
+      const fx = ((lons[c] + 180) / 360) * W - 0.5;
+      const i0 = Math.floor(fx);
+      ctx[c] = fx - i0;
+      ci0[c] = ((i0 % W) + W) % W;
+      ci1[c] = (ci0[c] + 1) % W;
+      catmullRom(ctx[c], colW, c * 4);
+      for (let k = 0; k < 4; k++) cols4[c * 4 + k] = (((i0 - 1 + k) % W) + W) % W;
+      cosLon[c] = Math.cos(lons[c] * DEG);
+      sinLon[c] = Math.sin(lons[c] * DEG);
+    }
+    const ro0 = new Int32Array(SH), ro1 = new Int32Array(SH), rty = new Float64Array(SH);
+    const rows4 = new Int32Array(SH * 4), rowW = new Float64Array(SH * 4);
+    for (let r = 0; r < SH; r++) {
+      const fy = ((90 - lats[r]) / 180) * H - 0.5;
+      const j0 = Math.floor(fy);
+      rty[r] = Math.min(1, Math.max(0, fy - j0));
+      ro0[r] = Math.min(H - 1, Math.max(0, j0)) * W;
+      ro1[r] = Math.min(H - 1, Math.max(0, j0 + 1)) * W;
+      catmullRom(fy - j0, rowW, r * 4);
+      for (let k = 0; k < 4; k++) rows4[r * 4 + k] = Math.min(H - 1, Math.max(0, j0 - 1 + k)) * W;
+    }
+
+    const octAmp = new Float64Array(RC.maxOctaves), octCoast = new Float64Array(RC.maxOctaves);
+    const octFreq = new Float64Array(RC.maxOctaves);
+    for (let k = 0; k < RC.maxOctaves; k++) {
+      const lam = this.lambda0Km / 2 ** k;
+      octFreq[k] = EARTH_RADIUS_KM / lam;
+      octAmp[k] = RC.detailAmpM * Math.pow(lam / this.lambda0Km, RC.detailHurst);
+      octCoast[k] = RC.coastAmpM * Math.pow(lam / this.lambda0Km, RC.coastHurst);
+    }
+    const warpFreq = EARTH_RADIUS_KM / this.lambda0Km;
+    const warpAmp = RC.biomeWarpCells;
+    const needWarp = layer === 'terrain' || fantasy;
+    const warpX = needWarp ? new Float32Array(SW * SH) : null;
+    const warpY = needWarp ? new Float32Array(SW * SH) : null;
+    const water = fantasy ? new Uint8Array(SW * SH) : null;
+
+    // Pass 1: heights with sub-grid detail, including a 1px border for shading.
+    const hs = new Float32Array(SW * SH);
+    const nearest = layer === 'plates' || layer === 'biomes' || layer === 'climate' ? new Int32Array(SW * SH) : null;
+    const noise = this.noise;
+    for (let r = 0; r < SH; r++) {
+      const cosLat = Math.cos(lats[r] * DEG), sinLat = Math.sin(lats[r] * DEG);
+      const pxKm = Math.max(1e-4, Math.min(pxX[r], pxY[r]));
+      const octF = Math.min(RC.maxOctaves, Math.max(0, Math.log2(this.lambda0Km / (2 * pxKm)) + 1));
+      const nOct = Math.ceil(octF);
+      const o0 = ro0[r], o1 = ro1[r], ty = rty[r];
+      for (let c = 0; c < SW; c++) {
+        const a = ci0[c], b = ci1[c], tx = ctx[c];
+        let base = 0;
+        for (let kr = 0; kr < 4; kr++) {
+          const ro = rows4[r * 4 + kr];
+          base += rowW[r * 4 + kr] * (
+            colW[c * 4] * height[ro + cols4[c * 4]] + colW[c * 4 + 1] * height[ro + cols4[c * 4 + 1]] +
+            colW[c * 4 + 2] * height[ro + cols4[c * 4 + 2]] + colW[c * 4 + 3] * height[ro + cols4[c * 4 + 3]]);
+        }
+        // Clamp cubic overshoot so steep coast-to-abyss jumps don't ring into speckled shores.
+        const h00 = height[o0 + a], h10 = height[o0 + b], h01 = height[o1 + a], h11 = height[o1 + b];
+        base = Math.min(Math.max(h00, h10, h01, h11), Math.max(Math.min(h00, h10, h01, h11), base));
+        let hh = base;
+        const x = cosLat * cosLon[c], y = cosLat * sinLon[c];
+        if (nOct > 0) {
+          const rough = base > 0
+            ? Math.min(RC.maxRough, RC.baseRough + (RC.mountainRoughPerKm * base) / 1000)
+            : RC.oceanRough;
+          const coast = Math.exp(-((base / RC.coastWidthM) ** 2));
+          const ridge = smoothstep(RC.ridgeStartM, RC.ridgeFullM, base);
+          let sum = 0;
+          for (let k = 0; k < nOct; k++) {
+            const f = octFreq[k];
+            let v = noise.noise(x * f + k * 31.7, y * f, sinLat * f);
+            if (ridge > 0) v += (0.6 - 1.6 * Math.abs(v) - v) * ridge;
+            sum += Math.min(1, octF - k) * v * (rough * octAmp[k] + coast * octCoast[k]);
+          }
+          hh += sum;
+        }
+        if (warpX && warpY) {
+          warpX[r * SW + c] = warpAmp * noise.noise(x * warpFreq + 101.3, y * warpFreq, sinLat * warpFreq);
+          warpY[r * SW + c] = warpAmp * noise.noise(x * warpFreq - 77.9, y * warpFreq, sinLat * warpFreq);
+        }
+        hs[r * SW + c] = hh;
+        if (nearest) nearest[r * SW + c] = (ty < 0.5 ? o0 : o1) + (tx < 0.5 ? a : b);
+        if (water) {
+          const lake = bilerp(lakeDepth, o0, o1, a, b, tx, ty) > 1 && hh < bilerp(waterLevel, o0, o1, a, b, tx, ty);
+          water[r * SW + c] = hh <= 0 || lake ? 1 : 0;
+        }
+      }
+    }
+
+    // Fantasy style: pixel distances to the shoreline drive the inked coast and ripple lines.
+    const seaDist = water ? maskDistance(water, SW, SH, 1) : null;
+    const landDist = water ? maskDistance(water, SW, SH, 0) : null;
+
+    // Pass 2: colour + hillshade.
+    const out = new Uint8ClampedArray(w * h * 4);
+    const col = new Float64Array(3);
+    const az = RC.sunAzimuthDeg * DEG, alt = RC.sunAltitudeDeg * DEG;
+    const Lx = Math.sin(az) * Math.cos(alt), Ly = Math.cos(az) * Math.cos(alt), Lz = Math.sin(alt);
+    const lakeMin = 1;
+
+    for (let r = B; r < B + h; r++) {
+      const pxKm = Math.max(1e-4, Math.min(pxX[r], pxY[r]));
+      const ex = RC.hillshadeScale * Math.pow(pxKm, RC.hillshadeExp);
+      const gx = ex / (2 * pxX[r] * 1000), gy = ex / (2 * pxY[r] * 1000);
+      const o0 = ro0[r], o1 = ro1[r], ty = rty[r];
+      for (let c = B; c < B + w; c++) {
+        const s = r * SW + c;
+        const hh = hs[s];
+        const nx = -(hs[s + 1] - hs[s - 1]) * gx;
+        const ny = (hs[s + SW] - hs[s - SW]) * gy;
+        const rel = (nx * Lx + ny * Ly + Lz) / (Math.sqrt(nx * nx + ny * ny + 1) * Lz);
+        const a = ci0[c], b = ci1[c], tx = ctx[c];
+        const isLand = hh > 0;
+        let light = 1;
+
+        switch (layer) {
+          case 'fantasy': {
+            const ts = bilerp(tempSea, o0, o1, a, b, tx, ty);
+            if (water![s]) {
+              col[0] = WATER[0]; col[1] = WATER[1]; col[2] = WATER[2];
+              if (hh <= 0) mix(col, WATER_DEEP, 0.7 * smoothstep(200, 3000, -hh));
+              if (ts < RC.seaIceC + 4) mix(col, FANTASY_ICE, smoothstep(RC.seaIceC + 4, RC.seaIceC - 4, ts));
+              const d = seaDist![s];
+              for (let k = 0; k < FANTASY.rippleRadiiPx.length; k++) {
+                mix(col, RIPPLE, FANTASY.rippleAlpha[k] * Math.exp(-(((d - FANTASY.rippleRadiiPx[k]) / 0.55) ** 2)));
+              }
+              mix(col, INK, 0.9 * Math.min(1, Math.max(0, 2 - d)));
+            } else {
+              const fx = ((lons[c] + 180) / 360) * W - 0.5 + warpX![s];
+              const fy = Math.min(H - 1.001, Math.max(0, ((90 - lats[r]) / 180) * H - 0.5 + warpY![s]));
+              const wi0 = Math.floor(fx), wj0 = Math.floor(fy);
+              const wtx = fx - wi0, wty = fy - wj0;
+              const ia = ((wi0 % W) + W) % W, ib = (ia + 1) % W;
+              const ja = wj0 * W, jb = Math.min(H - 1, wj0 + 1) * W;
+              const w00 = (1 - wtx) * (1 - wty), w10 = wtx * (1 - wty), w01 = (1 - wtx) * wty, w11 = wtx * wty;
+              const b00 = biome[ja + ia] * 3, b10 = biome[ja + ib] * 3, b01 = biome[jb + ia] * 3, b11 = biome[jb + ib] * 3;
+              for (let ch = 0; ch < 3; ch++) {
+                col[ch] = FANTASY_BIOME_RGB[b00 + ch] * w00 + FANTASY_BIOME_RGB[b10 + ch] * w10 +
+                  FANTASY_BIOME_RGB[b01 + ch] * w01 + FANTASY_BIOME_RGB[b11 + ch] * w11;
+              }
+              const snowSupply = smoothstep(RC.snowMinPrecipMm, RC.snowFullPrecipMm, bilerp(precip, o0, o1, a, b, tx, ty));
+              mix(col, FANTASY_SNOW, snowSupply * smoothstep(RC.snowStartC, RC.snowFullC, ts - LAPSE * hh));
+              // Soft sepia hillshade rather than realistic lighting.
+              mix(col, SEPIA, 0.22 * Math.min(1, Math.max(0, 1 - rel)));
+              light = Math.min(1.08, Math.max(0.85, 1 + 0.25 * (rel - 1)));
+              mix(col, INK, 0.85 * Math.min(1, Math.max(0, 1.5 - landDist![s])));
+            }
+            const gxp = (icons ? icons.originX : 0) + c - B, gyp = (icons ? icons.originY : 0) + r - B;
+            light *= 1 + FANTASY.grain * 0.5 * grain(gxp, gyp);
+            break;
+          }
+          case 'terrain': {
+            const ts = bilerp(tempSea, o0, o1, a, b, tx, ty);
+            const isLake = bilerp(lakeDepth, o0, o1, a, b, tx, ty) > lakeMin && hh < bilerp(waterLevel, o0, o1, a, b, tx, ty);
+            if (isLake) {
+              col[0] = LAKE_RGB[0]; col[1] = LAKE_RGB[1]; col[2] = LAKE_RGB[2];
+              if (ts < RC.seaIceC + 4) mix(col, SEA_ICE_RGB, smoothstep(RC.seaIceC + 4, RC.seaIceC - 4, ts));
+            } else if (!isLand) {
+              sampleRamp(OCEAN_RAMP, hh, col);
+              if (ts < RC.seaIceC + 4) mix(col, SEA_ICE_RGB, smoothstep(RC.seaIceC + 4, RC.seaIceC - 4, ts));
+              light = 1 + 0.2 * (rel - 1);
+            } else {
+              // Domain-warped bilinear biome blend so climate zones have organic edges.
+              const fx = ((lons[c] + 180) / 360) * W - 0.5 + warpX![s];
+              const fy = Math.min(H - 1.001, Math.max(0, ((90 - lats[r]) / 180) * H - 0.5 + warpY![s]));
+              const wi0 = Math.floor(fx), wj0 = Math.floor(fy);
+              const wtx = fx - wi0, wty = fy - wj0;
+              const ia = ((wi0 % W) + W) % W, ib = (ia + 1) % W;
+              const ja = wj0 * W, jb = Math.min(H - 1, wj0 + 1) * W;
+              const w00 = (1 - wtx) * (1 - wty), w10 = wtx * (1 - wty), w01 = (1 - wtx) * wty, w11 = wtx * wty;
+              const b00 = biome[ja + ia] * 3, b10 = biome[ja + ib] * 3, b01 = biome[jb + ia] * 3, b11 = biome[jb + ib] * 3;
+              for (let ch = 0; ch < 3; ch++) {
+                col[ch] = BIOME_RGB[b00 + ch] * w00 + BIOME_RGB[b10 + ch] * w10 + BIOME_RGB[b01 + ch] * w01 + BIOME_RGB[b11 + ch] * w11;
+              }
+              mix(col, ROCK_RGB, 0.7 * smoothstep(RC.rockStartM, RC.rockFullM, hh));
+              const snowSupply = smoothstep(RC.snowMinPrecipMm, RC.snowFullPrecipMm, bilerp(precip, o0, o1, a, b, tx, ty));
+              mix(col, SNOW_RGB, snowSupply * smoothstep(RC.snowStartC, RC.snowFullC, ts - LAPSE * hh));
+              light = Math.min(1.4, Math.max(0.35, 0.3 + 0.7 * rel));
+            }
+            break;
+          }
+          case 'biomes': {
+            if (!isLand) {
+              sampleRamp(OCEAN_RAMP, -2000, col);
+            } else {
+              const bi = biome[nearest![s]] * 3;
+              col[0] = BIOME_RGB[bi]; col[1] = BIOME_RGB[bi + 1]; col[2] = BIOME_RGB[bi + 2];
+              light = Math.min(1.25, Math.max(0.6, 1 + 0.35 * (rel - 1)));
+            }
+            break;
+          }
+          case 'climate': {
+            if (!isLand) {
+              sampleRamp(OCEAN_RAMP, -3500, col);
+            } else {
+              const ki = koppen[nearest![s]] * 3;
+              col[0] = KOPPEN_RGB[ki]; col[1] = KOPPEN_RGB[ki + 1]; col[2] = KOPPEN_RGB[ki + 2];
+              light = Math.min(1.2, Math.max(0.65, 1 + 0.3 * (rel - 1)));
+            }
+            break;
+          }
+          case 'elevation': {
+            if (!isLand) {
+              sampleRamp(OCEAN_RAMP, hh, col);
+              light = 1 + 0.2 * (rel - 1);
+            } else {
+              sampleRamp(ELEVATION_RAMP, hh, col);
+              light = Math.min(1.35, Math.max(0.45, 0.45 + 0.55 * rel));
+            }
+            break;
+          }
+          case 'temperature': {
+            const t = bilerp(tempSea, o0, o1, a, b, tx, ty) - LAPSE * Math.max(0, hh);
+            sampleRamp(TEMPERATURE_RAMP, t, col);
+            light = isLand ? Math.min(1.25, Math.max(0.6, 1 + 0.4 * (rel - 1))) : 0.75;
+            break;
+          }
+          case 'precipitation': {
+            sampleRamp(PRECIP_RAMP, bilerp(precip, o0, o1, a, b, tx, ty), col);
+            light = isLand ? Math.min(1.25, Math.max(0.6, 1 + 0.4 * (rel - 1))) : 0.65;
+            break;
+          }
+          case 'plates': {
+            const p = plate[nearest![s]];
+            const pi = p * 3;
+            col[0] = this.plateRgb[pi]; col[1] = this.plateRgb[pi + 1]; col[2] = this.plateRgb[pi + 2];
+            if (isLand) mix(col, [255, 255, 255], 0.3);
+            light = isLand ? Math.min(1.25, Math.max(0.6, 1 + 0.4 * (rel - 1))) : 0.7;
+            if (plate[nearest![s + 1]] !== p || plate[nearest![s + SW]] !== p) light *= 0.25;
+            break;
+          }
+        }
+
+        const o = ((r - B) * w + (c - B)) * 4;
+        out[o] = col[0] * light;
+        out[o + 1] = col[1] * light;
+        out[o + 2] = col[2] * light;
+        out[o + 3] = 255;
+      }
+    }
+    if (fantasy && icons) drawIcons(out, w, h, icons, this.world);
+    return out;
+  }
+}
