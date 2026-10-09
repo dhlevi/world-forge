@@ -45,6 +45,8 @@ const kindIs = (...k: string[]) => ['in', ['get', 'kind'], ['literal', k]];
 const rankIn = (...r: number[]) => ['in', ['get', 'rank'], ['literal', r]];
 const isLine = ['==', ['geometry-type'], 'LineString'];
 const isPoint = ['==', ['geometry-type'], 'Point'];
+/** Water anchors carry the whole-zoom band they belong to (filters see the integer tile zoom). */
+const inBand = ['all', ['>=', ['zoom'], ['coalesce', ['get', 'zlo'], 0]], ['<', ['zoom'], ['coalesce', ['get', 'zhi'], 99]]];
 
 function layer(s: Spec): LayerSpecification {
   const [z0, z1] = s.z;
@@ -86,16 +88,18 @@ export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   layer({ id: 'lbl-realm', source: 'labels', filter: [kindIs('realm')], z: [2.9, 6.6], size: [11, 18], font: CAPS, color: '#8b4a35', spacing: 0.45, opacity: 0.7, sortKey: 50, maxWidth: 12 }),
   layer({ id: 'lbl-continent', source: 'labels', filter: [kindIs('continent'), isPoint], z: [0.5, 3.3], size: [18, 32], font: CAPS, color: '#5b4632', spacing: 0.6, opacity: 0.85, upper: true }),
   layer({ id: 'lbl-continent-l', source: 'labels', filter: [kindIs('continent'), isLine], z: [0.5, 3.3], size: [18, 32], font: CAPS, color: '#5b4632', spacing: 0.6, opacity: 0.85, upper: true, line: 'center' }),
-  // Water.
-  layer({ id: 'lbl-ocean', source: 'labels', filter: [kindIs('ocean')], z: [1, 5.6], size: [15, 26], font: ITALIC, color: WATER_INK, spacing: 0.35, sortKey: 1 }),
-  layer({ id: 'lbl-sea', source: 'labels', filter: [kindIs('sea'), isPoint], z: [2.4, 7.2], size: [12, 20], font: ITALIC, color: WATER_INK, spacing: 0.2, sortKey: 2 }),
-  layer({ id: 'lbl-sea-l', source: 'labels', filter: [kindIs('sea', 'inlandSea'), isLine], z: [2.6, 8.5], size: [12, 20], font: ITALIC, color: WATER_INK, spacing: 0.2, line: 'center', sortKey: 2 }),
-  layer({ id: 'lbl-inlandsea', source: 'labels', filter: [kindIs('inlandSea'), isPoint], z: [3, 9], size: [12, 18], font: ITALIC, color: WATER_INK, spacing: 0.15, sortKey: 3 }),
-  layer({ id: 'lbl-gulf', source: 'labels', filter: [kindIs('gulf')], z: [3.2, 9], size: [12, 17], font: ITALIC, color: WATER_INK, spacing: 0.12, sortKey: 4 }),
-  layer({ id: 'lbl-bay', source: 'labels', filter: [kindIs('bay', 'bight'), isPoint], z: [4.4, 10.5], size: [11, 15], font: ITALIC, color: WATER_INK, spacing: 0.08, sortKey: 6 }),
-  layer({ id: 'lbl-strait', source: 'labels', filter: [kindIs('strait', 'channel'), isLine], z: [4, 10.5], size: [11, 15], font: ITALIC, color: WATER_INK, spacing: 0.1, line: 'center', sortKey: 6 }),
-  layer({ id: 'lbl-lake-big', source: 'labels', filter: [kindIs('lake'), rankIn(0, 1, 2)], z: [4.5, 11.5], size: [11, 15], font: ITALIC, color: WATER_INK, sortKey: 7 }),
-  layer({ id: 'lbl-lake', source: 'labels', filter: [kindIs('lake'), rankIn(3)], z: [6.3, 11.5], size: [10, 14], font: ITALIC, color: WATER_INK, sortKey: 9 }),
+  // Water. Each body keeps its main label until it fills the screen, then a lattice of anchors (one
+  // set per whole zoom band, selected by `inBand`) letters it, so a lake or bay stays named while it is on screen.
+  layer({ id: 'lbl-ocean', source: 'labels', filter: [kindIs('ocean'), inBand], z: [1, 8], size: [15, 24], font: ITALIC, color: WATER_INK, spacing: 0.35, sortKey: 1 }),
+  layer({ id: 'lbl-sea', source: 'labels', filter: [kindIs('sea'), isPoint, inBand], z: [2.4, 10], size: [12, 19], font: ITALIC, color: WATER_INK, spacing: 0.2, sortKey: 2 }),
+  layer({ id: 'lbl-sea-l', source: 'labels', filter: [kindIs('sea', 'inlandSea'), isLine, inBand], z: [2.6, 10], size: [12, 20], font: ITALIC, color: WATER_INK, spacing: 0.2, line: 'center', sortKey: 2 }),
+  layer({ id: 'lbl-inlandsea', source: 'labels', filter: [kindIs('inlandSea'), isPoint, inBand], z: [3, 11], size: [12, 18], font: ITALIC, color: WATER_INK, spacing: 0.15, sortKey: 3 }),
+  layer({ id: 'lbl-gulf', source: 'labels', filter: [kindIs('gulf'), inBand], z: [3.2, 11], size: [12, 17], font: ITALIC, color: WATER_INK, spacing: 0.12, sortKey: 4 }),
+  layer({ id: 'lbl-bay', source: 'labels', filter: [kindIs('bay', 'bight'), isPoint, inBand], z: [4.4, 12], size: [11, 15], font: ITALIC, color: WATER_INK, spacing: 0.08, sortKey: 6 }),
+  layer({ id: 'lbl-strait', source: 'labels', filter: [kindIs('strait', 'channel'), isLine, inBand], z: [4, 12], size: [11, 15], font: ITALIC, color: WATER_INK, spacing: 0.1, line: 'center', sortKey: 6 }),
+  layer({ id: 'lbl-strait-p', source: 'labels', filter: [kindIs('strait', 'channel'), isPoint, inBand], z: [4, 12], size: [11, 15], font: ITALIC, color: WATER_INK, spacing: 0.1, sortKey: 6 }),
+  layer({ id: 'lbl-lake-big', source: 'labels', filter: [kindIs('lake'), rankIn(0, 1, 2), inBand], z: [4.5, 13], size: [11, 15], font: ITALIC, color: WATER_INK, sortKey: 7 }),
+  layer({ id: 'lbl-lake', source: 'labels', filter: [kindIs('lake'), rankIn(3), inBand], z: [6.3, 13], size: [10, 14], font: ITALIC, color: WATER_INK, sortKey: 9 }),
   // Rivers: italic lettering repeated along the course, the largest first.
   layer({ id: 'lbl-river-6', source: 'rivers', filter: [['has', 'name'], ['>=', ['get', 'order'], 6]], z: [3.6, 12.2], size: [10, 14], font: ITALIC, color: WATER_INK, line: 'repeat', spacing: 0.12, sortKey: 8 }),
   layer({ id: 'lbl-river-4', source: 'rivers', filter: [['has', 'name'], ['>=', ['get', 'order'], 4], ['<', ['get', 'order'], 6]], z: [5, 12.2], size: [10, 13.5], font: ITALIC, color: WATER_INK, line: 'repeat', spacing: 0.1, sortKey: 10 }),

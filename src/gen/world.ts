@@ -181,7 +181,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
 
   progress('Names', 0.99);
   const culture = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome }, params.seed);
-  const labels = nameWorld(g, { height, lakeDepth, biome, culture }, new NameBank(params.seed), settlements, rivers, roads);
+  const labels = nameWorld(g, { height, lakeDepth, biome, culture }, new NameBank(params.seed), settlements, rivers, roads, sampler);
 
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;
   for (let j = 0, c = 0; j < H; j++) {

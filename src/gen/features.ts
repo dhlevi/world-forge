@@ -3,6 +3,7 @@ import { MinHeap } from './heap';
 import { Biome } from './biomes';
 import { HYDROLOGY } from './config';
 import type { RiverCollection } from './rivers';
+import type { DetailSampler } from './detail';
 import type { RoadCollection, Settlement } from './settlements';
 import type { FeatureKind } from '../names/cultures';
 import type { NameBank } from '../names/names';
@@ -21,8 +22,12 @@ export type LabelKind = FeatureKind | 'city' | 'town';
 export interface LabelFeature {
   type: 'Feature';
   geometry: { type: 'Point'; coordinates: number[] } | { type: 'LineString'; coordinates: number[][] };
-  /** rank: 0 (largest) … 3 (smallest) within its kind; minz/maxz: zoom range to show it. */
-  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number };
+  /**
+   * rank: 0 (largest) … 3 (smallest) within its kind; minz/maxz: nominal zoom range.
+   * zlo/zhi (water only): whole-zoom band this anchor belongs to. A water body keeps one label
+   * until it fills the screen, then is lettered from a lattice of anchors (see `waterAnchors`).
+   */
+  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number };
 }
 
 export interface LabelCollection {
@@ -42,7 +47,7 @@ const FOREST = new Set<Biome>([
 ]);
 
 export function nameWorld(
-  g: Grid, f: FeatureFields, bank: NameBank, settlements: Settlement[], rivers: RiverCollection, roads: RoadCollection,
+  g: Grid, f: FeatureFields, bank: NameBank, settlements: Settlement[], rivers: RiverCollection, roads: RoadCollection, sampler?: DetailSampler,
 ): LabelCollection {
   const { W, H, N } = g;
   const labels: LabelFeature[] = [];
@@ -52,7 +57,9 @@ export function nameWorld(
   const isSea = (c: number) => f.height[c] <= 0;
   const point = (c: number): number[] => [lon(c), lat(c)];
   const push = (kind: LabelKind, name: string, geom: LabelFeature['geometry'], rank: number, minz: number, maxz: number) =>
-    labels.push({ type: 'Feature', geometry: geom, properties: { kind, name, rank, minz, maxz } });
+    labels.push({ type: 'Feature', geometry: geom, properties: { kind, name, rank, minz, maxz } }) - 1;
+  /** Water bodies to letter at close zoom: a set of cells (lakes, enclosed seas) or a seed with a reach on the open sea. */
+  const waters: WaterBody[] = [];
 
   // ---- Settlements -------------------------------------------------------------------------
   for (const s of settlements) {
@@ -269,10 +276,12 @@ export function nameWorld(
     const at = pole(cells);
     if (a < 25000) {
       // A small landlocked body of salt water reads as a lake.
-      push('lake', bank.feature('lake', f.culture[at], `slake${id}`), { type: 'Point', coordinates: point(at) }, a > 1e4 ? 2 : 3, 5, 11);
+      const li = push('lake', bank.feature('lake', f.culture[at], `slake${id}`), { type: 'Point', coordinates: point(at) }, a > 1e4 ? 2 : 3, 5, 11);
+      waters.push({ label: li, at, cells, field: 'sea' });
       return;
     }
-    push(a > 4e5 ? 'sea' : 'inlandSea', bank.feature(a > 4e5 ? 'sea' : 'inlandSea', f.culture[at], `esea${id}`), shape(cells, at, 1500), a > 4e5 ? 1 : 2, a > 4e5 ? 2.5 : 3.5, 8);
+    const si = push(a > 4e5 ? 'sea' : 'inlandSea', bank.feature(a > 4e5 ? 'sea' : 'inlandSea', f.culture[at], `esea${id}`), shape(cells, at, 1500), a > 4e5 ? 1 : 2, a > 4e5 ? 2.5 : 3.5, 8);
+    waters.push({ label: si, at, cells, field: 'sea' });
     claim(at, 600);
   });
   const mainCells = seaC.list[main] ?? [];
@@ -284,7 +293,7 @@ export function nameWorld(
   for (const c of byDepth) {
     if (nOcean >= maxOceans) break;
     if (!clear(c, 4500)) continue;
-    push('ocean', bank.feature('ocean', f.culture[c], `ocean${nOcean}`), { type: 'Point', coordinates: point(c) }, 0, 1, 5.5);
+    waters.push({ label: push('ocean', bank.feature('ocean', f.culture[c], `ocean${nOcean}`), { type: 'Point', coordinates: point(c) }, 0, 1, 5.5), at: c, reach: REACH.ocean, field: 'sea' });
     claim(c, 4500);
     nOcean++;
   }
@@ -296,7 +305,8 @@ export function nameWorld(
   for (const c of seaCand) {
     if (nSea >= 40) break;
     if (!clear(c, 1900)) continue;
-    push('sea', bank.feature('sea', f.culture[c], `sea${nSea}`, baseFrom(c, 900, 0.25, `sea${nSea}`)), { type: 'Point', coordinates: point(c) }, 1, 2.5, 7);
+    const si = push('sea', bank.feature('sea', f.culture[c], `sea${nSea}`, baseFrom(c, 900, 0.25, `sea${nSea}`)), { type: 'Point', coordinates: point(c) }, 1, 2.5, 7);
+    waters.push({ label: si, at: c, reach: REACH.sea, field: 'sea' });
     claim(c, 1900);
     nSea++;
   }
@@ -372,7 +382,8 @@ export function nameWorld(
     if (k >= 80) continue;
     kindCount.set(cd.kind, k + 1);
     const name = bank.feature(cd.kind, f.culture[cd.c], `${cd.kind}${k}`, baseFrom(cd.c, 350, 0.4, `${cd.kind}${k}`));
-    push(cd.kind, name, cd.geom ?? { type: 'Point', coordinates: point(cd.c) }, cd.rank, cd.minz, 10);
+    const ci = push(cd.kind, name, cd.geom ?? { type: 'Point', coordinates: point(cd.c) }, cd.rank, cd.minz, 10);
+    waters.push({ label: ci, at: cd.c, reach: REACH[cd.kind] ?? 300, field: 'sea' });
     claim(cd.c, cd.spacing * 0.6);
   }
 
@@ -383,8 +394,10 @@ export function nameWorld(
     if (a < 300) return;
     const at = pole(cells);
     const kind: FeatureKind = a > 6e4 ? 'inlandSea' : 'lake';
-    push(kind, bank.feature(kind, f.culture[at], `lake${id}`), shape(cells, at, 800), a > 6e4 ? 1 : a > 1e4 ? 2 : 3, a > 6e4 ? 3.5 : a > 1e4 ? 5 : 6.5, 11);
+    const li = push(kind, bank.feature(kind, f.culture[at], `lake${id}`), shape(cells, at, 800), a > 6e4 ? 1 : a > 1e4 ? 2 : 3, a > 6e4 ? 3.5 : a > 1e4 ? 5 : 6.5, 11);
+    waters.push({ label: li, at, cells, field: 'lake' });
   });
+  labels.push(...waterAnchors(g, labels, waters, { sea: isSea, lake: (c) => f.lakeDepth[c] > 0 }, distLand, sampler));
 
   // ---- Rivers ------------------------------------------------------------------------------
   const riverName = new Map<number, string>();
@@ -503,6 +516,233 @@ export function nameWorld(
   void H;
   void HYDROLOGY;
   return { type: 'FeatureCollection', features: labels };
+}
+
+// ---- Water lettering at close zoom ---------------------------------------------------------------
+
+interface WaterBody {
+  /** Index of the body's main label. */
+  label: number;
+  /** Pole (or seed) cell. */
+  at: number;
+  /** All its cells (lakes and enclosed seas) … */
+  cells?: number[];
+  /** … or, on the open sea, how far (km) its name carries from the seed. */
+  reach?: number;
+  field: 'sea' | 'lake';
+}
+
+/** How far (km) each kind of open-sea name reaches; nearer, smaller features win (weighted territories). */
+const REACH: Partial<Record<string, number>> = { ocean: 2600, sea: 1100, gulf: 560, bight: 380, bay: 260, strait: 240, channel: 300 };
+/** The closest zoom (exclusive) at which each kind is still lettered. */
+const ZCAP: Partial<Record<string, number>> = { ocean: 8, sea: 10, inlandSea: 11, gulf: 11, bight: 12, bay: 12, strait: 12, channel: 12, lake: 13 };
+/** Screen spacing (px) of the anchor lattice; at the end of a band (one zoom in) it has doubled. */
+const LATTICE_PX = 360;
+/** Most anchors one body may have in a band; past that its lettering stops. */
+const MAX_PER_BAND = 250;
+const EARTH_KM = 40075.017;
+/** Points of a label's footprint (in half-widths and half-heights) that must all be water. */
+const FOOT: [number, number][] = [[0, 0], [-1, 0], [1, 0], [-0.5, 1], [0.5, -1], [-0.5, -1], [0.5, 1]];
+
+/**
+ * Close-zoom lettering for water bodies. MapLibre shows a point label only while its anchor is on
+ * screen, so a single anchor vanishes as soon as one zooms into a large lake or bay. Instead each
+ * body keeps its main label until it spans about one screen, and from then on is lettered from a
+ * lattice of anchors fixed in Web Mercator space (a few per screen), one lattice per whole zoom
+ * band. Anchors well inside the water (on an interpolated distance-to-shore field) are kept as
+ * they are; near the shore the label's footprint is tested against the coastline as the tiles
+ * draw it at that zoom (the detail sampler), so close-in labels can sit in narrow water too.
+ */
+function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], masks: { sea: (c: number) => boolean; lake: (c: number) => boolean }, distLand: Float64Array, sampler?: DetailSampler): LabelFeature[] {
+  const { W, H, N } = g;
+  const half = g.dyKm * 0.5;
+  // Distance (km) from each wet cell centre to the nearest dry cell centre.
+  const edge = (mask: (c: number) => boolean) => {
+    const d = new Float32Array(N).fill(-half);
+    const dist = new Float64Array(N).fill(Infinity);
+    const heap = new MinHeap(4096);
+    // Seeds: dry cells next to the water.
+    for (let c = 0; c < N; c++) {
+      if (!mask(c)) continue;
+      const i = c % W, j = (c / W) | 0;
+      for (let k = 0; k < 8; k++) {
+        const n = neighbor(g, i, j, k);
+        if (n >= 0 && !mask(n) && dist[n] > 0) {
+          dist[n] = 0;
+          heap.push(n, 0);
+        }
+      }
+    }
+    while (heap.size) {
+      const c = heap.pop(), dc = heap.lastKey;
+      if (dc > dist[c]) continue;
+      const i = c % W, j = (c / W) | 0;
+      for (let k = 0; k < 8; k++) {
+        const n = neighbor(g, i, j, k);
+        if (n < 0 || !mask(n)) continue;
+        const nd = dc + g.nbDist[j * 8 + k];
+        if (nd < dist[n]) {
+          dist[n] = nd;
+          heap.push(n, nd);
+        }
+      }
+    }
+    // Shore lies about half a cell out from the last wet centre.
+    for (let c = 0; c < N; c++) if (mask(c) && dist[c] < Infinity) d[c] = dist[c] - half;
+    return d;
+  };
+  // The sea's distance to land is already known (cell centres to the nearest land cell).
+  const seaF = new Float32Array(N);
+  for (let c = 0; c < N; c++) seaF[c] = masks.sea(c) && distLand[c] < Infinity ? distLand[c] - half : -half;
+  const fields = { sea: seaF, lake: edge(masks.lake) };
+  const sample = (fld: Float32Array, lon: number, lat: number) => {
+    const fx = ((lon + 180) / 360) * W - 0.5, fy = ((90 - lat) / 180) * H - 0.5;
+    const i0 = Math.floor(fx), j0 = Math.max(0, Math.min(H - 2, Math.floor(fy)));
+    const tx = fx - i0, ty = Math.max(0, Math.min(1, fy - j0));
+    const a = ((i0 % W) + W) % W, b = (a + 1) % W;
+    const r0 = j0 * W, r1 = r0 + W;
+    return (fld[r0 + a] * (1 - tx) + fld[r0 + b] * tx) * (1 - ty) + (fld[r1 + a] * (1 - tx) + fld[r1 + b] * tx) * ty;
+  };
+
+  // Territories: whole components for lakes and enclosed seas; on the open sea, a Dijkstra in which
+  // each name's cost grows with distance over its reach, so a bay holds its own water against the sea.
+  const owner = new Int32Array(N).fill(-1);
+  const cost = new Float64Array(N).fill(Infinity);
+  const heap = new MinHeap(4096);
+  waters.forEach((w, k) => {
+    if (w.cells) for (const c of w.cells) owner[c] = k;
+  });
+  waters.forEach((w, k) => {
+    if (w.cells || owner[w.at] >= 0) return;
+    cost[w.at] = 0;
+    owner[w.at] = k;
+    heap.push(w.at, 0);
+  });
+  while (heap.size) {
+    const c = heap.pop(), dc = heap.lastKey;
+    if (dc > cost[c]) continue;
+    const k = owner[c], reach = waters[k].reach!;
+    const i = c % W, j = (c / W) | 0;
+    for (let d = 0; d < 8; d++) {
+      const n = neighbor(g, i, j, d);
+      if (n < 0 || !masks.sea(n) || (owner[n] >= 0 && waters[owner[n]].cells)) continue;
+      const nd = dc + g.nbDist[j * 8 + d] / reach;
+      if (nd < cost[n] && nd <= 1) {
+        cost[n] = nd;
+        owner[n] = k;
+        heap.push(n, nd);
+      }
+    }
+  }
+  const cellsOf: number[][] = waters.map(() => []);
+  for (let c = 0; c < N; c++) if (owner[c] >= 0) cellsOf[owner[c]].push(c);
+
+  const lonOf = (c: number) => g.lonDeg[c % W], latOf = (c: number) => g.latDeg[(c / W) | 0];
+  const mercY = (lat: number) => 0.5 - Math.log(Math.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, lat)) * Math.PI) / 360)) / (2 * Math.PI);
+  const latOfY = (y: number) => (Math.atan(Math.sinh((0.5 - y) * 2 * Math.PI)) * 180) / Math.PI;
+  const out: LabelFeature[] = [];
+  waters.forEach((w, k) => {
+    const main = labels[w.label];
+    const p = main.properties;
+    const cells = cellsOf[k];
+    const fld = fields[w.field];
+    const cap = ZCAP[p.kind] ?? 11;
+    if (!cells.length) return;
+    // Size and extent (longitude unwrapped about the seed).
+    const lon0 = lonOf(w.at);
+    let areaKm = 0, lo = Infinity, hi = -Infinity, la0 = Infinity, la1 = -Infinity;
+    for (const c of cells) {
+      areaKm += g.areaKm2[(c / W) | 0];
+      const dl = ((lonOf(c) - lon0 + 540) % 360) - 180, la = latOf(c);
+      if (dl < lo) lo = dl;
+      if (dl > hi) hi = dl;
+      if (la < la0) la0 = la;
+      if (la > la1) la1 = la;
+    }
+    const pad = (180 / H) * 0.6;
+    lo -= pad * 2; hi += pad * 2; la0 -= pad; la1 += pad;
+    const latC = latOf(w.at), cosC = Math.max(0.05, Math.cos((latC * Math.PI) / 180));
+    // Zoom at which the body is about 700 px across: below it the main label alone does.
+    // Elongated bodies count by their length, not just their area.
+    const diam = Math.max(2 * Math.sqrt(areaKm / Math.PI), Math.min((hi - lo) * 111.2 * cosC, (la1 - la0) * 111.2) * 0.5, Math.max((hi - lo) * 111.2 * cosC, (la1 - la0) * 111.2) * 0.7);
+    const zFill = Math.log2((EARTH_KM * cosC * 700) / (512 * Math.max(1, diam)));
+    const zStart = Math.max(Math.ceil(p.minz), Math.round(zFill));
+    if (zStart >= cap) {
+      p.zlo = 0;
+      p.zhi = cap;
+      return;
+    }
+    p.zlo = 0;
+    p.zhi = zStart;
+    let zEnd = zStart;
+    for (let z = zStart; z < cap; z++) {
+      const step = LATTICE_PX / (512 * 2 ** z);
+      const y0 = mercY(la1), y1 = mercY(la0);
+      const x0 = (lon0 + lo + 180) / 360, x1 = (lon0 + hi + 180) / 360;
+      const rows = Math.ceil((y1 - y0) / step) + 1, cols = Math.ceil((x1 - x0) / step) + 1;
+      if (rows * cols > 400000) break;
+      // Skip the work for a band that would clearly be over budget.
+      const sKm = (LATTICE_PX * EARTH_KM * cosC) / (512 * 2 ** z);
+      if (areaKm / (sKm * sKm) > MAX_PER_BAND * 1.6) break;
+      const band: LabelFeature[] = [];
+      const spare: [number, number, number][] = [];
+      for (let r = Math.floor(y0 / step); r * step <= y1 + step; r++) {
+        const y = r * step;
+        const lat = latOfY(y);
+        if (lat < la0 || lat > la1) continue;
+        const kmpp = (EARTH_KM * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** z);
+        // Label footprint (km): about 75 px either side, 12 px above and below.
+        const hw = 75 * kmpp, hh = 12 * kmpp;
+        const safe = hw + 22;
+        const off = (r & 1) * 0.5 * step;
+        for (let q = Math.floor((x0 - off) / step); q * step + off <= x1; q++) {
+          const lon = (q * step + off) * 360 - 180;
+          const lonW = ((lon + 540) % 360) - 180;
+          const c = cellOfLL(W, H, lonW, lat);
+          if (owner[c] !== k) continue;
+          const dep = sample(fld, lonW, lat);
+          if (dep > 0) spare.push([lonW, lat, dep]);
+          if (dep < (sampler ? Math.min(safe, -half * 0.3) : Math.max(14, hw))) continue;
+          if (dep < safe) {
+            // Near the shore: the drawn coastline at this zoom decides.
+            if (!sampler || dep < hw * 0.5) continue;
+            const kLon = 1 / (111.2 * Math.max(0.05, Math.cos((lat * Math.PI) / 180)));
+            let wet = true;
+            for (const [dx, dy] of FOOT) {
+              const lo = lonW + dx * hw * kLon, la = lat + (dy * hh) / 111.2;
+              if (!sampler.isWater(lo, la, sampler.height(lo, la, kmpp * 3, false))) {
+                wet = false;
+                break;
+              }
+            }
+            if (!wet) continue;
+          }
+          band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [Math.round(lonW * 1e4) / 1e4, Math.round(lat * 1e4) / 1e4] }, properties: { kind: p.kind, name: p.name, rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
+        }
+      }
+      if (band.length > MAX_PER_BAND) break;
+      // Too narrow for a whole label at this zoom: use the lattice points deepest in the water
+      // (along the middle of a long lake or inlet), or failing that the main anchor.
+      if (!band.length) {
+        const top = spare.reduce((m, q) => Math.max(m, q[2]), 0);
+        for (const [x, y, dep] of spare) {
+          if (dep >= top * 0.7) band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4] }, properties: { kind: p.kind, name: p.name, rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
+        }
+        if (!band.length) band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lonOf(w.at), latOf(w.at)] }, properties: { kind: p.kind, name: p.name, rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
+      }
+      out.push(...band);
+      zEnd = z + 1;
+    }
+    // If the lattice never took over, the main label carries on to the cap.
+    if (zEnd === zStart) p.zhi = cap;
+  });
+  return out;
+}
+
+function cellOfLL(W: number, H: number, lon: number, lat: number): number {
+  const i = ((Math.floor(((lon + 180) / 360) * W) % W) + W) % W;
+  const j = Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H)));
+  return j * W + i;
 }
 
 export function cellOf(g: Grid, lon: number, lat: number): number {
