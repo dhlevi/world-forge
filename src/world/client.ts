@@ -71,7 +71,7 @@ export class WorldClient {
       }
       return {
         gen, raster: res.raster, rivers: res.rivers, wind: res.wind, currents: res.currents,
-        settlements: res.settlements, roads: res.roads, summary: res.summary,
+        settlements: res.settlements, roads: res.roads, labels: res.labels, summary: res.summary,
       };
     } finally {
       if (gen === this.latestGen) this.generating = false;

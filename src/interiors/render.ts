@@ -563,6 +563,17 @@ function drawItem(g: Ctx2D, it: Item, X: (u: number) => number, Y: (v: number) =
       g.stroke();
       break;
     }
+    case 'bath': {
+      g.fillStyle = '#c9d8dc';
+      g.beginPath();
+      g.ellipse(cx, cy, w / 2, h / 2, 0, 0, 2 * Math.PI);
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      g.ellipse(cx, cy, w / 2 - lw * 2, h / 2 - lw * 2, 0, 0, 2 * Math.PI);
+      g.stroke();
+      break;
+    }
     case 'privy':
       box(WOOD);
       g.beginPath();
@@ -579,7 +590,7 @@ function drawItem(g: Ctx2D, it: Item, X: (u: number) => number, Y: (v: number) =
 function drawLabels(g: Ctx2D, d: Dwelling, f: Floor, X: (u: number) => number, Y: (v: number) => number, s: number): void {
   const { nx } = d;
   const size = Math.max(9, Math.min(15, s * 0.42));
-  g.font = `italic ${size}px Georgia, 'Times New Roman', serif`;
+  g.font = `italic ${size}px 'IM Fell English', Georgia, 'Times New Roman', serif`;
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   f.rooms.forEach((rm, r) => {

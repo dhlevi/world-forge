@@ -14,6 +14,7 @@ import type { TownsRequest, TownsResponse } from '../worker/protocol';
 import {
   MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES,
 } from './map-style';
+import { PLAN_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
 
 const container = ref<HTMLDivElement>();
 let map: MapLibreMap | null = null;
@@ -48,6 +49,7 @@ function syncWorld(): void {
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
   (map.getSource('wind') as GeoJSONSource).setData(world.value.wind);
   (map.getSource('currents') as GeoJSONSource).setData(world.value.currents);
+  (map.getSource('labels') as GeoJSONSource).setData(world.value.labels);
   if (townsGen !== world.value.gen) {
     townsGen = world.value.gen;
     const { raster, settlements, roads, rivers } = world.value;
@@ -95,12 +97,21 @@ const OVERLAY_LAYERS = {
   wind: ['wind-lines', 'wind-heads'],
   currents: ['current-lines', 'current-heads'],
   settlements: [...PLAN_GROUND_LAYERS, ...SETTLEMENT_LAYERS, ...MARKER_LAYERS].map((l) => l.id),
+  labels: [...WORLD_LABEL_LAYERS, ...SETTLEMENT_LABEL_LAYERS, ...PLAN_LABEL_LAYERS].map((l) => l.id),
 };
 
 function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): void {
   if (!map || !ready) return;
   if (overlay === 'rivers' && rasterRivers()) show = false;
-  for (const id of OVERLAY_LAYERS[overlay]) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
+  for (const id of OVERLAY_LAYERS[overlay]) {
+    let vis = show;
+    // Name layers also follow the overlay they belong to.
+    if (overlay === 'labels') {
+      if (id.startsWith('lbl-river')) vis = show && store.showRivers;
+      else if (id === 'lbl-road' || SETTLEMENT_LABEL_LAYERS.some((l) => l.id === id) || PLAN_LABEL_LAYERS.some((l) => l.id === id)) vis = show && store.showSettlements;
+    }
+    map.setLayoutProperty(id, 'visibility', vis ? 'visible' : 'none');
+  }
 }
 
 /** The plan building under a screen point, at interior zooms. */
@@ -170,11 +181,13 @@ onMounted(() => {
     style: {
       version: 8,
       projection: { type: 'globe' },
+      'font-faces': fontFaces(document.baseURI),
       sky: { 'atmosphere-blend': ['interpolate', ['linear'], ['zoom'], 0, 1, 5, 1, 7, 0] },
       sources: {
         rivers: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         wind: { type: 'geojson', lineMetrics: true, data: { type: 'FeatureCollection', features: [] } },
         currents: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+        labels: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         ...SETTLEMENT_SOURCES,
       },
       layers: [
@@ -245,6 +258,9 @@ onMounted(() => {
           },
         },
         ...MARKER_LAYERS,
+        ...PLAN_LABEL_LAYERS,
+        ...WORLD_LABEL_LAYERS,
+        ...SETTLEMENT_LABEL_LAYERS,
       ],
     },
     center: [0, 20],
@@ -263,6 +279,7 @@ onMounted(() => {
     setVisibility('wind', store.showWind);
     setVisibility('currents', store.showCurrents);
     setVisibility('settlements', store.showSettlements);
+    setVisibility('labels', store.showLabels);
     syncWorld();
   });
   map.on('moveend', runTowns);
@@ -300,11 +317,16 @@ onBeforeUnmount(() => {
 });
 
 watch([world, () => store.layer], syncWorld);
-watch(() => store.showRivers, syncWorld);
+watch(() => store.showRivers, () => {
+  syncWorld();
+  setVisibility('labels', store.showLabels);
+});
 watch(() => store.showWind, (show) => setVisibility('wind', show));
 watch(() => store.showCurrents, (show) => setVisibility('currents', show));
+watch(() => store.showLabels, (show) => setVisibility('labels', show));
 watch(() => store.showSettlements, (show) => {
   setVisibility('settlements', show);
+  setVisibility('labels', store.showLabels);
   if (!show) hidePreview();
   runTowns();
 });

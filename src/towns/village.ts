@@ -3,6 +3,8 @@ import { addDocks } from './harbour';
 import { Kit } from './kit';
 import type { PlanInput } from './plan';
 import { RIVER } from './terrain';
+import { deityName, innName } from '../names/names';
+import { graves } from './kit';
 
 const unit = (p: Pt): Pt => {
   const l = Math.hypot(...p) || 1;
@@ -20,13 +22,54 @@ const toward = (a: Pt, b: Pt, d: number): Pt => {
 export function buildVillage(inp: PlanInput): void {
   const k = new Kit(inp);
   switch (inp.s.kind) {
-    case 'fishing': return fishing(k);
-    case 'logging': return logging(k);
-    case 'mining': return mining(k);
-    case 'monastery': return monastery(k);
-    case 'keep': return keep(k);
-    default: return farming(k);
+    case 'fishing': fishing(k); break;
+    case 'logging': logging(k); break;
+    case 'mining': mining(k); break;
+    case 'monastery': monastery(k); break;
+    case 'keep': keep(k); break;
+    default: farming(k);
   }
+  villageLabels(k);
+}
+
+/** The village's name over the plan, and its notable buildings: chapel, inn, smithy, mill. */
+function villageLabels(k: Kit): void {
+  const { inp, rnd } = k;
+  const { s, out, names, culture } = inp;
+  if (s.name) out.point('qlabel', [0, k.core * 0.9 + 20], { name: s.name });
+  const mark = (b: { f: { properties: Record<string, string | number> }; c: Pt }, role: string, label: string) => {
+    b.f.properties.role = role;
+    b.f.properties.label = label;
+    out.point('blabel', b.c, { name: label });
+  };
+  const used = new Set<object>();
+  for (const b of k.buildings) {
+    if (b.use === 'temple') {
+      mark(b, 'temple', deityName(names, culture, `${s.id}:chapel`).replace('Temple of', 'Chapel of'));
+      used.add(b);
+      // A churchyard beside the chapel.
+      if (s.population > 150) {
+        for (let t = 0; t < 8; t++) {
+          const a = rnd() * 2 * Math.PI;
+          const c: Pt = [b.c[0] + Math.cos(a) * 20, b.c[1] + Math.sin(a) * 20];
+          const q = rect(c[0], c[1], a, 16, 12);
+          if (q.some((v) => inp.water(v)) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 10) || q.some((v) => k.nearLane(v, 1))) continue;
+          out.poly('graveyard', q);
+          out.line('hedge', [...q, q[0]]);
+          graves(q, rnd, out, inp.ground);
+          k.blocked.push(q);
+          break;
+        }
+      }
+    } else if (b.use === 'mill') {
+      mark(b, 'mill', s.kind === 'logging' ? 'Sawmill' : s.kind === 'mining' ? 'Smelter' : 'Mill');
+      used.add(b);
+    }
+  }
+  const ordinary = k.buildings.filter((b) => !b.use && !used.has(b)).sort((a, b) => Math.hypot(...a.c) - Math.hypot(...b.c));
+  const farmingLike = !s.kind || s.kind === 'farming' || s.kind === 'fishing';
+  if (farmingLike && s.population > 120 && ordinary[0]) mark(ordinary.shift()!, 'inn', innName(names.rng(`${s.id}:inn`)));
+  if (farmingLike && s.population > 220 && ordinary.length > 3) mark(ordinary.splice(2, 1)[0], 'smithy', 'Smithy');
 }
 
 function chapel(k: Kit): void {

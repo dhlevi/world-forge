@@ -11,6 +11,9 @@ import { traceStreamlines, type StreamCollection } from './streamlines';
 import { buildSettlements, type RoadCollection, type Settlement } from './settlements';
 import { DetailSampler } from './detail';
 import { RiverIndex } from './river-index';
+import { type LabelCollection, nameWorld } from './features';
+import { cultureMap } from '../names/culture-map';
+import { NameBank } from '../names/names';
 import { CLIMATE, HYDROLOGY } from './config';
 
 export interface WorldParams {
@@ -56,6 +59,8 @@ export interface RasterWorld {
   precipWinter: Float32Array;
   /** Index into KOPPEN_CLASSES. */
   koppen: Uint8Array;
+  /** Index into CULTURES (names/cultures.ts): whose names the land and nearby sea bear. */
+  culture: Uint8Array;
 }
 
 export interface WorldSummary {
@@ -78,6 +83,8 @@ export interface GeneratedWorld {
   /** Cities and towns; villages are generated on demand per region (src/towns). */
   settlements: Settlement[];
   roads: RoadCollection;
+  /** Named geographic features (labels). */
+  labels: LabelCollection;
   summary: WorldSummary;
 }
 
@@ -172,6 +179,10 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
     height, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, biome, lakeDepth, acc, flow,
   }, seedHash, sampler);
 
+  progress('Names', 0.99);
+  const culture = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome }, params.seed);
+  const labels = nameWorld(g, { height, lakeDepth, biome, culture }, new NameBank(params.seed), settlements, rivers, roads);
+
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;
   for (let j = 0, c = 0; j < H; j++) {
     for (let i = 0; i < W; i++, c++) {
@@ -205,12 +216,14 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       precipSummer: climate.precipSummer,
       precipWinter: climate.precipWinter,
       koppen,
+      culture,
     },
     rivers,
     wind,
     currents,
     settlements,
     roads,
+    labels,
     summary: {
       W,
       H,

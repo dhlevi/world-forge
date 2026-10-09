@@ -5,8 +5,10 @@ import {
   type Poly, type Pt, area, ccw, centroid, compactness, distToLine, distToSeg, inset, pointInPoly, rect, rectIn, strips, subdivide,
 } from './geom';
 import { addDocks } from './harbour';
-import type { PlanInput } from './plan';
+import type { PlanFeature, PlanInput } from './plan';
 import { RIVER } from './terrain';
+import { graves } from './kit';
+import { type BuildingRef, type WardInfo, labelCity } from './naming';
 import { BUILD_GROUND, contourStrips, plantField } from './ground';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -25,7 +27,7 @@ interface Patch {
   c: Pt;
   water: boolean;
   inside: boolean;
-  kind: 'plaza' | 'temple' | 'citadel' | 'park' | 'harbour' | 'ward' | 'rich' | '';
+  kind: 'plaza' | 'temple' | 'citadel' | 'park' | 'harbour' | 'ward' | 'rich' | 'garrison' | 'graveyard' | '';
 }
 
 /**
@@ -36,7 +38,7 @@ interface Patch {
  * the town grows onto gentle ground, streets avoid steep grades, blocks terrace along the
  * contours, the citadel and temple take the high ground, and shores get docks.
  */
-export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput): void {
+export function buildCity({ s, exits, water, terrain, ground, out, names, culture }: PlanInput): void {
   const rnd = mulberry32(s.seed);
   const town = s.tier !== 'city';
   const nInner = town ? clamp(Math.round(s.population / 500) + 2, 4, 14) : clamp(Math.round(s.population / 900) + 3, 8, 40);
@@ -231,6 +233,15 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
   const plazaNodes = new Set(patches[plaza].poly.map((p) => nodeId.get(key(p))!));
   const mainEdges = new Set<string>();
   const roadLines: Pt[][] = [];
+  // For lettering: main streets and roads by gate, and every building with its ward.
+  const streetRefs: { f: PlanFeature; pts: Pt[]; gate: number }[] = [];
+  const roadRefs: { f: PlanFeature; pts: Pt[]; gate: number }[] = [];
+  const buildingRefs: BuildingRef[] = [];
+  const last = () => out.features[out.features.length - 1];
+  const addBuilding = (poly: Poly, ward: number, props: Record<string, string | number | undefined>) => {
+    out.poly('building', poly, props);
+    buildingRefs.push({ f: last(), c: centroid(poly), ward });
+  };
 
   const insideCost = (u: number, v: number, ek: string) => {
     const cells = edgeCells.get(ek)!;
@@ -251,6 +262,7 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
     if (path) {
       for (let k = 0; k + 1 < path.length; k++) mainEdges.add(ekey(path[k], path[k + 1]));
       out.line('street', path.map((n) => P[n]));
+      streetRefs.push({ f: last(), pts: path.map((n) => P[n]), gate: gates.indexOf(g) });
     }
     if (!g.exit) continue;
     const ex = g.exit.p;
@@ -274,6 +286,7 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
     const smooth = chaikin(line, 2) as Pt[];
     roadLines.push(smooth);
     out.line('road', smooth, { cls: g.exit.cls });
+    roadRefs.push({ f: last(), pts: smooth, gate: gates.indexOf(g) });
   }
 
   // Special wards.
@@ -308,6 +321,23 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
   for (const d of docks) {
     const i = inner.find((j) => free(j) && pointInPoly(patches[j].poly, d.p[0], d.p[1]));
     if (i !== undefined) patches[i].kind = 'harbour';
+  }
+  // A garrison beside the citadel (or by a gate), and a cemetery: an old park, or a ward on the wall.
+  if (s.walls && (!town || s.population > 2500)) {
+    const byCitadel = inner.filter((i) => free(i) && nbrs(i).some((j) => patches[j].kind === 'citadel'));
+    const byGate = inner.filter((i) => free(i) && touchesWall(i) && patches[i].poly.some((q) => gateNodes.has(key(q))));
+    const c = byCitadel.length ? byCitadel : byGate;
+    if (c.length) patches[pick(c)].kind = 'garrison';
+  }
+  if (!town || s.population > 2000) {
+    const parks = inner.filter((i) => patches[i].kind === 'park');
+    const pc = patches[plaza].c;
+    if (parks.length && rnd() < 0.6) {
+      patches[parks.reduce((a, b) => (Math.hypot(patches[b].c[0] - pc[0], patches[b].c[1] - pc[1]) > Math.hypot(patches[a].c[0] - pc[0], patches[a].c[1] - pc[1]) ? b : a))].kind = 'graveyard';
+    } else if (rnd() < 0.5) {
+      const c = inner.filter((i) => free(i) && touchesWall(i) && !patches[i].poly.some((q) => gateNodes.has(key(q))));
+      if (c.length) patches[pick(c)].kind = 'graveyard';
+    }
   }
   for (const i of inner) if (free(i)) patches[i].kind = !town && rnd() < 0.15 ? 'rich' : 'ward';
 
@@ -399,12 +429,25 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
         trees(q, Math.min(40, Math.round(area(q) / 300)), 2.5, 4.5);
         break;
       }
+      case 'graveyard': {
+        const q0 = inset(pt.poly, offsets(i, wallOff, 4, 2));
+        const q = q0 && ground.fit(q0, { maxSlope: 0.3, marginM: 3 }, rnd, 0.5, 0.3);
+        if (!q) break;
+        out.poly('graveyard', q);
+        out.line('hedge', [...q, q[0]]);
+        graves(q, rnd, out, ground);
+        trees(q, Math.min(10, Math.round(area(q) / 1500)), 2.5, 4);
+        break;
+      }
       default: {
         const q = inset(pt.poly, offsets(i, wallOff, 4, 2));
         if (!q) break;
-        const rich = pt.kind === 'rich', harbour = pt.kind === 'harbour';
+        const rich = pt.kind === 'rich', harbour = pt.kind === 'harbour', garrison = pt.kind === 'garrison';
         const rr = Math.hypot(...pt.c) / Rin;
-        const minArea = (town ? 110 : 85) * (1 + 1.5 * rr * rr) * (rich ? 2.5 : harbour ? 3 : 1);
+        const minArea = (town ? 110 : 85) * (1 + 1.5 * rr * rr) * (rich ? 2.5 : harbour ? 3 : garrison ? 3.5 : 1);
+        // A garrison keeps an open drill yard in the middle.
+        const drill = garrison ? rectIn(q, 0.3) : null;
+        if (drill) out.poly('plaza', drill);
         // Blocks separated by alleys (terraces along the contours on slopes), then lots; lots off
         // the block edge become courtyards. Harbour wards are warehouses.
         const g = terrain.grad(pt.c), sl = Math.hypot(...g);
@@ -421,7 +464,8 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
             if (!touchesEdge(lot, block)) continue;
             if (rnd() < (rich ? 0.2 : 0.04)) continue;
             if (!goodLot(lot, minArea)) continue;
-            out.poly('building', lot, { ctx: pt.kind, front: streetFront(lot, block) });
+            if (drill && lot.some((v) => pointInPoly(drill, v[0], v[1]))) continue;
+            addBuilding(lot, i, { ctx: garrison ? 'ward' : pt.kind, front: streetFront(lot, block) });
           }
         }
       }
@@ -448,7 +492,7 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
         yard(block, 'garden');
         for (const lot of subdivide(block, 140, rnd)) {
           if (!touchesEdge(lot, block) || rnd() > 0.8 || !goodLot(lot, 140)) continue;
-          out.poly('building', lot, { ctx: 'suburb', front: streetFront(lot, block) ?? roadFront(centroid(lot), roadLines) });
+          addBuilding(lot, i, { ctx: 'suburb', front: streetFront(lot, block) ?? roadFront(centroid(lot), roadLines) });
         }
       }
       return;
@@ -477,11 +521,24 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
       const n = q[(k + 1) % q.length];
       const hc: Pt = [v[0], v[1]];
       const farm = rect(hc[0], hc[1], Math.atan2(n[1] - q[k][1], n[0] - q[k][0]), 11, 7);
-      if (ground.allOk(farm, BUILD_GROUND)) out.poly('building', farm, { ctx: 'farm' });
+      if (ground.allOk(farm, BUILD_GROUND)) addBuilding(farm, i, { ctx: 'farm' });
     }
   });
 
   if (s.walls) drawWall(wall, gates.map((g) => g.k), water, out, town);
+
+  // Names: quarters, districts, streets and notable buildings.
+  const suburb = patches.map((pt, i) => i).filter((i) => !patches[i].inside && !patches[i].water && buildingRefs.some((b) => b.ward === i && b.f.properties.ctx === 'suburb'));
+  const wardInfo: WardInfo[] = patches.map((pt, i) => ({
+    poly: pt.poly, c: pt.c, kind: pt.kind, inside: pt.inside,
+    nbrs: Array.from(del.neighbors(i)),
+    waterside: pt.poly.some((v) => water(v)) || water(pt.c),
+    high: terrain.height(pt.c) > terrain.height([0, 0]) + 8,
+  }));
+  labelCity({
+    names, culture, key: s.id, town, population: s.population, wards: wardInfo, inner: inner.filter((i) => patches[i].inside),
+    outer: suburb, gates: gates.map((g) => wall[g.k]), streets: streetRefs, roads: roadRefs, buildings: buildingRefs, out, rnd,
+  });
 }
 
 /** Outward direction (radians, local frame) of the lot edge lying on its block's edge: the street front. */

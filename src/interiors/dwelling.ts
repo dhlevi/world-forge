@@ -27,6 +27,9 @@ export interface DwellingInput {
   tier: string;
   /** Outward direction (radians, local frame) of the street front. */
   front?: number;
+  /** A notable building's role ('inn', 'smithy', 'library'...) and its sign or name. */
+  role?: string;
+  name?: string;
 }
 
 export interface Opening {
@@ -88,6 +91,8 @@ export interface Dwelling {
   id: string;
   /** Type label, e.g. "Town house". */
   label: string;
+  /** Its own name, for notable buildings ("The Drunken Goose"). */
+  title?: string;
   nx: number;
   ny: number;
   /** Cell size (m) along u and v. */
@@ -121,12 +126,23 @@ export const CELL_M = 1.5;
 
 type Kind =
   | 'cottage' | 'farmhouse' | 'townhouse' | 'mansion' | 'warehouse' | 'temple' | 'keep'
-  | 'hall' | 'store' | 'mill' | 'range' | 'cabin' | 'hut';
+  | 'hall' | 'store' | 'mill' | 'range' | 'cabin' | 'hut' | 'inn' | 'civic' | 'library' | 'barracks' | 'stables' | 'bathhouse';
 
 const LABELS: Record<Kind, string> = {
   cottage: 'Cottage', farmhouse: 'Farmhouse', townhouse: 'Town house', mansion: 'Mansion', warehouse: 'Warehouse',
   temple: 'Temple', keep: 'Keep', hall: 'Hall', store: 'Storehouse', mill: 'Mill', range: 'Monastic range',
-  cabin: 'Cabin', hut: 'Miner\'s hut',
+  cabin: 'Cabin', hut: 'Miner\'s hut', inn: 'Inn', civic: 'Hall', library: 'Library', barracks: 'Barracks',
+  stables: 'Stables', bathhouse: 'Bathhouse',
+};
+
+/** Roles that turn a town house into a trade: the shop floor's name. */
+const TRADE_ROLE: Record<string, string> = {
+  tavern: 'Taproom', smithy: 'Smithy', bakery: 'Bakery', apothecary: 'Apothecary', pawnshop: 'Pawnshop', tailor: 'Tailor',
+  butcher: 'Butcher', chandlery: 'Chandlery',
+};
+const ROLE_LABEL: Record<string, string> = {
+  tavern: 'Tavern', smithy: 'Smithy', bakery: 'Bakery', apothecary: 'Apothecary', pawnshop: 'Pawnshop', tailor: 'Tailor',
+  butcher: 'Butcher', chandlery: 'Chandlery', townhall: 'Town hall', guildhall: 'Guildhall', mill: 'Mill',
 };
 
 function pointInPoly(p: Pt[], x: number, y: number): boolean {
@@ -139,6 +155,15 @@ function pointInPoly(p: Pt[], x: number, y: number): boolean {
 }
 
 function classify(inp: DwellingInput, areaM2: number, rnd: () => number): Kind {
+  switch (inp.role) {
+    case 'inn': return 'inn';
+    case 'townhall': case 'guildhall': return 'civic';
+    case 'library': return 'library';
+    case 'barracks': return 'barracks';
+    case 'stables': return 'stables';
+    case 'bathhouse': return 'bathhouse';
+  }
+  if (inp.role && TRADE_ROLE[inp.role]) return 'townhouse';
   switch (inp.use) {
     case 'temple': return 'temple';
     case 'keep': return 'keep';
@@ -262,8 +287,56 @@ function programs(kind: Kind, inp: DwellingInput, storeys: number, rnd: () => nu
   const cellar: Program = { roles: [R('Cellar', 'stair'), R('Storage')], fallback: 'Storage', surface: 'earth' };
   const loft: Program = { roles: [R('Attic', 'large')], fallback: 'Attic', merge: true, surface: 'boards' };
   switch (kind) {
+    case 'inn':
+      return {
+        basement: { ...cellar, roles: [R('Wine cellar', 'stair')] },
+        floors: [
+          { roles: [R('Taproom', 'front'), R('Kitchen', 'back'), R('Hall', 'stair'), R('Pantry', 'small'), R('Snug')], fallback: 'Storeroom', surface: 'flags' },
+          ...Array.from({ length: storeys - 1 }, (): Program => ({ roles: [R('Landing', 'stair'), R('Best room', 'large')], fallback: 'Guest room', surface: 'boards' })),
+        ],
+        attic: { ...loft, roles: [R('Servants\' garret', 'large')] },
+      };
+    case 'civic':
+      return {
+        basement: { ...cellar, roles: [R('Strongroom', 'stair')] },
+        floors: [
+          { roles: [R('Great hall', 'large'), R('Hall', 'stair'), R('Clerks\' office', 'front'), R('Strongroom', 'small')], fallback: 'Clerks\' office', surface: 'flags' },
+          ...Array.from({ length: storeys - 1 }, (): Program => ({ roles: [R('Landing', 'stair'), R('Council chamber', 'large')], fallback: 'Archive', surface: 'boards' })),
+        ],
+        attic: loft,
+      };
+    case 'library':
+      return {
+        basement: { ...cellar, roles: [R('Archive', 'stair')] },
+        floors: [
+          { roles: [R('Reading room', 'large'), R('Hall', 'stair'), R('Scriptorium')], fallback: 'Stacks', surface: 'boards' },
+          ...Array.from({ length: storeys - 1 }, (): Program => ({ roles: [R('Landing', 'stair'), R('Stacks', 'large')], fallback: 'Stacks', surface: 'boards' })),
+        ],
+        attic: loft,
+      };
+    case 'barracks':
+      return {
+        basement: cellar,
+        floors: [
+          { roles: [R('Mess hall', 'large'), R('Guardroom', 'stair'), R('Armoury', 'small')], fallback: 'Barrack room', surface: 'flags' },
+          ...Array.from({ length: storeys - 1 }, (): Program => ({ roles: [R('Barrack room', 'large')], fallback: 'Barrack room', merge: true, surface: 'boards' })),
+        ],
+        attic: loft,
+      };
+    case 'stables':
+      return {
+        basement: cellar,
+        floors: [{ roles: [R('Stalls', 'large'), R('Tack room', 'small')], fallback: 'Stalls', surface: 'earth' }],
+        attic: { ...loft, roles: [R('Hayloft', 'large')] },
+      };
+    case 'bathhouse':
+      return {
+        basement: { ...cellar, roles: [R('Cistern', 'stair')] },
+        floors: [{ roles: [R('Bath hall', 'large'), R('Changing room', 'front'), R('Boiler room', 'back')], fallback: 'Changing room', surface: 'flags' }],
+        attic: loft,
+      };
     case 'townhouse': {
-      const trade = pick(['Shop', 'Shop', 'Workshop', 'Workshop', 'Taproom', 'Smithy', 'Bakery']);
+      const trade = (inp.role && TRADE_ROLE[inp.role]) || pick(['Shop', 'Shop', 'Workshop', 'Workshop', 'Taproom', 'Smithy', 'Bakery']);
       const ground: Program = {
         roles: [R('Hall', 'stair'), R(trade, 'front'), R('Kitchen', 'back'), R('Pantry', 'small'), R('Parlour')],
         fallback: 'Storeroom', surface: 'flags',
@@ -434,11 +507,13 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
   const STOREYS: Record<Kind, () => number> = {
     townhouse: () => (areaM2 < 45 ? 2 : 2 + (rnd() < 0.45 ? 1 : 0)), mansion: () => 3, warehouse: () => 2, cottage: () => 1,
     farmhouse: () => 1, cabin: () => 1, hut: () => 1, temple: () => 1, keep: () => 3 + (rnd() < 0.4 ? 1 : 0),
-    hall: () => 1, store: () => 1, mill: () => 1, range: () => 2,
+    hall: () => 1, store: () => 1, mill: () => 1, range: () => 2, inn: () => (areaM2 < 60 ? 2 : 3), civic: () => 2,
+    library: () => 2, barracks: () => 2, stables: () => 1, bathhouse: () => 1,
   };
   const BASEMENT: Record<Kind, number> = {
     townhouse: 0.5, mansion: 0.85, warehouse: 0.6, cottage: 0.12, farmhouse: 0.25, cabin: 0, hut: 0, temple: 0.6,
-    keep: 0.9, hall: 0.3, store: 0.2, mill: 0, range: 0.3,
+    keep: 0.9, hall: 0.3, store: 0.2, mill: 0, range: 0.3, inn: 0.85, civic: 0.6, library: 0.4, barracks: 0.3, stables: 0,
+    bathhouse: 0.5,
   };
   const storeys = STOREYS[kind]();
   const storeyH = kind === 'temple' ? 8 : kind === 'hall' || kind === 'mill' ? 5 : kind === 'keep' ? 4 : 3;
@@ -451,7 +526,7 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
         axis: nx * cw >= ny * ch ? 'u' : 'v',
       };
   const d: Dwelling = {
-    id: inp.id, label: LABELS[kind], nx, ny, cw, ch,
+    id: inp.id, label: (inp.role && ROLE_LABEL[inp.role]) || LABELS[kind], title: inp.name, nx, ny, cw, ch,
     origin: [cx + u0 * eu[0] + v0 * ev[0], cy + u0 * eu[1] + v0 * ev[1]], eu, ev,
     mask, full, poly, floors: [], ground: 0, storeys, storeyH, roof, chimneys: [],
   };
@@ -471,11 +546,11 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
 
   const roomArea: Record<Kind, number> = {
     townhouse: 14, mansion: 20, warehouse: 45, cottage: 16, farmhouse: 15, cabin: 18, hut: 14, temple: 1, keep: 25,
-    hall: 30, store: 999, mill: 35, range: 30,
+    hall: 30, store: 999, mill: 35, range: 30, inn: 13, civic: 30, library: 25, barracks: 30, stables: 40, bathhouse: 25,
   };
   const maxRooms: Record<Kind, number> = {
     townhouse: 5, mansion: 8, warehouse: 3, cottage: 3, farmhouse: 5, cabin: 2, hut: 2, temple: 1, keep: 3,
-    hall: 3, store: 1, mill: 3, range: 4,
+    hall: 3, store: 1, mill: 3, range: 4, inn: 6, civic: 4, library: 3, barracks: 3, stables: 2, bathhouse: 3,
   };
   const nRooms = Math.max(1, Math.min(maxRooms[kind], Math.round(areaM2 / roomArea[kind])));
   const leaves = kind === 'temple' ? templeLeaves(c) : partition(g, nRooms, cw, ch, rnd);
@@ -938,7 +1013,21 @@ const WORKBENCH = S('workbench', 'long', 2.4, 0.8), COUNTER = S('counter', 'long
 const FURNITURE: [RegExp, Spec[]][] = [
   [/^(Hall|Entrance hall|Landing|Gallery)$/, [BENCH, CHEST, RUG]],
   [/^Bakery$/, [S('oven', 'hearth', 1.6, 1.0), COUNTER, SHELF, SACK, SACK, TABLE]],
-  [/^Shop$/, [COUNTER, SHELF, SHELF, CRATE, BARREL, CHEST]],
+  [/^(Shop|Apothecary|Pawnshop|Tailor|Butcher|Chandlery)$/, [COUNTER, SHELF, SHELF, CRATE, BARREL, CHEST]],
+  [/Guest room|Best room/, [BED, CHEST, S('chair', 'wall', 0.6, 0.6)]],
+  [/^Snug$/, [HEARTH, TABLE, BENCH]],
+  [/Clerks' office|Scriptorium/, [DESK, DESK, BOOKS, CHEST]],
+  [/Strongroom/, [CHEST, CHEST, CHEST, S('rack', 'long', 2.4, 0.5)]],
+  [/Council chamber/, [HEARTH, S('table', 'table', 0, 0, 2), RUG, BOOKS]],
+  [/Reading room/, [BOOKS, BOOKS, BOOKS, TABLE, TABLE, RUG]],
+  [/^(Stacks|Archive)$/, [BOOKS, BOOKS, BOOKS, BOOKS, BOOKS, BOOKS]],
+  [/Barrack room/, [S('bed', 'deep', 0.9, 1.9, 10), CHEST, CHEST]],
+  [/Mess hall/, [HEARTH, S('table', 'table', 0, 0, 3)]],
+  [/^Stalls$|Hayloft/, [S('straw', 'grid', 0, 0)]],
+  [/Tack room/, [S('rack', 'long', 2.4, 0.5), CHEST, BARREL]],
+  [/Bath hall/, [S('bath', 'grid', 0, 0)]],
+  [/Changing room/, [BENCH, BENCH, CHEST]],
+  [/Boiler room|Cistern/, [S('furnace', 'hearth', 1.8, 1.2), BARREL, BARREL]],
   [/^Workshop$/, [WORKBENCH, WORKBENCH, SHELF, CRATE, BARREL]],
   [/^Smithy$/, [S('forge', 'hearth', 1.5, 1.1), S('anvil', 'table', 0, 0), WORKBENCH, BARREL, CRATE]],
   [/^Taproom$/, [COUNTER, HEARTH, TABLE, TABLE, TABLE, BARREL, BARREL]],
@@ -1167,6 +1256,10 @@ function fillGrid(c: Ctx, f: Floor, r: number, room: Room, t: string, occupied: 
       case 'tomb':
         if ((i - i0) % 2 === 1 || (j - j0) % 3 === 2) continue;
         f.items.push({ type: 'tomb', x0: i + 0.18, x1: i + 0.82, y0: j + 0.15, y1: j + 1.85 > j1 + 1 ? j + 0.85 : j + 1.7 });
+        break;
+      case 'bath':
+        if ((i - i0) % 2 || (j - j0) % 2) continue;
+        f.items.push({ type: 'bath', x0: i + 0.12, x1: i + 0.88, y0: j + 0.2, y1: j + 0.8 });
         break;
       case 'straw':
         if (rnd() < 0.5) continue;

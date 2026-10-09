@@ -12,6 +12,8 @@ export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monast
 
 export interface Settlement {
   id: string;
+  /** Generated name (set once cultures are known). */
+  name?: string;
   tier: Tier;
   /** Villages only. */
   kind?: VillageKind;
@@ -35,7 +37,7 @@ export interface RoadFeature {
   type: 'Feature';
   geometry: { type: 'LineString'; coordinates: number[][] };
   /** a/b: settlement ids at the start/end ('' where a track joins another road). */
-  properties: { cls: RoadClass; a: string; b: string; ppm20: number };
+  properties: { cls: RoadClass; a: string; b: string; ppm20: number; name?: string };
 }
 
 export interface RoadCollection {

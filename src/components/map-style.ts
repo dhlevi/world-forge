@@ -80,6 +80,10 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'fill-color': '#cfd8a4', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
   {
+    id: 'plan-graveyard', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('graveyard'),
+    paint: { 'fill-color': '#c3c9a0', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
     id: 'plan-plaza', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('plaza'),
     paint: { 'fill-color': '#f4ecd9', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
@@ -152,9 +156,16 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     },
   },
   {
+    id: 'plan-graves', type: 'fill', source: 'plans', minzoom: 14.5, filter: kind('grave'),
+    paint: { 'fill-color': '#a8a291', 'fill-outline-color': INK, 'fill-opacity': fadeIn(14.5, 15.2) },
+  },
+  {
     id: 'plan-buildings', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('building'),
     paint: {
-      'fill-color': e(['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', '#cdbd9c']),
+      // Notable buildings are washed a little warmer so they stand out from the terraces.
+      'fill-color': e(['case', ['has', 'role'],
+        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', ['townhall', 'guildhall', 'library'], '#b8a689', 'barracks', '#b3a38f', '#c6b08e'],
+        ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', '#cdbd9c']]),
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
     },

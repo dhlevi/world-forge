@@ -23,6 +23,7 @@ export const store = reactive({
   layer: 'fantasy' as LayerId,
   showRivers: true,
   showSettlements: true,
+  showLabels: true,
   showWind: false,
   showCurrents: false,
   generating: false,

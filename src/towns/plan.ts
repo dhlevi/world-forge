@@ -1,6 +1,7 @@
 import type { Pt } from './geom';
 import type { LocalTerrain } from './terrain';
 import type { Ground } from './ground';
+import type { NameBank } from '../names/names';
 import type { RoadClass, Settlement } from '../gen/settlements';
 
 const M_PER_DEG = (Math.PI * 6371000) / 180;
@@ -79,4 +80,7 @@ export interface PlanInput {
   /** Usable-ground tests and fitting over `terrain`. */
   ground: Ground;
   out: PlanOut;
+  /** Names (deterministic, not de-duplicated) and the local culture. */
+  names: NameBank;
+  culture: number;
 }

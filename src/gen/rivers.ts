@@ -11,12 +11,14 @@ export interface RiverFeature {
    * order = log2(flow / threshold); flow = precipitation-weighted drainage area (km²);
    * widthM = physical width; ppm20 = map pixels per metre at zoom 20 (for physical line widths).
    */
-  properties: { order: number; flow: number; widthM: number; ppm20: number };
+  properties: { order: number; flow: number; widthM: number; ppm20: number; rid: number; name?: string };
 }
 
 export interface RiverCollection {
   type: 'FeatureCollection';
   features: RiverFeature[];
+  /** Named-river systems by rid: the main stem's mouth cell and its discharge order there. */
+  systems?: { rid: number; mouth: number; order: number; cells: number }[];
 }
 
 export function chaikin(pts: number[][], iterations: number): number[][] {
@@ -64,6 +66,29 @@ export function extractRivers(g: Grid, h: Float32Array, flow: FlowRouting, acc: 
   const point = (c: number) => riverVertex(g, c, seed);
   const bucket = (c: number) => Math.max(0, Math.floor(Math.log2(acc[c] / thr)));
 
+  // River systems: walking down from the biggest discharge, each cell continues the name of
+  // its receiver if it is that receiver's main (largest) tributary; otherwise it starts a new river.
+  const mainDonor = new Int32Array(N).fill(-1);
+  const order: number[] = [];
+  for (let c = 0; c < N; c++) {
+    if (!isRiver[c]) continue;
+    order.push(c);
+    const r = recv[c];
+    if (isRiver[r] && (mainDonor[r] < 0 || acc[c] > acc[mainDonor[r]])) mainDonor[r] = c;
+  }
+  order.sort((a, b) => acc[b] - acc[a]);
+  const rid = new Int32Array(N).fill(-1);
+  const systems: { rid: number; mouth: number; order: number; cells: number }[] = [];
+  for (const c of order) {
+    const r = recv[c];
+    if (isRiver[r] && rid[r] >= 0 && mainDonor[r] === c) rid[c] = rid[r];
+    else {
+      rid[c] = systems.length;
+      systems.push({ rid: rid[c], mouth: c, order: Math.max(0, Math.floor(Math.log2(acc[c] / thr))), cells: 0 });
+    }
+    systems[rid[c]].cells++;
+  }
+
   const features: RiverFeature[] = [];
   const emit = (cells: number[], order: number) => {
     if (cells.length < 2) return;
@@ -81,7 +106,9 @@ export function extractRivers(g: Grid, h: Float32Array, flow: FlowRouting, acc: 
     features.push({
       type: 'Feature',
       geometry: { type: 'LineString', coordinates: chaikin(pts, HYDROLOGY.riverSmoothing) },
-      properties: { order, flow: thr * 2 ** order, widthM: riverWidthM(order), ppm20: pxPerMeterZ20(pts[pts.length >> 1][1]) },
+      properties: {
+        order, flow: thr * 2 ** order, widthM: riverWidthM(order), ppm20: pxPerMeterZ20(pts[pts.length >> 1][1]), rid: rid[cells[0]],
+      },
     });
   };
 
@@ -106,5 +133,5 @@ export function extractRivers(g: Grid, h: Float32Array, flow: FlowRouting, acc: 
     }
     emit(cells, order);
   }
-  return { type: 'FeatureCollection', features };
+  return { type: 'FeatureCollection', features, systems };
 }

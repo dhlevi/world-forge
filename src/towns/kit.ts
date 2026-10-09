@@ -1,7 +1,7 @@
 import { Delaunay } from 'd3-delaunay';
 import { mulberry32 } from '../gen/rng';
 import { type Poly, type Pt, area, ccw, centroid, distToLine, inset, pointInPoly, rect, segHitsPoly, split } from './geom';
-import type { PlanInput } from './plan';
+import type { PlanFeature, PlanInput } from './plan';
 import { BUILD_GROUND, FIELD_GROUND, contourStrips, plantField } from './ground';
 
 /** Steepest ground (m/m) a building goes on; fields and meadows stop at MAX_FIELD_SLOPE. */
@@ -19,6 +19,8 @@ export class Kit {
   readonly rnd: () => number;
   readonly lanes: Lane[] = [];
   readonly houses: { c: Pt; r: number }[] = [];
+  /** Every building placed with house(), with its feature (for names and roles). */
+  readonly buildings: { f: PlanFeature; c: Pt; use?: string }[] = [];
   readonly fields: Poly[] = [];
   /** Footprints (compounds, rings) that houses, fields and trees keep out of. */
   readonly blocked: Poly[] = [];
@@ -122,6 +124,7 @@ export class Kit {
     const props: Record<string, string | number> = use ? { use } : {};
     if (front !== undefined) props.front = front;
     this.inp.out.poly('building', fp, props);
+    this.buildings.push({ f: this.inp.out.features[this.inp.out.features.length - 1], c, use });
     return true;
   }
 
@@ -267,3 +270,31 @@ export class Kit {
     }
   }
 }
+
+/** Rows of graves (headstone and plot) across a cemetery, aligned with its longest side. */
+export function graves(q: Poly, rnd: () => number, out: PlanInput['out'], ground: PlanInput['ground']): void {
+  let best = 0, bl = 0;
+  for (let k = 0; k < q.length; k++) {
+    const a = q[k], b = q[(k + 1) % q.length], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (l > bl) {
+      bl = l;
+      best = k;
+    }
+  }
+  const a = q[best], b = q[(best + 1) % q.length];
+  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+  const ux = Math.cos(ang), uy = Math.sin(ang);
+  const c = centroid(q);
+  let n = 0;
+  for (let v = -200; v <= 200 && n < 500; v += 4.5) {
+    for (let u = -200; u <= 200 && n < 500; u += 2.6) {
+      const p: Pt = [c[0] + ux * u - uy * v + (rnd() - 0.5) * 0.6, c[1] + uy * u + ux * v + (rnd() - 0.5) * 0.6];
+      if (!pointInPoly(q, p[0], p[1]) || rnd() < 0.18) continue;
+      const g = rect(p[0], p[1], ang + Math.PI / 2 + (rnd() - 0.5) * 0.1, 1.9, 0.9);
+      if (!g.every((x) => pointInPoly(q, x[0], x[1])) || !ground.ok(p, { maxSlope: 0.4, marginM: 2 })) continue;
+      out.poly('grave', g);
+      n++;
+    }
+  }
+}
+

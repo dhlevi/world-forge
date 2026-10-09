@@ -28,6 +28,8 @@ const subtitle = computed(() => {
 watch(view, (v) => {
   if (v) tab.value = v.d.ground;
   nextTick(draw);
+  // Redraw once the lettering font has loaded (the canvas can't wait for it on its own).
+  document.fonts?.load("italic 14px 'IM Fell English'").then(() => draw()).catch(() => {});
 });
 watch([tab, labels, grid], draw);
 
@@ -76,7 +78,7 @@ function drawCompass(g: Ctx2D, eu: [number, number], ev: [number, number], x: nu
   g.lineTo(x + dx * 8 + dy * 6, y + dy * 8 - dx * 6);
   g.closePath();
   g.fill();
-  g.font = 'italic 13px Georgia, serif';
+  g.font = "italic 13px 'IM Fell English', Georgia, serif";
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   g.fillText('N', x + dx * 28, y + dy * 28);
@@ -99,7 +101,7 @@ function drawScaleBar(g: Ctx2D, scale: number, x: number, y: number): void {
     g.lineTo(x + k * CELL_M * scale, y - 3);
   }
   g.stroke();
-  g.font = 'italic 12px Georgia, serif';
+  g.font = "italic 12px 'IM Fell English', Georgia, serif";
   g.textBaseline = 'bottom';
   g.fillText(`${metres} m · 15 ft`, x + metres * scale + 8, y + 2);
   g.restore();
@@ -151,7 +153,7 @@ watch(stage, (el, old) => {
   <div v-if="view" class="dwelling" role="dialog" aria-modal="true" :aria-label="view.d.label">
     <header>
       <div class="title">
-        <h2>{{ view.d.label }}</h2>
+        <h2>{{ view.d.title ? `${view.d.title}` : view.d.label }}<span v-if="view.d.title" class="kind"> · {{ view.d.label }}</span></h2>
         <p>{{ subtitle }}</p>
       </div>
       <div class="actions">
@@ -183,7 +185,7 @@ watch(stage, (el, old) => {
   flex-direction: column;
   background: #f3ead3;
   color: #2b2420;
-  font-family: Georgia, 'Times New Roman', serif;
+  font-family: 'IM Fell English', Georgia, 'Times New Roman', serif;
 }
 header {
   display: flex;
@@ -198,6 +200,10 @@ h2 {
   font-size: 22px;
   font-weight: normal;
   font-style: italic;
+}
+.kind {
+  font-size: 15px;
+  opacity: 0.7;
 }
 .title p {
   margin: 2px 0 0;

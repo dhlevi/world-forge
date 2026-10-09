@@ -15,6 +15,7 @@ import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
 import { buildVillage } from './village';
 import { Ground } from './ground';
+import { NameBank } from '../names/names';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
 export const VILLAGE_ZOOM = 7.5;
@@ -105,7 +106,7 @@ export function siteFeatures(settlements: Settlement[]): FC<PlanFeature> {
     features: settlements.map((s) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
-      properties: { id: s.id, tier: s.tier, population: s.population },
+      properties: { id: s.id, tier: s.tier, population: s.population, name: s.name ?? '' },
     })),
   };
 }
@@ -117,6 +118,7 @@ export function siteFeatures(settlements: Settlement[]): FC<PlanFeature> {
  */
 export class TownManager {
   readonly sampler: DetailSampler;
+  readonly names: NameBank;
   private sites = new PointIndex<Settlement>(1);
   private roadPts = new PointIndex<null>(0.25);
   private exits = new Map<string, { ll: number[]; cls: RoadClass }[]>();
@@ -125,6 +127,7 @@ export class TownManager {
 
   constructor(private world: TownWorld) {
     this.sampler = new DetailSampler(world.raster, new RiverIndex(world.rivers, world.raster.seed));
+    this.names = new NameBank(world.raster.seed, false);
     for (const s of world.settlements) this.sites.add(s.lon, s.lat, s);
     for (const f of world.roads.features) {
       const c = f.geometry.coordinates;
@@ -143,7 +146,7 @@ export class TownManager {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
-          properties: { id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population },
+          properties: { id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '' },
         });
       }
     }
@@ -338,12 +341,32 @@ export class TownManager {
         const v = makeSettlement(
           'village', `v${key}_${villages.length}`, pos[0], pos[1], score, hash32(h0 ^ 7), kind === 'fishing', (river?.d ?? 99) < 1.5, kind,
         );
+        v.name = this.villageName(v, cellOf(lon, lat));
         villages.push(v);
         const track = this.track(v, road, villages, rr(4));
         if (track) tracks.push(track);
       }
     }
     return { villages, tracks };
+  }
+
+  private cell(lon: number, lat: number): number {
+    const { W, H } = this.world.raster;
+    const i = ((Math.floor(((lon + 180) / 360) * W) % W) + W) % W;
+    return Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H))) * W + i;
+  }
+
+  /** A village name in the local culture, dressed for its kind ("Ashby Keep", "Thorn Abbey"). */
+  private villageName(v: Settlement, cell: number): string {
+    const n = this.names.place(this.world.raster.culture[cell] ?? 0, v.id);
+    const r = this.names.rng(`vk:${v.id}`)();
+    switch (v.kind) {
+      case 'keep': return r < 0.5 ? `${n} Keep` : r < 0.8 ? `Castle ${n}` : `${n} Tower`;
+      case 'monastery': return r < 0.5 ? `${n} Abbey` : r < 0.8 ? `${n} Priory` : `Monastery of ${n}`;
+      case 'mining': return r < 0.55 ? `${n} Mine` : r < 0.75 ? `${n} Diggings` : n;
+      case 'logging': return r < 0.45 ? `${n} Camp` : n;
+      default: return n;
+    }
   }
 
   /** A point ~80 m back from the nearest sea or lake shore within 8 km, or null. */
@@ -536,8 +559,10 @@ export class TownManager {
       },
     );
     const ground = new Ground(terrain, water);
-    if (s.tier === 'village') buildVillage({ s, exits, water, terrain, ground, out });
-    else buildCity({ s, exits, water, terrain, ground, out });
+    const culture = this.world.raster.culture[this.cell(s.lon, s.lat)] ?? 0;
+    const inp = { s, exits, water, terrain, ground, out, names: this.names, culture };
+    if (s.tier === 'village') buildVillage(inp);
+    else buildCity(inp);
 
     // Contours show the lie of the land; the interval adapts to the relief.
     let lo = Infinity, hi = -Infinity;

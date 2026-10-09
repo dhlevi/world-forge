@@ -25,6 +25,7 @@ npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # head
 | Map layer | Fantasy map (default), Terrain, Biomes, Köppen climate, Elevation, Temperature, Precipitation, Tectonic plates | Re-renders tiles without regenerating. |
 | Rivers | on/off | Rivers. On the Fantasy map and Terrain layers they are drawn into the tiles (inked, clipped at lakes and the sea); on the other layers they are a vector overlay. River valleys stay carved into the terrain either way. |
 | Settlements & roads | on/off (default on) | Cities, towns, villages, roads and tracks; town and village plans at high zoom. |
+| Place names | on/off (default on) | Lettering for realms, seas, rivers, ranges, forests, settlements, town quarters, districts, streets and notable buildings. |
 | Prevailing winds | on/off (default off) | Streamline overlay of the simulated surface winds. |
 | Ocean currents | on/off (default off) | Streamline overlay of surface currents, coloured red (warm) to blue (cold) by their temperature anomaly. |
 
@@ -75,6 +76,12 @@ The world is simulated on an equirectangular lon/lat grid that wraps east–west
    - **Placement:** river towns sit on the river line, offset to one bank so the river runs through the town. Coastal sites are nudged onto land at full shoreline detail (`detail.ts`, which samples the same sub-grid terrain as the tiles).
    - **Roads** link neighbouring settlements (a relative-neighbourhood graph: major roads between cities, minor roads between towns). Each road is routed by A* over the grid, with costs for slope, biome (wetlands, rainforest and ice are slow) and bridges. Reusing an existing road is cheap, so routes merge into trunk roads. Roads are smoothed and stop at the edge of each town plan.
    - **Keeping roads on land:** the grid route only knows 39 km cells, so at full detail it can cut across bays, lagoons and lakes. Near water (low land, coasts and lakeshores) each road is resampled every 600 m, and every 150 m around wet samples; short wet stretches are pulled onto the nearest shore and eased, and any remaining open-water crossing longer than 750 m (counting islet-hopping across an archipelago as one crossing) breaks the road at the shore. Short crossings stay as bridges or causeways, and rivers are always bridged. Roads that meet a town in the water start at the shore instead.
+9. **Names & labels** (`src/names/`, `features.ts`):
+   - **Cultures** (`cultures.ts`, `culture-map.ts`): eleven naming cultures (Anglo, Norse, Latin, Celtic, Elvish, Desert, Slavic, Dwarven, Southern, Steppe, Jungle), each with syllable sets, compound roots and suffixes, prefixes and its own terms for features (Fjord, Wald, Bahr…). Culture hearths at least 1,200 km apart are chosen by climate suitability and spread by distance, with mountains and seas acting as borders, so names change from region to region.
+   - **Name bank** (`names.ts`): deterministic per world seed and key, with duplicate avoidance for world features.
+   - **Water bodies:** oceans (far from land), seas, inland seas and lakes (enclosed water by area), and gulfs, bays and bights found by casting rays from the coast to measure how enclosed the water is. Straits and channels are narrow passages with open water on both ends; they get a line label along the passage.
+   - **Land:** continents, islands and isle groups; mountain ranges (with their highest peak and height), hills, forests, deserts, marshes and plains from smoothed biome regions; realms around capital cities.
+   - **Lines:** rivers are named per system (the main stem keeps one name to the sea), major roads ("the X Road", "the King's Road"). Elongated regions get curved line labels along their main axis.
 
 ## Rendering (`src/render/`, `src/worker/`, `src/world/`)
 
@@ -93,6 +100,7 @@ The world is simulated on an equirectangular lon/lat grid that wraps east–west
   - Symbols are deterministic per seed and zoom. Mountains and hills are drawn up to zoom 11; trees and marsh tufts continue to the deepest tiles, growing a little and thinning out so forests still read as forests. Symbols keep off rivers and the fine shoreline.
   - **Rivers** are drawn into the tiles: a single ink-blue line while thin, then a pale channel between inked banks (with a ripple line inside broad rivers). They never get thinner than a zoom-dependent minimum, grow into their true width at close zoom, show only the largest rivers on the globe, stop at lakes, and open into the sea without an inked coast across the mouth.
   - **Contours** from zoom ~9: an interval that halves with each zoom (200 m at zoom 9 down to 2.5 m), every fifth line darker, fading out where lines crowd together. From zoom ~11.5 steep ground gets a rock stipple.
+- **Lettering** (`components/label-style.ts`) uses IM Fell English (roman, italic and small caps, SIL OFL, bundled in `public/fonts/` and rendered locally through MapLibre `font-faces`, so no glyph server is needed). Labels appear by rank and zoom: realms and oceans on the globe, seas, ranges and forests regionally, lakes and smaller rivers closer in; water names are italic blue, regions are spaced capitals, settlements are small caps.
 - On the analytic layers rivers are a GeoJSON line layer whose width scales with discharge and zoom, growing into their true width (from ~12 m upstream to a few hundred metres on big rivers) at high zoom. The tile URL carries a river flag (`world://gen/layer/r|-/z/x/y`). Wind streamlines are a GeoJSON line layer drawn with a transparent-to-white gradient.
 
 ## Villages and town plans (`src/towns/`)
@@ -133,6 +141,12 @@ Everything below world scale is generated on demand in a dedicated web worker (`
   - **Mining:** adits up the slope with cart tracks, spoil heaps, a smelter and huts.
   - **Monastery:** a walled compound with a church, a cloister around a garth, ranges, vegetable beds and an orchard, surrounded by fields.
   - **Keep:** a ringwork on the hilltop with a ditch, a wall with towers and a gate, a keep tower and hall, and a hamlet along the approach.
+- **Names** (`naming.ts`): every settlement and village has a name in its culture (keeps, abbeys, mines and camps get fitting forms such as "Castle X" or "X Priory").
+  - **Quarters** grow over the ward adjacency graph from spread-out seeds and are named after what they hold (Old Town, Castle Quarter, Harbour Quarter, Temple Quarter, Market Quarter, the Heights, gate quarters, craft quarters); suburbs are named after their gate.
+  - **Districts:** the market, temple (dedicated to a named deity), citadel, garrison, harbour, parks and graveyards are labelled.
+  - **Garrison and graveyard:** walled cities and towns over 2,500 people get a garrison ward with barracks and a drill yard by the citadel or a gate; some cities turn a park or wall ward into a graveyard with a hedge and rows of graves.
+  - **Streets:** main streets are named (High Street, gate streets) and roads leaving town are named by direction.
+  - **Notable buildings** get a role and a label: inns and taverns (with generated signboard names), moot hall, guildhall, library, smithy, bakery, apothecary, pawnshop, tailor, butcher, stables, bathhouse, chandlery and fishmonger; villages get an inn, smithy, chapel and churchyard, mill, sawmill or smelter. Labelled buildings are tinted on the plan.
 - **Styling** (`components/map-style.ts`): plans are vector layers drawn in true metres (each feature carries its pixels-per-metre at zoom 20). Roads and streets share one width expression, so world roads join the plan roads seamlessly. The map zooms to 20 (~0.15 m/pixel).
 
 ## Building interiors (`src/interiors/`)
@@ -141,7 +155,7 @@ Every building on a town or village plan has a deterministic interior in the man
 
 - **Tagging:** plan buildings carry an id, their settlement, tier and context (ward kind in towns: ward, rich, harbour, suburb, farm; or the village kind) and, where known, the direction of their street front (the lot edge on the block's street, the nearest road, or the village lane).
 - **Grid:** the footprint is laid on a 1.5 m (5 ft) grid turned so the street front is at the bottom. Convex footprints (nearly all lots) keep their true outline: the plan is clipped to it and its edges are the outer walls, so slanted and triangular lots keep their shape. Furniture and stairs stay on whole cells.
-- **Type:** cottage, farmhouse, town house, mansion, warehouse, temple, keep, hall, storehouse, mill, monastic range, cabin or miner's hut, from the building's use and context. The type sets storeys (with storey heights), the chance of a basement, and the roof (gabled on rectangles, hipped otherwise, flat with battlements on keeps).
+- **Type:** cottage, farmhouse, town house, mansion, warehouse, temple, keep, hall, storehouse, mill, monastic range, cabin or miner's hut, from the building's use and context. Labelled buildings use their role instead: inns and taverns (taproom, kitchen, guest rooms), civic halls, libraries, barracks, stables and bathhouses get their own programmes, and shops put the matching trade room on the street. The view's title shows the building's name. The type sets storeys (with storey heights), the chance of a basement, and the roof (gabled on rectangles, hipped otherwise, flat with battlements on keeps).
 - **Rooms:** a binary partition of the footprint shared by every storey, so walls line up floor to floor. Each floor's programme (for a town house: hall, a shop, workshop, smithy, bakery or taproom on the street, kitchen at the back, pantry, parlour; bedrooms and a landing above) is assigned to the partition by preference (the stair, front, back, large, small). Temples get a nave, sanctuary and vestry, and keeps a guardroom, great hall, lord's chamber and dungeon cells. Cellars are one vault.
 - **Stairs:** one stairwell through every floor (a ladder to cottage lofts, a spiral stair in keeps), placed under the ridge when there is an attic. The attic covers the cells with at least 1.7 m of headroom under the roof.
 - **Doors and windows:** a spanning tree of doors from the entrance (or stairwell) plus the odd extra door, a front entrance on the street side and sometimes a back door; windows along outside walls with piers between them (front and back only in terraced town houses, gable ends in attics, arrow slits in keeps, none underground).
@@ -158,16 +172,18 @@ Views (`render.ts`, `building.ts`, `components/DwellingView.vue`):
 index.html
 src/
   main.ts, App.vue, store.ts, style.css
-  components/   MapView.vue, map-style.ts (settlement layer styles), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
+  components/   MapView.vue, map-style.ts (settlement layer styles), label-style.ts (lettering layers), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
   gen/          world.ts (pipeline), tectonics.ts, climate.ts, ocean.ts, koppen.ts, advect.ts, streamlines.ts,
-                hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), detail.ts (sub-grid terrain sampler),
+                hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), features.ts (feature detection and naming), detail.ts (sub-grid terrain sampler),
                 biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
+  names/        cultures.ts (naming cultures), names.ts (name bank), culture-map.ts
   render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
   interiors/    dwelling.ts (interior generator), render.ts (plan and exterior drawing), building.ts (map hover preview, cache)
   towns/        manager.ts (villages, tracks, plan cache), city.ts, village.ts, kit.ts (village building blocks),
-                harbour.ts (piers, boats), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), geom.ts
+                harbour.ts (piers, boats), naming.ts (quarters, districts, streets, notable buildings), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), geom.ts
   worker/       world.worker.ts, towns.worker.ts, protocol.ts
   world/        client.ts (worker pool + map protocol), probe.ts
+public/fonts/   IM Fell English (SIL Open Font License, see OFL.txt)
 scripts/        preview.ts (headless generation → PNG), png.ts
 ```
 
