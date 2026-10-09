@@ -276,7 +276,7 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
     return s;
   });
   const cells = sites.map((s) => s.c);
-  const roads = buildRoads(g, f, seed, isRiver, settlements, cells);
+  const roads = buildRoads(g, f, seed, isRiver, settlements, cells, sampler);
   return { settlements, roads };
 }
 
@@ -322,7 +322,7 @@ function neighbourhoodEdges(sts: Settlement[], idx: number[], maxKm: number): [n
 }
 
 function buildRoads(
-  g: Grid, f: SettlementFields, seed: number, isRiver: Uint8Array, sts: Settlement[], cells: number[],
+  g: Grid, f: SettlementFields, seed: number, isRiver: Uint8Array, sts: Settlement[], cells: number[], sampler: DetailSampler,
 ): RoadCollection {
   const { W, N } = g;
   const cities = sts.map((s, k) => (s.tier === 'city' ? k : -1)).filter((k) => k >= 0);
@@ -353,6 +353,21 @@ function buildRoads(
   const seen = new Int32Array(N), closed = new Int32Array(N);
   const onRoad = new Uint8Array(N);
   const heap = new MinHeap(4096);
+  // Low land next to the sea or a lake (or water itself): only there can the detailed shoreline
+  // differ from the grid, so only there are roads checked against it.
+  const shore = new Uint8Array(N);
+  for (let j = 0, c = 0; j < g.H; j++) {
+    for (let i = 0; i < W; i++, c++) {
+      const wetCell = (n: number) => f.height[n] <= 0 || f.lakeDepth[n] > 0;
+      if (wetCell(c)) { shore[c] = f.lakeDepth[c] > 0 ? 2 : 1; continue; }
+      // Low land can dip below sea level at full detail (lagoons, marshy inlets).
+      if (f.height[c] < 220) shore[c] = 1;
+      for (let k = 0; k < 8; k++) {
+        const n = neighbor(g, i, j, k);
+        if (n >= 0 && wetCell(n)) shore[c] = Math.max(shore[c], f.lakeDepth[n] > 0 ? 2 : 1);
+      }
+    }
+  }
   const features: RoadFeature[] = [];
   let search = 0;
 
@@ -416,13 +431,182 @@ function buildRoads(
       while (pts[k][0] - pts[k - 1][0] > 180) pts[k][0] -= 360;
       while (pts[k][0] - pts[k - 1][0] < -180) pts[k][0] += 360;
     }
-    const line = trimEnds(chaikin(pts, S.roadSmoothing), sa.radiusM / 1000, sb.radiusM / 1000);
-    if (!line) continue;
-    features.push({
-      type: 'Feature',
-      geometry: { type: 'LineString', coordinates: line },
-      properties: { cls: job.cls, a: sa.id, b: sb.id, ppm20: pxPerMeterZ20(line[line.length >> 1][1]) },
-    });
+    // The grid route only knows grid cells; at full detail it can cut across bays and lakes.
+    // Fit the whole line (it starts and ends on land, at the town centres), then trim the ends
+    // back to the town edges, so the road also reaches each town over land.
+    const line0 = chaikin(pts, S.roadSmoothing);
+    const first = line0[0], last = line0[line0.length - 1];
+    for (const pc of fitRoadToLand(line0, sampler, g, shore, sa.radiusM / 1000, sb.radiusM / 1000)) {
+      // Pieces keep the original end points (by reference) where they reach a town.
+      const atA = pc[0] === first, atB = pc[pc.length - 1] === last;
+      let t = trimEnds(pc, atA ? sa.radiusM / 1000 : 0, atB ? sb.radiusM / 1000 : 0);
+      if (!t) continue;
+      // Where the town edge falls in the water, start the road at the shore instead (the town
+      // plan carries it on from there).
+      const dry = (p: number[]) => !sampler.isWater(p[0], p[1], sampler.height(p[0], p[1], 0.05, false));
+      if (atA) {
+        let k = 0;
+        while (k < t.length - 2 && !dry(t[k])) k++;
+        t = t.slice(k);
+      }
+      if (atB) {
+        let k = t.length - 1;
+        while (k > 1 && !dry(t[k])) k--;
+        t = t.slice(0, k + 1);
+      }
+      if (t.length < 2) continue;
+      features.push({
+        type: 'Feature',
+        geometry: { type: 'LineString', coordinates: t },
+        properties: { cls: job.cls, a: atA ? sa.id : '', b: atB ? sb.id : '', ppm20: pxPerMeterZ20(t[t.length >> 1][1]) },
+      });
+    }
   }
   return { type: 'FeatureCollection', features };
+}
+
+/**
+ * Keeps a road on land at full terrain detail: the line is resampled about every 200 m, points
+ * that fall in the sea or a lake move to the nearest shore (a little inland) and the line is
+ * eased again. Short remaining water crossings become bridges or causeways; a crossing longer
+ * than S.roadMaxBridgeM breaks the road there (the two halves end at the shore), so roads never
+ * stride across open water.
+ */
+export function fitRoadToLand(
+  line: number[][], sampler: DetailSampler, g: Grid, shore: Uint8Array, startKm = 0, endKm = 0,
+): number[][][] {
+  const { W, H } = g;
+  const stepKm = 0.15;
+  const cellOf = (lon: number, lat: number) =>
+    Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H))) * W + ((Math.floor(((lon + 180) / 360) * W) % W) + W) % W;
+  // Detail sampling only matters near coasts and lakes; elsewhere the answer is always land.
+  const wet = (lon: number, lat: number) => {
+    const c = shore[cellOf(lon, lat)];
+    if (c === 0) return false;
+    // The smooth grid surface settles most points: sub-grid relief never reaches ±250 m.
+    const base = sampler.height(lon, lat, Infinity, false);
+    if (c === 1 && base > 250) return false;
+    if (c === 1 && base < -250) return true;
+    return sampler.isWater(lon, lat, sampler.height(lon, lat, 0.3, false));
+  };
+  const kmLat = 1 / 111.2;
+
+  // Resample the stretches that come near water every 500 m, then every 125 m around wet samples.
+  const coarse: number[][] = [line[0]];
+  for (let k = 1; k < line.length; k++) {
+    const a = line[k - 1], b = line[k];
+    if (!shore[cellOf(a[0], a[1])] && !shore[cellOf(b[0], b[1])] && !shore[cellOf((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)]) {
+      coarse.push(b);
+      continue;
+    }
+    const cl = Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180);
+    const d = Math.hypot((b[0] - a[0]) * cl, b[1] - a[1]) * 111.2;
+    const n = Math.max(1, Math.ceil(d / (4 * stepKm)));
+    for (let t = 1; t <= n; t++) coarse.push(t === n ? b : [a[0] + ((b[0] - a[0]) * t) / n, a[1] + ((b[1] - a[1]) * t) / n]);
+  }
+  const cw = coarse.map((p) => wet(p[0], p[1]));
+  const pts: number[][] = [coarse[0]];
+  // Known wetness of each point (the coarse samples), so the first pass need not test them again.
+  const known: (boolean | undefined)[] = [cw[0]];
+  for (let k = 1; k < coarse.length; k++) {
+    const a = coarse[k - 1], b = coarse[k];
+    if (cw[k - 1] || cw[k] || (k + 1 < coarse.length && cw[k + 1]) || (k > 1 && cw[k - 2])) {
+      for (let t = 1; t <= 4; t++) {
+        pts.push(t === 4 ? b : [a[0] + ((b[0] - a[0]) * t) / 4, a[1] + ((b[1] - a[1]) * t) / 4]);
+        known.push(t === 4 ? cw[k] : undefined);
+      }
+    } else {
+      pts.push(b);
+      known.push(cw[k]);
+    }
+  }
+
+  // Within the towns at either end the town plan routes the streets; only the open country counts.
+  const s0 = line[0], s1 = line[line.length - 1];
+  const kmFrom = (p: number[], q: number[]) => Math.hypot((p[0] - q[0]) * Math.cos((p[1] * Math.PI) / 180), p[1] - q[1]) * 111.2;
+  const inTown = pts.map((p) => kmFrom(p, s0) < startKm || kmFrom(p, s1) < endKm);
+  const wetAt = (k: number) => !inTown[k] && wet(pts[k][0], pts[k][1]);
+
+  // Nudge wet points to the nearest land within maxKm, then 60 m further inland.
+  const nudge = (p: number[], maxKm: number): boolean => {
+    const kmLon = kmLat / Math.max(0.05, Math.cos((p[1] * Math.PI) / 180));
+    for (let r = 0.05; r <= maxKm; r *= 1.4) {
+      for (let q = 0; q < 12; q++) {
+        const a = (q / 12) * 2 * Math.PI;
+        const x = p[0] + Math.cos(a) * r * kmLon, y = p[1] + Math.sin(a) * r * kmLat;
+        if (wet(x, y)) continue;
+        const x2 = p[0] + Math.cos(a) * (r + 0.06) * kmLon, y2 = p[1] + Math.sin(a) * (r + 0.06) * kmLat;
+        const inland = !wet(x2, y2);
+        p[0] = inland ? x2 : x;
+        p[1] = inland ? y2 : y;
+        return true;
+      }
+    }
+    return false;
+  };
+  // Only short wet runs (a bay or a cut corner) are worth pulling ashore; a long one is open
+  // water, where the road will break instead.
+  for (let pass = 0; pass < 2; pass++) {
+    const isWet = pts.map((_, k) => k > 0 && k < pts.length - 1 && !inTown[k] && (pass === 0 && known[k] !== undefined ? known[k]! : wetAt(k)));
+    let moved = false;
+    for (let k = 1; k < pts.length - 1;) {
+      if (!isWet[k]) {
+        k++;
+        continue;
+      }
+      let e = k;
+      while (e + 1 < pts.length - 1 && isWet[e + 1]) e++;
+      const runKm = (e - k + 1) * stepKm;
+      if (runKm <= 4) {
+        for (let q = k; q <= e; q++) if (nudge(pts[q], Math.min(3, 0.6 + runKm))) moved = true;
+      }
+      k = e + 1;
+    }
+    if (!moved) break;
+    // Ease the nudged line (endpoints fixed); the second pass catches anything eased back out.
+    for (let k = 1; k < pts.length - 1; k++) {
+      pts[k] = [(pts[k - 1][0] + 2 * pts[k][0] + pts[k + 1][0]) / 4, (pts[k - 1][1] + 2 * pts[k][1] + pts[k + 1][1]) / 4];
+    }
+  }
+
+  // Break the road at any long water crossing that is left.
+  const finalWet = pts.map((_, k) => k > 0 && k < pts.length - 1 && wetAt(k));
+  const pieces: number[][][] = [];
+  const segKm = (k: number) => {
+    const a = pts[k - 1], b = pts[k];
+    return Math.hypot((b[0] - a[0]) * Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180), b[1] - a[1]) * 111.2;
+  };
+  // A crossing spans from the first wet point until 300 m of dry land, so hopping across an
+  // archipelago by its islets still counts as one long crossing.
+  const ISLET_KM = 0.3;
+  let cur: number[][] = [pts[0]];
+  let span = 0, dryKm = 0, runStart = -1;
+  for (let k = 1; k < pts.length; k++) {
+    const d = segKm(k);
+    if (k < pts.length - 1 && finalWet[k]) {
+      if (span === 0) runStart = cur.length - 1;
+      span += d;
+      dryKm = 0;
+    } else if (span > 0) {
+      dryKm += d;
+      span += d;
+      if (dryKm >= ISLET_KM) span = dryKm = 0;
+    }
+    cur.push(pts[k]);
+    if ((span - dryKm) * 1000 > S.roadMaxBridgeM) {
+      // Close the piece at the shore where this crossing began; resume once back on solid land.
+      const head = cur.slice(0, runStart + 1);
+      if (head.length >= 2) pieces.push(head);
+      let acc = 0;
+      while (k + 1 < pts.length && acc < ISLET_KM) {
+        k++;
+        acc = finalWet[k] ? 0 : acc + segKm(k);
+      }
+      cur = [pts[k]];
+      span = dryKm = 0;
+    }
+  }
+  if (cur.length >= 2) pieces.push(cur);
+  // Drop stubs too short to matter.
+  return pieces.filter((pc) => pc.length >= 3);
 }

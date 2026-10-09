@@ -9,6 +9,16 @@ export function area(p: Poly): number {
   return s / 2;
 }
 
+/** Isoperimetric ratio 4πA/P²: 1 for a circle, ~0.79 for a square, small for slivers. */
+export function compactness(p: Poly): number {
+  let per = 0;
+  for (let i = 0; i < p.length; i++) {
+    const a = p[i], b = p[(i + 1) % p.length];
+    per += Math.hypot(b[0] - a[0], b[1] - a[1]);
+  }
+  return per > 0 ? (4 * Math.PI * Math.abs(area(p))) / (per * per) : 0;
+}
+
 export function centroid(p: Poly): Pt {
   let cx = 0, cy = 0, a = 0;
   for (let i = 0, j = p.length - 1; i < p.length; j = i++) {

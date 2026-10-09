@@ -241,6 +241,8 @@ export const SETTLEMENTS = {
   roadReuseFactor: 0.45,
   /** Extra cost (km-equivalent) for bridging a river. */
   roadBridgeKm: 12,
+  /** Longest open-water crossing (sea or lake, m) a road may bridge at full detail; longer ones break the road. */
+  roadMaxBridgeM: 750,
   roadJitter: 0.5,
   roadSmoothing: 2,
   /** Regional villages: candidate spacing and the longest track to a road, town or village (km). */

@@ -74,6 +74,7 @@ The world is simulated on an equirectangular lon/lat grid that wraps east–west
    - **Cities and towns** are founded greedily on the best sites, at least 380 km apart for cities and 130 km apart for any two towns or cities. Population grows with site quality; cities and larger towns are walled.
    - **Placement:** river towns sit on the river line, offset to one bank so the river runs through the town. Coastal sites are nudged onto land at full shoreline detail (`detail.ts`, which samples the same sub-grid terrain as the tiles).
    - **Roads** link neighbouring settlements (a relative-neighbourhood graph: major roads between cities, minor roads between towns). Each road is routed by A* over the grid, with costs for slope, biome (wetlands, rainforest and ice are slow) and bridges. Reusing an existing road is cheap, so routes merge into trunk roads. Roads are smoothed and stop at the edge of each town plan.
+   - **Keeping roads on land:** the grid route only knows 39 km cells, so at full detail it can cut across bays, lagoons and lakes. Near water (low land, coasts and lakeshores) each road is resampled every 600 m, and every 150 m around wet samples; short wet stretches are pulled onto the nearest shore and eased, and any remaining open-water crossing longer than 750 m (counting islet-hopping across an archipelago as one crossing) breaks the road at the shore. Short crossings stay as bridges or causeways, and rivers are always bridged. Roads that meet a town in the water start at the shore instead.
 
 ## Rendering (`src/render/`, `src/worker/`, `src/world/`)
 
@@ -110,16 +111,18 @@ Everything below world scale is generated on demand in a dedicated web worker (`
 - **City and town plans** (from zoom 11.5, `city.ts`) follow [Watabou's Medieval Fantasy City Generator](https://watabou.github.io/city-generator/):
   - Wards are Voronoi patches on a sunflower spiral (relaxed once), sized from population.
   - The wall follows the outline of the inner patches, with towers. Gates face the incoming roads.
-  - Main streets run from each gate to the central plaza.
+  - Main streets run from each gate to the central plaza. Roads out to the country bridge rivers but never cross more than 150 m of sea or lake; they go round a bay instead, or are left unbuilt.
   - Special wards: a temple beside the plaza, a citadel with its own wall and keep on the wall's edge, and parks.
-  - Blocks are split by alleys, then into terraced buildings by recursive lot cutting; inner lots become courtyards.
+  - Wards are paved (cobbles inside the walls, beaten earth in the suburbs), so the gaps between blocks read as streets and alleys.
+  - Wards are cut into small blocks (about two lots deep) parted by 3.5 m alleys, then into terraced buildings by recursive lot cutting. Every house reaches the block edge (a street or alley); the backs of the blocks are yards (kept 3 m back from the water, and left out on harbour quays and beside piers, where only warehouses stand, clear of the pier ends). Slivers, scraps and triangles too thin to build on are left as yard.
+  - Suburbs are small blocks with lanes between them: houses front the lanes, gardens fill the backs, and blocks away from the road stay as meadow.
   - Outside the walls are suburbs along the roads, then fields with furrows, orchards and meadows.
   - Sea, lakes and rivers (at their true width) carve the plan; streets crossing a river become bridges.
   - **Terrain:** the walled core grows onto the gentlest nearby ground. Street routing penalises steep grades. On slopes, blocks are cut into terraces along the contours, and ground too steep to build on is left wooded. The citadel and temple take the high ground.
   - **Harbours** (`harbour.ts`): along the waterfront, piers (some with T-heads) reach out to open water, with boats moored alongside. Shore wards become warehouses, cities get a lighthouse and ships at anchor, and river towns get short jetties.
 - **Fitting plans to the ground** (`ground.ts`): every plan gets a usable-ground test built from its local terrain grid (distance to water by chamfer transform, slope, and the exact shoreline near the water).
   - **Barrier seeds:** field Voronoi diagrams get extra seeds just past the edge of usable ground (shores, river banks, steep crags) whose cells are discarded, so the neighbouring fields end along the shore in short irregular steps, as on a hand-drawn map.
-  - **Fitting:** fields, meadows, parks, plazas and the citadel are densified and their offending vertices pulled in toward the centre until they stand on usable ground (at least 4 m from water for fields), with inward-only smoothing and a slight hand-drawn wobble; furrows are clipped to the fitted outline. Buildings and lots are kept only if every corner is on dry, workable ground.
+  - **Fitting:** fields, meadows, yards, paving, parks, plazas and the citadel are densified, and each vertex is pulled in to the last usable point on its ray from the centre (marched outward in steps that stride by the distance to water), so inlets and ponds reaching into a polygon are cut out too; vertices end on usable ground (at least 4 m from water for fields), with inward-only smoothing and a slight hand-drawn wobble; furrows are clipped to the fitted outline. Buildings and lots are kept only if every corner is on dry, workable ground.
   - **Terraces:** on gentle slopes (6–14% in villages, up to 20% around towns) fields are cut into strips along the contour, with furrows following it.
   - **Hedgerows:** some fields and meadows get a dotted hedge outline.
   - **Walls** are walked in short pieces, so they stop at the shore with a tower instead of crossing a bay between two corners.

@@ -130,7 +130,7 @@ export class Ground {
   fit(poly: Poly, rule: GroundRule, rnd: () => number, wobble = 0, minKeep = 0.4): Poly | null {
     const c = centroid(poly);
     if (!this.ok(c, rule)) return null;
-    const step = Math.max(5, this.terrain.cs * 0.5);
+    const step = Math.min(5, Math.max(3, this.terrain.cs * 0.3));
     const pts: Pt[] = [];
     for (let k = 0; k < poly.length; k++) {
       const a = poly[k], b = poly[(k + 1) % poly.length];
@@ -139,11 +139,32 @@ export class Ground {
     }
     const at = (v: Pt, s: number): Pt => [c[0] + (v[0] - c[0]) * s, c[1] + (v[1] - c[1]) * s];
     let moved = false;
+    // March out from the centre along each vertex's ray and stop before the first unusable ground,
+    // so inlets, ponds and crags that reach into the polygon are cut out, not just its corners.
+    // Steps stride by the distance to water (sphere tracing), and stay short where slope matters.
+    const slopeStep = rule.maxSlope < 1 ? 4.5 : Infinity;
+    // Far from any water, only slope can fail: checking the outline is enough.
+    const maxL = pts.reduce((m, v) => Math.max(m, Math.hypot(v[0] - c[0], v[1] - c[1])), 0);
+    const nearWater = this.waterDist(c) <= maxL + rule.marginM + this.terrain.cs;
     const scale = pts.map((v) => {
-      if (this.ok(v, rule)) return 1;
+      if (!nearWater) {
+        if (this.ok(v, rule)) return 1;
+        moved = true;
+        for (let s = 0.9; s >= 0.12; s -= 0.08) if (this.ok(at(v, s), rule)) return s * 0.97;
+        return 0.1;
+      }
+      const L = Math.hypot(v[0] - c[0], v[1] - c[1]);
+      if (L < 1e-6) return 1;
+      let t = 0, last = 0;
+      while (t < L) {
+        const p = at(v, t / L);
+        if (!this.ok(p, rule)) break;
+        last = t;
+        t += Math.max(1, Math.min(slopeStep, this.waterDist(p) - rule.marginM - 0.5, 6));
+      }
+      if (t >= L && this.ok(v, rule)) return 1;
       moved = true;
-      for (let s = 0.9; s >= 0.12; s -= 0.08) if (this.ok(at(v, s), rule)) return s * 0.97;
-      return 0.1;
+      return Math.max(0.05, (last / L) * 0.97);
     });
     const N = pts.length;
     if (moved) {

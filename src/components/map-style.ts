@@ -47,6 +47,23 @@ export const SETTLEMENT_SOURCES = { roads: EMPTY, sites: EMPTY, regional: EMPTY,
 /** Plan ground cover, drawn under the rivers. */
 export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
   {
+    // Streets and alleys: cobbles inside the walls, beaten earth in the suburbs.
+    id: 'plan-paving', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('paving'),
+    paint: {
+      'fill-color': e(['match', ['get', 'surface'], 'dirt', '#d9c9a2', '#ddd3bb']),
+      'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
+    },
+  },
+  {
+    // Block interiors behind the houses: yards and gardens.
+    id: 'plan-yards', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('yard'),
+    paint: {
+      'fill-color': e(['match', ['get', 'surface'], 'garden', '#cfd3a2', '#d3cba6']),
+      'fill-outline-color': '#b9ab86',
+      'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
+    },
+  },
+  {
     id: 'plan-fields', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('field'),
     paint: {
       'fill-color': e(['interpolate', ['linear'], ['get', 'tone'], 0, '#e2d8aa', 1, '#d0d49d']),

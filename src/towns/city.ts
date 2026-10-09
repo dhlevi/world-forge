@@ -2,10 +2,11 @@ import { Delaunay } from 'd3-delaunay';
 import { mulberry32 } from '../gen/rng';
 import { chaikin } from '../gen/rivers';
 import {
-  type Poly, type Pt, area, ccw, centroid, distToLine, distToSeg, inset, pointInPoly, rect, rectIn, strips, subdivide,
+  type Poly, type Pt, area, ccw, centroid, compactness, distToLine, distToSeg, inset, pointInPoly, rect, rectIn, strips, subdivide,
 } from './geom';
 import { addDocks } from './harbour';
 import type { PlanInput } from './plan';
+import { RIVER } from './terrain';
 import { BUILD_GROUND, contourStrips, plantField } from './ground';
 
 const GOLDEN = Math.PI * (3 - Math.sqrt(5));
@@ -145,12 +146,30 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
       }
     }
   });
-  const edgeWater = new Map<string, boolean>();
-  const isWaterEdge = (u: number, v: number, ek: string) => {
+  const edgeWater = new Map<string, number>();
+  /**
+   * Cost multiplier for the water along an edge: rivers are bridged (×8), but sea and lake
+   * water is open water: dear, and impassable beyond a 150 m causeway.
+   */
+  const waterFactor = (u: number, v: number, ek: string) => {
     let w = edgeWater.get(ek);
-    if (w === undefined) edgeWater.set(ek, (w = water(mid(P[u], P[v]))));
+    if (w === undefined) {
+      const a = P[u], b = P[v], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const n = Math.max(2, Math.ceil(L / 8));
+      let river = 0, sea = 0;
+      for (let k = 0; k < n; k++) {
+        const p: Pt = [a[0] + ((b[0] - a[0]) * (k + 0.5)) / n, a[1] + ((b[1] - a[1]) * (k + 0.5)) / n];
+        if (!water(p)) continue;
+        if (terrain.typeAt(p) === RIVER) river++;
+        else sea++;
+      }
+      const seaM = (sea / n) * L;
+      w = seaM > 150 ? Infinity : 1 + (river > 0 ? 7 : 0) + 60 * (sea / n);
+      edgeWater.set(ek, w);
+    }
     return w;
   };
+  const isWaterEdge = (u: number, v: number, ek: string) => waterFactor(u, v, ek) > 1;
   const wallNode = new Set(wall.map((p) => nodeId.get(key(p))!));
   const dijkstra = (src: number, isGoal: (n: number) => boolean, cost: (u: number, v: number, ek: string) => number): number[] | null => {
     const dist = new Float64Array(P.length).fill(Infinity), prev = new Int32Array(P.length).fill(-1);
@@ -223,7 +242,7 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
     const cells = edgeCells.get(ek)!;
     if (cells.length > 1 && cells.every((i) => patches[i].inside)) return Infinity;
     if (wallNode.has(u) && wallNode.has(v)) return len(u, v) * grade(u, v) * 4;
-    return len(u, v) * grade(u, v) * (isWaterEdge(u, v, ek) ? 8 : 1);
+    return len(u, v) * grade(u, v) * waterFactor(u, v, ek);
   };
 
   for (const g of gates) {
@@ -245,6 +264,8 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
       }
     }
     const road = target >= 0 ? dijkstra(gn, (n) => n === target, outsideCost) : null;
+    // No way over land (or a short crossing) to this exit: leave the road unbuilt.
+    if (target >= 0 && !road) continue;
     const line = road ? road.map((n) => P[n]) : [wall[g.k]];
     // Skip the last graph vertex if it lies beyond the exit so the road doesn't double back.
     if (line.length > 1 && Math.hypot(...line[line.length - 1]) > Math.hypot(...ex)) line.pop();
@@ -311,9 +332,32 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
     }
   };
 
+  /** Paved ground under a ward or suburb, clipped to dry land: the gaps between its blocks read as streets and alleys. */
+  const pave = (poly: Poly, surface: 'cobbles' | 'dirt') => {
+    const q = ground.fit(poly, { maxSlope: 9, marginM: 0.5 }, rnd, 0, 0.2);
+    if (q) out.poly('paving', q, { surface });
+  };
+  /** A lot worth building on: not a sliver, not a scrap, not on water or a crag. */
+  // Piers start at the shore; keep buildings and yards off their landward ends.
+  const nearDock = (poly: Poly, r: number) =>
+    docks.some((dk) => pointInPoly(poly, dk.p[0], dk.p[1]) || distToLine([...poly, poly[0]], dk.p[0], dk.p[1]) < r);
+  const goodLot = (lot: Poly, minArea: number) =>
+    area(lot) >= minArea * 0.45 && compactness(lot) >= (lot.length === 3 ? 0.5 : 0.42) && ground.allOk(lot, BUILD_GROUND) && !nearDock(lot, 8);
+  /** Yard behind the houses, fitted to dry ground clear of the shore (none on a quay or by a pier). */
+  const yard = (block: Poly, surface?: string) => {
+    if (nearDock(block, 6)) return;
+    const q = ground.fit(block, { maxSlope: 9, marginM: 3 }, rnd, 0.6, 0.25);
+    if (q) out.poly('yard', q, surface ? { surface } : {});
+  };
+  const touchesEdge = (lot: Poly, block: Poly) => lot.some((v, k) => {
+    const m = mid(v, lot[(k + 1) % lot.length]);
+    return block.some((b, j) => distToSeg(m[0], m[1], b, block[(j + 1) % block.length]) < 0.3);
+  });
+
   for (const i of inner) {
     const pt = patches[i];
     if (!pt.inside) continue;
+    pave(pt.poly, 'cobbles');
     switch (pt.kind) {
       case 'plaza': {
         const q0 = inset(pt.poly, offsets(i, wallOff, 3, 3));
@@ -364,18 +408,19 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
         // Blocks separated by alleys (terraces along the contours on slopes), then lots; lots off
         // the block edge become courtyards. Harbour wards are warehouses.
         const g = terrain.grad(pt.c), sl = Math.hypot(...g);
+        // Blocks small enough that every house fronts a street or alley (about two lots deep),
+        // always parted by alleys at the first cuts; every lot must reach the block edge.
         const blocks = sl > 0.08
-          ? strips(q, [g[0] / sl, g[1] / sl], 24 + 10 * rnd(), 3)
-          : subdivide(q, minArea * (rich || harbour ? 6 : 14), rnd, 3, 1);
+          ? strips(q, [g[0] / sl, g[1] / sl], 22 + 8 * rnd(), 3.5)
+          : subdivide(q, minArea * (rich || harbour ? 5 : 7), rnd, 3.5, 1);
         for (const block of blocks) {
+          if (area(block) < minArea * 0.6) continue;
+          // Harbour wards are open quays: no yards, just cobbles between the warehouses.
+          if (!harbour) yard(block);
           for (const lot of subdivide(block, minArea, rnd)) {
-            const onStreet = lot.some((v, k) => {
-              const m = mid(v, lot[(k + 1) % lot.length]);
-              return block.some((b, j) => distToSeg(m[0], m[1], b, block[(j + 1) % block.length]) < 0.3);
-            });
-            if (!onStreet && rnd() > 0.15) continue;
-            if (rnd() < (rich ? 0.2 : 0.03)) continue;
-            if (!ground.allOk(lot, BUILD_GROUND)) continue;
+            if (!touchesEdge(lot, block)) continue;
+            if (rnd() < (rich ? 0.2 : 0.04)) continue;
+            if (!goodLot(lot, minArea)) continue;
             out.poly('building', lot, { ctx: pt.kind, front: streetFront(lot, block) });
           }
         }
@@ -392,10 +437,19 @@ export function buildCity({ s, exits, water, terrain, ground, out }: PlanInput):
     if (dRoad < Math.sqrt(area(pt.poly) / Math.PI) + 15 && d < Rin * 1.9) {
       const q = inset(pt.poly, offsets(i, 3, 4, 1.5));
       if (!q) return;
-      for (const lot of subdivide(q, 140, rnd)) {
-        const lc = centroid(lot);
-        if (Math.min(...roadLines.map((l) => distToLine(l, lc[0], lc[1]))) > 32 || rnd() > 0.85 || !ground.allOk(lot, BUILD_GROUND)) continue;
-        out.poly('building', lot, { ctx: 'suburb', front: roadFront(lc, roadLines) });
+      pave(pt.poly, 'dirt');
+      // Small blocks with lanes between them; houses front the lanes, gardens fill the backs.
+      for (const block of subdivide(q, 900 + 700 * rnd(), rnd, 3, 1)) {
+        const bc = centroid(block);
+        if (Math.min(...roadLines.map((l) => distToLine(l, bc[0], bc[1]))) > 45) {
+          plantField(block, 'green', ground, out, rnd, 0.4);
+          continue;
+        }
+        yard(block, 'garden');
+        for (const lot of subdivide(block, 140, rnd)) {
+          if (!touchesEdge(lot, block) || rnd() > 0.8 || !goodLot(lot, 140)) continue;
+          out.poly('building', lot, { ctx: 'suburb', front: streetFront(lot, block) ?? roadFront(centroid(lot), roadLines) });
+        }
       }
       return;
     }

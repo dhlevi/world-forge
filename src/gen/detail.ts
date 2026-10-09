@@ -36,7 +36,7 @@ export class DetailSampler {
   }
 
   /** Elevation (m) including detail octaves down to a pixel size of `pxKm` (default: all). */
-  height(lon: number, lat: number, pxKm = 1e-3): number {
+  height(lon: number, lat: number, pxKm = 1e-3, carve = true): number {
     const { W, H, height } = this.world;
     const fx = ((lon + 180) / 360) * W - 0.5;
     const fy = ((90 - lat) / 180) * H - 0.5;
@@ -73,7 +73,7 @@ export class DetailSampler {
       sum += Math.min(1, octF - k) * v * (rough * amp + coast * coastAmp);
     }
     const hh = base + sum;
-    if (!this.rivers || hh <= 0) return hh;
+    if (!carve || !this.rivers || hh <= 0) return hh;
     return carveRiver(hh, base, sum, this.rivers.nearest(lon, lat, RIVER_REACH_M));
   }
 
