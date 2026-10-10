@@ -14,9 +14,10 @@ import { siteFeatures } from '../towns/manager';
 import { LAYOUT_LABEL } from '../towns/layout';
 import type { TownsRequest, TownsResponse } from '../worker/protocol';
 import {
-  LAIR_LAYERS, MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES, lairIcons,
+  BORDER_LAYERS, LAIR_LAYERS, MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES, lairIcons,
 } from './map-style';
 import type { LairSite } from '../lairs/lair';
+import { armsImageData } from '../heraldry/draw';
 import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb, onLair } from '../lairs/view';
 import { PLAN_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
 
@@ -58,7 +59,9 @@ function syncWorld(): void {
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
   (map.getSource('wind') as GeoJSONSource).setData(world.value.wind);
   (map.getSource('currents') as GeoJSONSource).setData(world.value.currents);
+  registerArms();
   (map.getSource('labels') as GeoJSONSource).setData(world.value.labels);
+  (map.getSource('borders') as GeoJSONSource).setData(world.value.politics.borders);
   if (townsGen !== world.value.gen) {
     townsGen = world.value.gen;
     const { raster, settlements, roads, rivers } = world.value;
@@ -77,6 +80,22 @@ function syncWorld(): void {
     searchState.total = 0;
     searchState.version++;
     runTowns();
+  }
+}
+
+/** Map images of the arms of every kingdom and empire (`arms-<unit>`), for their labels. */
+let armsIds: string[] = [];
+let armsGen = -1;
+function registerArms(): void {
+  if (!map || !world.value || armsGen === world.value.gen) return;
+  armsGen = world.value.gen;
+  for (const id of armsIds) if (map.hasImage(id)) map.removeImage(id);
+  armsIds = [];
+  for (const u of world.value.politics.units) {
+    if (u.level < 2) continue;
+    const id = `arms-${u.id}`;
+    map.addImage(id, armsImageData(u.arms, u.level === 3 ? 30 : 24), { pixelRatio: 2 });
+    armsIds.push(id);
   }
 }
 
@@ -123,6 +142,7 @@ const OVERLAY_LAYERS = {
   currents: ['current-lines', 'current-heads'],
   settlements: [...PLAN_GROUND_LAYERS, ...SETTLEMENT_LAYERS, ...MARKER_LAYERS, ...LAIR_LAYERS].map((l) => l.id),
   labels: [...WORLD_LABEL_LAYERS, ...SETTLEMENT_LABEL_LAYERS, ...PLAN_LABEL_LAYERS].map((l) => l.id),
+  borders: BORDER_LAYERS.map((l) => l.id),
 };
 
 function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): void {
@@ -250,6 +270,23 @@ function hideLair(): void {
   if (map?.getLayer('lair-preview')) map.setLayoutProperty('lair-preview', 'visibility', 'none');
 }
 
+/** The village nearest the map centre, within ~1.5 km, at close zoom (for the location title). */
+function villageHere(): typeof store.here {
+  if (!map || map.getZoom() < 11.5 || !map.getSource('regional')) return null;
+  const c = map.getCenter();
+  let best: typeof store.here = null, bd = 1.5;
+  for (const f of map.querySourceFeatures('regional', { filter: ['==', ['get', 'tier'], 'village'] })) {
+    if (f.geometry.type !== 'Point') continue;
+    const [lon, lat] = f.geometry.coordinates;
+    const d = Math.hypot((lon - c.lng) * 111.32 * Math.cos((c.lat * Math.PI) / 180), (lat - c.lat) * 110.57);
+    if (d < bd) {
+      bd = d;
+      best = { name: String(f.properties.name ?? ''), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0) };
+    }
+  }
+  return best;
+}
+
 /** "Anterina · city of 12,400 · planned grid" for the town or city whose plan is under the cursor. */
 function placeAt(lon: number, lat: number): string | undefined {
   const sts = world.value?.settlements ?? [];
@@ -287,6 +324,7 @@ onMounted(() => {
         currents: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         labels: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         'search-hit': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+        borders: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         ...SETTLEMENT_SOURCES,
       },
       layers: [
@@ -356,6 +394,7 @@ onMounted(() => {
             'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1, 5, 2.5],
           },
         },
+        ...BORDER_LAYERS,
         ...MARKER_LAYERS,
         ...LAIR_LAYERS,
         // The place chosen in search: a ring that pulses for a few seconds.
@@ -391,6 +430,7 @@ onMounted(() => {
     setVisibility('currents', store.showCurrents);
     setVisibility('settlements', store.showSettlements);
     setVisibility('labels', store.showLabels);
+    setVisibility('borders', store.showBorders);
     syncWorld();
   });
   map.on('moveend', () => {
@@ -398,6 +438,8 @@ onMounted(() => {
     if (map) {
       const c = map.getCenter();
       store.center = [c.lng, c.lat];
+      store.zoom = map.getZoom();
+      store.here = villageHere();
     }
   });
   map.on('mousemove', (e) => {
@@ -476,6 +518,7 @@ watch(() => store.showRivers, () => {
 watch(() => store.showWind, (show) => setVisibility('wind', show));
 watch(() => store.showCurrents, (show) => setVisibility('currents', show));
 watch(() => store.showLabels, (show) => setVisibility('labels', show));
+watch(() => store.showBorders, (show) => setVisibility('borders', show));
 watch(() => store.showSettlements, (show) => {
   setVisibility('settlements', show);
   setVisibility('labels', store.showLabels);

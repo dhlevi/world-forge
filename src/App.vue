@@ -5,6 +5,7 @@ import MapView from './components/MapView.vue';
 import DwellingView from './components/DwellingView.vue';
 import LairView from './components/LairView.vue';
 import SearchBar from './components/SearchBar.vue';
+import LocationTitle from './components/LocationTitle.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -14,6 +15,7 @@ onMounted(regenerate);
   <MapView />
   <ControlPanel />
   <SearchBar />
+  <LocationTitle />
   <DwellingView />
   <LairView />
 </template>

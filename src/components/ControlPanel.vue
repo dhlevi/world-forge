@@ -92,6 +92,10 @@ function randomize(): void {
           Place names
         </label>
         <label class="check">
+          <input v-model="store.showBorders" type="checkbox" />
+          Borders
+        </label>
+        <label class="check">
           <input v-model="store.showWind" type="checkbox" />
           Prevailing winds
         </label>

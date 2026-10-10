@@ -18,7 +18,7 @@ import type { NameBank } from '../names/names';
  * lettering along them).
  */
 
-export type LabelKind = FeatureKind | 'city' | 'town';
+export type LabelKind = FeatureKind | 'city' | 'town' | 'empire' | 'duchy' | 'county';
 
 export interface LabelFeature {
   type: 'Feature';
@@ -28,7 +28,7 @@ export interface LabelFeature {
    * zlo/zhi (water only): whole-zoom band this anchor belongs to. A water body keeps one label
    * until it fills the screen, then is lettered from a lattice of anchors (see `waterAnchors`).
    */
-  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number };
+  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number };
 }
 
 export interface LabelCollection {
@@ -49,6 +49,8 @@ const FOREST = new Set<Biome>([
 
 export function nameWorld(
   g: Grid, f: FeatureFields, bank: NameBank, settlements: Settlement[], rivers: RiverCollection, roads: RoadCollection, sampler?: DetailSampler,
+  /** Filled with the index of the land region label (range, forest, desert…) over each cell. */
+  regionOf?: Int32Array,
 ): LabelCollection {
   const { W, H, N } = g;
   const labels: LabelFeature[] = [];
@@ -453,7 +455,9 @@ export function nameWorld(
       if (a < minArea) return;
       const at = pole(cells);
       const big = a > minArea * 8;
-      push(kind, bank.feature(kind, f.culture[at], `${key}${id}`), shape(cells, at), big ? 0 : 1, big ? minz - 0.8 : minz, maxz);
+      const li = push(kind, bank.feature(kind, f.culture[at], `${key}${id}`), shape(cells, at), big ? 0 : 1, big ? minz - 0.8 : minz, maxz);
+      // Smaller, more specific regions (forests, marshes) win over the broad ones drawn first.
+      if (regionOf) for (const c of cells) regionOf[c] = li;
       out.push({ cells, at });
     });
     return out;
@@ -476,45 +480,7 @@ export function nameWorld(
   region('marsh', (c) => f.biome[c] === Biome.Wetland || f.biome[c] === Biome.Mangrove, 12000, 5.5, 10.5, 'marsh');
   region('plains', (c) => f.biome[c] === Biome.Grassland || f.biome[c] === Biome.Savanna || f.biome[c] === Biome.ColdDesert, 300000, 4, 8.5, 'plains');
 
-  // ---- Realms ------------------------------------------------------------------------------
-  const cities = settlements.filter((s) => s.tier === 'city').sort((a, b) => b.population - a.population);
-  const capitals: Settlement[] = [];
-  for (const s of cities) if (capitals.every((o) => distKm(o.lon, o.lat, s.lon, s.lat) > 1000)) capitals.push(s);
-  if (capitals.length) {
-    const owner = new Int32Array(N).fill(-1);
-    const dist = new Float64Array(N).fill(Infinity);
-    const hq = new MinHeap(4096);
-    capitals.forEach((s, k) => {
-      const c = cellOf(g, s.lon, s.lat);
-      dist[c] = 0;
-      owner[c] = k;
-      hq.push(c, 0);
-    });
-    while (hq.size) {
-      const c = hq.pop(), dc = hq.lastKey;
-      if (dc > dist[c]) continue;
-      const i = c % W, j = (c / W) | 0;
-      for (let k = 0; k < 8; k++) {
-        const n = neighbor(g, i, j, k);
-        if (n < 0 || !isLand(n)) continue;
-        const nd = dc + g.nbDist[j * 8 + k] * (1 + (f.height[n] > 1500 ? 3 : 0));
-        if (nd < dist[n] && nd < 1400) {
-          dist[n] = nd;
-          owner[n] = owner[c];
-          hq.push(n, nd);
-        }
-      }
-    }
-    const cellsOf: number[][] = capitals.map(() => []);
-    for (let c = 0; c < N; c++) if (owner[c] >= 0) cellsOf[owner[c]].push(c);
-    capitals.forEach((s, k) => {
-      if (areaOf(cellsOf[k]) < 1.5e5) return;
-      const at = pole(cellsOf[k]);
-      const cul = f.culture[cellOf(g, s.lon, s.lat)];
-      const base = bank.rng(`realm-base${k}`)() < 0.6 ? s.name : undefined;
-      push('realm', bank.feature('realm', cul, `realm${k}`, base).toUpperCase(), { type: 'Point', coordinates: point(at) }, 1, 3, 6.5);
-    });
-  }
+  // Realms come from the political map (politics.ts).
 
   // ---- Roads -------------------------------------------------------------------------------
   const byId = new Map(settlements.map((s) => [s.id, s]));

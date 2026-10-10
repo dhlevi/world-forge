@@ -56,8 +56,8 @@ export function compass(p: Pt): string {
 }
 const short = (dir: string) => dir.replace('North-', 'North').replace('South-', 'South').replace('east', 'east').replace('west', 'west');
 
-const CRAFTS = ['Tanners', 'Weavers', 'Smiths', 'Coopers', 'Potters', 'Chandlers', 'Masons', 'Dyers', 'Carpenters', 'Fullers', 'Cordwainers', 'Bakers', 'Brewers', 'Glovers'];
-const QUARTER_WORDS = ['Quarter', 'Ward', 'Row', 'End'];
+const CRAFTS = ['Thieves', 'Hang-Mans', 'Tanners', 'Weavers', 'Smiths', 'Coopers', 'Potters', 'Chandlers', 'Masons', 'Dyers', 'Carpenters', 'Fullers', 'Cordwainers', 'Bakers', 'Brewers', 'Glovers', 'Foreigners', 'Forgers', 'Alchemists', 'Mages', 'Traders', 'Merchants', 'Bonemans'];
+const QUARTER_WORDS = ['District', 'Quarter', 'Ward', 'Row', 'End', 'Alleys'];
 
 export function labelCity(n: CityNaming): void {
   const { names, culture, key, wards, inner, out, rnd } = n;

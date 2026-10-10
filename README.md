@@ -25,6 +25,7 @@ npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # head
 | Map layer | Fantasy map (default), Terrain, Biomes, Köppen climate, Elevation, Temperature, Precipitation, Tectonic plates | Re-renders tiles without regenerating. |
 | Rivers | on/off | Rivers. On the Fantasy map and Terrain layers they are drawn into the tiles (inked, clipped at lakes and the sea); on the other layers they are a vector overlay. River valleys stay carved into the terrain either way. |
 | Settlements & roads | on/off (default on) | Cities, towns, villages, roads and tracks; town and village plans at high zoom. |
+| Borders | on/off (default on) | Political borders: empires, kingdoms, duchies and counties. |
 | Place names | on/off (default on) | Lettering for realms, seas, rivers, ranges, forests, settlements, town quarters, districts, streets and notable buildings. |
 | Prevailing winds | on/off (default off) | Streamline overlay of the simulated surface winds. |
 | Ocean currents | on/off (default off) | Streamline overlay of surface currents, coloured red (warm) to blue (cold) by their temperature anomaly. |
@@ -82,7 +83,7 @@ The world is simulated on an equirectangular lon/lat grid that wraps east–west
    - **Name bank** (`names.ts`): deterministic per world seed and key, with duplicate avoidance for world features. Each culture has large syllable and compound sets (several thousand to over 15,000 possible names each) and mixes its forms (syllables, compounds, a root with a plain ending, a syllable with a compound suffix, glued and two-word prefixes such as Aber-, "Stara " or "Castra ", the two-word ones for settlements only); seams that read badly (four consonants in a row, a chunk said twice) are drawn again.
    - **Villages, caves and glades** are named one by one as their 1° block is generated, so they cannot be checked against the whole world; instead no two in the same block share a name (a repeat draws again), and the large sets keep repeats between neighbouring blocks rare (in a 13° × 13° test area, about 1 nearby repeat per 100 places, down from about 1 in 6).
    - **Water bodies:** oceans (far from land), seas, inland seas and lakes (enclosed water by area), and gulfs, bays and bights found by casting rays from the coast to measure how enclosed the water is. Straits and channels are narrow passages with open water on both ends; they get a line label along the passage.
-   - **Land:** continents, islands and isle groups; mountain ranges (with their highest peak and height), hills, forests, deserts, marshes and plains from smoothed biome regions; realms around capital cities.
+   - **Land:** continents, islands and isle groups; mountain ranges (with their highest peak and height), hills, forests, deserts, marshes and plains from smoothed biome regions (each land cell also records which of these it lies in, for the location title). Realms come from the political map (see **Realms, arms and the location title**).
    - **Close-zoom water lettering:** a water body keeps its main label until it spans about one screen; from then on it is lettered from a lattice of anchors fixed in Web Mercator space (a few per screen, one lattice per whole zoom band), so a lake, bay or sea stays named while it is in view. On the open sea each name holds a territory (a Dijkstra weighted by the feature's reach, so a bay keeps its own water against the surrounding sea). Anchors deep in the water are kept; near the shore the label's footprint is tested against the coastline as the tiles draw it at that zoom. Narrow water falls back to the anchors along its middle. Lettering continues to zoom 8 for oceans, 10 for seas, 11 for gulfs and inland seas, 12 for bays, bights and straits, and 13 for lakes.
    - **Lines:** rivers are named per system (the main stem keeps one name to the sea), major roads ("the X Road", "the King's Road"). Elongated regions get curved line labels along their main axis.
 
@@ -176,6 +177,17 @@ Views (`render.ts`, `building.ts`, `components/DwellingView.vue`):
 - **Hover preview:** from zoom 17, the ground floor is drawn into an image placed over the building's footprint on the map.
 - **Dwelling view:** double-click a building (or tap it twice) to open a full-screen view with a tab per floor (basement, ground floor, upper floors, attic or loft) and an **Exterior** tab. Plans are inked in a hand-drawn style with a 5 ft grid, room labels, a north arrow and a scale bar; Labels and Grid can be turned off, and **Download PNG** saves the current view for use as a battlemap. The exterior is an isometric drawing: timber-framed or stone walls with the plans' windows and doors, gable ends, the roof (thatch, tile, slate or shingle by type) shaded by slope, and chimneys over the hearths. **Leave building** or Esc returns to the map; the arrow keys change floors.
 
+## Realms, arms and the location title
+
+- **Political map** (`gen/politics.ts`), built from the bottom up after naming:
+  - **Counties:** every city and town seats a county over the land nearest it by travel cost (a Dijkstra from all seats at once, cities reaching further). Climbs and high ground, crossing a big river (order 5 and up) and the sea (impassable) all count, so borders follow ranges and rivers. Land more than ~300 km (towns) or ~420 km (cities) of travel from any seat stays unclaimed.
+  - **Duchies, kingdoms, empires:** the most populous seats at least ~380 km (duchies), ~1,050 km (kingdoms) or ~2,600 km (empires) apart claim the land of the level below by the same travel cost, now also across up to 220, 450 or 700 km of sea, with a toll for crossing into another culture (kingdoms and empires); each vassal goes wholly to the liege that reaches its seat. Empires only form where at least three kingdoms come together; other kingdoms stay independent. On a 1024-wide world this gives about 4,800 counties, 700 duchies, 120 kingdoms and 20 empires.
+  - **Styles and rulers** follow the culture: Earldom, Barony, Jarldom, Beylik, Volost or Thanedom; Duchy, Principality, Emirate, Voivodeship or Khanate; the culture's kingdom styles (Kingdom, Sultanate, Tsardom, Republic…); Empire, Imperium, Caliphate, Khaganate or High Kingdom; and the ruler follows the style (a Sultanate has a Sultan, a March a Margrave). Duchies and realms are named after their seat or given a name of their own.
+  - Worlds wider than 1024 work out realms on a 1024 × 512 copy of the grid (realms are hundreds of km across, and the borders are smoothed anyway).
+- **Borders** are traced along the grid between cells of different realms, each drawn once at the highest level that differs, then relaxed out of their staircase (Laplacian smoothing), rounded (Chaikin) and simplified. Empire and kingdom borders are inked dash-dot and dashed over a soft red wash; duchy borders appear from zoom 4, county borders (dotted) from zoom 6. Realm names are lettered in red small capitals (empires from zoom 1.4, kingdoms from 2.9, duchies from 5.2, counties in italic from 7.2), empires and kingdoms with their arms above the name.
+- **Heraldry** (`heraldry/arms.ts`): a shield shaped by culture (heater, round, kite, French or Spanish), a field plain or divided (per pale, fess, bend, saltire or chevron, or quarterly), an ordinary (fess, pale, bend, chevron, cross, saltire, chief), and one or three charges (mullet, crescent, roundel, lozenge, tower, crown, fleur-de-lis, key, tree, sun, cross pattée), keeping the rule of tincture; charges on a divided field are counterchanged. Arms descend: a duchy keeps its kingdom's field and colours with a new charge, reversed colours or an added ordinary; a county adds a bordure or label to its duchy's arms; a realm and its seat share arms; empires are crowned. Towns take arms derived from their county's. Each comes with its blazon ("Per pale Vert and Or, a roundel counterchanged").
+- **Location title** (`components/LocationTitle.vue`): a cartouche at the top of the map names where the map centre is, at the scale you are looking at: the empire (or kingdom) when zoomed out, the kingdom from zoom 4.3, the duchy from 6.3 and the county from 8.3, with its arms, its ruler and seat, how many vassals it has, the land region it lies in (a forest, a range), and the realms above it as a breadcrumb with small arms. From zoom 11 it names the city, town or village under the centre (with population and layout); over the sea it names the sea, in unclaimed land the wild region. Click it to list the whole hierarchy with larger arms, area, people and blazons. Realms are searchable too.
+
 ## Search (`src/search/`, `components/SearchBar.vue`)
 
 A search box at the top of the map (a search button on mobile) finds places by name or by kind. Press **/** or **Ctrl/Cmd+K** to jump to it, the arrow keys to move through the results and **Enter** to go; **Esc** clears it. Choosing a result flies there and rings the spot for a few seconds.
@@ -201,12 +213,13 @@ Caves and glades are placed with the villages, per 1° block on a jittered ~30 k
 index.html
 src/
   main.ts, App.vue, store.ts, style.css
-  components/   MapView.vue, LairView.vue (cave / glade view), SearchBar.vue (place search), map-style.ts (settlement layer styles), label-style.ts (lettering layers), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
+  components/   MapView.vue, LairView.vue (cave / glade view), SearchBar.vue (place search), LocationTitle.vue (where-am-I cartouche), map-style.ts (settlement layer styles), label-style.ts (lettering layers), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
   gen/          world.ts (pipeline), tectonics.ts, climate.ts, ocean.ts, koppen.ts, advect.ts, streamlines.ts,
-                hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), features.ts (feature detection and naming), detail.ts (sub-grid terrain sampler),
+                hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), features.ts (feature detection and naming), politics.ts (counties to empires, borders), detail.ts (sub-grid terrain sampler),
                 biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
   names/        cultures.ts (naming cultures), names.ts (name bank), culture-map.ts
   render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
+  heraldry/     arms.ts (coats of arms: generation, blazon), draw.ts (drawing)
   search/       index.ts (search entries, matching and ranking)
   lairs/        lair.ts (cave and glade generator), render.ts (drawing), view.ts (map card, overlay, caches)
   interiors/    dwelling.ts (interior generator), render.ts (plan and exterior drawing), building.ts (map hover preview, cache)
@@ -252,7 +265,7 @@ Phase 2: zoom into sites. [Watabou's generators](https://watabou.github.io/) set
 
 | Scale | Reference | Plan |
 |---|---|---|
-| Region / realm | [Realm](https://watabou.github.io/realm.html) | **Done:** settlements, roads and villages. **Next:** borders and labels. |
+| Region / realm | [Realm](https://watabou.github.io/realm.html) | **Done:** settlements, roads, villages, realms (counties to empires) with borders, labels and arms. |
 | City | [City](https://watabou.github.io/city.html) | **Done:** walls, wards, streets, buildings, rivers and coasts, slope-aware layout, harbours and docks. |
 | Village | [Village](https://watabou.github.io/village.html) | **Done:** farming and fishing villages, logging and mining camps, monasteries, keeps. |
 | Building interiors | [Dwelling](https://watabou.github.io/dwelling.html) | **Done:** floor plans for every building (hover preview, double-click to go inside), with an isometric exterior. |

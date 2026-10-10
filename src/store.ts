@@ -26,6 +26,8 @@ export const store = reactive({
   showRivers: true,
   showSettlements: true,
   showLabels: true,
+  /** Political borders (empires, kingdoms, duchies, counties). */
+  showBorders: true,
   showWind: false,
   showCurrents: false,
   generating: false,
@@ -36,6 +38,10 @@ export const store = reactive({
   probe: null as ProbeInfo | null,
   /** Map centre (lon, lat), for distances in search results. */
   center: [0, 20] as [number, number],
+  /** Map zoom (updated when the map settles). */
+  zoom: 1.6,
+  /** The village under the map centre at close zoom, if any (from the towns worker's data). */
+  here: null as { name: string; kind: string; population: number } | null,
 });
 
 export const world = shallowRef<ClientWorld | null>(null);

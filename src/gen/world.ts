@@ -12,6 +12,7 @@ import { buildSettlements, type RoadCollection, type Settlement } from './settle
 import { DetailSampler } from './detail';
 import { RiverIndex } from './river-index';
 import { type LabelCollection, nameWorld } from './features';
+import { type Politics, buildPolitics } from './politics';
 import { cultureMap } from '../names/culture-map';
 import { NameBank } from '../names/names';
 import { CLIMATE, HYDROLOGY } from './config';
@@ -85,6 +86,10 @@ export interface GeneratedWorld {
   roads: RoadCollection;
   /** Named geographic features (labels). */
   labels: LabelCollection;
+  /** Counties, duchies, kingdoms and empires, with borders and arms. */
+  politics: Politics;
+  /** Index (into labels) of the land region label over each cell (range, forest…), or -1. */
+  regionOf: Int32Array;
   summary: WorldSummary;
 }
 
@@ -181,7 +186,28 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
 
   progress('Names', 0.99);
   const culture = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome }, params.seed);
-  const labels = nameWorld(g, { height, lakeDepth, biome, culture }, new NameBank(params.seed), settlements, rivers, roads, sampler);
+  const bank = new NameBank(params.seed);
+  const regionOf = new Int32Array(W * H).fill(-1);
+  const labels = nameWorld(g, { height, lakeDepth, biome, culture }, bank, settlements, rivers, roads, sampler, regionOf);
+  progress('Realms', 0.995);
+  // The political map works at up to 1024 × 512: realms are hundreds of km across, and the
+  // borders are smoothed anyway, so finer grids only cost time.
+  let pg = g, pf = { height, lakeDepth, culture };
+  if (W > 1024) {
+    const k = W / 1024;
+    pg = makeGrid(1024, 512);
+    const take = <T extends Float32Array | Uint8Array>(src: T, make: (n: number) => T): T => {
+      const out = make(pg.N);
+      for (let j = 0; j < 512; j++) {
+        const sj = Math.min(H - 1, Math.floor((j + 0.5) * k)) * W;
+        for (let i = 0; i < 1024; i++) out[j * 1024 + i] = src[sj + Math.min(W - 1, Math.floor((i + 0.5) * k))];
+      }
+      return out;
+    };
+    pf = { height: take(height, (n) => new Float32Array(n)), lakeDepth: take(lakeDepth, (n) => new Float32Array(n)), culture: take(culture, (n) => new Uint8Array(n)) };
+  }
+  const { politics, labels: realmLabels } = buildPolitics(pg, pf, settlements, rivers, bank, params.seed);
+  labels.features.push(...realmLabels);
 
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;
   for (let j = 0, c = 0; j < H; j++) {
@@ -224,6 +250,8 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
     settlements,
     roads,
     labels,
+    politics,
+    regionOf,
     summary: {
       W,
       H,

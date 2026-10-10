@@ -343,3 +343,45 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
   });
   return [{ id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr }];
 }
+
+/** Political borders (`borders` source): a soft wash along realm borders, then inked lines by level. */
+const lvl = (l: number) => e(['==', ['get', 'level'], l]) as FilterSpecification;
+const BORDER_INK = '#7c2c20';
+export const BORDER_LAYERS: LayerSpecification[] = [
+  {
+    id: 'border-wash', type: 'line', source: 'borders', filter: e(['>=', ['get', 'level'], 2]) as FilterSpecification, maxzoom: 10,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': 'rgba(160,52,36,0.2)',
+      'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, ['match', ['get', 'level'], 3, 5, 3.5], 7, ['match', ['get', 'level'], 3, 12, 9]]),
+      'line-blur': 2,
+      'line-opacity': e(['interpolate', ['linear'], ['zoom'], 8, 1, 10, 0]),
+    },
+  },
+  {
+    id: 'border-3', type: 'line', source: 'borders', filter: lvl(3),
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, 1.2, 8, 2.6]), 'line-dasharray': [5, 1.5, 1, 1.5] },
+  },
+  {
+    id: 'border-2', type: 'line', source: 'borders', filter: lvl(2),
+    layout: { 'line-join': 'round' },
+    paint: { 'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, 0.9, 8, 2]), 'line-dasharray': [4, 2] },
+  },
+  {
+    id: 'border-1', type: 'line', source: 'borders', filter: lvl(1), minzoom: 3.8,
+    layout: { 'line-join': 'round' },
+    paint: {
+      'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 4, 0.7, 9, 1.4]), 'line-dasharray': [3, 2.5],
+      'line-opacity': e(['interpolate', ['linear'], ['zoom'], 3.8, 0, 4.6, 0.75]),
+    },
+  },
+  {
+    id: 'border-0', type: 'line', source: 'borders', filter: lvl(0), minzoom: 5.8, maxzoom: 12.5,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 6, 0.6, 10, 1.1]), 'line-dasharray': [0.2, 2.6],
+      'line-opacity': e(['interpolate', ['linear'], ['zoom'], 5.8, 0, 6.6, 0.6, 11.5, 0.6, 12.5, 0]),
+    },
+  },
+];
