@@ -15,6 +15,14 @@ function join(a: string, b: string): string {
   return a + b;
 }
 
+/** Seams that read badly: four consonants in a row ("Chtlan"), or a chunk said twice ("Drumaonaindrum"). */
+function awkward(s: string): boolean {
+  const w = s.toLowerCase().replace(/[^a-z]/g, '');
+  if (/[^aeiouy]{4,}/.test(w)) return true;
+  for (let i = 0; i + 4 <= w.length; i++) if (w.indexOf(w.slice(i, i + 4), i + 1) >= 0) return true;
+  return false;
+}
+
 function tidy(s: string): string {
   return s.replace(/([a-z])\1\1+/gi, '$1$1').replace(/^./, (c) => c.toUpperCase());
 }
@@ -39,12 +47,23 @@ export class NameBank {
     return mulberry32(hash32(this.seed ^ hashString(key)));
   }
 
-  /** A proper name in the culture's phonology. */
-  proper(cul: Culture, rnd: Rng): string {
+  /**
+   * A proper name in the culture's phonology. Two-word prefixes ("Nova ", "Castra ") belong to
+   * settlement names only; elsewhere they would read oddly ("Pons Vitacano Bay").
+   */
+  proper(cul: Culture, rnd: Rng, settlement = false): string {
     for (let t = 0; t < 16; t++) {
       let s: string;
-      if (cul.roots && cul.suffixes && rnd() < (cul.compoundChance ?? 0)) {
+      const r = rnd();
+      const cc = cul.compoundChance ?? 0;
+      if (cul.roots && cul.suffixes && r < cc) {
         s = join(pick(rnd, cul.roots), pick(rnd, cul.suffixes));
+      } else if (cul.roots && r < cc * 1.3) {
+        // Cross forms widen compound cultures: a root with a plain ending (Thornton), ...
+        s = join(pick(rnd, cul.roots), pick(rnd, cul.ends).toLowerCase());
+      } else if (cul.suffixes && r < cc * 1.6) {
+        // ... or a syllable start with a compound suffix (Haldford).
+        s = join(pick(rnd, cul.starts), pick(rnd, cul.suffixes));
       } else {
         s = pick(rnd, cul.starts);
         if (rnd() < cul.midChance) s = join(s, pick(rnd, cul.mids));
@@ -53,9 +72,11 @@ export class NameBank {
       s = tidy(s);
       if (cul.prefixes && rnd() < (cul.prefixChance ?? 0)) {
         const p = pick(rnd, cul.prefixes);
-        s = p.endsWith(' ') ? p + s : tidy(join(p, s.toLowerCase()));
+        if (p.endsWith(' ')) {
+          if (settlement) s = p + s;
+        } else s = tidy(join(p, s.toLowerCase()));
       }
-      if (s.length < 3 || s.length > 14) continue;
+      if (s.length < 3 || s.length > (s.includes(' ') ? 20 : 14) || awkward(s)) continue;
       if (this.unique && this.used.has(s) && t < 15) continue;
       if (this.unique) this.used.add(s);
       return s;
@@ -83,7 +104,7 @@ export class NameBank {
 
   /** A settlement name. */
   place(cultureIdx: number, key: string): string {
-    return this.proper(CULTURES[cultureIdx] ?? CULTURES[0], this.rng(`place:${key}`));
+    return this.proper(CULTURES[cultureIdx] ?? CULTURES[0], this.rng(`place:${key}`), true);
   }
 }
 

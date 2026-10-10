@@ -239,6 +239,92 @@ export const CULTURES: Culture[] = [
   },
 ];
 
+/**
+ * More syllables and compound parts for every culture, merged into the sets above (duplicates
+ * dropped). Villages are named one by one without checking the rest of the world, so the
+ * number of possible names per culture has to be large (tens of thousands) to keep repeats rare.
+ */
+const EXTRA: Record<string, Partial<Pick<Culture, 'starts' | 'mids' | 'ends' | 'roots' | 'suffixes' | 'prefixes'>>> = {
+  anglo: {
+    starts: ['Ab', 'Bar', 'Bex', 'Chad', 'Chip', 'Dor', 'Eg', 'Ful', 'God', 'Hart', 'Hem', 'Ick', 'Kir', 'Lod', 'Lym', 'Mel', 'Nut', 'Ock', 'Pen', 'Quar', 'Rud', 'Shap', 'Stan', 'Tad', 'Ux', 'Wal', 'Wim', 'Yar', 'Brom', 'Cran', 'Ded', 'Ever', 'Graf', 'Hind', 'Mal', 'Sut', 'Thack', 'Wark', 'Buck', 'Chis'],
+    mids: ['es', 'ow', 'ing', 'ers'],
+    ends: ['ington', 'ock', 'hurst', 'stow', 'wold', 'ridge', 'thwaite', 'bourne', 'cester', 'leigh', 'marsh', 'minster', 'mouth', 'hope', 'ness', 'ey', 'hall', 'wich', 'ham', 'side', 'over', 'nor', 'burn'],
+    roots: ['Birch', 'Crane', 'Dove', 'Ember', 'Fox', 'Gold', 'Hare', 'Kettle', 'Lark', 'Maple', 'Nettle', 'Otter', 'Pike', 'Quarry', 'Rush', 'Sedge', 'Thistle', 'Willow', 'Yew', 'Badger', 'Barley', 'Clay', 'Flax', 'Hazel', 'Heath', 'Lime', 'Mire', 'Oat', 'Rye', 'Wheat', 'Copper', 'Chalk', 'Bell', 'Church', 'Bishop', 'Knight', 'Abbot', 'Steeple'],
+    suffixes: ['hurst', 'stow', 'wold', 'ridge', 'bourne', 'leigh', 'mouth', 'hope', 'worth', 'cott', 'combe', 'holt', 'shaw', 'den', 'by', 'fold', 'mead', 'pool', 'wick', 'end', 'heath', 'barrow', 'green', 'stoke'],
+  },
+  norse: {
+    starts: ['Arn', 'Bal', 'Brand', 'Dag', 'Ein', 'Finn', 'Gunn', 'Hak', 'Hild', 'Ing', 'Jor', 'Knut', 'Leif', 'Mjol', 'Njal', 'Odd', 'Rol', 'Sten', 'Thrym', 'Ulv', 'Vest', 'Ygg', 'Ald', 'Bors', 'Ey', 'Gaut', 'Hjal', 'Lund', 'Nor', 'Os', 'Sol', 'Trond', 'Aur', 'Brei', 'Dyr', 'Fjall', 'Hrafn', 'Kvik'],
+    mids: ['ar', 'en', 'u', 'ol', 'is', 'ed'],
+    ends: ['vin', 'land', 'skog', 'hus', 'tun', 'rud', 'set', 'voll', 'stein', 'hamn', 'vag', 'dalen', 'nesset', 'oy', 'fell', 'borg', 'lund', 'tveit', 'aker', 'bu', 'mo', 'sjo', 'eid', 'haug'],
+    roots: ['Salt', 'Seal', 'Gull', 'Pine', 'Birch', 'Elm', 'Boar', 'Hawk', 'Snow', 'Black', 'White', 'Red', 'Long', 'High', 'Old', 'Grey', 'Sea', 'Horn', 'Shield', 'Axe', 'Elder', 'Moss', 'Rock', 'Fish'],
+    suffixes: ['vik', 'nes', 'dal', 'berg', 'sund', 'strand', 'skog', 'tun', 'borg', 'lund', 'oy', 'hamn', 'set', 'haug', 'eid', 'fell', 'land'],
+  },
+  latin: {
+    starts: ['Aem', 'Alb', 'Arv', 'Bri', 'Cap', 'Clau', 'Dec', 'Div', 'Emer', 'Fab', 'Flav', 'Gall', 'Hel', 'Ital', 'Jul', 'Lat', 'Lib', 'Marc', 'Nerv', 'Oct', 'Pon', 'Quin', 'Rom', 'Sab', 'Sulp', 'Tib', 'Ulp', 'Vesp', 'Vit', 'Aqu', 'Bon', 'Cort', 'Fid', 'Laur', 'Pom', 'Sulm', 'Trev', 'Verc'],
+    mids: ['il', 'ac', 'ur', 'av', 'et', 'ost'],
+    ends: ['acum', 'ula', 'etum', 'ium', 'onia', 'ana', 'ensis', 'inum', 'avia', 'ella', 'ana', 'esia', 'ero', 'ano', 'ino', 'one', 'ia', 'ura', 'ago', 'unum', 'ita', 'orum', 'ae', 'ica'],
+    prefixes: ['Porta ', 'Castra ', 'Forum ', 'Aquae ', 'Villa ', 'Pons '],
+  },
+  celtic: {
+    starts: ['Ath', 'Bedd', 'Bla', 'Carr', 'Cnoc', 'Crai', 'Derr', 'Dryn', 'Ell', 'Fear', 'Gar', 'Hen', 'Inis', 'Lis', 'Mael', 'Nev', 'Olla', 'Por', 'Ros', 'Strath', 'Tal', 'Tul', 'Ys', 'Aon', 'Bry', 'Cwm', 'Dinas', 'Eil', 'Gor', 'Kel', 'Mona', 'Rhyd', 'Sgur', 'Taf'],
+    mids: ['ar', 'ain', 'og', 'ell', 'ro'],
+    ends: ['ross', 'more', 'beg', 'lin', 'carn', 'fach', 'fawr', 'goch', 'gwyn', 'craig', 'drum', 'esk', 'ilt', 'uist', 'wen', 'ford', 'ochrie', 'aven', 'allt', 'ach', 'aig', 'ery'],
+    prefixes: ['Strath', 'Bally', 'Tre', 'Dol', 'Ros', 'Inis', 'Drum', 'Achna'],
+  },
+  elvish: {
+    starts: ['Alf', 'Bel', 'Cir', 'Dae', 'Ear', 'Fin', 'Gil', 'Hal', 'Ilm', 'Lae', 'Mel', 'Nar', 'Oro', 'Pel', 'Rhi', 'Sae', 'Tin', 'Ul', 'Vae', 'Yav', 'Aer', 'Elen', 'Ilth', 'Lith', 'Naer', 'Syl', 'Tae', 'Ves', 'Aran', 'Cael', 'Ilu', 'Mith'],
+    mids: ['iel', 'al', 'en', 'ue', 'ra', 'li', 'ae'],
+    ends: ['dil', 'loth', 'nas', 'rien', 'thas', 'vae', 'wyn', 'driel', 'lond', 'mar', 'neth', 'ril', 'sir', 'tar', 'uin', 'viel', 'ador', 'eth', 'ithil', 'orn', 'aen', 'alas'],
+  },
+  desert: {
+    starts: ['Ab', 'Bah', 'Dah', 'Fal', 'Ghad', 'Haf', 'Ism', 'Jaz', 'Kar', 'Lat', 'Mak', 'Nab', 'Om', 'Qat', 'Ruw', 'Sab', 'Tam', 'Wad', 'Yaz', 'Zah', 'Ash', 'Bad', 'Dum', 'Kuf', 'Man', 'Nuz', 'Shar', 'Taf', 'Ubay', 'Zab'],
+    mids: ['an', 'ul', 'ir', 'ash', 'al'],
+    ends: ['iyah', 'ra', 'an', 'oun', 'aba', 'ar', 'ein', 'ul', 'ira', 'aya', 'oud', 'ash', 'ma', 'una', 'id', 'af', 'out', 'eh', 'at'],
+    prefixes: ['Wadi ', 'Bab ', 'Dar ', 'Tell ', 'Ain '],
+  },
+  slavic: {
+    starts: ['Bog', 'Brat', 'Ces', 'Cher', 'Dub', 'Glin', 'Gost', 'Iv', 'Jar', 'Kam', 'Lip', 'Lis', 'Mog', 'Nov', 'Ozer', 'Pech', 'Pskov', 'Ros', 'Sel', 'Smol', 'Stav', 'Tor', 'Ug', 'Vel', 'Vlad', 'Yas', 'Zel', 'Zvon', 'Bych', 'Gniez', 'Kol', 'Prze', 'Suz'],
+    mids: ['a', 'i', 'ol', 'uk', 'ev'],
+    ends: ['ograd', 'ovka', 'ino', 'evo', 'insk', 'ets', 'nik', 'ica', 'ow', 'any', 'ice', 'ovice', 'sko', 'yn', 'ishche', 'ubov', 'ava', 'ec', 'ok', 'ach', 'ensk', 'ichi', 'omir', 'oslav', 'ozero', 'opol', 'ovets', 'ichev', 'ishte', 'nica', 'ovo', 'aya', 'ostok', 'orsk', 'ovsk', 'yov', 'ina', 'uga', 'el'],
+    prefixes: ['Nova ', 'Stara ', 'Velika ', 'Mala ', 'Gorna ', 'Dolna '],
+  },
+  dwarven: {
+    starts: ['Ad', 'Bif', 'Bru', 'Dag', 'Dain', 'Fal', 'Fun', 'Gar', 'Gund', 'Hor', 'Kel', 'Kil', 'Lok', 'Mag', 'Mun', 'Nor', 'Orn', 'Rur', 'Skor', 'Tor', 'Ul', 'Vor', 'Zar', 'Bram', 'Dor', 'Gor', 'Har', 'Khel', 'Thur', 'Grim', 'Brok', 'Durn'],
+    mids: ['ar', 'or', 'um', 'ek', 'il'],
+    ends: ['dar', 'gund', 'heim', 'kar', 'lok', 'mund', 'nar', 'rim', 'tok', 'vald', 'zul', 'baraz', 'bul', 'gar', 'hal', 'kun', 'mek', 'nul', 'thrum', 'dor', 'grund', 'rak'],
+    roots: ['Silver', 'Mithril', 'Ruby', 'Garnet', 'Slate', 'Basalt', 'Obsidian', 'Bronze', 'Pick', 'Axe', 'Shield', 'Beard', 'Ember', 'Ash', 'Black', 'Red', 'High', 'Low', 'Under', 'Rune', 'Gem', 'Lode', 'Tin', 'Salt'],
+    suffixes: ['home', 'crag', 'barrow', 'vault', 'shaft', 'rock', 'stone', 'mine', 'heart', 'helm', 'spire', 'cleft', 'pit', 'rest'],
+  },
+  southern: {
+    starts: ['Aeg', 'Arg', 'Cor', 'Del', 'Eph', 'Gor', 'Kor', 'Lem', 'Mil', 'Nax', 'Ol', 'Par', 'Rho', 'Sam', 'Syb', 'Tha', 'Xan', 'Zak', 'Ath', 'Byz', 'Chal', 'Dod', 'Hal', 'Kyth', 'Myk', 'Pat', 'Sest', 'Tri', 'Epi', 'Lark'],
+    mids: ['an', 'ar', 'ip', 'ot', 'el', 'ith'],
+    ends: ['ia', 'os', 'ene', 'inthos', 'ae', 'ia', 'eion', 'oupolis', 'ymna', 'assos', 'eus', 'akis', 'ike', 'oni', 'ari', 'issa', 'ios', 'ira', 'odos', 'ena', 'ates'],
+  },
+  steppe: {
+    starts: ['Ab', 'Ay', 'Bal', 'Bek', 'Chag', 'Er', 'Il', 'Jal', 'Kab', 'Kur', 'Mang', 'Nar', 'Ot', 'Qar', 'Shu', 'Tal', 'Tur', 'Uch', 'Yal', 'Zhan', 'Aral', 'Bor', 'Dom', 'Kum', 'Sary', 'Tash', 'Ust', 'Bay', 'Kok'],
+    mids: ['ar', 'ak', 'ug', 'in', 'yl'],
+    ends: ['abad', 'aral', 'bulak', 'chi', 'dag', 'gan', 'iz', 'kala', 'kum', 'lik', 'mak', 'or', 'su', 'tau', 'tobe', 'uk', 'yr', 'zhar', 'kol', 'bay', 'kan', 'ty'],
+    prefixes: ['Kara ', 'Ak ', 'Kyzyl ', 'Sary ', 'Ulan '],
+  },
+  jungle: {
+    starts: ['Ah', 'Che', 'Ek', 'Hu', 'Itz', 'Ki', 'La', 'Mi', 'Na', 'Oc', 'Pe', 'Qu', 'Sa', 'Tu', 'Ux', 'Xa', 'Ya', 'Za', 'Coa', 'Hue', 'Tla', 'Yax', 'Ato', 'Iza'],
+    mids: ['hu', 'xi', 'to', 'ca', 'ni', 'lo', 'tz'],
+    ends: ['tzin', 'huac', 'pec', 'tlan', 'kal', 'mul', 'ten', 'chac', 'lum', 'xan', 'ba', 'pa', 'tun', 'ac', 'ich', 'il', 'oc', 'uy'],
+  },
+};
+/** A middle syllable more often in the cultures with the smaller sets. */
+const MID_CHANCE: Record<string, number> = { norse: 0.3, slavic: 0.5, dwarven: 0.35, steppe: 0.45, desert: 0.5, southern: 0.5, celtic: 0.4 };
+for (const c of CULTURES) {
+  if (MID_CHANCE[c.id] !== undefined) c.midChance = Math.max(c.midChance, MID_CHANCE[c.id]);
+  const x = EXTRA[c.id];
+  if (!x) continue;
+  for (const k of ['starts', 'mids', 'ends', 'roots', 'suffixes', 'prefixes'] as const) {
+    if (x[k]) c[k] = [...new Set([...(c[k] ?? []), ...x[k]!])];
+  }
+  // Two-word names ("Stara Volovka", "Castra Felium") for cultures that gained prefixes here.
+  if (x.prefixes && !c.prefixChance) c.prefixChance = 0.1;
+}
+
 /** Generic templates, used when a culture has none of its own for a kind. */
 export const DEFAULT_TERMS: Record<FeatureKind, string[]> = {
   settlement: ['{N}'],

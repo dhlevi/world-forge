@@ -5,6 +5,7 @@ import { WorldClient, type ClientWorld } from './world/client';
 import type { ProbeInfo } from './world/probe';
 import type { BuildingView } from './interiors/building';
 import type { LairSite } from './lairs/lair';
+import { SearchIndex } from './search/index';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
 
@@ -33,11 +34,19 @@ export const store = reactive({
   error: '',
   summary: null as WorldSummary | null,
   probe: null as ProbeInfo | null,
+  /** Map centre (lon, lat), for distances in search results. */
+  center: [0, 20] as [number, number],
 });
 
 export const world = shallowRef<ClientWorld | null>(null);
 /** The building open in the Dwelling view, if any. */
 export const openBuilding = shallowRef<BuildingView | null>(null);
+/** Place-name search over the world, the background index and drawn plans. */
+export const search = new SearchIndex();
+/** Background index progress (blocks done of total) and a counter that bumps when the index grows. */
+export const searchState = reactive({ done: 0, total: 0, version: 0 });
+/** A place to fly to (set by the search box, handled by the map). */
+export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; name: string; t: number } | null>(null);
 /** The cave or glade open in the lair view, if any. */
 export const openLair = shallowRef<LairSite | null>(null);
 export const client = new WorldClient();

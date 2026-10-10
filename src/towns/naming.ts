@@ -236,7 +236,7 @@ export function labelCity(n: CityNaming): void {
     taken.add(b);
     b.f.properties.role = role;
     b.f.properties.label = label;
-    out.point('blabel', b.c, { name: label });
+    out.point('blabel', b.c, { name: label, role });
   };
   const ordinary = (b: BuildingRef) => wards[b.ward].kind === 'ward' || wards[b.ward].kind === 'rich' || !wards[b.ward].inside;
   const onStreet = (d: number) => (b: BuildingRef) => ordinary(b) && n.streets.some((s) => distToLine(s.pts, b.c[0], b.c[1]) < d);

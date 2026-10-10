@@ -84,6 +84,17 @@ interface Block {
   lairs: LairSite[];
 }
 
+/** A searchable village, cave or glade (sent from the towns worker). */
+export interface IndexEntry {
+  id: string;
+  name: string;
+  tier: 'village' | 'lair';
+  kind: string;
+  lon: number;
+  lat: number;
+  info?: string;
+}
+
 /** Spacing (km) of cave and glade candidates; only suitable ground keeps one (about one per 30–40 km there). */
 const LAIR_SPACING_KM = 30;
 
@@ -225,6 +236,68 @@ export class TownManager {
     return res;
   }
 
+  // ---- Search index -------------------------------------------------------------------------
+
+  private indexQueue: number[] | null = null;
+  private indexTotal = 0;
+  private indexCenter: [number, number] = [0, 0];
+
+  /**
+   * Indexes villages, caves and glades across the world for search, a slice at a time, the
+   * blocks nearest `center` first. Blocks are generated without their tracks and not kept
+   * (they come out the same when the map later needs them).
+   */
+  indexStep(budgetMs: number, center: [number, number]): { entries: IndexEntry[]; done: number; total: number } {
+    const t0 = performance.now();
+    if (!this.indexQueue) {
+      this.indexQueue = this.landBlocks();
+      this.indexTotal = this.indexQueue.length;
+      this.indexCenter = [Infinity, 0];
+    }
+    const q = this.indexQueue;
+    // Re-sort what is left when the view has moved well away.
+    if (Math.abs(center[0] - this.indexCenter[0]) + Math.abs(center[1] - this.indexCenter[1]) > 4) {
+      this.indexCenter = center;
+      const d = (k: number) => {
+        const bx = (k % 360) - 180 + 0.5, by = Math.floor(k / 360) - 90 + 0.5;
+        return distKm(center[0], center[1], bx, by);
+      };
+      q.sort((a, b) => d(b) - d(a));
+    }
+    const entries: IndexEntry[] = [];
+    while (q.length && performance.now() - t0 < budgetMs) {
+      const k = q.pop()!;
+      const bx = (k % 360) - 180, by = Math.floor(k / 360) - 90;
+      const key = this.blockKey(bx + 180, by + 90);
+      const blk = this.blocks.get(key) ?? this.generateBlock(wrapLon(bx + 0.5) - 0.5, by, key, false);
+      for (const v of blk.villages) {
+        entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info: `${v.population.toLocaleString('en')} people` });
+      }
+      for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · ') });
+    }
+    return { entries, done: this.indexTotal - q.length, total: this.indexTotal };
+  }
+
+  /** 1° blocks with any land, as by*360 + bx (both offset to start at 0). */
+  private landBlocks(): number[] {
+    const { W, H, height } = this.world.raster;
+    const out: number[] = [];
+    for (let by = 0; by < 180; by++) {
+      for (let bx = 0; bx < 360; bx++) {
+        let land = false;
+        for (let a = 0; a < 4 && !land; a++) {
+          for (let b = 0; b < 4 && !land; b++) {
+            const lon = bx - 180 + (a + 0.5) / 4, lat = by - 90 + (b + 0.5) / 4;
+            const i = Math.min(W - 1, Math.floor(((lon + 180) / 360) * W)), j = Math.min(H - 1, Math.floor(((90 - lat) / 180) * H));
+            if (height[j * W + i] > 0) land = true;
+          }
+        }
+        if (land) out.push(by * 360 + bx);
+      }
+    }
+    return out;
+  }
+
   private addExit(id: string, ll: number[], cls: RoadClass): void {
     if (!id) return;
     const list = this.exits.get(id);
@@ -254,7 +327,7 @@ export class TownManager {
     return blk;
   }
 
-  private generateBlock(lon0: number, lat0: number, key: number): Block {
+  private generateBlock(lon0: number, lat0: number, key: number, withTracks = true): Block {
     const { raster } = this.world;
     const { W, H } = raster;
     const seed = hash32(hashString(raster.seed) ^ Math.imul(key + 1, 0x9e3779b1));
@@ -262,6 +335,8 @@ export class TownManager {
     const nLon = Math.max(1, Math.round((111.2 * Math.cos(((lat0 + 0.5) * Math.PI) / 180)) / S.villageSpacingKm));
     const villages: Settlement[] = [];
     const tracks: RoadFeature[] = [];
+    // Names given out in this block: neighbours never share one (later ones draw again).
+    const used = new Set<string>();
     const sample = (f: Float32Array, lon: number, lat: number) => {
       const fx = ((lon + 180) / 360) * W - 0.5, fy = Math.min(H - 1.001, Math.max(0, ((90 - lat) / 180) * H - 0.5));
       const i0 = Math.floor(fx), j0 = Math.floor(fy), tx = fx - i0, ty = fy - j0;
@@ -354,13 +429,13 @@ export class TownManager {
         const v = makeSettlement(
           'village', `v${key}_${villages.length}`, pos[0], pos[1], score, hash32(h0 ^ 7), kind === 'fishing', (river?.d ?? 99) < 1.5, kind,
         );
-        v.name = this.villageName(v, cellOf(lon, lat));
+        v.name = this.villageName(v, cellOf(lon, lat), used);
         villages.push(v);
-        const track = this.track(v, road, villages, rr(4));
+        const track = withTracks ? this.track(v, road, villages, rr(4)) : null;
         if (track) tracks.push(track);
       }
     }
-    return { villages, tracks, lairs: this.lairs(lon0, lat0, key, seed, villages, sample, cellOf) };
+    return { villages, tracks, lairs: this.lairs(lon0, lat0, key, seed, villages, sample, cellOf, used) };
   }
 
   /**
@@ -370,7 +445,7 @@ export class TownManager {
    */
   private lairs(
     lon0: number, lat0: number, key: number, seed: number, villages: Settlement[],
-    sample: (f: Float32Array, lon: number, lat: number) => number, cellOf: (lon: number, lat: number) => number,
+    sample: (f: Float32Array, lon: number, lat: number) => number, cellOf: (lon: number, lat: number) => number, used: Set<string>,
   ): LairSite[] {
     const { raster } = this.world;
     const out: LairSite[] = [];
@@ -430,7 +505,10 @@ export class TownManager {
           if (dry) tags.push('dry');
         }
         const id = `l${key}_${out.length}`;
-        out.push({ id, kind, name: lairName(this.names, kind, raster.culture[c] ?? 0, id, tags), seed: hash32(h0 ^ 0x1a17), tags, lon, lat });
+        let name = '';
+        for (let t = 0; t < 6 && (!name || used.has(name)); t++) name = lairName(this.names, kind, raster.culture[c] ?? 0, t ? `${id}#${t}` : id, tags);
+        used.add(name);
+        out.push({ id, kind, name, seed: hash32(h0 ^ 0x1a17), tags, lon, lat });
       }
     }
     return out;
@@ -443,8 +521,10 @@ export class TownManager {
   }
 
   /** A village name in the local culture, dressed for its kind ("Ashby Keep", "Thorn Abbey"). */
-  private villageName(v: Settlement, cell: number): string {
-    const n = this.names.place(this.world.raster.culture[cell] ?? 0, v.id);
+  private villageName(v: Settlement, cell: number, used: Set<string>): string {
+    let n = '';
+    for (let t = 0; t < 6 && (!n || used.has(n)); t++) n = this.names.place(this.world.raster.culture[cell] ?? 0, t ? `${v.id}#${t}` : v.id);
+    used.add(n);
     const r = this.names.rng(`vk:${v.id}`)();
     switch (v.kind) {
       case 'keep': return r < 0.5 ? `${n} Keep` : r < 0.8 ? `Castle ${n}` : `${n} Tower`;

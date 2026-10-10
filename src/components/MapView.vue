@@ -5,7 +5,8 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { openBuilding, openLair, store, world } from '../store';
+import { flyTarget, openBuilding, openLair, search, searchState, store, world } from '../store';
+import { blockEntry, planEntries, worldEntries } from '../search/index';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
 import type { PlanFeature } from '../towns/plan';
 import { probeWorld } from '../world/probe';
@@ -70,6 +71,11 @@ function syncWorld(): void {
     planIndex = new Map();
     hidePreview();
     hideLair();
+    search.clear();
+    search.add(worldEntries(world.value));
+    searchState.done = 0;
+    searchState.total = 0;
+    searchState.version++;
     runTowns();
   }
 }
@@ -80,11 +86,21 @@ function postTowns(msg: TownsRequest): void {
     townsWorker.onmessage = (e: MessageEvent<TownsResponse>) => {
       const res = e.data;
       if (!map || res.gen !== townsGen) return;
+      if (res.type === 'index') {
+        search.add(res.entries.map(blockEntry));
+        searchState.done = res.done;
+        searchState.total = res.total;
+        searchState.version++;
+        return;
+      }
       if (res.villages) (map.getSource('regional') as GeoJSONSource).setData(res.villages);
       if (res.plans) {
         (map.getSource('plans') as GeoJSONSource).setData(res.plans);
         planIndex = new Map();
         for (const f of res.plans.features) if (f.properties.kind === 'building') planIndex.set(String(f.properties.bid), f);
+        // Quarters, districts and notable buildings of drawn plans become searchable.
+        search.add(planEntries(res.plans.features));
+        searchState.version++;
       }
     };
   }
@@ -270,6 +286,7 @@ onMounted(() => {
         wind: { type: 'geojson', lineMetrics: true, data: { type: 'FeatureCollection', features: [] } },
         currents: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         labels: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+        'search-hit': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         ...SETTLEMENT_SOURCES,
       },
       layers: [
@@ -341,6 +358,14 @@ onMounted(() => {
         },
         ...MARKER_LAYERS,
         ...LAIR_LAYERS,
+        // The place chosen in search: a ring that pulses for a few seconds.
+        {
+          id: 'search-hit', type: 'circle', source: 'search-hit',
+          paint: {
+            'circle-radius': ['get', 'r'], 'circle-color': 'rgba(0,0,0,0)',
+            'circle-stroke-color': '#a8321e', 'circle-stroke-width': 2.5, 'circle-stroke-opacity': ['get', 'a'],
+          },
+        },
         ...PLAN_LABEL_LAYERS,
         ...WORLD_LABEL_LAYERS,
         ...SETTLEMENT_LABEL_LAYERS,
@@ -358,6 +383,7 @@ onMounted(() => {
   map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right');
   map.on('load', () => {
     ready = true;
+    if (map) store.center = [map.getCenter().lng, map.getCenter().lat];
     // Cave and glade icons are drawn on a canvas, not fetched.
     for (const icon of lairIcons()) if (map && !map.hasImage(icon.id)) map.addImage(icon.id, icon.image, { pixelRatio: icon.pixelRatio });
     setVisibility('rivers', store.showRivers);
@@ -367,7 +393,13 @@ onMounted(() => {
     setVisibility('labels', store.showLabels);
     syncWorld();
   });
-  map.on('moveend', runTowns);
+  map.on('moveend', () => {
+    runTowns();
+    if (map) {
+      const c = map.getCenter();
+      store.center = [c.lng, c.lat];
+    }
+  });
   map.on('mousemove', (e) => {
     scheduleProbe(e.lngLat);
     onHover(e);
@@ -403,6 +435,27 @@ onMounted(() => {
   map.on('zoomend', () => {
     if (map && map.getZoom() < INTERIOR_ZOOM) hidePreview();
   });
+});
+
+// Fly to a place chosen in search and ring it.
+let hitFrame = 0;
+watch(flyTarget, (t) => {
+  if (!map || !t) return;
+  map.flyTo({ center: [t.lon, t.lat], zoom: t.zoom, duration: 2200, essential: true });
+  const src = map.getSource('search-hit') as GeoJSONSource | undefined;
+  if (!src) return;
+  cancelAnimationFrame(hitFrame);
+  const t0 = performance.now();
+  const tick = () => {
+    const k = (performance.now() - t0) / 1000;
+    const done = k > 6.5;
+    // Pulses after the flight lands, fading out.
+    const ph = Math.max(0, k - 2) % 1.1 / 1.1;
+    const a = done ? 0 : k < 2 ? 0.9 : 0.9 * (1 - ph) * Math.min(1, (6.5 - k) / 1.5);
+    src.setData({ type: 'FeatureCollection', features: done ? [] : [{ type: 'Feature', geometry: { type: 'Point', coordinates: [t.lon, t.lat] }, properties: { r: 10 + 26 * ph, a } }] });
+    if (!done) hitFrame = requestAnimationFrame(tick);
+  };
+  tick();
 });
 
 onBeforeUnmount(() => {
@@ -523,7 +576,8 @@ watch(() => store.showSettlements, (show) => {
 }
 @media (max-width: 768px) {
   .probe {
-    top: 10px;
+    /* Below the search button. */
+    top: 62px;
     left: 10px;
     right: auto;
     bottom: auto;

@@ -40,7 +40,7 @@ function villageLabels(k: Kit): void {
   const mark = (b: { f: { properties: Record<string, string | number> }; c: Pt }, role: string, label: string) => {
     b.f.properties.role = role;
     b.f.properties.label = label;
-    out.point('blabel', b.c, { name: label });
+    out.point('blabel', b.c, { name: label, role });
   };
   const used = new Set<object>();
   for (const b of k.buildings) {

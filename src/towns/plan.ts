@@ -67,6 +67,8 @@ export class PlanOut {
   }
 
   point(kind: string, p: Pt, props: Record<string, string | number> = {}): void {
+    // Lettering carries its settlement, so search can say where a quarter or an inn is.
+    if (kind.endsWith('label') && this.site.sid) props = { sid: this.site.sid, ...props };
     this.features.push({ type: 'Feature', geometry: { type: 'Point', coordinates: this.frame.toLL(p) }, properties: { kind, ppm20: this.ppm20, ...props } });
   }
 }

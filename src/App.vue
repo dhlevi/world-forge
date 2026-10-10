@@ -4,6 +4,7 @@ import ControlPanel from './components/ControlPanel.vue';
 import MapView from './components/MapView.vue';
 import DwellingView from './components/DwellingView.vue';
 import LairView from './components/LairView.vue';
+import SearchBar from './components/SearchBar.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -12,6 +13,7 @@ onMounted(regenerate);
 <template>
   <MapView />
   <ControlPanel />
+  <SearchBar />
   <DwellingView />
   <LairView />
 </template>

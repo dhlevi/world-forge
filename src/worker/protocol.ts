@@ -2,7 +2,7 @@ import type { GeneratedWorld, RasterWorld, WorldParams } from '../gen/world';
 import type { RiverCollection } from '../gen/rivers';
 import type { RoadFeature } from '../gen/settlements';
 import type { LayerId } from '../render/tiles';
-import type { Bounds, TownWorld } from '../towns/manager';
+import type { Bounds, IndexEntry, TownWorld } from '../towns/manager';
 import type { PlanFeature } from '../towns/plan';
 
 export type WorkerRequest =
@@ -22,10 +22,12 @@ export type TownsRequest =
 
 type FC<F> = { type: 'FeatureCollection'; features: F[] };
 
-/** Collections that changed; null means unchanged. */
-export interface TownsResponse {
-  type: 'data';
-  gen: number;
-  villages: FC<PlanFeature | RoadFeature> | null;
-  plans: FC<PlanFeature> | null;
-}
+/** Collections that changed (null means unchanged), or a batch of the background search index. */
+export type TownsResponse =
+  | {
+    type: 'data';
+    gen: number;
+    villages: FC<PlanFeature | RoadFeature> | null;
+    plans: FC<PlanFeature> | null;
+  }
+  | { type: 'index'; gen: number; entries: IndexEntry[]; done: number; total: number };
