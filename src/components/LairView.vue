@@ -13,18 +13,26 @@ const marks = ref(true);
 let observer: ResizeObserver | null = null;
 
 const site = computed(() => openLair.value);
-const map = computed(() => (site.value ? lairMap(site.value) : null));
+const top = computed(() => (site.value ? lairMap(site.value) : null));
+/** The level shown (caves of several levels have a tab per level). */
+const level = ref(0);
+const map = computed(() => top.value?.levels[level.value] ?? top.value);
+const levelTabs = computed(() => (top.value?.levels.length ?? 1) > 1 ? top.value!.levels.map((_, k) => (k === 0 ? 'Level 1 · entrance' : `Level ${k + 1}`)) : []);
+/** Screen positions of the ways between levels, for clicking through. */
+let linkSpots: { x: number; y: number; to: number }[] = [];
 const subtitle = computed(() => {
   const m = map.value;
   if (!m) return '';
-  return `${KIND_LABEL[m.site.kind]} · ${lairTags(m.site)} · ${m.W} × ${m.H} m · grid squares 5 ft (${LAIR_CELL} m)`;
+  const lv = m.levels.length > 1 ? ` · level ${m.level + 1} of ${m.levels.length}` : '';
+  return `${KIND_LABEL[m.site.kind]} · ${lairTags(m.site)}${lv} · ${m.W} × ${m.H} m · grid squares 5 ft (${LAIR_CELL} m)`;
 });
 
 watch(site, () => {
+  level.value = 0;
   nextTick(draw);
   document.fonts?.load("italic 14px 'IM Fell English'").then(() => draw()).catch(() => {});
 });
-watch([grid, marks], draw);
+watch([grid, marks, level], draw);
 
 function draw(): void {
   const cv = canvas.value, st = stage.value, m = map.value;
@@ -43,6 +51,7 @@ function draw(): void {
   const scale = Math.min((W - 2 * margin) / m.W, (H - 2 * margin) / m.H);
   const ox = (W - m.W * scale) / 2, oy = (H - m.H * scale) / 2;
   drawLair(g, m, { scale, ox, oy, grid: grid.value, labels: marks.value });
+  linkSpots = m.links.map((l) => ({ x: ox + l.p[0] * scale, y: oy + l.p[1] * scale, to: l.to }));
   // A thin frame, a north arrow (the map is north-up) and a scale bar.
   g.strokeStyle = '#2b2420';
   g.lineWidth = 1.5;
@@ -98,14 +107,33 @@ function download(): void {
     if (!b) return;
     const a = document.createElement('a');
     a.href = URL.createObjectURL(b);
-    a.download = `${m.site.name.toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '')}.png`;
+    const lv = m.levels.length > 1 ? `-level-${m.level + 1}` : '';
+    a.download = `${m.site.name.toLowerCase().replace(/\W+/g, '-').replace(/^-|-$/g, '')}${lv}.png`;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
 }
 
 function onKey(e: KeyboardEvent): void {
-  if (site.value && e.key === 'Escape') leave();
+  if (!site.value) return;
+  const n = top.value?.levels.length ?? 1;
+  if (e.key === 'Escape') leave();
+  else if (e.key === 'ArrowRight' || e.key === 'PageDown') level.value = Math.min(n - 1, level.value + 1);
+  else if (e.key === 'ArrowLeft' || e.key === 'PageUp') level.value = Math.max(0, level.value - 1);
+}
+
+/** Clicking a way up or down goes to that level. */
+function onCanvasClick(e: MouseEvent): void {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  const hit = linkSpots.find((s) => Math.hypot(s.x - x, s.y - y) < 22);
+  if (hit) level.value = hit.to;
+}
+
+function onCanvasMove(e: MouseEvent): void {
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  const x = e.clientX - r.left, y = e.clientY - r.top;
+  (e.currentTarget as HTMLElement).style.cursor = linkSpots.some((s) => Math.hypot(s.x - x, s.y - y) < 22) ? 'pointer' : '';
 }
 
 onMounted(() => {
@@ -132,13 +160,16 @@ watch(stage, (el, old) => {
       </div>
       <div class="actions">
         <label class="chip"><input v-model="grid" type="checkbox" /> Grid</label>
-        <label v-if="site.kind === 'cave'" class="chip"><input v-model="marks" type="checkbox" /> Entrances</label>
+        <label v-if="site.kind === 'cave'" class="chip"><input v-model="marks" type="checkbox" /> Labels</label>
         <button @click="download">Download PNG</button>
         <button class="leave" @click="leave">Leave {{ site.kind }}</button>
       </div>
     </header>
+    <nav v-if="levelTabs.length" class="tabs" aria-label="Levels">
+      <button v-for="(t, k) in levelTabs" :key="k" :class="{ active: k === level }" :aria-pressed="k === level" @click="level = k">{{ t }}</button>
+    </nav>
     <div ref="stage" class="stage">
-      <canvas ref="canvas" />
+      <canvas ref="canvas" @click="onCanvasClick" @mousemove="onCanvasMove" />
     </div>
   </div>
 </template>
@@ -203,6 +234,21 @@ button:hover {
 }
 .leave:hover {
   background: #4a3d33;
+}
+.tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px 16px;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(43, 36, 32, 0.25);
+}
+.tabs button {
+  border-radius: 4px 4px 0 0;
+  white-space: nowrap;
+}
+.tabs button.active {
+  background: #2b2420;
+  color: #f3ead3;
 }
 .stage {
   position: relative;

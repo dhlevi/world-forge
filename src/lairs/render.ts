@@ -1,5 +1,5 @@
 import { mulberry32 } from '../gen/rng';
-import { LAIR_CELL, type LairMap, type Pt } from './lair';
+import { LAIR_CELL, type LairLink, type LairMap, type Pt } from './lair';
 
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;
 
@@ -159,6 +159,105 @@ function drawCave(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
       g.fill();
       g.restore();
     }
+  }
+  // Ways between levels are always drawn (they are part of the map); their captions are labels.
+  for (const l of m.links) drawLink(g, l, o.labels, (m.site.seed % 628) / 100);
+}
+
+/**
+ * A way to another level: carved stairs, a shaft with a ladder, or a steep slope of scree.
+ * Down is drawn as an opening (dark), up as the foot of the way (light, with the opening above).
+ */
+function drawLink(g: Ctx2D, l: LairLink, caption: boolean, a0: number): void {
+  const [x, y] = l.p;
+  const down = l.dir === 'down';
+  g.save();
+  g.translate(x, y);
+  g.lineWidth = 0.1;
+  g.strokeStyle = INK;
+  const ang = a0 + (l.p[0] * 0.37 + l.p[1] * 0.11);
+  if (l.style === 'shaft') {
+    g.beginPath();
+    g.arc(0, 0, 1.15, 0, Math.PI * 2);
+    g.fillStyle = down ? '#1f1a16' : '#e8e0cc';
+    g.fill();
+    g.lineWidth = 0.14;
+    if (!down) g.setLineDash?.([0.35, 0.25]);
+    g.stroke();
+    g.setLineDash?.([]);
+    // A rope ladder across it.
+    g.rotate(ang);
+    g.strokeStyle = down ? '#c9b48a' : INK;
+    g.lineWidth = 0.07;
+    g.beginPath();
+    for (const s of [-0.28, 0.28]) {
+      g.moveTo(s, -1.0);
+      g.lineTo(s, 1.0);
+    }
+    for (let k = -0.75; k <= 0.76; k += 0.3) {
+      g.moveTo(-0.28, k);
+      g.lineTo(0.28, k);
+    }
+    g.stroke();
+  } else {
+    g.rotate(ang);
+    const L = l.style === 'stairs' ? 3 : 3.4, Wd = l.style === 'stairs' ? 1.4 : 1.7;
+    // Shade toward the low end.
+    const gr = g.createLinearGradient(-L / 2, 0, L / 2, 0);
+    gr.addColorStop(0, '#efe7d4');
+    gr.addColorStop(1, down ? '#5a5046' : '#b7ab95');
+    g.fillStyle = gr;
+    if (l.style === 'stairs') {
+      g.fillRect(-L / 2, -Wd / 2, L, Wd);
+      g.strokeRect(-L / 2, -Wd / 2, L, Wd);
+      g.beginPath();
+      for (let k = 1; k < 6; k++) {
+        const sx = -L / 2 + (k * L) / 6;
+        g.moveTo(sx, -Wd / 2);
+        g.lineTo(sx, Wd / 2);
+      }
+      g.stroke();
+    } else {
+      // Slope: a tapering scree run with hatching.
+      g.beginPath();
+      g.moveTo(-L / 2, -Wd / 2);
+      g.lineTo(L / 2, -Wd * 0.3);
+      g.lineTo(L / 2, Wd * 0.3);
+      g.lineTo(-L / 2, Wd / 2);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      for (let k = 0; k < 5; k++) {
+        const sx = -L / 2 + 0.35 + k * 0.62;
+        g.moveTo(sx, -0.35);
+        g.lineTo(sx + 0.35, 0);
+        g.lineTo(sx, 0.35);
+      }
+      g.stroke();
+    }
+    // Arrow pointing down the way.
+    g.fillStyle = down ? '#f3ead3' : INK;
+    g.beginPath();
+    g.moveTo(L / 2 - 0.25, 0);
+    g.lineTo(L / 2 - 0.85, -0.38);
+    g.lineTo(L / 2 - 0.85, 0.38);
+    g.closePath();
+    g.fill();
+  }
+  g.restore();
+  if (caption) {
+    const text = `${down ? 'Down' : 'Up'} to level ${l.to + 1}`;
+    g.save();
+    g.font = "italic 1.15px 'IM Fell English', Georgia, serif";
+    g.textAlign = 'center';
+    g.textBaseline = 'top';
+    g.lineWidth = 0.35;
+    g.strokeStyle = 'rgba(247,241,225,0.95)';
+    g.strokeText(text, x, y + 1.6);
+    g.fillStyle = INK;
+    g.fillText(text, x, y + 1.6);
+    g.restore();
   }
 }
 

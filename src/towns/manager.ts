@@ -489,6 +489,10 @@ export class TownManager {
           if (rr(7) < 0.15) tags.push('sealed');
           if (!dry && precip > 600 && rr(8) < 0.6) tags.push(rr(9) < 0.15 ? 'flooded' : 'wet');
           if (dry) tags.push('dry');
+          // Levels: small caves one or two, medium up to three, large two to four.
+          const r = rr(12);
+          const levels = size === 'small' ? (r < 0.7 ? 1 : 2) : size === 'medium' ? (r < 0.4 ? 1 : r < 0.8 ? 2 : 3) : r < 0.35 ? 2 : r < 0.75 ? 3 : 4;
+          if (levels > 1) tags.push(`${levels} levels`);
         } else {
           const river = this.sampler.riverBank(lon, lat, 3000);
           const options: [string, number][] = [

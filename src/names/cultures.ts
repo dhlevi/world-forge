@@ -246,71 +246,338 @@ export const CULTURES: Culture[] = [
  */
 const EXTRA: Record<string, Partial<Pick<Culture, 'starts' | 'mids' | 'ends' | 'roots' | 'suffixes' | 'prefixes'>>> = {
   anglo: {
-    starts: ['Ab', 'Bar', 'Bex', 'Chad', 'Chip', 'Dor', 'Eg', 'Ful', 'God', 'Hart', 'Hem', 'Ick', 'Kir', 'Lod', 'Lym', 'Mel', 'Nut', 'Ock', 'Pen', 'Quar', 'Rud', 'Shap', 'Stan', 'Tad', 'Ux', 'Wal', 'Wim', 'Yar', 'Brom', 'Cran', 'Ded', 'Ever', 'Graf', 'Hind', 'Mal', 'Sut', 'Thack', 'Wark', 'Buck', 'Chis'],
-    mids: ['es', 'ow', 'ing', 'ers'],
-    ends: ['ington', 'ock', 'hurst', 'stow', 'wold', 'ridge', 'thwaite', 'bourne', 'cester', 'leigh', 'marsh', 'minster', 'mouth', 'hope', 'ness', 'ey', 'hall', 'wich', 'ham', 'side', 'over', 'nor', 'burn'],
-    roots: ['Birch', 'Crane', 'Dove', 'Ember', 'Fox', 'Gold', 'Hare', 'Kettle', 'Lark', 'Maple', 'Nettle', 'Otter', 'Pike', 'Quarry', 'Rush', 'Sedge', 'Thistle', 'Willow', 'Yew', 'Badger', 'Barley', 'Clay', 'Flax', 'Hazel', 'Heath', 'Lime', 'Mire', 'Oat', 'Rye', 'Wheat', 'Copper', 'Chalk', 'Bell', 'Church', 'Bishop', 'Knight', 'Abbot', 'Steeple'],
-    suffixes: ['hurst', 'stow', 'wold', 'ridge', 'bourne', 'leigh', 'mouth', 'hope', 'worth', 'cott', 'combe', 'holt', 'shaw', 'den', 'by', 'fold', 'mead', 'pool', 'wick', 'end', 'heath', 'barrow', 'green', 'stoke'],
+    starts: [
+      'Ab', 'Bar', 'Bex', 'Chad', 'Chip', 'Dor', 'Eg', 'Ful', 'God', 'Hart',
+      'Hem', 'Ick', 'Kir', 'Lod', 'Lym', 'Mel', 'Nut', 'Ock', 'Pen', 'Quar',
+      'Rud', 'Shap', 'Stan', 'Tad', 'Ux', 'Wal', 'Wim', 'Yar', 'Brom', 'Cran',
+      'Ded', 'Ever', 'Graf', 'Hind', 'Mal', 'Sut', 'Thack', 'Wark', 'Buck', 'Chis',
+      'Ax', 'Blen', 'Brack', 'Clif', 'Dun', 'Elm', 'Finch', 'Gla',
+      'Hox', 'Kend', 'Lang', 'Mar', 'Neth', 'Ox', 'Plum', 'Rad',
+      'Swin', 'Tod', 'Usk', 'Wadd', 'Al', 'Bax', 'Croy', 'Dund',
+      'Ex', 'Flit', 'Gild', 'Hap', 'Il', 'Kest', 'Lox', 'Mick',
+      'New', 'Or', 'Pox', 'Ripl', 'Sed', 'Tewk', 'Up', 'Wych'
+    ],
+    mids: [
+      'es', 'ow', 'ing', 'ers',
+      'al', 'er', 'en', 'un', 'el', 'on', 's', 'ar'
+    ],
+    ends: [
+      'ington', 'ock', 'hurst', 'stow', 'wold', 'ridge', 'thwaite', 'bourne',
+      'cester', 'leigh', 'marsh', 'minster', 'mouth', 'hope', 'ness', 'ey',
+      'hall', 'wich', 'ham', 'side', 'over', 'nor', 'burn',
+      'bury', 'ford', 'ton', 'stead', 'garth', 'dene', 'firth', 'by',
+      'low', 'wick', 'thorpe', 'hatch', 'don', 'glen', 'toft', 'beck',
+      'water', 'mere', 'stone', 'field', 'bridge', 'tift', 'coombe'
+    ],
+    roots: [
+      'Birch', 'Crane', 'Dove', 'Ember', 'Fox', 'Gold', 'Hare', 'Kettle',
+      'Lark', 'Maple', 'Nettle', 'Otter', 'Pike', 'Quarry', 'Rush', 'Sedge',
+      'Thistle', 'Willow', 'Yew', 'Badger', 'Barley', 'Clay', 'Flax', 'Hazel',
+      'Heath', 'Lime', 'Mire', 'Oat', 'Rye', 'Wheat', 'Copper', 'Chalk',
+      'Bell', 'Church', 'Bishop', 'Knight', 'Abbot', 'Steeple',
+      'Ash', 'Alder', 'Bech', 'Brier', 'Cobble', 'Crank', 'Drake', 'Elm',
+      'Finch', 'Flint', 'Gravel', 'Heron', 'Holly', 'Ivy', 'Kestrel', 'Lichen',
+      'Mill', 'Moss', 'Pebble', 'Rowan', 'Reed', 'Shepherd', 'Smith', 'Spindle',
+      'Stone', 'Tanner', 'Thorn', 'Trout', 'Wren', 'Weaver', 'Yarrow', 'Wain',
+      'Iron', 'Well', 'Cross', 'Prior', 'Friar', 'King'
+    ],
+    suffixes: [
+      'hurst', 'stow', 'wold', 'ridge', 'bourne', 'leigh', 'mouth', 'hope',
+      'worth', 'cott', 'combe', 'holt', 'shaw', 'den', 'by', 'fold',
+      'mead', 'pool', 'wick', 'end', 'heath', 'barrow', 'green', 'stoke',
+      'field', 'stead', 'ton', 'bury', 'ford', 'low', 'thorpe', 'dene',
+      'garth', 'hatch', 'toft', 'beck', 'water', 'don', 'stone', 'bridge',
+      'firth', 'beck', 'dell', 'glen', 'madd', 'wick', 'well', 'side'
+    ]
   },
   norse: {
-    starts: ['Arn', 'Bal', 'Brand', 'Dag', 'Ein', 'Finn', 'Gunn', 'Hak', 'Hild', 'Ing', 'Jor', 'Knut', 'Leif', 'Mjol', 'Njal', 'Odd', 'Rol', 'Sten', 'Thrym', 'Ulv', 'Vest', 'Ygg', 'Ald', 'Bors', 'Ey', 'Gaut', 'Hjal', 'Lund', 'Nor', 'Os', 'Sol', 'Trond', 'Aur', 'Brei', 'Dyr', 'Fjall', 'Hrafn', 'Kvik'],
-    mids: ['ar', 'en', 'u', 'ol', 'is', 'ed'],
-    ends: ['vin', 'land', 'skog', 'hus', 'tun', 'rud', 'set', 'voll', 'stein', 'hamn', 'vag', 'dalen', 'nesset', 'oy', 'fell', 'borg', 'lund', 'tveit', 'aker', 'bu', 'mo', 'sjo', 'eid', 'haug'],
-    roots: ['Salt', 'Seal', 'Gull', 'Pine', 'Birch', 'Elm', 'Boar', 'Hawk', 'Snow', 'Black', 'White', 'Red', 'Long', 'High', 'Old', 'Grey', 'Sea', 'Horn', 'Shield', 'Axe', 'Elder', 'Moss', 'Rock', 'Fish'],
-    suffixes: ['vik', 'nes', 'dal', 'berg', 'sund', 'strand', 'skog', 'tun', 'borg', 'lund', 'oy', 'hamn', 'set', 'haug', 'eid', 'fell', 'land'],
+    starts: [
+      'Arn', 'Bal', 'Brand', 'Dag', 'Ein', 'Finn', 'Gunn', 'Hak', 'Hild', 'Ing',
+      'Jor', 'Knut', 'Leif', 'Mjol', 'Njal', 'Odd', 'Rol', 'Sten', 'Thrym', 'Ulv',
+      'Vest', 'Ygg', 'Ald', 'Bors', 'Ey', 'Gaut', 'Hjal', 'Lund', 'Nor', 'Os',
+      'Sol', 'Trond', 'Aur', 'Brei', 'Dyr', 'Fjall', 'Hrafn', 'Kvik',
+      'As', 'Bjorn', 'Einar', 'Freyr', 'Gim', 'Gorm', 'Hark', 'Ivar',
+      'Korm', 'Lok', 'Magn', 'Olaf', 'Ragn', 'Sig', 'Sven', 'Tor',
+      'Trygg', 'Val', 'Vid', 'Vig', 'Alf', 'Bif', 'Draug', 'Eld',
+      'Frey', 'Gerd', 'Grim', 'Heim', 'Jarl', 'Kald', 'Lyr', 'Mimir',
+      'Njord', 'Rune', 'Skald', 'Skoll', 'Tyr', 'Vard'
+    ],
+    mids: [
+      'ar', 'en', 'u', 'ol', 'is', 'ed',
+      'a', 'o', 'il', 'ir', 'ur', 'al'
+    ],
+    ends: [
+      'vin', 'land', 'skog', 'hus', 'tun', 'rud', 'set', 'voll', 'stein', 'hamn',
+      'vag', 'dalen', 'nesset', 'oy', 'fell', 'borg', 'lund', 'tveit', 'aker',
+      'bu', 'mo', 'sjo', 'eid', 'haug',
+      'fjord', 'ridge', 'gard', 'kile', 'tind', 'breen', 'heim', 'stod',
+      'varp', 'myr', 'os', 'bekk', 'vikin', 'sundet', 'skjær', 'holmen',
+      'berget', 'dalen', 'neset', 'vatn', 'foss', 'fjell', 'mar', 'hult'
+    ],
+    roots: [
+      'Salt', 'Seal', 'Gull', 'Pine', 'Birch', 'Elm', 'Boar', 'Hawk', 'Snow',
+      'Black', 'White', 'Red', 'Long', 'High', 'Old', 'Grey', 'Sea', 'Horn',
+      'Shield', 'Axe', 'Elder', 'Moss', 'Rock', 'Fish',
+      'Wolf', 'Raven', 'Bear', 'Whale', 'Frost', 'Ice', 'Iron', 'Thunder',
+      'Runes', 'Spear', 'Helm', 'Flame', 'Storm', 'Fjord', 'Glacier', 'Reef',
+      'Wyrm', 'Crow', 'Walrus', 'Prow', 'Ash', 'Ember', 'Gloom', 'Fang'
+    ],
+    suffixes: [
+      'vik', 'nes', 'dal', 'berg', 'sund', 'strand', 'skog', 'tun', 'borg',
+      'lund', 'oy', 'hamn', 'set', 'haug', 'eid', 'fell', 'land',
+      'fjord', 'gard', 'holm', 'ridge', 'tind', 'kile', 'heim', 'breen',
+      'foss', 'vatn', 'bekk', 'os', 'myr', 'skjær', 'stod', 'varp', 'mar'
+    ]
   },
   latin: {
-    starts: ['Aem', 'Alb', 'Arv', 'Bri', 'Cap', 'Clau', 'Dec', 'Div', 'Emer', 'Fab', 'Flav', 'Gall', 'Hel', 'Ital', 'Jul', 'Lat', 'Lib', 'Marc', 'Nerv', 'Oct', 'Pon', 'Quin', 'Rom', 'Sab', 'Sulp', 'Tib', 'Ulp', 'Vesp', 'Vit', 'Aqu', 'Bon', 'Cort', 'Fid', 'Laur', 'Pom', 'Sulm', 'Trev', 'Verc'],
-    mids: ['il', 'ac', 'ur', 'av', 'et', 'ost'],
-    ends: ['acum', 'ula', 'etum', 'ium', 'onia', 'ana', 'ensis', 'inum', 'avia', 'ella', 'ana', 'esia', 'ero', 'ano', 'ino', 'one', 'ia', 'ura', 'ago', 'unum', 'ita', 'orum', 'ae', 'ica'],
-    prefixes: ['Porta ', 'Castra ', 'Forum ', 'Aquae ', 'Villa ', 'Pons '],
+    starts: [
+      'Aem', 'Alb', 'Arv', 'Bri', 'Cap', 'Clau', 'Dec', 'Div', 'Emer', 'Fab',
+      'Flav', 'Gall', 'Hel', 'Ital', 'Jul', 'Lat', 'Lib', 'Marc', 'Nerv', 'Oct',
+      'Pon', 'Quin', 'Rom', 'Sab', 'Sulp', 'Tib', 'Ulp', 'Vesp', 'Vit', 'Aqu',
+      'Bon', 'Cort', 'Fid', 'Laur', 'Pom', 'Sulm', 'Trev', 'Verc',
+      'Ael', 'Aurel', 'Brut', 'Cass', 'Corn', 'Domit', 'Hadr', 'Lucret',
+      'Max', 'Nig', 'Planc', 'Scip', 'Sev', 'Tac', 'Titus', 'Valer',
+      'Ver', 'Vip', 'App', 'Camil', 'Cat', 'Crisp', 'Grat', 'Just',
+      'Licin', 'Mar cell', 'Num', 'Paull', 'Serv', 'Silv', 'Tiber', 'Tull',
+      'Var', 'Vinc', 'Volus', 'Aet', 'August', 'Cael'
+    ],
+    mids: [
+      'il', 'ac', 'ur', 'av', 'et', 'ost',
+      'at', 'in', 'op', 'on', 'an', 'ant'
+    ],
+    ends: [
+      'acum', 'ula', 'etum', 'ium', 'onia', 'ana', 'ensis', 'inum', 'avia',
+      'ella', 'esia', 'ero', 'ano', 'ino', 'one', 'ia', 'ura', 'ago',
+      'unum', 'ita', 'orum', 'ae', 'ica',
+      'anum', 'aria', 'entia', 'enia', 'olis', 'opolis', 'atum', 'aris',
+      'issa', 'ina', 'ates', 'ona', 'entium', 'oria', 'ica', 'etia',
+      'ina', 'ate', 'eia', 'uca', 'urna', 'entum', 'itanum'
+    ],
+    prefixes: [
+      'Porta ', 'Castra ', 'Forum ', 'Aquae ', 'Villa ', 'Pons ',
+      'Via ', 'Mons ', 'Vallum ', 'Nova ', 'Vicus ', 'Sub ',
+      'Ad ', 'Colonia ', 'Insula ', 'Silva ', 'Arx ', 'Ager '
+    ]
   },
   celtic: {
-    starts: ['Ath', 'Bedd', 'Bla', 'Carr', 'Cnoc', 'Crai', 'Derr', 'Dryn', 'Ell', 'Fear', 'Gar', 'Hen', 'Inis', 'Lis', 'Mael', 'Nev', 'Olla', 'Por', 'Ros', 'Strath', 'Tal', 'Tul', 'Ys', 'Aon', 'Bry', 'Cwm', 'Dinas', 'Eil', 'Gor', 'Kel', 'Mona', 'Rhyd', 'Sgur', 'Taf'],
-    mids: ['ar', 'ain', 'og', 'ell', 'ro'],
-    ends: ['ross', 'more', 'beg', 'lin', 'carn', 'fach', 'fawr', 'goch', 'gwyn', 'craig', 'drum', 'esk', 'ilt', 'uist', 'wen', 'ford', 'ochrie', 'aven', 'allt', 'ach', 'aig', 'ery'],
-    prefixes: ['Strath', 'Bally', 'Tre', 'Dol', 'Ros', 'Inis', 'Drum', 'Achna'],
+    starts: [
+      'Ath', 'Bedd', 'Bla', 'Carr', 'Cnoc', 'Crai', 'Derr', 'Dryn', 'Ell', 'Fear',
+      'Gar', 'Hen', 'Inis', 'Lis', 'Mael', 'Nev', 'Olla', 'Por', 'Ros', 'Strath',
+      'Tal', 'Tul', 'Ys', 'Aon', 'Bry', 'Cwm', 'Dinas', 'Eil', 'Gor', 'Kel',
+      'Mona', 'Rhyd', 'Sgur', 'Taf',
+      'Aber', 'Achn', 'Bred', 'Caer', 'Cairn', 'Clon', 'Col', 'Doin',
+      'Dun', 'Gart', 'Glen', 'Kilm', 'Kin', 'Loch', 'Llan', 'Mallaig',
+      'Nant', 'Pen', 'Pol', 'Pont', 'Rath', 'Skea', 'Tir', 'Tor',
+      'Agh', 'Ball', 'Blant', 'Bryn', 'Car', 'Drum', 'Fin', 'Inver',
+      'Ken', 'Lag', 'Lorn', 'Mor', 'Rosc', 'Tully'
+    ],
+    mids: [
+      'ar', 'ain', 'og', 'ell', 'ro',
+      'ach', 'an', 'en', 'all', 'is', 'oc'
+    ],
+    ends: [
+      'ross', 'more', 'beg', 'lin', 'carn', 'fach', 'fawr', 'goch', 'gwyn',
+      'craig', 'drum', 'esk', 'ilt', 'uist', 'wen', 'ford', 'ochrie', 'aven',
+      'allt', 'ach', 'aig', 'ery',
+      'glen', 'tor', 'loch', 'dhu', 'dún', 'llyn', 'glass', 'derg',
+      'vane', 'breck', 'fin', 'mhor', 'vohr', 'shiel', 'tay', 'dour',
+      'mull', 'blane', 'mearns', 'ness', 'morn', 'don'
+    ],
+    prefixes: [
+      'Strath', 'Bally', 'Tre', 'Dol', 'Ros', 'Inis', 'Drum', 'Achna',
+      'Aber', 'Caer', 'Dun', 'Glen', 'Kil', 'Loch', 'Pen', 'Llan'
+    ]
   },
   elvish: {
-    starts: ['Alf', 'Bel', 'Cir', 'Dae', 'Ear', 'Fin', 'Gil', 'Hal', 'Ilm', 'Lae', 'Mel', 'Nar', 'Oro', 'Pel', 'Rhi', 'Sae', 'Tin', 'Ul', 'Vae', 'Yav', 'Aer', 'Elen', 'Ilth', 'Lith', 'Naer', 'Syl', 'Tae', 'Ves', 'Aran', 'Cael', 'Ilu', 'Mith'],
-    mids: ['iel', 'al', 'en', 'ue', 'ra', 'li', 'ae'],
-    ends: ['dil', 'loth', 'nas', 'rien', 'thas', 'vae', 'wyn', 'driel', 'lond', 'mar', 'neth', 'ril', 'sir', 'tar', 'uin', 'viel', 'ador', 'eth', 'ithil', 'orn', 'aen', 'alas'],
+    starts: [
+      'Alf', 'Bel', 'Cir', 'Dae', 'Ear', 'Fin', 'Gil', 'Hal', 'Ilm', 'Lae',
+      'Mel', 'Nar', 'Oro', 'Pel', 'Rhi', 'Sae', 'Tin', 'Ul', 'Vae', 'Yav',
+      'Aer', 'Elen', 'Ilth', 'Lith', 'Naer', 'Syl', 'Tae', 'Ves', 'Aran', 'Cael',
+      'Ilu', 'Mith',
+      'Ael', 'Am', 'An', 'Cal', 'Cel', 'Eir', 'Fael', 'Gal',
+      'Isil', 'Loth', 'Ly', 'Nim', 'Nol', 'Oroph', 'Phar', 'Quel',
+      'Ril', 'Sael', 'Thal', 'Val', 'Yl', 'Aen', 'Ciri', 'El',
+      'Fen', 'Glor', 'Ith', 'Lien', 'Maed', 'Nym', 'Ser', 'Tir'
+    ],
+    mids: [
+      'iel', 'al', 'en', 'ue', 'ra', 'li', 'ae',
+      'il', 'an', 'or', 'eth', 'ar', 'is', 'ia'
+    ],
+    ends: [
+      'dil', 'loth', 'nas', 'rien', 'thas', 'vae', 'wyn', 'driel', 'lond',
+      'mar', 'neth', 'ril', 'sir', 'tar', 'uin', 'viel', 'ador', 'eth',
+      'ithil', 'orn', 'aen', 'alas',
+      'ion', 'las', 'morn', 'vorn', 'thir', 'wen', 'lor', 'nor',
+      'aeth', 'riel', 'llon', 'we', 'vyr', 'amir', 'alor', 'el',
+      'fyn', 'thil', 'dris', 'ndil', 'alel', 'aris'
+    ]
   },
+
   desert: {
-    starts: ['Ab', 'Bah', 'Dah', 'Fal', 'Ghad', 'Haf', 'Ism', 'Jaz', 'Kar', 'Lat', 'Mak', 'Nab', 'Om', 'Qat', 'Ruw', 'Sab', 'Tam', 'Wad', 'Yaz', 'Zah', 'Ash', 'Bad', 'Dum', 'Kuf', 'Man', 'Nuz', 'Shar', 'Taf', 'Ubay', 'Zab'],
-    mids: ['an', 'ul', 'ir', 'ash', 'al'],
-    ends: ['iyah', 'ra', 'an', 'oun', 'aba', 'ar', 'ein', 'ul', 'ira', 'aya', 'oud', 'ash', 'ma', 'una', 'id', 'af', 'out', 'eh', 'at'],
-    prefixes: ['Wadi ', 'Bab ', 'Dar ', 'Tell ', 'Ain '],
+    starts: [
+      'Ab', 'Bah', 'Dah', 'Fal', 'Ghad', 'Haf', 'Ism', 'Jaz', 'Kar', 'Lat',
+      'Mak', 'Nab', 'Om', 'Qat', 'Ruw', 'Sab', 'Tam', 'Wad', 'Yaz', 'Zah',
+      'Ash', 'Bad', 'Dum', 'Kuf', 'Man', 'Nuz', 'Shar', 'Taf', 'Ubay', 'Zab',
+      'Amer', 'Bas', 'Dham', 'Fay', 'Hadh', 'Jab', 'Khar', 'Mad',
+      'Niz', 'Qas', 'Raf', 'Sam', 'Tariq', 'Wash', 'Yem', 'Zaq',
+      'Am', 'Busr', 'Dahab', 'Ghaz', 'Haw', 'Jid', 'Kass', 'Mus'
+    ],
+    mids: [
+      'an', 'ul', 'ir', 'ash', 'al',
+      'am', 'at', 'is', 'im', 'ur'
+    ],
+    ends: [
+      'iyah', 'ra', 'an', 'oun', 'aba', 'ar', 'ein', 'ul', 'ira', 'aya',
+      'oud', 'ash', 'ma', 'una', 'id', 'af', 'out', 'eh', 'at',
+      'iyat', 'ah', 'ib', 'ahmad', 'ia', 'awi', 'uq', 'in',
+      'iya', 'ud', 'il', 'at', 'an', 'ish', 'am', 'ur',
+      'afah', 'ak', 'im'
+    ],
+    prefixes: [
+      'Wadi ', 'Bab ', 'Dar ', 'Tell ', 'Ain ',
+      'Jebel ', 'Qasr ', 'Bir ', 'Nahr ', 'Kfar '
+    ]
   },
+
   slavic: {
-    starts: ['Bog', 'Brat', 'Ces', 'Cher', 'Dub', 'Glin', 'Gost', 'Iv', 'Jar', 'Kam', 'Lip', 'Lis', 'Mog', 'Nov', 'Ozer', 'Pech', 'Pskov', 'Ros', 'Sel', 'Smol', 'Stav', 'Tor', 'Ug', 'Vel', 'Vlad', 'Yas', 'Zel', 'Zvon', 'Bych', 'Gniez', 'Kol', 'Prze', 'Suz'],
-    mids: ['a', 'i', 'ol', 'uk', 'ev'],
-    ends: ['ograd', 'ovka', 'ino', 'evo', 'insk', 'ets', 'nik', 'ica', 'ow', 'any', 'ice', 'ovice', 'sko', 'yn', 'ishche', 'ubov', 'ava', 'ec', 'ok', 'ach', 'ensk', 'ichi', 'omir', 'oslav', 'ozero', 'opol', 'ovets', 'ichev', 'ishte', 'nica', 'ovo', 'aya', 'ostok', 'orsk', 'ovsk', 'yov', 'ina', 'uga', 'el'],
-    prefixes: ['Nova ', 'Stara ', 'Velika ', 'Mala ', 'Gorna ', 'Dolna '],
+    starts: [
+      'Bog', 'Brat', 'Ces', 'Cher', 'Dub', 'Glin', 'Gost', 'Iv', 'Jar', 'Kam',
+      'Lip', 'Lis', 'Mog', 'Nov', 'Ozer', 'Pech', 'Pskov', 'Ros', 'Sel', 'Smol',
+      'Stav', 'Tor', 'Ug', 'Vel', 'Vlad', 'Yas', 'Zel', 'Zvon', 'Bych', 'Gniez',
+      'Kol', 'Prze', 'Suz',
+      'Brod', 'Bor', 'Bel', 'Dob', 'Grod', 'Karp', 'Lom', 'Miech',
+      'Ned', 'Rad', 'Svar', 'Tarn', 'Vran', 'Zat', 'Brest', 'Dnep',
+      'Krak', 'Lviv', 'Plock', 'Ryb', 'Sjed', 'Tvar', 'Vary'
+    ],
+    mids: [
+      'a', 'i', 'ol', 'uk', 'ev',
+      'o', 'an', 'ov', 'ic', 'in'
+    ],
+    ends: [
+      'ograd', 'ovka', 'ino', 'evo', 'insk', 'ets', 'nik', 'ica', 'ow',
+      'any', 'ice', 'ovice', 'sko', 'yn', 'ishche', 'ubov', 'ava', 'ec',
+      'ok', 'ach', 'ensk', 'ichi', 'omir', 'oslav', 'ozero', 'opol', 'ovets',
+      'ichev', 'ishte', 'nica', 'ovo', 'aya', 'ostok', 'orsk', 'ovsk', 'yov',
+      'ina', 'uga', 'el',
+      'bor', 'gora', 'brod', 'grad', 'vici', 'pol', 'yan', 'avie',
+      'ovtsy', 'any', 'nik', 'ets', 'ov', 'in', 'ka', 'lya',
+      ' slovo', ' mizo', ' mir', ' lypa', ' yar', ' glade', ' lug', ' kut'
+    ],
+    prefixes: [
+      'Nova ', 'Stara ', 'Velika ', 'Mala ', 'Gorna ', 'Dolna ',
+      'Sveti ', 'Krasna ', 'Bela ', 'Cerna ', 'Verkhnya ', 'Nizhnya '
+    ]
   },
+
   dwarven: {
-    starts: ['Ad', 'Bif', 'Bru', 'Dag', 'Dain', 'Fal', 'Fun', 'Gar', 'Gund', 'Hor', 'Kel', 'Kil', 'Lok', 'Mag', 'Mun', 'Nor', 'Orn', 'Rur', 'Skor', 'Tor', 'Ul', 'Vor', 'Zar', 'Bram', 'Dor', 'Gor', 'Har', 'Khel', 'Thur', 'Grim', 'Brok', 'Durn'],
-    mids: ['ar', 'or', 'um', 'ek', 'il'],
-    ends: ['dar', 'gund', 'heim', 'kar', 'lok', 'mund', 'nar', 'rim', 'tok', 'vald', 'zul', 'baraz', 'bul', 'gar', 'hal', 'kun', 'mek', 'nul', 'thrum', 'dor', 'grund', 'rak'],
-    roots: ['Silver', 'Mithril', 'Ruby', 'Garnet', 'Slate', 'Basalt', 'Obsidian', 'Bronze', 'Pick', 'Axe', 'Shield', 'Beard', 'Ember', 'Ash', 'Black', 'Red', 'High', 'Low', 'Under', 'Rune', 'Gem', 'Lode', 'Tin', 'Salt'],
-    suffixes: ['home', 'crag', 'barrow', 'vault', 'shaft', 'rock', 'stone', 'mine', 'heart', 'helm', 'spire', 'cleft', 'pit', 'rest'],
+    starts: [
+      'Ad', 'Bif', 'Bru', 'Dag', 'Dain', 'Fal', 'Fun', 'Gar', 'Gund', 'Hor',
+      'Kel', 'Kil', 'Lok', 'Mag', 'Mun', 'Nor', 'Orn', 'Rur', 'Skor', 'Tor',
+      'Ul', 'Vor', 'Zar', 'Bram', 'Dor', 'Gor', 'Har', 'Khel', 'Thur', 'Grim',
+      'Brok', 'Durn',
+      'Bal', 'Barg', 'Drak', 'Durg', 'Gim', 'Kark', 'Khad', 'Marn',
+      'Nog', 'Thra', 'Thror', 'Vra', 'Zhur', 'Brak', 'Dran', 'Gath',
+      'Krag', 'Mhor', 'Nal', 'Rha', 'Thrak', 'Urd', 'Zul', 'Khaz'
+    ],
+    mids: [
+      'ar', 'or', 'um', 'ek', 'il',
+      'ak', 'ur', 'ok', 'al', 'ag'
+    ],
+    ends: [
+      'dar', 'gund', 'heim', 'kar', 'lok', 'mund', 'nar', 'rim', 'tok',
+      'vald', 'zul', 'baraz', 'bul', 'gar', 'hal', 'kun', 'mek', 'nul',
+      'thrum', 'dor', 'grund', 'rak',
+      'dum', 'deep', 'hold', 'forge', 'delve', 'hall', 'peak', 'khaz',
+      'gard', 'strik', 'mord', 'gurn', 'zan', 'vaz', 'dul', 'khul',
+      'tar', 'kagg', 'vrak', 'zund', 'thrak', 'drak'
+    ],
+    roots: [
+      'Silver', 'Mithril', 'Ruby', 'Garnet', 'Slate', 'Basalt', 'Obsidian',
+      'Bronze', 'Pick', 'Axe', 'Shield', 'Beard', 'Ember', 'Ash', 'Black',
+      'Red', 'High', 'Low', 'Under', 'Rune', 'Gem', 'Lode', 'Tin', 'Salt',
+      'Iron', 'Gold', 'Granite', 'Quartz', 'Hammer', 'Anvil', 'Forged',
+      'Gloom', 'Frost', 'Deep', 'Coal', 'Ochre', 'Flint', 'Pyrite', 'Boulder',
+      'Stone', 'Magma', 'Smelt', 'Slag', 'Sledge', 'Vein', 'Strata', 'Crag', 'Vault'
+    ],
+    suffixes: [
+      'home', 'crag', 'barrow', 'vault', 'shaft', 'rock', 'stone', 'mine',
+      'heart', 'helm', 'spire', 'cleft', 'pit', 'rest',
+      'hold', 'forge', 'delve', 'deep', 'hall', 'keep', 'gate', 'chasm',
+      'quarry', 'bastion', 'peak', 'grotto', 'works', 'abyss'
+    ]
   },
+
   southern: {
-    starts: ['Aeg', 'Arg', 'Cor', 'Del', 'Eph', 'Gor', 'Kor', 'Lem', 'Mil', 'Nax', 'Ol', 'Par', 'Rho', 'Sam', 'Syb', 'Tha', 'Xan', 'Zak', 'Ath', 'Byz', 'Chal', 'Dod', 'Hal', 'Kyth', 'Myk', 'Pat', 'Sest', 'Tri', 'Epi', 'Lark'],
-    mids: ['an', 'ar', 'ip', 'ot', 'el', 'ith'],
-    ends: ['ia', 'os', 'ene', 'inthos', 'ae', 'ia', 'eion', 'oupolis', 'ymna', 'assos', 'eus', 'akis', 'ike', 'oni', 'ari', 'issa', 'ios', 'ira', 'odos', 'ena', 'ates'],
+    starts: [
+      'Aeg', 'Arg', 'Cor', 'Del', 'Eph', 'Gor', 'Kor', 'Lem', 'Mil', 'Nax',
+      'Ol', 'Par', 'Rho', 'Sam', 'Syb', 'Tha', 'Xan', 'Zak', 'Ath', 'Byz',
+      'Chal', 'Dod', 'Hal', 'Kyth', 'Myk', 'Pat', 'Sest', 'Tri', 'Epi', 'Lark',
+      'Arc', 'Boe', 'Cal', 'Dori', 'Eleu', 'Herm', 'Ith', 'Kast',
+      'Meg', 'Nau', 'Olyn', 'Phok', 'Salam', 'Ther', 'Ver', 'Zac',
+      'Amph', 'Bera', 'Chios', 'Epid', 'Kery', 'Laris', 'Mess', 'Pyl'
+    ],
+    mids: [
+      'an', 'ar', 'ip', 'ot', 'el', 'ith',
+      'os', 'is', 'at', 'op', 'ic'
+    ],
+    ends: [
+      'ia', 'os', 'ene', 'inthos', 'ae', 'eion', 'oupolis', 'ymna',
+      'assos', 'eus', 'akis', 'ike', 'oni', 'ari', 'issa', 'ios',
+      'ira', 'odos', 'ena', 'ates',
+      'polis', 'anta', 'oria', 'ica', 'issa', 'ora', 'ea', 'inda',
+      'este', 'itis', 'onium', 'ethe', 'usa', 'ida', 'ope', 'ium',
+      'ete', 'ana', 'ina'
+    ]
   },
+
   steppe: {
-    starts: ['Ab', 'Ay', 'Bal', 'Bek', 'Chag', 'Er', 'Il', 'Jal', 'Kab', 'Kur', 'Mang', 'Nar', 'Ot', 'Qar', 'Shu', 'Tal', 'Tur', 'Uch', 'Yal', 'Zhan', 'Aral', 'Bor', 'Dom', 'Kum', 'Sary', 'Tash', 'Ust', 'Bay', 'Kok'],
-    mids: ['ar', 'ak', 'ug', 'in', 'yl'],
-    ends: ['abad', 'aral', 'bulak', 'chi', 'dag', 'gan', 'iz', 'kala', 'kum', 'lik', 'mak', 'or', 'su', 'tau', 'tobe', 'uk', 'yr', 'zhar', 'kol', 'bay', 'kan', 'ty'],
-    prefixes: ['Kara ', 'Ak ', 'Kyzyl ', 'Sary ', 'Ulan '],
+    starts: [
+      'Ab', 'Ay', 'Bal', 'Bek', 'Chag', 'Er', 'Il', 'Jal', 'Kab', 'Kur',
+      'Mang', 'Nar', 'Ot', 'Qar', 'Shu', 'Tal', 'Tur', 'Uch', 'Yal', 'Zhan',
+      'Aral', 'Bor', 'Dom', 'Kum', 'Sary', 'Tash', 'Ust', 'Bay', 'Kok',
+      'Alt', 'Barna', 'Chul', 'Dzh', 'Iss', 'Karkar', 'Mer', 'Naryn',
+      'Omsk', 'Pav', 'Sem', 'Tald', 'Ulan', 'Zhan', 'Akt', 'Bish',
+      'Choy', 'Dzham', 'Karag', 'Kost', 'Kyz', 'Orsk', 'Tar', 'Tob'
+    ],
+    mids: [
+      'ar', 'ak', 'ug', 'in', 'yl',
+      'at', 'yk', 'al', 'ur', 'am'
+    ],
+    ends: [
+      'abad', 'aral', 'bulak', 'chi', 'dag', 'gan', 'iz', 'kala', 'kum',
+      'lik', 'mak', 'or', 'su', 'tau', 'tobe', 'uk', 'yr', 'zhar', 'kol',
+      'bay', 'kan', 'ty',
+      'gora', 'tal', 'shahr', 'yurt', 'orda', 'kurg', 'kent', 'sai',
+      'mora', 'tas', 'oba', ' yurt', ' bulag', ' kuyu', ' dere', ' stan',
+      ' bashi', ' bel'
+    ],
+    prefixes: [
+      'Kara ', 'Ak ', 'Kyzyl ', 'Sary ', 'Ulan ',
+      'Bayan ', 'Zhana ', 'Ulu ', 'Kishi ', 'Uchk '
+    ]
   },
+
   jungle: {
-    starts: ['Ah', 'Che', 'Ek', 'Hu', 'Itz', 'Ki', 'La', 'Mi', 'Na', 'Oc', 'Pe', 'Qu', 'Sa', 'Tu', 'Ux', 'Xa', 'Ya', 'Za', 'Coa', 'Hue', 'Tla', 'Yax', 'Ato', 'Iza'],
-    mids: ['hu', 'xi', 'to', 'ca', 'ni', 'lo', 'tz'],
-    ends: ['tzin', 'huac', 'pec', 'tlan', 'kal', 'mul', 'ten', 'chac', 'lum', 'xan', 'ba', 'pa', 'tun', 'ac', 'ich', 'il', 'oc', 'uy'],
-  },
+    starts: [
+      'Ah', 'Che', 'Ek', 'Hu', 'Itz', 'Ki', 'La', 'Mi', 'Na', 'Oc',
+      'Pe', 'Qu', 'Sa', 'Tu', 'Ux', 'Xa', 'Ya', 'Za', 'Coa', 'Hue',
+      'Tla', 'Yax', 'Ato', 'Iza',
+      'Bal', 'Cha', 'Dzib', 'Iz', 'Kuk', 'May', 'Noh', 'Och',
+      'Pop', 'Quich', 'Say', 'Tikal', 'Uax', 'Xul', 'Yal', 'Zotz',
+      'Cal', 'Cop', 'Kam', 'Mot', 'Naran', 'Pal', 'Ton', 'Xun'
+    ],
+    mids: [
+      'hu', 'xi', 'to', 'ca', 'ni', 'lo', 'tz',
+      'al', 'ic', 'am', 'il', 'an'
+    ],
+    ends: [
+      'tzin', 'huac', 'pec', 'tlan', 'kal', 'mul', 'ten', 'chac', 'lum',
+      'xan', 'ba', 'pa', 'tun', 'ac', 'ich', 'il', 'oc', 'uy',
+      'na', 'haa', 'kax', 'nal', 'witz', 'kab', 'tok', 'nic',
+      'itz', 'mopan', 'chichen', 'pache', 'puc', 'kuh', 'tun', 'kin',
+      'chel', 'zil'
+    ]
+  }
 };
 /** A middle syllable more often in the cultures with the smaller sets. */
 const MID_CHANCE: Record<string, number> = { norse: 0.3, slavic: 0.5, dwarven: 0.35, steppe: 0.45, desert: 0.5, southern: 0.5, celtic: 0.4 };

@@ -50,6 +50,29 @@ export interface LairMap {
   ruins: Pt[][];
   tufts: Pt[];
   flowers: { p: Pt; c: number }[];
+  /** Cave levels: this map is level 0 (the entrance level); `levels` lists every level, itself first. */
+  level: number;
+  levels: LairMap[];
+  /** Ways between levels on this level: down to the next or up to the one above, at the same spot on both. */
+  links: LairLink[];
+}
+
+export type LinkStyle = 'stairs' | 'shaft' | 'slope';
+export interface LairLink {
+  p: Pt;
+  dir: 'up' | 'down';
+  /** The level it leads to. */
+  to: number;
+  style: LinkStyle;
+}
+
+/** Number of cave levels, from the site's tags ("3 levels"); 1 when not tagged. */
+export function lairLevels(site: LairSite): number {
+  for (const t of site.tags) {
+    const m = /^(\d) levels$/.exec(t);
+    if (m) return Math.max(1, Math.min(4, +m[1]));
+  }
+  return 1;
 }
 
 /** Battlemap squares (5 ft). */
@@ -252,19 +275,63 @@ function blob(c: Pt, r: number, rnd: Rng, n = 7, rough = 0.35): Pt[] {
 
 const empty = (site: LairSite, W: number, H: number): Omit<LairMap, 'outlines' | 'onEdge' | 'open'> => ({
   site, W, H, water: [], mouths: [], rocks: [], dots: [], trees: [], bigTree: null, stones: [], stream: null, camp: null, ruins: [], tufts: [], flowers: [],
+  level: 0, levels: [], links: [],
 });
 
 // ---- Caves -----------------------------------------------------------------------------------
 
+/**
+ * A cave of one to four levels. Each level is its own set of chambers and passages on the same
+ * footprint; the ways down from one level (stairs, a shaft or a steep slope, in a chamber far
+ * from the entrance) open into a chamber at the same spot on the level below, where the way up
+ * is marked. Only the top level has entrances; deeper levels are wetter.
+ */
 function buildCave(site: LairSite): LairMap {
-  const rnd = mulberry32(site.seed);
-  const noise = new Simplex3(mulberry32(hashString(`cave#${site.seed}`)));
+  const n = lairLevels(site);
+  const levels: LairMap[] = [];
+  let anchors: { p: Pt; style: LinkStyle }[] = [];
+  for (let L = 0; L < n; L++) {
+    const rnd = mulberry32(site.seed + L * 7919);
+    const { map, chambers } = buildCaveLevel(site, L, anchors.map((a) => a.p), rnd);
+    for (const a of anchors) map.links.push({ p: a.p, dir: 'up', to: L - 1, style: a.style });
+    if (L + 1 < n) {
+      // Ways down: chambers far from the entrance (or the way in from above), not those already linked.
+      const start = map.mouths[0]?.p ?? anchors[0]?.p ?? [map.W / 2, map.H / 2];
+      const taken = (c: Pt) => anchors.some((a) => Math.hypot(a.p[0] - c[0], a.p[1] - c[1]) < 6) ||
+        map.mouths.some((mo) => Math.hypot(mo.p[0] - c[0], mo.p[1] - c[1]) < 16);
+      const nearWater = (c: Pt) => inLoops(map.water, c) || map.water.some((w) => w.some((q) => Math.hypot(q[0] - c[0], q[1] - c[1]) < 2.5));
+      const cands = chambers.filter((c) => !taken(c.c) && c.c[0] > 4 && c.c[1] > 4 && c.c[0] < map.W - 4 && c.c[1] < map.H - 4 && map.open(c.c) && !nearWater(c.c))
+        .sort((a, b) => Math.hypot(b.c[0] - start[0], b.c[1] - start[1]) - Math.hypot(a.c[0] - start[0], a.c[1] - start[1]));
+      const nDown = site.tags.includes('large') && rnd() < 0.4 && cands.length > 2 ? 2 : 1;
+      const next: { p: Pt; style: LinkStyle }[] = [];
+      for (const c of cands.slice(0, nDown)) {
+        // Off the chamber's centre a little, so the marker sits on the floor beside its middle.
+        const a = rnd() * Math.PI * 2, p: Pt = [c.c[0] + Math.cos(a) * c.r * 0.3, c.c[1] + Math.sin(a) * c.r * 0.3];
+        const style: LinkStyle = rnd() < 0.45 ? 'stairs' : rnd() < 0.6 ? 'shaft' : 'slope';
+        const at: Pt = map.open(p) && !nearWater(p) ? p : c.c;
+        // Clear the boulders and stalagmites from around it.
+        map.rocks = map.rocks.filter((r) => Math.hypot(r[0][0] - at[0], r[0][1] - at[1]) > 3);
+        map.dots = map.dots.filter((d) => Math.hypot(d.p[0] - at[0], d.p[1] - at[1]) > 2.5);
+        next.push({ p: at, style });
+        map.links.push({ p: at, dir: 'down', to: L + 1, style });
+      }
+      anchors = next;
+    }
+    map.level = L;
+    levels.push(map);
+  }
+  for (const m of levels) m.levels = levels;
+  return levels[0];
+}
+
+function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng): { map: LairMap; chambers: { c: Pt; r: number }[] } {
+  const noise = new Simplex3(mulberry32(hashString(`cave#${site.seed}#${level}`)));
   const [W, H] = lairSize(site);
   const has = (t: string) => site.tags.includes(t);
   const k = W / 78;
-  // Chambers, kept apart.
-  const nCh = Math.round((has('small') ? 5 : has('large') ? 12 : 8) * (0.85 + 0.3 * rnd()));
-  const ch: { c: Pt; r: number }[] = [];
+  // Chambers, kept apart; the ways down from the level above open into the first ones.
+  const nCh = Math.round((has('small') ? 5 : has('large') ? 12 : 8) * (level ? 0.75 + 0.3 * rnd() : 0.85 + 0.3 * rnd()));
+  const ch: { c: Pt; r: number }[] = anchors.map((c) => ({ c, r: (4 + 2.5 * rnd()) * Math.sqrt(k) }));
   for (let t = 0; t < 400 && ch.length < nCh; t++) {
     const r = (3.8 + 7 * rnd() ** 1.4) * Math.sqrt(k);
     const c: Pt = [r + 3 + rnd() * (W - 2 * r - 6), r + 3 + rnd() * (H - 2 * r - 6)];
@@ -303,7 +370,7 @@ function buildCave(site: LairSite): LairMap {
   }
   // Mouths: passages from the chambers nearest the map edge out past it (none if sealed).
   const mouths: { p: Pt; dir: number }[] = [];
-  if (!has('sealed')) {
+  if (!has('sealed') && level === 0) {
     const n = has('large') && rnd() < 0.5 ? 2 : 1;
     const sides = [0, 1, 2, 3].sort(() => rnd() - 0.5).slice(0, n);
     for (const side of sides) {
@@ -345,29 +412,33 @@ function buildCave(site: LairSite): LairMap {
   }
   field.clean(40, 10);
   const open = (p: Pt) => field.at(p) > 0;
-  const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge: (p) => p[0] < 0.05 || p[1] < 0.05 || p[0] > W - 0.05 || p[1] > H - 0.05, mouths };
+  const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge: (p) => p[0] < 0.05 || p[1] < 0.05 || p[0] > W - 0.05 || p[1] > H - 0.05, mouths, level };
 
-  // Pools: low noise hollows well inside the floor.
-  if (has('wet') || has('flooded')) {
-    const lvl = has('flooded') ? 0.05 : 0.32;
+  // Pools: low noise hollows well inside the floor (more of them the deeper the level).
+  const wetLevel = has('wet') || has('flooded') || (level > 0 && rnd() < 0.3 * level && !has('dry'));
+  if (wetLevel) {
+    const lvl = has('flooded') ? 0.05 : Math.max(0.12, 0.32 - 0.06 * level);
     const wf = new Field(W, H, (x, y) => Math.min(fbm(noise, x / 13 + 40, y / 13, 1.7, 2) - lvl, field.at([x, y]) - 0.18));
     wf.clean(20, 6);
     m.water = wf.contours();
   }
   const dry = (p: Pt) => !m.water.length || !inLoops(m.water, p);
-  // Boulders near the walls, stalagmites in clusters, rubble.
+  // Boulders near the walls, stalagmites in clusters, rubble (kept clear of the ways between levels).
   const area = W * H;
+  const nearLink = (p: Pt) => anchors.some((a) => Math.hypot(a[0] - p[0], a[1] - p[1]) < 2.5);
   for (let t = 0; t < area / 18; t++) {
     const p: Pt = [rnd() * W, rnd() * H];
     const v = field.at(p);
-    if (v <= 0.06 || !dry(p)) continue;
+    if (v <= 0.06 || !dry(p) || nearLink(p)) continue;
     if (v < 0.35 && rnd() < 0.09) m.rocks.push(blob(p, 0.45 + 1.0 * rnd() ** 2, rnd, 6 + Math.floor(rnd() * 3)));
     else if (v < 0.3 && rnd() < 0.12) {
       for (let q = 0; q < 1 + Math.floor(rnd() * 4); q++) m.dots.push({ p: [p[0] + (rnd() - 0.5) * 1.6, p[1] + (rnd() - 0.5) * 1.6], r: 0.12 + 0.22 * rnd() });
     } else if (rnd() < 0.04) m.dots.push({ p, r: 0.06 + 0.06 * rnd() });
   }
   m.dots = m.dots.filter((d) => field.at(d.p) > 0.05 && dry(d.p));
-  return m;
+  // The way up must not stand in a pool.
+  if (m.water.length) m.water = m.water.filter((w) => !anchors.some((a) => inLoops([w], a) || w.some((q) => Math.hypot(q[0] - a[0], q[1] - a[1]) < 3)));
+  return { map: m, chambers: ch };
 }
 
 function inLoops(loops: Pt[][], p: Pt): boolean {
@@ -404,6 +475,7 @@ function buildGlade(site: LairSite): LairMap {
   field.clean(60, 30);
   const open = (p: Pt) => field.at(p) > 0;
   const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge: () => false };
+  m.levels = [m];
 
   // Water first, so the rest keeps out of it.
   if (has('pond')) {
