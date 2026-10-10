@@ -221,9 +221,12 @@ export function rectIn(p: Poly, frac: number): Poly | null {
 
 /**
  * Recursive lot subdivision: cut perpendicular to the longest edge near its middle until lots
- * are small, sometimes leaving an alley. Gives Watabou-style blocks of terraced buildings.
+ * are small, sometimes leaving an alley (the chance falls by `decay` at each level; 1 keeps an
+ * alley at every cut). Gives Watabou-style blocks of terraced buildings; `skew` tilts the cuts.
  */
-export function subdivide(p: Poly, minArea: number, rnd: () => number, alley = 0, alleyChance = 0, out: Poly[] = [], depth = 0): Poly[] {
+export function subdivide(
+  p: Poly, minArea: number, rnd: () => number, alley = 0, alleyChance = 0, out: Poly[] = [], depth = 0, decay = 0.7, skew = 0.25,
+): Poly[] {
   const a = area(p);
   if (a < minArea * (1 + rnd()) || depth > 14) {
     if (a > minArea * 0.25) out.push(p);
@@ -235,14 +238,14 @@ export function subdivide(p: Poly, minArea: number, rnd: () => number, alley = 0
   const t = 0.4 + 0.2 * rnd();
   const m: Pt = [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t];
   // Slight skew keeps blocks from looking like a grid.
-  const sk = (rnd() - 0.5) * 0.25;
+  const sk = (rnd() - 0.5) * skew;
   let nx = (q1[0] - q0[0]) / len, ny = (q1[1] - q0[1]) / len;
   [nx, ny] = [nx - ny * sk, ny + nx * sk];
   const nl = Math.hypot(nx, ny);
   const gap = rnd() < alleyChance ? alley / 2 : 0;
   const [l, r] = split(p, m, [nx / nl, ny / nl], gap);
-  if (l.length >= 3) subdivide(l, minArea, rnd, alley, alleyChance * 0.7, out, depth + 1);
-  if (r.length >= 3) subdivide(r, minArea, rnd, alley, alleyChance * 0.7, out, depth + 1);
+  if (l.length >= 3) subdivide(l, minArea, rnd, alley, alleyChance * decay, out, depth + 1, decay, skew);
+  if (r.length >= 3) subdivide(r, minArea, rnd, alley, alleyChance * decay, out, depth + 1, decay, skew);
   return out;
 }
 

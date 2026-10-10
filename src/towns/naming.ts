@@ -201,6 +201,11 @@ export function labelCity(n: CityNaming): void {
   // ---- Streets -----------------------------------------------------------------------------
   const plazaName = 'Market';
   n.streets.forEach((st, k) => {
+    // gate -1: the street between a twin town's two markets.
+    if (st.gate < 0) {
+      st.f.properties.name = unique(() => (rnd() < 0.5 ? 'Bridge Street' : `${proper(`street${k}`)} Way`));
+      return;
+    }
     const g = gateName(st.gate);
     st.f.properties.name = unique(() => (k === 0 && rnd() < 0.5 ? 'High Street' : rnd() < 0.6 ? `${g} Street` : `${proper(`street${k}`)} Street`));
     void plazaName;

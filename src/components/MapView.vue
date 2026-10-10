@@ -10,6 +10,7 @@ import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building
 import type { PlanFeature } from '../towns/plan';
 import { probeWorld } from '../world/probe';
 import { siteFeatures } from '../towns/manager';
+import { LAYOUT_LABEL } from '../towns/layout';
 import type { TownsRequest, TownsResponse } from '../worker/protocol';
 import {
   MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES,
@@ -168,10 +169,26 @@ function onHover(e: MapMouseEvent): void {
   });
 }
 
+/** "Anterina · city of 12,400 · planned grid" for the town or city whose plan is under the cursor. */
+function placeAt(lon: number, lat: number): string | undefined {
+  const sts = world.value?.settlements ?? [];
+  const kLon = Math.cos((lat * Math.PI) / 180) * 111320;
+  for (const s of sts) {
+    if (s.tier === 'village') continue;
+    const dx = (((s.lon - lon + 540) % 360) - 180) * kLon, dy = (s.lat - lat) * 110540;
+    if (dx * dx + dy * dy > s.radiusM * s.radiusM) continue;
+    const layout = s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : '';
+    return `${s.name ?? ''} · ${s.tier} of ${s.population.toLocaleString('en')}${layout}`;
+  }
+  return undefined;
+}
+
 function scheduleProbe(lngLat: LngLat): void {
   cancelAnimationFrame(probeFrame);
   probeFrame = requestAnimationFrame(() => {
-    store.probe = world.value ? probeWorld(world.value.raster, lngLat.lng, lngLat.lat) : null;
+    const info = world.value ? probeWorld(world.value.raster, lngLat.lng, lngLat.lat) : null;
+    if (info && world.value) info.place = placeAt(lngLat.lng, lngLat.lat);
+    store.probe = info;
   });
 }
 
@@ -337,6 +354,7 @@ watch(() => store.showSettlements, (show) => {
     <div ref="container" class="map-canvas" />
     <div v-if="store.probe" class="probe">
       <div class="probe-title">{{ store.probe.terrain }}</div>
+      <div v-if="store.probe.place" class="probe-place">{{ store.probe.place }}</div>
       <div v-if="store.probe.climate">{{ store.probe.climate }}</div>
       <div>{{ store.probe.lat.toFixed(2) }}°, {{ store.probe.lon.toFixed(2) }}°</div>
       <div>Elevation {{ Math.round(store.probe.elevation) }} m</div>
@@ -376,6 +394,9 @@ watch(() => store.showSettlements, (show) => {
   line-height: 1.5;
   pointer-events: none;
   min-width: 170px;
+}
+.probe-place {
+  font-style: italic;
 }
 .probe-title {
   font-weight: 600;

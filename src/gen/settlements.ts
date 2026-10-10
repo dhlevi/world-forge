@@ -2,6 +2,7 @@ import { type Grid, distKm, neighbor, pxPerMeterZ20, smoothstep } from './grid';
 import { MinHeap } from './heap';
 import { hash32, hashString, mulberry32 } from './rng';
 import { Simplex3 } from './noise';
+import type { CityLayout } from '../towns/layout';
 import { Biome } from './biomes';
 import { HYDROLOGY, SETTLEMENTS as S } from './config';
 import type { FlowRouting } from './hydrology';
@@ -30,6 +31,8 @@ export interface Settlement {
   coastal: boolean;
   river: boolean;
   seed: number;
+  /** Town plan layout (cities and towns), chosen once cultures are known. */
+  layout?: CityLayout;
 }
 
 export type RoadClass = 'major' | 'minor' | 'track';

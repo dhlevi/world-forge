@@ -4,6 +4,8 @@ import { CLIMATE } from '../gen/config';
 import type { RasterWorld } from '../gen/world';
 
 export interface ProbeInfo {
+  /** The town or city under the cursor, with its layout (set by the map view). */
+  place?: string;
   lon: number;
   lat: number;
   elevation: number;

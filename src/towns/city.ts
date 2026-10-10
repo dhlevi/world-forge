@@ -10,8 +10,9 @@ import { RIVER } from './terrain';
 import { graves } from './kit';
 import { type BuildingRef, type WardInfo, labelCity } from './naming';
 import { BUILD_GROUND, contourStrips, plantField } from './ground';
+import { type CityLayout, makeLayout } from './layout';
+import { CULTURES } from '../names/cultures';
 
-const GOLDEN = Math.PI * (3 - Math.sqrt(5));
 const GATE_HALF = 6;
 const key = (p: Pt) => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
@@ -43,29 +44,32 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   const town = s.tier !== 'city';
   const nInner = town ? clamp(Math.round(s.population / 500) + 2, 4, 14) : clamp(Math.round(s.population / 900) + 3, 8, 40);
   const Rin = s.coreM, R = s.radiusM;
-  const nTotal = Math.ceil(nInner * ((R * 1.2) / Rin) ** 2);
-  const sc = Rin / Math.sqrt(nInner);
-  const a0 = rnd() * 2 * Math.PI;
+  // Layout: chosen for the site when the world was named; the direction it follows comes from
+  // the local ground (river, shore, valley or the roads through it).
+  const style: CityLayout = s.layout ?? 'radial';
+  const lay = makeLayout(style, { rnd, nInner, Rin, R, axis: siteAxis(style, terrain, water, exits, Rin, rnd) });
+  const nTotal = lay.pts.length;
   const pts = new Float64Array(nTotal * 2);
-  for (let i = 1; i < nTotal; i++) {
-    const r = sc * Math.sqrt(i + 0.5) * (0.9 + 0.2 * rnd());
-    const a = a0 + i * GOLDEN + (rnd() - 0.5) * 0.4;
-    pts[2 * i] = r * Math.cos(a);
-    pts[2 * i + 1] = r * Math.sin(a);
-  }
+  lay.pts.forEach((p, i) => {
+    pts[2 * i] = p[0];
+    pts[2 * i + 1] = p[1];
+  });
   const B = R * 1.4;
   let del = new Delaunay(pts);
   let vor = del.voronoi([-B, -B, B, B]);
-  // One Lloyd step on the inner patches evens out ward sizes.
-  for (let i = 0; i < Math.min(nTotal, Math.round(nInner * 1.5)); i++) {
-    const cp = vor.cellPolygon(i);
-    if (!cp) continue;
-    const c = centroid(cp.slice(0, -1) as Pt[]);
-    pts[2 * i] = c[0];
-    pts[2 * i + 1] = c[1];
+  if (lay.lloyd) {
+    // One Lloyd step on the inner patches evens out ward sizes.
+    for (let i = 0; i < nTotal; i++) {
+      if (lay.metric([pts[2 * i], pts[2 * i + 1]]) > Rin * 1.6) continue;
+      const cp = vor.cellPolygon(i);
+      if (!cp) continue;
+      const c = centroid(cp.slice(0, -1) as Pt[]);
+      pts[2 * i] = c[0];
+      pts[2 * i + 1] = c[1];
+    }
+    del = new Delaunay(pts);
+    vor = del.voronoi([-B, -B, B, B]);
   }
-  del = new Delaunay(pts);
-  vor = del.voronoi([-B, -B, B, B]);
 
   const patches: Patch[] = [];
   for (let i = 0; i < nTotal; i++) {
@@ -74,14 +78,17 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const c: Pt = poly.length >= 3 ? centroid(poly) : [pts[2 * i], pts[2 * i + 1]];
     patches.push({ poly, c, water: poly.length < 3 || water(c), inside: false, kind: '' });
   }
-  // The walled core takes the nearest patches, with steep ground counting as further away.
-  const cost = (i: number) => (i === 0 ? -1 : Math.hypot(...patches[i].c) * (1 + 8 * terrain.slope(patches[i].c)));
+  // The ward holding each market centre comes first; then the walled core takes the wards
+  // nearest in the layout's own shape, with steep ground counting as further away.
+  const nucleusPatch = lay.nuclei.map((n) => del.find(n[0], n[1]));
+  const cost = (i: number) => (nucleusPatch.includes(i) ? -1 : lay.metric(patches[i].c) * (1 + lay.slopeW * terrain.slope(patches[i].c)));
   const inner = patches
     .map((_, i) => i)
-    .filter((i) => i < Math.min(nTotal, Math.round(nInner * 2.5)) && !patches[i].water)
+    .filter((i) => !patches[i].water && patches[i].poly.length >= 3 && lay.metric(patches[i].c) < Rin * 3)
     .sort((a, b) => cost(a) - cost(b))
     .slice(0, nInner);
   if (inner.length === 0) return;
+  const shapeD = (p: Pt) => lay.metric(p);
 
   // Outline of the inner patches: directed edges cancel against their reverses.
   const edgeMap = new Map<string, [Pt, Pt]>();
@@ -201,7 +208,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   const len = (u: number, v: number) => Math.hypot(P[u][0] - P[v][0], P[u][1] - P[v][1]);
   const nodeH = P.map((p) => terrain.height(p));
   // Streets avoid steep grades (cost doubles at ~6%).
-  const grade = (u: number, v: number) => 1 + (Math.abs(nodeH[u] - nodeH[v]) / Math.max(1, len(u, v)) / 0.06) ** 2;
+  const grade = (u: number, v: number) => 1 + (Math.abs(nodeH[u] - nodeH[v]) / Math.max(1, len(u, v)) / lay.gradeRef) ** 2;
 
   // Gates: the wall vertex best facing each incoming road.
   const gates: { k: number; exit: (typeof exits)[number] | null }[] = [];
@@ -228,9 +235,12 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     if (wall.length > 6) gates.push({ k: (k + (wall.length >> 1)) % wall.length, exit: null });
   }
 
-  const plaza = inner.find((i) => patches[i].inside) ?? inner[0];
+  const plaza = nucleusPatch.find((i) => patches[i].inside) ?? inner.find((i) => patches[i].inside) ?? inner[0];
   patches[plaza].kind = 'plaza';
-  const plazaNodes = new Set(patches[plaza].poly.map((p) => nodeId.get(key(p))!));
+  // A twin town's second core has its own market.
+  const plazas = [plaza, ...nucleusPatch.filter((i) => i !== plaza && patches[i].inside && !patches[i].water)];
+  for (const i of plazas) patches[i].kind = 'plaza';
+  const plazaNodes = new Set(plazas.flatMap((i) => patches[i].poly.map((p) => nodeId.get(key(p))!)));
   const mainEdges = new Set<string>();
   const roadLines: Pt[][] = [];
   // For lettering: main streets and roads by gate, and every building with its ward.
@@ -261,8 +271,10 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const path = dijkstra(gn, (n) => plazaNodes.has(n), insideCost);
     if (path) {
       for (let k = 0; k + 1 < path.length; k++) mainEdges.add(ekey(path[k], path[k + 1]));
-      out.line('street', path.map((n) => P[n]));
-      streetRefs.push({ f: last(), pts: path.map((n) => P[n]), gate: gates.indexOf(g) });
+      if (path.length >= 2) {
+        out.line('street', path.map((n) => P[n]));
+        streetRefs.push({ f: last(), pts: path.map((n) => P[n]), gate: gates.indexOf(g) });
+      }
     }
     if (!g.exit) continue;
     const ex = g.exit.p;
@@ -285,8 +297,21 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     for (let k = 0; road && k + 1 < road.length; k++) mainEdges.add(ekey(road[k], road[k + 1]));
     const smooth = chaikin(line, 2) as Pt[];
     roadLines.push(smooth);
+    if (smooth.length < 2) continue;
     out.line('road', smooth, { cls: g.exit.cls });
     roadRefs.push({ f: last(), pts: smooth, gate: gates.indexOf(g) });
+  }
+
+  // The street joining a twin town's two markets (over the bridge, if a river parts them).
+  for (let k = 1; k < plazas.length; k++) {
+    const goal = new Set(patches[plazas[0]].poly.map((p) => nodeId.get(key(p))!));
+    const startN = nodeId.get(key(patches[plazas[k]].poly[0]))!;
+    const path = dijkstra(startN, (n) => goal.has(n), insideCost);
+    if (path && path.length > 1) {
+      for (let q = 0; q + 1 < path.length; q++) mainEdges.add(ekey(path[q], path[q + 1]));
+      out.line('street', path.map((n) => P[n]));
+      streetRefs.push({ f: last(), pts: path.map((n) => P[n]), gate: -1 });
+    }
   }
 
   // Special wards.
@@ -297,7 +322,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   // Ground too steep to build on is left as wooded slopes.
   for (const i of inner) if (free(i) && terrain.slope(patches[i].c) > 0.22) patches[i].kind = 'park';
   if (!town || s.population > 1500) {
-    const c = nbrs(plaza).filter(free);
+    const c = plazas.flatMap((p) => nbrs(p)).filter(free);
     if (c.length) patches[highest(c)].kind = 'temple';
   }
   const touchesWall = (i: number) => {
@@ -440,10 +465,10 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         break;
       }
       default: {
-        const q = inset(pt.poly, offsets(i, wallOff, 4, 2));
+        const q = inset(pt.poly, offsets(i, wallOff, 4, lay.laneW));
         if (!q) break;
         const rich = pt.kind === 'rich', harbour = pt.kind === 'harbour', garrison = pt.kind === 'garrison';
-        const rr = Math.hypot(...pt.c) / Rin;
+        const rr = shapeD(pt.c) / Rin;
         const minArea = (town ? 110 : 85) * (1 + 1.5 * rr * rr) * (rich ? 2.5 : harbour ? 3 : garrison ? 3.5 : 1);
         // A garrison keeps an open drill yard in the middle.
         const drill = garrison ? rectIn(q, 0.3) : null;
@@ -453,14 +478,18 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         const g = terrain.grad(pt.c), sl = Math.hypot(...g);
         // Blocks small enough that every house fronts a street or alley (about two lots deep),
         // always parted by alleys at the first cuts; every lot must reach the block edge.
+        // Every cut between blocks leaves an alley, so no block is walled in by its neighbours;
+        // contour terraces are crossed by alleys too, so they never run unbroken across a ward.
+        const blockArea = minArea * (rich || harbour ? 5 : 7);
+        const alley = () => 2.8 + 1.4 * rnd();
         const blocks = sl > 0.08
-          ? strips(q, [g[0] / sl, g[1] / sl], 22 + 8 * rnd(), 3.5)
-          : subdivide(q, minArea * (rich || harbour ? 5 : 7), rnd, 3.5, 1);
+          ? strips(q, [g[0] / sl, g[1] / sl], 22 + 8 * rnd(), 3.5).flatMap((st) => subdivide(st, blockArea, rnd, alley(), 1, [], 0, 1, lay.skew))
+          : subdivide(q, blockArea, rnd, alley(), 1, [], 0, 1, lay.skew);
         for (const block of blocks) {
           if (area(block) < minArea * 0.6) continue;
           // Harbour wards are open quays: no yards, just cobbles between the warehouses.
           if (!harbour) yard(block);
-          for (const lot of subdivide(block, minArea, rnd)) {
+          for (const lot of subdivide(block, minArea, rnd, 0, 0, [], 0, 0.7, lay.skew)) {
             if (!touchesEdge(lot, block)) continue;
             if (rnd() < (rich ? 0.2 : 0.04)) continue;
             if (!goodLot(lot, minArea)) continue;
@@ -478,12 +507,12 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const d = Math.hypot(...pt.c);
     if (d > R) return;
     const dRoad = roadLines.length ? Math.min(...roadLines.map((l) => distToLine(l, pt.c[0], pt.c[1]))) : Infinity;
-    if (dRoad < Math.sqrt(area(pt.poly) / Math.PI) + 15 && d < Rin * 1.9) {
+    if (dRoad < Math.sqrt(area(pt.poly) / Math.PI) + 15 && shapeD(pt.c) < Rin * 1.9 && d < R * 0.9) {
       const q = inset(pt.poly, offsets(i, 3, 4, 1.5));
       if (!q) return;
       pave(pt.poly, 'dirt');
       // Small blocks with lanes between them; houses front the lanes, gardens fill the backs.
-      for (const block of subdivide(q, 900 + 700 * rnd(), rnd, 3, 1)) {
+      for (const block of subdivide(q, 900 + 700 * rnd(), rnd, 3, 1, [], 0, 1, lay.skew)) {
         const bc = centroid(block);
         if (Math.min(...roadLines.map((l) => distToLine(l, bc[0], bc[1]))) > 45) {
           plantField(block, 'green', ground, out, rnd, 0.4);
@@ -539,6 +568,61 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     names, culture, key: s.id, town, population: s.population, wards: wardInfo, inner: inner.filter((i) => patches[i].inside),
     outer: suburb, gates: gates.map((g) => wall[g.k]), streets: streetRefs, roads: roadRefs, buildings: buildingRefs, out, rnd,
   });
+}
+
+/**
+ * The direction a town follows: along the river through it, along the shore, along the valley
+ * (across the slope), or along the road through it; otherwise at random. Twin towns take the
+ * river direction too, so their two cores sit on opposite banks.
+ */
+function siteAxis(style: CityLayout, terrain: PlanInput['terrain'], water: (p: Pt) => boolean, exits: PlanInput['exits'], Rin: number, rnd: () => number): Pt {
+  const r0 = rnd() * Math.PI;
+  const fallback: Pt = [Math.cos(r0), Math.sin(r0)];
+  // Principal axis of a set of points.
+  const axisOf = (ps: Pt[]): Pt | null => {
+    if (ps.length < 6) return null;
+    let mx = 0, my = 0;
+    for (const p of ps) { mx += p[0] / ps.length; my += p[1] / ps.length; }
+    let sxx = 0, syy = 0, sxy = 0;
+    for (const p of ps) { const x = p[0] - mx, y = p[1] - my; sxx += x * x; syy += y * y; sxy += x * y; }
+    const a = 0.5 * Math.atan2(2 * sxy, sxx - syy);
+    return [Math.cos(a), Math.sin(a)];
+  };
+  const river: Pt[] = [], sea: Pt[] = [];
+  const reach = Rin * 1.6, step = Math.max(10, Rin / 12);
+  for (let y = -reach; y <= reach; y += step) {
+    for (let x = -reach; x <= reach; x += step) {
+      if (x * x + y * y > reach * reach) continue;
+      const p: Pt = [x, y];
+      if (!water(p)) continue;
+      (terrain.typeAt(p) === RIVER ? river : sea).push(p);
+    }
+  }
+  const rv = axisOf(river);
+  if (rv) return rv;
+  // Shore: across the mean direction to the water.
+  if (sea.length >= 6 && style !== 'grid') {
+    let sx = 0, sy = 0;
+    for (const p of sea) { const d = Math.hypot(p[0], p[1]) || 1; sx += p[0] / d; sy += p[1] / d; }
+    const l = Math.hypot(sx, sy);
+    if (l > 0.5) return [-sy / l, sx / l];
+  }
+  // Roads: two exits roughly opposite make a through road.
+  const ang = exits.map((e) => Math.atan2(e.p[1], e.p[0]));
+  for (let a = 0; a < ang.length; a++) {
+    for (let b = a + 1; b < ang.length; b++) {
+      if (Math.cos(ang[a] - ang[b]) < -0.7) {
+        const dx = Math.cos(ang[a]) - Math.cos(ang[b]), dy = Math.sin(ang[a]) - Math.sin(ang[b]);
+        const l = Math.hypot(dx, dy) || 1;
+        return [dx / l, dy / l];
+      }
+    }
+  }
+  // Valley or hillside: along the contours.
+  const g = terrain.grad([0, 0]), gl = Math.hypot(g[0], g[1]);
+  if (gl > 0.03) return [-g[1] / gl, g[0] / gl];
+  if (ang.length) return [Math.cos(ang[0]), Math.sin(ang[0])];
+  return fallback;
 }
 
 /** Outward direction (radians, local frame) of the lot edge lying on its block's edge: the street front. */

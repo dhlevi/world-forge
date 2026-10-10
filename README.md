@@ -119,12 +119,19 @@ Everything below world scale is generated on demand in a dedicated web worker (`
   - **Slope-aware sites** (sampled at full terrain detail, ~60 m): mining camps need real relief and sit on workable ground at the foot of the steepest rise within ~1.5 km (none on flat plateaus); farming villages and lowland keeps move to the flattest ground within ~900 m and are dropped if it is all steeper than 16%; logging camps avoid slopes over ~35%.
 - **Markers:** cities show from the globe view, towns from zoom 5, villages from zoom 8, coloured by kind. They fade out as the plans fade in.
 - **City and town plans** (from zoom 11.5, `city.ts`) follow [Watabou's Medieval Fantasy City Generator](https://watabou.github.io/city-generator/):
+  - **Layouts** (`layout.ts`): each city and town gets one of five layouts, chosen when the world is named from its culture, local relief, river and coast (deterministic per seed); the hover panel shows it.
+    - **Round town:** Watabou's sunflower spiral around one market.
+    - **Planned grid:** a Roman castrum or bastide on a rotated, slightly sheared lattice with a squared-off core and straight streets; lots are cut at right angles, and the lattice loosens into old field boundaries further out. Most common in Latin and southern cultures, and on flat ground.
+    - **Ribbon town:** stretched along the river, shore, valley or through road, with two rows of wards either side of a gently bowed high street.
+    - **Hill town:** an uneven spiral (wards of mixed sizes) with a lobed outline; steep ground is kept out of the core much more strongly and streets wind with the contours. Most common on rough ground and in dwarven, Celtic, Elvish and Slavic cultures.
+    - **Twin town:** two cores grown together, on opposite banks when a river runs through (big cities only), each with its own market, joined by a Bridge Street.
+    The direction a town follows comes from its local ground: the river through it, else the shore, else the through road, else the contours.
   - Wards are Voronoi patches on a sunflower spiral (relaxed once), sized from population.
   - The wall follows the outline of the inner patches, with towers. Gates face the incoming roads.
   - Main streets run from each gate to the central plaza. Roads out to the country bridge rivers but never cross more than 150 m of sea or lake; they go round a bay instead, or are left unbuilt.
   - Special wards: a temple beside the plaza, a citadel with its own wall and keep on the wall's edge, and parks.
   - Wards are paved (cobbles inside the walls, beaten earth in the suburbs), so the gaps between blocks read as streets and alleys.
-  - Wards are cut into small blocks (about two lots deep) parted by 3.5 m alleys, then into terraced buildings by recursive lot cutting. Every house reaches the block edge (a street or alley); the backs of the blocks are yards (kept 3 m back from the water, and left out on harbour quays and beside piers, where only warehouses stand, clear of the pier ends). Slivers, scraps and triangles too thin to build on are left as yard.
+  - Wards are cut into small blocks (about two lots deep) with an alley (2.8 to 4.2 m) at every cut, so no block is walled in by its neighbours; contour terraces on slopes are crossed by alleys too. Blocks are then cut into terraced buildings by recursive lot cutting. Every house reaches the block edge (a street or alley); the backs of the blocks are yards (kept 3 m back from the water, and left out on harbour quays and beside piers, where only warehouses stand, clear of the pier ends). Slivers, scraps and triangles too thin to build on are left as yard.
   - Suburbs are small blocks with lanes between them: houses front the lanes, gardens fill the backs, and blocks away from the road stay as meadow.
   - Outside the walls are suburbs along the roads, then fields with furrows, orchards and meadows.
   - Sea, lakes and rivers (at their true width) carve the plan; streets crossing a river become bridges.
@@ -181,7 +188,7 @@ src/
   names/        cultures.ts (naming cultures), names.ts (name bank), culture-map.ts
   render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
   interiors/    dwelling.ts (interior generator), render.ts (plan and exterior drawing), building.ts (map hover preview, cache)
-  towns/        manager.ts (villages, tracks, plan cache), city.ts, village.ts, kit.ts (village building blocks),
+  towns/        manager.ts (villages, tracks, plan cache), city.ts, layout.ts (city layouts), village.ts, kit.ts (village building blocks),
                 harbour.ts (piers, boats), naming.ts (quarters, districts, streets, notable buildings), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), geom.ts
   worker/       world.worker.ts, towns.worker.ts, protocol.ts
   world/        client.ts (worker pool + map protocol), probe.ts

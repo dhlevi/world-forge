@@ -5,7 +5,8 @@ import { HYDROLOGY } from './config';
 import type { RiverCollection } from './rivers';
 import type { DetailSampler } from './detail';
 import type { RoadCollection, Settlement } from './settlements';
-import type { FeatureKind } from '../names/cultures';
+import { CULTURES, type FeatureKind } from '../names/cultures';
+import { chooseLayout } from '../towns/layout';
 import type { NameBank } from '../names/names';
 
 /**
@@ -65,6 +66,19 @@ export function nameWorld(
   for (const s of settlements) {
     const c = cellOf(g, s.lon, s.lat);
     s.name = bank.place(f.culture[c], s.id);
+    if (s.tier === 'city' || s.tier === 'town') {
+      // Local relief: the largest height step to a neighbouring cell.
+      const i = c % W, j = (c / W) | 0;
+      let relief = 0;
+      for (let k = 0; k < 8; k++) {
+        const n = neighbor(g, i, j, k);
+        if (n >= 0 && f.height[n] > 0) relief = Math.max(relief, Math.abs(f.height[n] - f.height[c]));
+      }
+      s.layout = chooseLayout({
+        tier: s.tier, population: s.population, river: s.river, coastal: s.coastal, relief,
+        culture: CULTURES[f.culture[c]]?.id ?? '', r: bank.rng(`layout:${s.id}`)(),
+      });
+    }
   }
   const named = (lo: number, la: number, km: number) => {
     let best: Settlement | null = null, bd = km;
