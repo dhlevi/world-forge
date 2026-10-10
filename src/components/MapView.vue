@@ -5,7 +5,7 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { flyTarget, openBuilding, openLair, search, searchState, store, world } from '../store';
+import { flyTarget, openBuilding, openDungeon, openLair, search, searchState, store, world } from '../store';
 import { blockEntry, planEntries, worldEntries } from '../search/index';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
 import type { PlanFeature } from '../towns/plan';
@@ -19,6 +19,8 @@ import {
 import type { LairSite } from '../lairs/lair';
 import { armsImageData } from '../heraldry/draw';
 import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb, onLair } from '../lairs/view';
+import type { DungeonSite } from '../dungeons/core';
+import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
 import { PLAN_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
 
 const container = ref<HTMLDivElement>();
@@ -34,6 +36,7 @@ let hoverFrame = 0;
 const touchOnly = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
 /** The cave or glade being previewed: as a card by the cursor, or laid over the ground when close in. */
 let hoverLair: LairSite | null = null;
+let hoverDungeon: DungeonSite | null = null;
 const lairCard = ref<{ x: number; y: number; name: string; sub: string; img: string } | null>(null);
 /** On-screen width (px) from which a cave or glade is laid over the ground instead of carded. */
 const LAIR_OVERLAY_PX = 170;
@@ -209,9 +212,11 @@ function onHover(e: MapMouseEvent): void {
   hoverFrame = requestAnimationFrame(() => {
     const f = buildingAt(e.point);
     const l = f ? null : lairAt(e.point, e.lngLat);
-    if (map) map.getCanvas().style.cursor = f || l ? 'pointer' : '';
+    const dn = f || l ? null : dungeonAt(e.point);
+    if (map) map.getCanvas().style.cursor = f || l || dn ? 'pointer' : '';
     showPreview(f);
     showLair(l, e.point);
+    if (!l) showDungeon(dn, e.point);
   });
 }
 
@@ -224,6 +229,36 @@ function lairAt(point: { x: number; y: number }, ll?: LngLat): LairSite | null {
   // Keep a laid-over map while the cursor is on it.
   if (hoverLair && ll && lairOverlaid(hoverLair) && onLair(lairMap(hoverLair), ll.lng, ll.lat)) return hoverLair;
   return null;
+}
+
+/** The tower, crypt, ruin or mine (icon or name), or the sewer or catacomb entrance on a town plan, under a point. */
+function dungeonAt(point: { x: number; y: number }): DungeonSite | null {
+  if (!map || !ready || !store.showSettlements) return null;
+  const layers = ['lair-icons', 'lbl-lair', 'dentry-icons', 'lbl-dentry'].filter((id) => map!.getLayer(id));
+  if (!layers.length) return null;
+  const pad = touchOnly ? 14 : 6;
+  for (const hit of map.queryRenderedFeatures([[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]], { layers })) {
+    if (hit.geometry.type !== 'Point') continue;
+    const d = dungeonFromFeature(hit.properties ?? {}, hit.geometry.coordinates);
+    if (d) return d;
+  }
+  return null;
+}
+
+function showDungeon(d: DungeonSite | null, point: { x: number; y: number }): void {
+  if (!map) return;
+  if (!d) {
+    if (hoverDungeon) lairCard.value = null;
+    hoverDungeon = null;
+    return;
+  }
+  const w = map.getContainer().clientWidth;
+  const tags = dungeonTags(d);
+  lairCard.value = {
+    x: Math.min(point.x + 18, w - 250), y: Math.max(8, point.y - 110),
+    name: d.name.charAt(0).toUpperCase() + d.name.slice(1), sub: `${KIND_NAME[d.kind]}${tags ? ` · ${tags}` : ''}`, img: dungeonThumb(dungeon(d)),
+  };
+  hoverDungeon = d;
 }
 
 /** Is the site big enough on screen to lay its map over the ground? */
@@ -457,6 +492,11 @@ onMounted(() => {
       openLair.value = l;
       hideLair();
     } else if (touchOnly) showLair(l, e.point);
+    const dn = f || l ? null : dungeonAt(e.point);
+    if (dn && touchOnly && hoverDungeon?.id === dn.id) {
+      openDungeon.value = dn;
+      showDungeon(null, e.point);
+    } else if (touchOnly && !l) showDungeon(dn, e.point);
   });
   // Double-click a building to go inside, or a cave or glade to open its map (instead of zooming).
   map.on('dblclick', (e) => {
@@ -467,10 +507,17 @@ onMounted(() => {
       return;
     }
     const l = lairAt(e.point, e.lngLat);
-    if (!l) return;
+    if (l) {
+      e.preventDefault();
+      openLair.value = l;
+      hideLair();
+      return;
+    }
+    const dn = dungeonAt(e.point);
+    if (!dn) return;
     e.preventDefault();
-    openLair.value = l;
-    hideLair();
+    openDungeon.value = dn;
+    showDungeon(null, e.point);
   });
   map.on('mouseout', () => (lairCard.value = null));
   map.on('movestart', () => (lairCard.value = null));

@@ -3,6 +3,7 @@ import type { RiverCollection } from '../gen/rivers';
 import type { RoadCollection, Settlement } from '../gen/settlements';
 import { LEVEL_NAME, type Politics } from '../gen/politics';
 import { LAYOUT_LABEL } from '../towns/layout';
+import { townUnderground } from '../dungeons/core';
 
 /**
  * Place-name search. Entries come from the world (settlements, named features, rivers, roads),
@@ -13,7 +14,7 @@ import { LAYOUT_LABEL } from '../towns/layout';
 export type SearchCat = 'settlement' | 'water' | 'region' | 'lair' | 'road' | 'place';
 
 export const CAT_LABEL: Record<SearchCat, string> = {
-  settlement: 'Settlements', water: 'Water', region: 'Regions', lair: 'Caves & glades', road: 'Roads', place: 'In towns',
+  settlement: 'Settlements', water: 'Water', region: 'Regions', lair: 'Caves & dungeons', road: 'Roads', place: 'In towns',
 };
 
 export interface SearchEntry {
@@ -32,6 +33,8 @@ export interface SearchEntry {
   info?: string;
   /** Settlement id, for things in a town ("in Anterina"). */
   sid?: string;
+  /** Replaces an entry with the same id (a drawn plan's exact spot for one listed at the town). */
+  upgrade?: boolean;
 }
 
 export interface SearchHit {
@@ -73,6 +76,13 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
       zoom: s.tier === 'city' ? 12.4 : 13, rank: 0.5 + 0.5 * Math.sqrt(s.population / maxPop),
       info: `${s.population.toLocaleString('en')} people${s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : ''}`,
     });
+    // Sewers and catacombs, at the town until its plan is drawn and gives the entrance's spot.
+    for (const u of townUnderground(s)) {
+      out.push({
+        id: u.did, name: cap(u.name), type: u.dkind === 'sewer' ? 'Sewers' : 'Catacombs', cat: 'lair', lon: s.lon, lat: s.lat, zoom: 15.2, rank: 0.3,
+        sid: s.id, info: u.tags.join(' · '),
+      });
+    }
   }
   w.labels.features.forEach((f, k) => {
     const p = f.properties;
@@ -119,10 +129,14 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
 /** Compact entries the towns worker sends for villages, caves and glades. */
 export function blockEntry(o: { id: string; name: string; tier: string; kind: string; lon: number; lat: number; info?: string }): SearchEntry {
   if (o.tier === 'lair') {
-    return { id: o.id, name: o.name, type: o.kind === 'cave' ? 'Cave' : 'Glade', cat: 'lair', lon: o.lon, lat: o.lat, zoom: 15.6, rank: 0.25, info: o.info };
+    return { id: o.id, name: cap(o.name), type: LAIR_TYPE[o.kind] ?? 'Ruin', cat: 'lair', lon: o.lon, lat: o.lat, zoom: o.kind === 'mine' || o.kind === 'tower' ? 15.2 : 15.6, rank: 0.25, info: o.info };
   }
   return { id: o.id, name: o.name, type: VILLAGE_TYPE[o.kind] ?? 'Village', cat: 'settlement', lon: o.lon, lat: o.lat, zoom: 14.2, rank: 0.35, info: o.info };
 }
+
+const LAIR_TYPE: Record<string, string> = {
+  cave: 'Cave', glade: 'Glade', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', mine: 'Mine', sewer: 'Sewers', catacomb: 'Catacombs',
+};
 
 const PLAN_TYPE: Record<string, string> = { qlabel: 'Quarter', dlabel: 'District', blabel: 'Building' };
 
@@ -131,6 +145,14 @@ export function planEntries(features: { geometry: { type: string; coordinates: u
   const out: SearchEntry[] = [];
   for (const f of features) {
     const p = f.properties;
+    if (p.kind === 'dentry' && f.geometry.type === 'Point') {
+      const [lon, lat] = f.geometry.coordinates as number[];
+      out.push({
+        id: String(p.did), name: cap(String(p.name)), type: LAIR_TYPE[String(p.dkind)] ?? 'Dungeon', cat: 'lair', lon, lat, zoom: 16.4, rank: 0.3,
+        sid: p.sid ? String(p.sid) : undefined, info: String(p.tags ?? '').split(',').filter(Boolean).join(' · '), upgrade: true,
+      });
+      continue;
+    }
     const t = PLAN_TYPE[String(p.kind)];
     if (!t || f.geometry.type !== 'Point' || !p.name) continue;
     const [lon, lat] = f.geometry.coordinates as number[];
@@ -177,7 +199,7 @@ export class SearchIndex {
 
   add(list: SearchEntry[]): void {
     for (const e of list) {
-      if (this.entries.has(e.id)) continue;
+      if (this.entries.has(e.id) && !e.upgrade) continue;
       const key = norm(e.name);
       this.entries.set(e.id, { ...e, key, words: key.split(/[\s-]+/), tkey: norm(e.type) });
       if (e.cat === 'settlement') this.places.set(e.id, e.name);

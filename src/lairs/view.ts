@@ -4,7 +4,7 @@ import { type Ctx2D, drawLair, lairThumbnail } from './render';
 
 /** A cave or glade from a map feature's properties (the `regional` source, tier 'lair'). */
 export function lairFromFeature(p: Record<string, unknown>, coords: number[]): LairSite | null {
-  if (p.tier !== 'lair' || typeof p.id !== 'string') return null;
+  if (p.tier !== 'lair' || typeof p.id !== 'string' || (p.kind !== 'cave' && p.kind !== 'glade')) return null;
   return {
     id: p.id, kind: p.kind as LairKind, name: String(p.name ?? ''), seed: Number(p.seed), lon: coords[0], lat: coords[1],
     tags: String(p.tags ?? '').split(',').filter(Boolean),

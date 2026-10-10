@@ -5,6 +5,7 @@ import { WorldClient, type ClientWorld } from './world/client';
 import type { ProbeInfo } from './world/probe';
 import type { BuildingView } from './interiors/building';
 import type { LairSite } from './lairs/lair';
+import type { DungeonSite } from './dungeons/core';
 import { SearchIndex } from './search/index';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
@@ -55,6 +56,8 @@ export const searchState = reactive({ done: 0, total: 0, version: 0 });
 export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; name: string; t: number } | null>(null);
 /** The cave or glade open in the lair view, if any. */
 export const openLair = shallowRef<LairSite | null>(null);
+/** The tower, crypt, ruin, mine, catacomb or sewer open in the dungeon view, if any. */
+export const openDungeon = shallowRef<DungeonSite | null>(null);
 export const client = new WorldClient();
 client.registerProtocol();
 

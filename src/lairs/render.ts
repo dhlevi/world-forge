@@ -31,8 +31,9 @@ export function drawLair(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   g.beginPath();
   g.rect(0, 0, m.W, m.H);
   g.clip();
-  if (m.site.kind === 'cave') drawCave(g, m, o);
+  if (m.site.kind === 'cave' || m.interior) drawCave(g, m, o);
   else drawGlade(g, m, o);
+  if (o.labels) drawRooms(g, m);
   g.restore();
 }
 
@@ -143,7 +144,7 @@ function drawCave(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
     }
   }
   g.stroke();
-  if (o.labels) {
+  if (o.labels && !m.interior) {
     for (const mo of m.mouths) {
       const ix = Math.cos(mo.dir), iy = Math.sin(mo.dir);
       const p: Pt = [mo.p[0] + ix * 3.2, mo.p[1] + iy * 3.2];
@@ -298,6 +299,28 @@ function drawWater(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   }
 }
 
+/** Room numbers (groves and the hollow under a great tree). */
+function drawRooms(g: Ctx2D, m: LairMap): void {
+  g.save();
+  const k = Math.max(1, m.W / 70);
+  g.font = `bold ${1.5 * k}px 'IM Fell English', Georgia, serif`;
+  g.textAlign = 'center';
+  g.textBaseline = 'middle';
+  for (const r of m.rooms) {
+    const t = String(r.n);
+    g.fillStyle = 'rgba(251,247,236,0.92)';
+    g.strokeStyle = INK;
+    g.lineWidth = 0.1;
+    g.beginPath();
+    g.arc(r.p[0], r.p[1], 0.95 * k, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.fillStyle = INK;
+    g.fillText(t, r.p[0], r.p[1] + 0.05 * k);
+  }
+  g.restore();
+}
+
 const CANOPY = ['#6f8a4a', '#7d9752', '#64803f', '#86a05a'];
 const CANOPY_DRY = ['#8a8c4c', '#97934f', '#7f8242', '#a19c5a'];
 
@@ -314,6 +337,14 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   g.lineWidth = 0.25;
   path(g, m.outlines);
   g.stroke();
+  // Trodden paths: a worn strip of earth along each path's middle.
+  g.strokeStyle = dry ? 'rgba(170,140,90,0.55)' : 'rgba(160,135,90,0.5)';
+  g.lineWidth = 1.1;
+  for (const l of m.paths) {
+    g.beginPath();
+    l.forEach((p, k) => (k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+    g.stroke();
+  }
   // Grass tufts.
   g.strokeStyle = dry ? 'rgba(125,105,55,0.7)' : 'rgba(80,105,50,0.7)';
   g.lineWidth = 0.08;
@@ -377,6 +408,7 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
     g.strokeRect(-s.w / 2, -s.h / 2, s.w, s.h);
     g.restore();
   }
+  for (const t of m.things) drawThing(g, t);
   if (m.camp) {
     const f = m.camp.fire;
     g.fillStyle = '#8c8070';
@@ -449,7 +481,7 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
     g.arc(t.p[0] - t.r * 0.25, t.p[1] - t.r * 0.3, t.r * 0.5, 0, Math.PI * 2);
     g.fill();
   }
-  if (m.bigTree) {
+  if (m.bigTree && !m.links.length) {
     // The great tree's limbs, seen through its crown.
     const t = m.bigTree;
     g.strokeStyle = 'rgba(60,45,25,0.55)';
@@ -462,6 +494,162 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
       g.stroke();
     }
   }
+  if (m.bigTree && m.links.length) {
+    // The hollow trunk, open to the sky: a dark split with a rope down into it.
+    const t = m.bigTree;
+    g.fillStyle = '#5a4630';
+    g.strokeStyle = INK;
+    g.lineWidth = 0.15;
+    g.beginPath();
+    g.arc(t.p[0], t.p[1], Math.min(2.4, t.r * 0.45), 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+  }
+  for (const l of m.links) drawLink(g, l, o.labels, 0.4);
+  if (o.labels) {
+    for (const mo of m.mouths) {
+      const p: Pt = [mo.p[0] + Math.cos(mo.dir) * 2.5, mo.p[1] + Math.sin(mo.dir) * 2.5];
+      g.save();
+      g.translate(p[0], p[1]);
+      g.rotate(mo.dir);
+      g.fillStyle = INK;
+      g.beginPath();
+      g.moveTo(1.1, 0);
+      g.lineTo(-0.5, -0.7);
+      g.lineTo(-0.5, 0.7);
+      g.closePath();
+      g.fill();
+      g.restore();
+    }
+  }
+}
+
+function drawThing(g: Ctx2D, t: LairMap['things'][number]): void {
+  g.save();
+  g.translate(t.p[0], t.p[1]);
+  g.rotate(t.a);
+  g.strokeStyle = INK;
+  g.lineWidth = 0.1;
+  if (t.kind === 'hut') {
+    // A shadowed thatched roof with a ridge line and a smoke hole.
+    g.fillStyle = 'rgba(40,35,25,0.28)';
+    g.fillRect(-t.w / 2 + 0.3, -t.h / 2 + 0.4, t.w, t.h);
+    g.fillStyle = '#c8a86a';
+    g.fillRect(-t.w / 2, -t.h / 2, t.w, t.h);
+    g.strokeRect(-t.w / 2, -t.h / 2, t.w, t.h);
+    g.beginPath();
+    g.moveTo(-t.w / 2, 0);
+    g.lineTo(t.w / 2, 0);
+    for (let x = -t.w / 2 + 0.5; x < t.w / 2; x += 0.6) {
+      g.moveTo(x, -t.h / 2);
+      g.lineTo(x, -0.15);
+      g.moveTo(x, 0.15);
+      g.lineTo(x, t.h / 2);
+    }
+    g.lineWidth = 0.05;
+    g.stroke();
+    g.fillStyle = '#3d3020';
+    g.beginPath();
+    g.arc(t.w * 0.2, 0, 0.3, 0, Math.PI * 2);
+    g.fill();
+  } else if (t.kind === 'shrine') {
+    g.fillStyle = '#c4bcab';
+    g.fillRect(-t.w / 2, -t.h / 2, t.w, t.h);
+    g.strokeRect(-t.w / 2, -t.h / 2, t.w, t.h);
+    g.fillStyle = '#efe7d4';
+    g.beginPath();
+    g.arc(0, -0.1, 0.45, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    // Offerings.
+    g.fillStyle = '#c9534a';
+    for (const x of [-0.7, 0.7]) {
+      g.beginPath();
+      g.arc(x, t.h / 2 - 0.3, 0.12, 0, Math.PI * 2);
+      g.fill();
+    }
+  } else if (t.kind === 'altar') {
+    g.fillStyle = 'rgba(40,35,25,0.25)';
+    g.fillRect(-t.w / 2 + 0.2, -t.h / 2 + 0.25, t.w, t.h);
+    g.fillStyle = '#b5ad9c';
+    g.fillRect(-t.w / 2, -t.h / 2, t.w, t.h);
+    g.strokeRect(-t.w / 2, -t.h / 2, t.w, t.h);
+  } else {
+    g.fillStyle = '#b5ad9c';
+    g.beginPath();
+    g.arc(0, 0, t.w / 2, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#2f4b55';
+    g.beginPath();
+    g.arc(0, 0, t.w * 0.3, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.restore();
+}
+
+/** Lines of text wrapped to a width. */
+function wrap(g: Ctx2D, text: string, width: number): string[] {
+  const out: string[] = [];
+  let line = '';
+  for (const w of text.split(/\s+/)) {
+    const t = line ? `${line} ${w}` : w;
+    if (g.measureText(t).width > width && line) {
+      out.push(line);
+      line = w;
+    } else line = t;
+  }
+  if (line) out.push(line);
+  return out;
+}
+
+/** The printable page for a map with a key (groves): title, hook, the map and its key beside it. */
+export function lairPage(m: LairMap, opts: { grid: boolean; labels: boolean; subtitle: string }): HTMLCanvasElement {
+  const scale = Math.min(18, 1500 / Math.max(m.W, m.H)), pad = 36, keyW = 420;
+  const mapW = Math.round(m.W * scale), mapH = Math.round(m.H * scale);
+  const meas = document.createElement('canvas').getContext('2d')!;
+  const lines: { text: string; font: string; gap: number }[] = [];
+  for (const r of m.rooms) {
+    lines.push({ text: `${r.n}. ${r.name}`, font: "bold 16px 'IM Fell English', Georgia, serif", gap: 6 });
+    meas.font = "15px 'IM Fell English', Georgia, serif";
+    for (const t of wrap(meas, r.text, keyW)) lines.push({ text: t, font: "15px 'IM Fell English', Georgia, serif", gap: 0 });
+  }
+  const top = m.levels[0];
+  meas.font = "italic 16px 'IM Fell English', Georgia, serif";
+  const hook = top.hook ? wrap(meas, top.hook, mapW + keyW + pad - 20) : [];
+  const headH = 66 + hook.length * 20 + 14;
+  const keyH = lines.reduce((a, l) => a + 19 + l.gap, 0);
+  const W = pad * 3 + mapW + keyW, H = pad * 2 + headH + Math.max(mapH, keyH);
+  const c = document.createElement('canvas');
+  c.width = W;
+  c.height = H;
+  const g = c.getContext('2d')!;
+  g.fillStyle = PAPER;
+  g.fillRect(0, 0, W, H);
+  g.fillStyle = INK;
+  g.textBaseline = 'top';
+  g.font = "italic 36px 'IM Fell English', Georgia, serif";
+  const name = m.site.name;
+  g.fillText(name.charAt(0).toUpperCase() + name.slice(1), pad, pad);
+  g.font = "16px 'IM Fell English', Georgia, serif";
+  g.fillText(opts.subtitle, pad, pad + 44);
+  g.font = "italic 16px 'IM Fell English', Georgia, serif";
+  hook.forEach((t, k) => g.fillText(t, pad, pad + 70 + k * 20));
+  const y0 = pad + headH;
+  drawLair(g, m, { scale, ox: pad, oy: y0, grid: opts.grid, labels: opts.labels });
+  g.strokeStyle = INK;
+  g.lineWidth = 1.5;
+  g.strokeRect(pad, y0, mapW, mapH);
+  let y = y0;
+  const x = pad * 2 + mapW;
+  g.fillStyle = INK;
+  for (const l of lines) {
+    y += l.gap;
+    g.font = l.font;
+    g.fillText(l.text, x, y);
+    y += 19;
+  }
+  return c;
 }
 
 /** A small rendering of the map (no grid) for hover cards. */

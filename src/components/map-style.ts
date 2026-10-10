@@ -261,13 +261,24 @@ export const LAIR_LAYERS: LayerSpecification[] = [
     id: 'lair-icons', type: 'symbol', source: 'regional', minzoom: LAIR_ZOOM,
     filter: e(['==', ['get', 'tier'], 'lair']) as FilterSpecification,
     layout: {
-      'icon-image': e(['match', ['get', 'kind'], 'cave', 'lair-cave', 'lair-glade']),
+      'icon-image': e(['match', ['get', 'kind'], 'cave', 'lair-cave', 'glade', 'lair-glade', ['concat', 'dun-', ['get', 'kind']]]),
       'icon-size': e(['interpolate', ['linear'], ['zoom'], LAIR_ZOOM, 0.45, 12, 0.75, 16, 1]),
       'icon-allow-overlap': true,
       'icon-padding': 2,
     },
     // Fainter close in, where the map itself is laid over the ground on hover.
     paint: { 'icon-opacity': e(['interpolate', ['linear'], ['zoom'], LAIR_ZOOM, 0, LAIR_ZOOM + 0.6, 1, 16, 1, 17.5, 0.6]) },
+  },
+  // Sewer grates and catacomb stairs drawn on town plans.
+  {
+    id: 'dentry-icons', type: 'symbol', source: 'plans', minzoom: 13.6,
+    filter: e(['==', ['get', 'kind'], 'dentry']) as FilterSpecification,
+    layout: {
+      'icon-image': e(['concat', 'dun-', ['get', 'dkind']]),
+      'icon-size': e(['interpolate', ['linear'], ['zoom'], 13.6, 0.5, 16, 0.75, 18, 0.9]),
+      'icon-allow-overlap': true,
+    },
+    paint: { 'icon-opacity': e(['interpolate', ['linear'], ['zoom'], 13.6, 0, 14.2, 1]) },
   },
 ];
 
@@ -341,7 +352,137 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
       g.stroke();
     }
   });
-  return [{ id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr }];
+  const disc = (g: CanvasRenderingContext2D) => {
+    g.fillStyle = 'rgba(244,236,216,0.92)';
+    g.strokeStyle = INK;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(15, 15, 13.5, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.lineWidth = 1.4;
+  };
+  const tower = make((g) => {
+    disc(g);
+    g.fillStyle = '#d8cfbd';
+    g.beginPath();
+    g.moveTo(10, 25);
+    g.lineTo(11, 11);
+    g.lineTo(19, 11);
+    g.lineTo(20, 25);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = INK;
+    for (const x of [10, 13.5, 17]) g.fillRect(x, 7.5, 3, 3.5);
+    g.fillRect(14, 15, 2, 4);
+  });
+  const crypt = make((g) => {
+    disc(g);
+    g.fillStyle = '#d8cfbd';
+    g.beginPath();
+    g.moveTo(7, 24);
+    g.lineTo(7, 14);
+    g.lineTo(15, 8);
+    g.lineTo(23, 14);
+    g.lineTo(23, 24);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#1f1a16';
+    g.beginPath();
+    g.moveTo(12, 24);
+    g.lineTo(12, 18);
+    g.arc(15, 18, 3, Math.PI, 0);
+    g.lineTo(18, 24);
+    g.closePath();
+    g.fill();
+  });
+  const ruin = make((g) => {
+    disc(g);
+    g.fillStyle = '#d8cfbd';
+    g.beginPath();
+    g.moveTo(6, 24);
+    g.lineTo(6, 12);
+    g.lineTo(9, 10);
+    g.lineTo(10, 15);
+    g.lineTo(13, 13);
+    g.lineTo(14, 24);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.beginPath();
+    g.moveTo(17, 24);
+    g.lineTo(17, 16);
+    g.lineTo(21, 14);
+    g.lineTo(24, 17);
+    g.lineTo(24, 24);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.beginPath();
+    g.moveTo(4.5, 24);
+    g.lineTo(25.5, 24);
+    g.stroke();
+  });
+  const mine = make((g) => {
+    disc(g);
+    g.lineWidth = 2;
+    g.beginPath();
+    g.moveTo(9, 22);
+    g.lineTo(21, 10);
+    g.moveTo(21, 22);
+    g.lineTo(9, 10);
+    g.stroke();
+    g.lineWidth = 2.2;
+    g.beginPath();
+    g.moveTo(5.5, 13);
+    g.quadraticCurveTo(9, 7, 13, 8);
+    g.moveTo(24.5, 13);
+    g.quadraticCurveTo(21, 7, 17, 8);
+    g.stroke();
+  });
+  const sewer = make((g) => {
+    disc(g);
+    g.fillStyle = '#5d554b';
+    g.beginPath();
+    g.arc(15, 15, 8, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.strokeStyle = '#e8e0cc';
+    g.lineWidth = 1.3;
+    g.beginPath();
+    for (const x of [11, 15, 19]) {
+      g.moveTo(x, 9);
+      g.lineTo(x, 21);
+    }
+    g.stroke();
+  });
+  const catacomb = make((g) => {
+    disc(g);
+    g.fillStyle = '#efe7d4';
+    g.beginPath();
+    g.arc(15, 13.5, 6.5, Math.PI, 0);
+    g.lineTo(21.5, 17);
+    g.lineTo(18.5, 17);
+    g.lineTo(18.5, 21);
+    g.lineTo(11.5, 21);
+    g.lineTo(11.5, 17);
+    g.lineTo(8.5, 17);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = INK;
+    g.beginPath();
+    g.arc(12.3, 14, 1.6, 0, Math.PI * 2);
+    g.arc(17.7, 14, 1.6, 0, Math.PI * 2);
+    g.fill();
+  });
+  return [
+    { id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr },
+    { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },
+    { id: 'dun-mine', image: mine, pixelRatio: pr }, { id: 'dun-sewer', image: sewer, pixelRatio: pr }, { id: 'dun-catacomb', image: catacomb, pixelRatio: pr },
+  ];
 }
 
 /** Political borders (`borders` source): a soft wash along realm borders, then inked lines by level. */

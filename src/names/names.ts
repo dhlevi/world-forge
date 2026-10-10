@@ -214,3 +214,29 @@ export function lairName(bank: NameBank, kind: 'cave' | 'glade', cultureIdx: num
   if (r < 0.86) return `the ${beast}'s ${noun.replace(/s$/, '')}`;
   return `${noun.replace(/s$/, '')} of ${pick(rnd, MOTIFS)}`;
 }
+
+const DUNGEON_NOUNS: Record<string, string[]> = {
+  tower: ['Tower', 'Spire', 'Watchtower', 'Keep', 'Turret', 'Beacon'],
+  crypt: ['Crypt', 'Tomb', 'Mausoleum', 'Barrow', 'Sepulchre', 'Vault'],
+  ruin: ['Ruins', 'Manor', 'Hall', 'Priory', 'Steading', 'Grange'],
+  mine: ['Mine', 'Workings', 'Diggings', 'Delvings', 'Pits', 'Shafts'],
+};
+const DUNGEON_ADJ: Record<string, string[]> = {
+  tower: ['Crooked', 'Lonely', 'Black', 'Broken', 'Grey', 'Leaning', 'Silent', 'Burnt', 'Wizard\'s', 'Old'],
+  crypt: ['Forgotten', 'Sunken', 'Silent', 'Weeping', 'Nameless', 'Hollow', 'Bleak', 'Ancient', 'Shrouded'],
+  ruin: ['Burnt', 'Fallen', 'Old', 'Abandoned', 'Overgrown', 'Ruined', 'Haunted', 'Shattered'],
+  mine: ['Old', 'Deep', 'Drowned', 'Lost', 'Silver', 'Copper', 'Iron', 'Abandoned', 'Collapsed'],
+};
+const DUNGEON_WHO = ['Witch', 'Baron', 'Hermit', 'Sorcerer', 'Abbot', 'Saint', 'King', 'Giant', 'Necromancer', 'Knight', 'Widow', 'Alchemist'];
+
+/** A name for a tower, crypt, ruin or mine: "Ashcombe Tower", "the Sunken Crypt", "the Witch's Spire". */
+export function dungeonName(bank: NameBank, kind: string, cultureIdx: number, key: string, near?: string): string {
+  const cul = CULTURES[cultureIdx] ?? CULTURES[0];
+  const rnd = bank.rng(`dun:${key}`);
+  const noun = pick(rnd, DUNGEON_NOUNS[kind] ?? DUNGEON_NOUNS.ruin);
+  const r = rnd();
+  if (near && r < 0.4) return kind === 'ruin' && noun === 'Ruins' ? `the Ruins of ${near}` : `${near} ${noun}`;
+  if (r < 0.62) return kind === 'ruin' && noun === 'Ruins' ? `the Ruins of ${bank.proper(cul, rnd)}` : `${bank.proper(cul, rnd)} ${noun}`;
+  if (r < 0.84) return `the ${pick(rnd, DUNGEON_ADJ[kind] ?? DUNGEON_ADJ.ruin)} ${noun}`;
+  return `the ${pick(rnd, DUNGEON_WHO)}'s ${noun.replace(/s$/, '')}`;
+}

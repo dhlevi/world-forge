@@ -1,5 +1,5 @@
 import { distKm, pxPerMeterZ20, smoothstep } from '../gen/grid';
-import { hash32, hashString } from '../gen/rng';
+import { hash32, hashString, mulberry32 } from '../gen/rng';
 import { CLIMATE, SETTLEMENTS as S } from '../gen/config';
 import { DetailSampler } from '../gen/detail';
 import { Biome } from '../gen/biomes';
@@ -15,7 +15,8 @@ import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
 import { buildVillage } from './village';
 import { Ground } from './ground';
-import { NameBank, lairName } from '../names/names';
+import { NameBank, dungeonName, lairName } from '../names/names';
+import { type DungeonSite, packLines, townUnderground } from '../dungeons/core';
 import type { LairSite } from '../lairs/lair';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
@@ -82,6 +83,8 @@ interface Block {
   tracks: RoadFeature[];
   /** Caves and glades. */
   lairs: LairSite[];
+  /** Towers, crypts, ruins and mines. */
+  dungeons: DungeonSite[];
 }
 
 /** A searchable village, cave or glade (sent from the towns worker). */
@@ -97,6 +100,8 @@ export interface IndexEntry {
 
 /** Spacing (km) of cave and glade candidates; only suitable ground keeps one (about one per 30–40 km there). */
 const LAIR_SPACING_KM = 30;
+/** Spacing (km) of tower, crypt and ruin candidates (most are kept on land, so roughly one per 45 km). */
+const DUNGEON_SPACING_KM = 45;
 
 export interface TownUpdate {
   villagesChanged: boolean;
@@ -164,6 +169,13 @@ export class TownManager {
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [l.lon, l.lat] },
           properties: { id: l.id, tier: 'lair', kind: l.kind, name: l.name, seed: l.seed, tags: l.tags.join(',') },
+        });
+      }
+      for (const d of b.dungeons) {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [d.lon, d.lat] },
+          properties: { id: d.id, tier: 'lair', kind: d.kind, name: d.name, seed: d.seed, tags: d.tags.join(','), culture: d.culture },
         });
       }
       for (const v of b.villages) {
@@ -274,6 +286,7 @@ export class TownManager {
         entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info: `${v.population.toLocaleString('en')} people` });
       }
       for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · ') });
+      for (const d of blk.dungeons) entries.push({ id: d.id, name: d.name, tier: 'lair', kind: d.kind, lon: d.lon, lat: d.lat, info: d.tags.join(' · ') });
     }
     return { entries, done: this.indexTotal - q.length, total: this.indexTotal };
   }
@@ -317,7 +330,7 @@ export class TownManager {
 
   /** Villages of the 1° block whose south-west corner is (bx, by) degrees. */
   private block(bx: number, by: number): Block {
-    if (by < -90 || by >= 90) return { villages: [], tracks: [], lairs: [] };
+    if (by < -90 || by >= 90) return { villages: [], tracks: [], lairs: [], dungeons: [] };
     const key = this.blockKey(bx + 180, by + 90);
     let blk = this.blocks.get(key);
     if (!blk) {
@@ -435,7 +448,87 @@ export class TownManager {
         if (track) tracks.push(track);
       }
     }
-    return { villages, tracks, lairs: this.lairs(lon0, lat0, key, seed, villages, sample, cellOf, used) };
+    const lairs = this.lairs(lon0, lat0, key, seed, villages, sample, cellOf, used);
+    return { villages, tracks, lairs, dungeons: this.dungeons(lon0, lat0, key, seed, villages, lairs, cellOf, used) };
+  }
+
+  /**
+   * Towers, crypts and ruins on a jittered ~45 km grid (towers on high ground, crypts and ruins
+   * anywhere habitable), and a mine beside every mining camp, 1 to 4 levels deep.
+   */
+  private dungeons(
+    lon0: number, lat0: number, key: number, seed: number, villages: Settlement[], lairs: LairSite[],
+    cellOf: (lon: number, lat: number) => number, used: Set<string>,
+  ): DungeonSite[] {
+    const { raster } = this.world;
+    const out: DungeonSite[] = [];
+    const add = (kind: DungeonSite['kind'], lon: number, lat: number, h0: number, tags: string[], near?: string) => {
+      const c = cellOf(lon, lat);
+      const culture = raster.culture[c] ?? 0;
+      const id = `d${key}_${out.length}`;
+      let name = '';
+      for (let t = 0; t < 6 && (!name || used.has(name)); t++) name = dungeonName(this.names, kind, culture, t ? `${id}#${t}` : id, t ? undefined : near);
+      used.add(name);
+      out.push({ id, kind, name, seed: hash32(h0 ^ 0xd0d0), tags, lon, lat, culture });
+    };
+    for (const v of villages) {
+      if (v.kind !== 'mining') continue;
+      const h0 = hash32(v.seed ^ 0x313e);
+      const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
+      // The adit opens in the hillside a little way from the camp.
+      const a = rr(1) * Math.PI * 2, dKm = 0.5 + 0.5 * rr(2);
+      const lon = v.lon + (Math.cos(a) * dKm) / (111.32 * Math.cos((v.lat * Math.PI) / 180)), lat = v.lat + (Math.sin(a) * dKm) / 110.57;
+      const [x, y] = this.bestNear(lon, lat, 400, (_x, _y, _h, sl) => Math.min(sl, 0.5));
+      if (this.sampler.isWater(x, y)) continue;
+      const r = rr(3);
+      const levels = r < 0.25 ? 1 : r < 0.6 ? 2 : r < 0.88 ? 3 : 4;
+      const base = (v.name ?? '').replace(/ (Mine|Diggings)$/, '');
+      add('mine', x, y, h0, [rr(4) < 0.3 ? 'abandoned' : 'worked', ...(rr(5) < 0.3 ? ['wet'] : []), ...(levels > 1 ? [`${levels} levels`] : [])], base || undefined);
+    }
+    const nLat = Math.max(1, Math.round(111.2 / DUNGEON_SPACING_KM));
+    const nLon = Math.max(1, Math.round((111.2 * Math.cos(((lat0 + 0.5) * Math.PI) / 180)) / DUNGEON_SPACING_KM));
+    for (let a = 0; a < nLon; a++) {
+      for (let b = 0; b < nLat; b++) {
+        const h0 = hash32(seed ^ ((a * 71 + b + 9011) * 0x27d4eb2d));
+        const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
+        if (rr(0) < 0.3) continue;
+        const lon = lon0 + (a + 0.15 + 0.7 * rr(1)) / nLon;
+        const lat = lat0 + (b + 0.15 + 0.7 * rr(2)) / nLat;
+        const c = cellOf(lon, lat);
+        if (raster.height[c] <= 0 || raster.lakeDepth[c] > 0 || (raster.biome[c] as Biome) === Biome.IceSheet) continue;
+        const h = this.sampler.height(lon, lat, 2);
+        if (h <= 0) continue;
+        const hilly = smoothstep(200, 1200, h);
+        const r = rr(3);
+        const kind: DungeonSite['kind'] = r < 0.2 + 0.25 * hilly ? 'tower' : r < 0.68 ? 'ruin' : 'crypt';
+        let blocked = false;
+        this.sites.forEach(lon, lat, 15, (s, d) => {
+          if (d < s.radiusM / 1000 + 1.5) blocked = true;
+        });
+        if (blocked || villages.some((v) => distKm(lon, lat, v.lon, v.lat) < 2) || lairs.some((l) => distKm(lon, lat, l.lon, l.lat) < 3)) continue;
+        // Towers on a rise; crypts and ruins on gentle ground.
+        const [x, y] = kind === 'tower'
+          ? this.bestNear(lon, lat, 1200, (_x, _y, hh, sl) => hh * 0.002 - 2 * Math.max(0, sl - 0.3))
+          : this.bestNear(lon, lat, 900, (_x, _y, _h, sl) => -sl);
+        if (this.sampler.isWater(x, y)) continue;
+        const size = rr(6) < 0.35 ? 'small' : rr(6) < 0.8 ? 'medium' : 'large';
+        const tags = [size];
+        const lv = rr(7);
+        if (kind === 'tower') {
+          const floors = size === 'small' ? 2 + Math.floor(lv * 2) : size === 'medium' ? 3 + Math.floor(lv * 2) : 4 + Math.floor(lv * 2);
+          tags.push(`${floors} floors`);
+          if (rr(8) < 0.3) tags.push('ruined');
+        } else if (kind === 'crypt') {
+          const levels = size === 'large' ? (lv < 0.5 ? 2 : 3) : lv < 0.65 ? 1 : 2;
+          if (levels > 1) tags.push(`${levels} levels`);
+        } else {
+          const levels = lv < 0.45 ? 1 : lv < 0.85 ? 2 : 3;
+          if (levels > 1) tags.push(`${levels} levels`, 'cellars');
+        }
+        add(kind, x, y, h0, tags);
+      }
+    }
+    return out;
   }
 
   /**
@@ -522,6 +615,76 @@ export class TownManager {
     const { W, H } = this.world.raster;
     const i = ((Math.floor(((lon + 180) / 360) * W) % W) + W) % W;
     return Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H))) * W + i;
+  }
+
+  /**
+   * Entrances below a town, drawn on its plan: a sewer grate on a main street near the centre
+   * (cities and larger towns), and a catacomb stair in the graveyard or beside the temple.
+   */
+  private underground(s: Settlement, out: PlanOut, frame: LocalFrame, water: (p: Pt) => boolean, culture: number): void {
+    const under = townUnderground(s);
+    if (!under.length) return;
+    const rnd = mulberry32(s.seed ^ 0x5e3e);
+    const local = (f: PlanFeature) => (f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : [f.geometry.coordinates])
+      .map((c) => frame.fromLL(c[0], c[1]) as Pt);
+    const streets = out.features.filter((f) => f.properties.kind === 'street').map(local);
+    const centroid = (p: Pt[]): Pt => [p.reduce((a, q) => a + q[0], 0) / p.length, p.reduce((a, q) => a + q[1], 0) / p.length];
+    for (const u of under) {
+      const props = { did: u.did, dkind: u.dkind, name: u.name, seed: hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 : 0xca7)), tags: u.tags.join(','), culture, sid: s.id };
+      if (u.dkind === 'sewer') {
+        // The grate: a street vertex 25 to 45 m from the centre, on dry ground.
+        let g: Pt = [0, 0], bd = Infinity;
+        const want = 25 + rnd() * 20;
+        for (const l of streets) {
+          for (const p of l) {
+            const d = Math.abs(Math.hypot(p[0], p[1]) - want);
+            if (d < bd && !water(p)) {
+              bd = d;
+              g = p;
+            }
+          }
+        }
+        // Streets around it (relative to the grate, clipped to the sewer map: 96 x 72 m).
+        const box = (p: Pt) => Math.abs(p[0] - g[0]) < 50 && Math.abs(p[1] - g[1]) < 38;
+        const near: number[][][] = [];
+        for (const l of streets) {
+          let run: number[][] = [];
+          for (let k = 0; k < l.length; k++) {
+            // Densify so clipping keeps the parts that cross the box.
+            const a = l[k], b = l[k + 1] ?? l[k];
+            const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4));
+            for (let q = 0; q < (k + 1 < l.length ? n : 1); q++) {
+              const p: Pt = [a[0] + ((b[0] - a[0]) * q) / n, a[1] + ((b[1] - a[1]) * q) / n];
+              if (box(p)) run.push([p[0] - g[0], p[1] - g[1]]);
+              else if (run.length) {
+                if (run.length > 1) near.push(run);
+                run = [];
+              }
+            }
+          }
+          if (run.length > 1) near.push(run);
+        }
+        // The outfall: the nearest water within 150 m.
+        let outfall = '';
+        for (let r = 10; r <= 150 && !outfall; r += 10) {
+          for (let k = 0; k < 16; k++) {
+            const a = (k / 16) * Math.PI * 2;
+            if (water([g[0] + Math.cos(a) * r, g[1] + Math.sin(a) * r])) {
+              outfall = `${Math.round(Math.cos(a) * r)},${Math.round(Math.sin(a) * r)}`;
+              break;
+            }
+          }
+        }
+        out.point('dentry', g, { ...props, streets: packLines(near), outfall });
+      } else {
+        // Catacombs: under the graveyard, else beside the temple, else in the market.
+        const yard = out.features.find((f) => f.properties.kind === 'graveyard');
+        const temple = out.features.find((f) => f.properties.kind === 'building' && f.properties.use === 'temple');
+        const plaza = out.features.find((f) => f.properties.kind === 'plaza');
+        const f = yard ?? temple ?? plaza;
+        out.point('dentry', f ? centroid(local(f)) : [0, 0], props);
+      }
+    }
   }
 
   /** A village name in the local culture, dressed for its kind ("Ashby Keep", "Thorn Abbey"). */
@@ -732,7 +895,10 @@ export class TownManager {
     const culture = this.world.raster.culture[this.cell(s.lon, s.lat)] ?? 0;
     const inp = { s, exits, water, terrain, ground, out, names: this.names, culture };
     if (s.tier === 'village') buildVillage(inp);
-    else buildCity(inp);
+    else {
+      buildCity(inp);
+      this.underground(s, out, frame, water, culture);
+    }
 
     // Contours show the lie of the land; the interval adapts to the relief.
     let lo = Infinity, hi = -Infinity;

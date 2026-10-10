@@ -2,7 +2,7 @@
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { openLair } from '../store';
 import { LAIR_CELL, lairMap } from '../lairs/lair';
-import { type Ctx2D, drawLair } from '../lairs/render';
+import { type Ctx2D, drawLair, lairPage } from '../lairs/render';
 import { KIND_LABEL, lairTags } from '../lairs/view';
 
 const PAPER = '#f3ead3';
@@ -17,14 +17,18 @@ const top = computed(() => (site.value ? lairMap(site.value) : null));
 /** The level shown (caves of several levels have a tab per level). */
 const level = ref(0);
 const map = computed(() => top.value?.levels[level.value] ?? top.value);
-const levelTabs = computed(() => (top.value?.levels.length ?? 1) > 1 ? top.value!.levels.map((_, k) => (k === 0 ? 'Level 1 · entrance' : `Level ${k + 1}`)) : []);
+const levelTabs = computed(() => (top.value?.levels.length ?? 1) > 1
+  ? top.value!.levels.map((lv, k) => lv.levelName ?? (k === 0 ? 'Level 1 · entrance' : `Level ${k + 1}`)) : []);
+/** Groves have a numbered key (rooms on every level, listed for the level shown). */
+const keyed = computed(() => !!top.value?.levels.some((lv) => lv.rooms.length) || !!top.value?.rooms.length);
 /** Screen positions of the ways between levels, for clicking through. */
 let linkSpots: { x: number; y: number; to: number }[] = [];
 const subtitle = computed(() => {
   const m = map.value;
   if (!m) return '';
-  const lv = m.levels.length > 1 ? ` · level ${m.level + 1} of ${m.levels.length}` : '';
-  return `${KIND_LABEL[m.site.kind]} · ${lairTags(m.site)}${lv} · ${m.W} × ${m.H} m · grid squares 5 ft (${LAIR_CELL} m)`;
+  const lv = m.levels.length > 1 ? ` · ${m.levelName ?? `level ${m.level + 1} of ${m.levels.length}`}` : '';
+  const kind = m.site.kind === 'glade' && keyed.value ? 'Grove' : KIND_LABEL[m.site.kind];
+  return `${kind} · ${lairTags(m.site)}${lv} · ${m.W} × ${m.H} m · grid squares 5 ft (${LAIR_CELL} m)`;
 });
 
 watch(site, () => {
@@ -101,7 +105,8 @@ function leave(): void {
 }
 
 function download(): void {
-  const cv = canvas.value, m = map.value;
+  const m = map.value;
+  const cv = m && keyed.value ? lairPage(m, { grid: grid.value, labels: marks.value, subtitle: subtitle.value }) : canvas.value;
   if (!cv || !m) return;
   cv.toBlob((b) => {
     if (!b) return;
@@ -160,16 +165,24 @@ watch(stage, (el, old) => {
       </div>
       <div class="actions">
         <label class="chip"><input v-model="grid" type="checkbox" /> Grid</label>
-        <label v-if="site.kind === 'cave'" class="chip"><input v-model="marks" type="checkbox" /> Labels</label>
+        <label class="chip"><input v-model="marks" type="checkbox" /> Labels</label>
         <button @click="download">Download PNG</button>
-        <button class="leave" @click="leave">Leave {{ site.kind }}</button>
+        <button class="leave" @click="leave">Leave {{ site.kind === 'glade' ? 'grove' : site.kind }}</button>
       </div>
     </header>
     <nav v-if="levelTabs.length" class="tabs" aria-label="Levels">
       <button v-for="(t, k) in levelTabs" :key="k" :class="{ active: k === level }" :aria-pressed="k === level" @click="level = k">{{ t }}</button>
     </nav>
-    <div ref="stage" class="stage">
-      <canvas ref="canvas" @click="onCanvasClick" @mousemove="onCanvasMove" />
+    <div class="body">
+      <div ref="stage" class="stage">
+        <canvas ref="canvas" @click="onCanvasClick" @mousemove="onCanvasMove" />
+      </div>
+      <aside v-if="keyed && map" class="key">
+        <p v-if="top?.hook" class="hook">{{ top.hook }}</p>
+        <ol>
+          <li v-for="r in map.rooms" :key="r.n" :value="r.n"><strong>{{ r.name }}.</strong> {{ r.text }}</li>
+        </ol>
+      </aside>
     </div>
   </div>
 </template>
@@ -250,10 +263,35 @@ button:hover {
   background: #2b2420;
   color: #f3ead3;
 }
+.body {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+}
 .stage {
   position: relative;
   flex: 1;
-  min-height: 0;
+  min-width: 0;
+}
+.key {
+  width: 320px;
+  flex: none;
+  overflow-y: auto;
+  padding: 12px 18px 18px 8px;
+  border-left: 1px solid rgba(43, 36, 32, 0.2);
+  font-size: 14.5px;
+  line-height: 1.35;
+}
+.hook {
+  font-style: italic;
+  margin: 0 0 10px;
+}
+ol {
+  margin: 0;
+  padding-left: 26px;
+}
+li {
+  margin-bottom: 8px;
 }
 canvas {
   position: absolute;
@@ -269,6 +307,20 @@ canvas {
   button,
   .chip {
     min-height: 44px;
+  }
+  .body {
+    flex-direction: column;
+  }
+  .stage {
+    flex: 1 1 60%;
+    min-height: 0;
+  }
+  .key {
+    width: auto;
+    flex: 1 1 40%;
+    border-left: none;
+    border-top: 1px solid rgba(43, 36, 32, 0.2);
+    padding: 10px 14px;
   }
 }
 </style>

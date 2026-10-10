@@ -55,6 +55,23 @@ export interface LairMap {
   levels: LairMap[];
   /** Ways between levels on this level: down to the next or up to the one above, at the same spot on both. */
   links: LairLink[];
+  /** Level name for the tabs ("Inside the hollow oak"); levels without one are numbered. */
+  levelName?: string;
+  /** Drawn as a hollow (cave style) whatever the site's kind: the inside of a great tree. */
+  interior?: boolean;
+  /** Groves: paths between the clearings (centre lines), huts and shrines, and the numbered key. */
+  paths: Pt[][];
+  things: { kind: 'hut' | 'shrine' | 'altar' | 'well'; p: Pt; a: number; w: number; h: number }[];
+  rooms: LairRoom[];
+  /** Groves: the adventure hook printed above the key. */
+  hook?: string;
+}
+
+export interface LairRoom {
+  n: number;
+  p: Pt;
+  name: string;
+  text: string;
 }
 
 export type LinkStyle = 'stairs' | 'shaft' | 'slope';
@@ -82,7 +99,7 @@ const STEP = 0.75;
 
 const SIZES: Record<LairKind, Record<string, [number, number]>> = {
   cave: { small: [54, 42], medium: [78, 60], large: [114, 84] },
-  glade: { small: [48, 36], medium: [66, 50], large: [90, 68] },
+  glade: { small: [60, 45], medium: [84, 63], large: [114, 84] },
 };
 
 const cache = new Map<string, LairMap>();
@@ -275,7 +292,7 @@ function blob(c: Pt, r: number, rnd: Rng, n = 7, rough = 0.35): Pt[] {
 
 const empty = (site: LairSite, W: number, H: number): Omit<LairMap, 'outlines' | 'onEdge' | 'open'> => ({
   site, W, H, water: [], mouths: [], rocks: [], dots: [], trees: [], bigTree: null, stones: [], stream: null, camp: null, ruins: [], tufts: [], flowers: [],
-  level: 0, levels: [], links: [],
+  level: 0, levels: [], links: [], paths: [], things: [], rooms: [],
 });
 
 // ---- Caves -----------------------------------------------------------------------------------
@@ -452,112 +469,321 @@ function inLoops(loops: Pt[][], p: Pt): boolean {
   return inside;
 }
 
-// ---- Glades ----------------------------------------------------------------------------------
 
+// ---- Groves ----------------------------------------------------------------------------------
+
+type GroveFeat = 'tree' | 'hollow' | 'stones' | 'camp' | 'ruins' | 'rocks' | 'pond' | 'flowers' | 'shrine' | 'hut' | 'spring' | 'stream' | 'clearing';
+
+const GROVE_KEY: Record<GroveFeat, [string, string[]]> = {
+  tree: ['The great tree', ['An ancient oak spreads over the clearing; ribbons and charms hang from its lower boughs.', 'A vast tree, older than any kingdom, its roots heaving up the turf.']],
+  hollow: ['The hollow tree', ['A giant tree split by lightning long ago. A gap in the trunk opens on darkness, and a rope hangs down inside.', 'The trunk of the great tree is hollow; worn handholds lead down among its roots.']],
+  stones: ['Standing stones', ['A ring of weathered stones, each carved with spirals. The grass inside never grows long.', 'Lichen-covered menhirs stand in a circle; one has fallen across the centre.']],
+  camp: ['Camp', ['A fire pit, still warm, and tents of patched canvas. Someone left in a hurry.', 'Hunters (or outlaws) camp here: a firepit, a drying rack and two tents.']],
+  ruins: ['Ruined walls', ['The tumbled walls of an old chapel, overgrown with ivy.', 'Moss-grown foundations of a forester\'s lodge; a cellar hatch lies half buried.']],
+  rocks: ['Boulders', ['Great mossy boulders lie scattered as if dropped by giants.', 'A tumble of rocks makes a natural shelter; animal bones lie in its shade.']],
+  pond: ['Pond', ['A still, dark pond. Coins glint on the bottom, beyond easy reach.', 'Reeds ring a quiet pool; frogs fall silent as anyone approaches.']],
+  flowers: ['Meadow', ['A sunlit meadow thick with wildflowers. Bees drone among them.', 'Flowers grow here out of season, in rings that are almost too regular.']],
+  shrine: ['Shrine', ['A small stone shrine to a forest spirit, heaped with offerings of nuts and feathers.', 'An old wayside shrine; the carved face on it has been freshly painted.']],
+  hut: ["Druid's hut", ['A low hut of wattle and turf. Herbs hang drying from the rafters.', 'A hermit\'s hut with a smoking chimney and a tidy vegetable patch.']],
+  spring: ['Spring', ['Clear water bubbles from the ground into a mossy basin. It is said to heal.', 'A spring rises among stones; a wooden cup hangs on a peg beside it.']],
+  stream: ['Ford', ['The path crosses a stream on stepping stones.', 'A shallow ford; tracks of many animals mark the mud.']],
+  clearing: ['Clearing', ['A quiet clearing carpeted in moss and bracken.', 'An open glade where deer graze at dusk.']],
+};
+
+const GROVE_HOOKS = [
+  'Woodcutters will not work near the grove since one of them came back unable to speak.',
+  'A druid who tends the grove has asked for help: something is poisoning its spring.',
+  'Children from the nearest village have gone missing, and their trail leads into these woods.',
+  'Each midsummer, lights dance among the stones; this year they came early.',
+  'A noble\'s hunting party chased a white hart into the grove and has not returned.',
+];
+
+/**
+ * A grove: several clearings in the forest joined by winding paths, each with its own feature
+ * (a great or hollow tree, standing stones, a pond or spring, a shrine, a druid's hut, a camp,
+ * ruins, a meadow), numbered and described in a key. A hollow tree opens on a second level,
+ * the hollow among its roots.
+ */
 function buildGlade(site: LairSite): LairMap {
   const rnd = mulberry32(site.seed);
   const noise = new Simplex3(mulberry32(hashString(`glade#${site.seed}`)));
   const [W, H] = lairSize(site);
   const has = (t: string) => site.tags.includes(t);
-  const c0: Pt = [W * (0.45 + 0.1 * rnd()), H * (0.45 + 0.1 * rnd())];
-  const R = Math.min(W, H) * (0.3 + 0.06 * rnd());
-  const asp = 0.8 + 0.4 * rnd(), rot = rnd() * Math.PI;
-  // A second lobe for some clearings.
-  const lobe = rnd() < 0.5 ? { c: [c0[0] + Math.cos(rot) * R * 0.9, c0[1] + Math.sin(rot) * R * 0.6] as Pt, r: R * (0.45 + 0.2 * rnd()) } : null;
-  const clearing = (x: number, y: number) => {
-    const dx = x - c0[0], dy = y - c0[1];
-    const u = dx * Math.cos(rot) + dy * Math.sin(rot), v = (-dx * Math.sin(rot) + dy * Math.cos(rot)) / asp;
-    let f = 1 - Math.hypot(u, v) / R;
-    if (lobe) f = Math.max(f, 1 - Math.hypot(x - lobe.c[0], y - lobe.c[1]) / lobe.r);
-    return f + 0.3 * fbm(noise, x / 9, y / 9, 0.2, 3);
+  const dry = has('dry');
+  // Clearings, kept apart.
+  const nCl = has('small') ? 2 + Math.floor(rnd() * 2) : has('large') ? 4 + Math.floor(rnd() * 2) : 3 + Math.floor(rnd() * 2);
+  const base = Math.min(W, H) * 0.17;
+  const cl: { c: Pt; r: number; asp: number; rot: number }[] = [];
+  for (let t = 0; t < 600 && cl.length < nCl; t++) {
+    const r = base * (cl.length ? 0.65 + 0.5 * rnd() : 1.05 + 0.2 * rnd());
+    const c: Pt = [r + 4 + rnd() * (W - 2 * r - 8), r + 4 + rnd() * (H - 2 * r - 8)];
+    if (cl.every((o) => Math.hypot(o.c[0] - c[0], o.c[1] - c[1]) > (o.r + r) * 1.25 + 4)) cl.push({ c, r, asp: 0.75 + 0.45 * rnd(), rot: rnd() * Math.PI });
+  }
+  // Paths: a spanning tree over the clearings, one loop for larger groves, and a way in from the edge.
+  const pathLines: Pt[][] = [];
+  const inTree = [0];
+  while (inTree.length < cl.length) {
+    let best: [number, number] | null = null, bd = Infinity;
+    for (const a of inTree) {
+      for (let b = 0; b < cl.length; b++) {
+        if (inTree.includes(b)) continue;
+        const d = Math.hypot(cl[a].c[0] - cl[b].c[0], cl[a].c[1] - cl[b].c[1]);
+        if (d < bd) {
+          bd = d;
+          best = [a, b];
+        }
+      }
+    }
+    if (!best) break;
+    pathLines.push(wander(cl[best[0]].c, cl[best[1]].c, rnd, 0.25, 4));
+    inTree.push(best[1]);
+  }
+  if (cl.length >= 4 && rnd() < 0.6) pathLines.push(wander(cl[cl.length - 1].c, cl[1].c, rnd, 0.25, 4));
+  {
+    const side = Math.floor(rnd() * 4);
+    const edgeD = (c: Pt) => [c[1], W - c[0], H - c[1], c[0]][side];
+    const near = cl.reduce((a, b) => (edgeD(b.c) < edgeD(a.c) ? b : a));
+    const out: Pt = side === 0 ? [near.c[0], -4] : side === 1 ? [W + 4, near.c[1]] : side === 2 ? [near.c[0], H + 4] : [-4, near.c[1]];
+    pathLines.push(wander(near.c, out, rnd, 0.2, 3));
+  }
+  const ellipse = (q: (typeof cl)[number], x: number, y: number) => {
+    const dx = x - q.c[0], dy = y - q.c[1];
+    const u = dx * Math.cos(q.rot) + dy * Math.sin(q.rot), v = (-dx * Math.sin(q.rot) + dy * Math.cos(q.rot)) / q.asp;
+    return 1 - Math.hypot(u, v) / q.r;
   };
-  const field = new Field(W, H, clearing);
+  const field = new Field(W, H, (x, y) => Math.max(...cl.map((q) => ellipse(q, x, y))) + 0.3 * fbm(noise, x / 9, y / 9, 0.2, 3));
+  for (const l of pathLines) {
+    for (let k = 1; k < l.length; k++) {
+      const a = l[k - 1], b = l[k], w = 1.5;
+      field.stamp(Math.min(a[0], b[0]) - w, Math.min(a[1], b[1]) - w, Math.max(a[0], b[0]) + w, Math.max(a[1], b[1]) + w, (x, y) => 0.6 * (1 - distSeg([x, y], a, b) / w));
+    }
+  }
   field.clean(60, 30);
   const open = (p: Pt) => field.at(p) > 0;
-  const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge: () => false };
+  const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge: () => false, paths: pathLines };
   m.levels = [m];
 
-  // Water first, so the rest keeps out of it.
-  if (has('pond')) {
-    const pc: Pt = has('tree') ? [c0[0] + R * 0.35 * Math.cos(rot + 2), c0[1] + R * 0.35 * Math.sin(rot + 2)] : c0;
-    const pr = R * (0.28 + 0.12 * rnd());
-    const pf = new Field(W, H, (x, y) => Math.min(1 - Math.hypot(x - pc[0], y - pc[1]) / pr + 0.35 * fbm(noise, x / 4, y / 4, 4.1, 2), field.at([x, y]) - 0.12));
-    pf.clean(10, 6);
-    m.water = pf.contours();
+  // Features: the site's tags first (in the largest clearings), then a pick from the rest.
+  const feats: GroveFeat[] = [];
+  const tagFeats = (['tree', 'stones', 'camp', 'ruins', 'pond', 'flowers', 'rocks'] as GroveFeat[]).filter((t) => has(t));
+  for (const t of tagFeats) feats.push(t === 'tree' && rnd() < 0.55 ? 'hollow' : t);
+  const pool: [GroveFeat, number][] = [
+    ['shrine', 2], ['hut', 1.6], ['stones', 1.4], ['ruins', 1.2], ['hollow', 1.1], ['tree', 0.8], ['camp', 0.9], ['rocks', 0.8],
+    ...(dry ? [] : [['spring', 1.2], ['flowers', 1.2], ['pond', 1]] as [GroveFeat, number][]),
+  ];
+  while (feats.length < cl.length) {
+    const opts = pool.filter(([f]) => !feats.includes(f) && !(f === 'tree' && feats.includes('hollow')) && !(f === 'hollow' && feats.includes('tree')));
+    if (!opts.length) {
+      feats.push('clearing');
+      continue;
+    }
+    const total = opts.reduce((a, [, w]) => a + w, 0);
+    let t = rnd() * total;
+    feats.push(opts.find(([, w]) => (t -= w) < 0)?.[0] ?? opts[0][0]);
   }
+  feats.length = cl.length;
+
   if (has('stream')) {
     const a = rnd() * Math.PI;
     const d: Pt = [Math.cos(a), Math.sin(a)];
     const L = Math.hypot(W, H) * 0.6;
-    const mid: Pt = m.water.length ? c0 : [c0[0] + (rnd() - 0.5) * R * 0.6, c0[1] + (rnd() - 0.5) * R * 0.6];
-    m.stream = { pts: [...wander([mid[0] - d[0] * L, mid[1] - d[1] * L], mid, rnd, 0.18, 4), ...wander(mid, [mid[0] + d[0] * L, mid[1] + d[1] * L], rnd, 0.18, 4).slice(1)], w: 0.8 + 0.7 * rnd() };
+    const k = Math.floor(rnd() * cl.length);
+    const mid: Pt = [cl[k].c[0] + (rnd() - 0.5) * cl[k].r, cl[k].c[1] + (rnd() - 0.5) * cl[k].r];
+    m.stream = { pts: [...wander([mid[0] - d[0] * L, mid[1] - d[1] * L], mid, rnd, 0.18, 4), ...wander(mid, [mid[0] + d[0] * L, mid[1] + d[1] * L], rnd, 0.18, 4).slice(1)], w: 0.7 + 0.6 * rnd() };
   }
+  // Ponds and springs first, so the rest keeps out of the water.
+  const pools: Pt[][] = [];
+  cl.forEach((q, i) => {
+    const f = feats[i];
+    if (f !== 'pond' && f !== 'spring') return;
+    const pc = q.c, pr = f === 'pond' ? q.r * (0.42 + 0.12 * rnd()) : 1.6 + 0.6 * rnd();
+    const pf = new Field(W, H, (x, y) => Math.min(1 - Math.hypot(x - pc[0], y - pc[1]) / pr + 0.3 * fbm(noise, x / 4, y / 4, 4.1 + i, 2), field.at([x, y]) - 0.1));
+    pf.clean(6, 6);
+    pools.push(...pf.contours());
+    if (f === 'spring') {
+      const n = 6 + Math.floor(rnd() * 3);
+      for (let k = 0; k < n; k++) {
+        const a = (k / n) * Math.PI * 2;
+        m.rocks.push(blob([pc[0] + Math.cos(a) * (pr + 0.5), pc[1] + Math.sin(a) * (pr + 0.5)], 0.35 + 0.2 * rnd(), rnd, 6));
+      }
+    }
+  });
+  m.water = pools;
   const wet = (p: Pt, pad = 0) => (m.water.length && inLoops(m.water, p)) || (m.stream ? m.stream.pts.some((q, k) => k > 0 && distSeg(p, m.stream!.pts[k - 1], q) < m.stream!.w + pad) : false);
 
-  if (has('tree')) m.bigTree = { p: c0, r: 4.5 + 2.5 * rnd() };
-  if (has('stones')) {
-    const sc: Pt = m.bigTree || m.water.length ? [c0[0] - Math.cos(rot) * R * 0.45, c0[1] - Math.sin(rot) * R * 0.45] : c0;
-    const rr = 3.5 + 3 * rnd(), n = 7 + Math.floor(rnd() * 5);
-    for (let q = 0; q < n; q++) {
-      if (rnd() < 0.12) continue;
-      const a = (q / n) * Math.PI * 2;
-      const p: Pt = [sc[0] + Math.cos(a) * rr, sc[1] + Math.sin(a) * rr];
-      if (!wet(p, 0.5)) m.stones.push({ p, w: 0.8 + 0.5 * rnd(), h: 0.45 + 0.25 * rnd(), a: a + Math.PI / 2 + (rnd() - 0.5) * 0.4 });
+  let hollowAt: Pt | null = null;
+  cl.forEach((q, i) => {
+    const c = q.c, R = q.r, rot = q.rot;
+    switch (feats[i]) {
+      case 'tree':
+      case 'hollow':
+        m.bigTree = { p: c, r: Math.min(R * 0.7, 4.5 + 2.5 * rnd()) };
+        if (feats[i] === 'hollow') hollowAt = c;
+        break;
+      case 'stones': {
+        const rr = Math.min(R * 0.6, 3.5 + 3 * rnd()), n = 7 + Math.floor(rnd() * 5);
+        for (let k = 0; k < n; k++) {
+          if (rnd() < 0.12) continue;
+          const a = (k / n) * Math.PI * 2;
+          const p: Pt = [c[0] + Math.cos(a) * rr, c[1] + Math.sin(a) * rr];
+          if (!wet(p, 0.5)) m.stones.push({ p, w: 0.8 + 0.5 * rnd(), h: 0.45 + 0.25 * rnd(), a: a + Math.PI / 2 + (rnd() - 0.5) * 0.4 });
+        }
+        if (rnd() < 0.6 && !wet(c, 1)) m.things.push({ kind: 'altar', p: c, a: rnd() * Math.PI, w: 1.6, h: 0.9 });
+        break;
+      }
+      case 'camp': {
+        const fire: Pt = [c[0] + (rnd() - 0.5) * R * 0.3, c[1] + (rnd() - 0.5) * R * 0.3];
+        const tents: { p: Pt; a: number }[] = [];
+        for (let k = 0; k < 2 + Math.floor(rnd() * 3); k++) {
+          const a = rnd() * Math.PI * 2, d = 3.2 + 1.8 * rnd();
+          const p: Pt = [fire[0] + Math.cos(a) * d, fire[1] + Math.sin(a) * d];
+          if (field.at(p) > 0.1 && !wet(p, 1)) tents.push({ p, a: a + Math.PI });
+        }
+        m.camp = { fire, tents };
+        break;
+      }
+      case 'ruins': {
+        const w = Math.min(R, 4 + 4 * rnd()), h = Math.min(R * 0.8, 3.5 + 3 * rnd()), a = rnd() * Math.PI;
+        const corner = (u: number, v: number): Pt => [c[0] + u * Math.cos(a) - v * Math.sin(a), c[1] + u * Math.sin(a) + v * Math.cos(a)];
+        const cs = [corner(-w / 2, -h / 2), corner(w / 2, -h / 2), corner(w / 2, h / 2), corner(-w / 2, h / 2)];
+        for (let k = 0; k < 4; k++) {
+          const p = cs[k], r = cs[(k + 1) % 4];
+          const t0 = rnd() * 0.3, t1 = 0.5 + rnd() * 0.5;
+          if (rnd() < 0.85) m.ruins.push([[p[0] + (r[0] - p[0]) * t0, p[1] + (r[1] - p[1]) * t0], [p[0] + (r[0] - p[0]) * t1, p[1] + (r[1] - p[1]) * t1]]);
+        }
+        if (rnd() < 0.5) m.things.push({ kind: 'well', p: corner(w / 2 + 2, 0), a: 0, w: 1.2, h: 1.2 });
+        break;
+      }
+      case 'shrine':
+        m.things.push({ kind: 'shrine', p: [c[0] + Math.cos(rot) * R * 0.2, c[1] + Math.sin(rot) * R * 0.2], a: rot, w: 2.2, h: 1.6 });
+        break;
+      case 'hut': {
+        // On dry ground: the centre, or the first dry spot round it.
+        let p: Pt = c;
+        for (let k = 0; k < 9 && wet(p, 3.5); k++) p = [c[0] + Math.cos(k * 0.7) * R * 0.45, c[1] + Math.sin(k * 0.7) * R * 0.45];
+        m.things.push({ kind: 'hut', p, a: rot, w: 5 + 1.5 * rnd(), h: 3.8 + rnd() });
+        break;
+      }
+      case 'rocks':
+        for (let k = 0; k < 4 + Math.floor(rnd() * 5); k++) {
+          const p: Pt = [c[0] + (rnd() - 0.5) * R * 1.2, c[1] + (rnd() - 0.5) * R * 1.2];
+          if (field.at(p) > 0.05 && !wet(p, 0.5)) m.rocks.push(blob(p, 0.5 + 1.3 * rnd() ** 2, rnd, 6));
+        }
+        break;
     }
-    if (!m.bigTree && rnd() < 0.6 && !wet(sc, 1)) m.stones.push({ p: sc, w: 1.4, h: 0.8, a: rnd() * Math.PI });
-  }
-  if (has('camp')) {
-    const fire: Pt = [c0[0] + (rnd() - 0.5) * R * 0.4, c0[1] + (rnd() - 0.5) * R * 0.4];
-    const tents: { p: Pt; a: number }[] = [];
-    for (let q = 0; q < 2 + Math.floor(rnd() * 3); q++) {
-      const a = rnd() * Math.PI * 2, d = 3.5 + 2 * rnd();
-      const p: Pt = [fire[0] + Math.cos(a) * d, fire[1] + Math.sin(a) * d];
-      if (field.at(p) > 0.1 && !wet(p, 1)) tents.push({ p, a: a + Math.PI });
-    }
-    m.camp = { fire, tents };
-  }
-  if (has('ruins')) {
-    const rc: Pt = [c0[0] + Math.cos(rot + 1) * R * 0.3, c0[1] + Math.sin(rot + 1) * R * 0.3];
-    const w = 4 + 4 * rnd(), h = 3.5 + 3 * rnd(), a = rnd() * Math.PI;
-    const corner = (u: number, v: number): Pt => [rc[0] + u * Math.cos(a) - v * Math.sin(a), rc[1] + u * Math.sin(a) + v * Math.cos(a)];
-    const cs = [corner(-w / 2, -h / 2), corner(w / 2, -h / 2), corner(w / 2, h / 2), corner(-w / 2, h / 2)];
-    for (let q = 0; q < 4; q++) {
-      const p = cs[q], r = cs[(q + 1) % 4];
-      // Broken walls: each side keeps one or two stretches.
-      const t0 = rnd() * 0.3, t1 = 0.5 + rnd() * 0.5;
-      if (rnd() < 0.85) m.ruins.push([[p[0] + (r[0] - p[0]) * t0, p[1] + (r[1] - p[1]) * t0], [p[0] + (r[0] - p[0]) * t1, p[1] + (r[1] - p[1]) * t1]]);
-    }
-  }
+  });
   const busy = (p: Pt, pad: number) =>
     (m.bigTree && Math.hypot(p[0] - m.bigTree.p[0], p[1] - m.bigTree.p[1]) < m.bigTree.r + pad) ||
     m.stones.some((s) => Math.hypot(p[0] - s.p[0], p[1] - s.p[1]) < 1 + pad) ||
-    (m.camp && Math.hypot(p[0] - m.camp.fire[0], p[1] - m.camp.fire[1]) < 6 + pad) || wet(p, pad);
+    m.things.some((t) => Math.hypot(p[0] - t.p[0], p[1] - t.p[1]) < Math.max(t.w, t.h) / 2 + 0.6 + pad) ||
+    (m.camp && Math.hypot(p[0] - m.camp.fire[0], p[1] - m.camp.fire[1]) < 6 + pad) || wet(p, pad) ||
+    m.paths.some((l) => l.some((q, k) => k > 0 && distSeg(p, l[k - 1], q) < 0.8 + pad));
 
-  // The forest: canopies packed on a jittered grid outside the clearing, a few stragglers inside.
+  // The forest: canopies packed on a jittered grid outside the clearings, a few stragglers inside.
   const sp = 3.3;
   for (let y = -2; y < H + 3; y += sp * 0.87) {
     for (let x = -2 + (Math.round(y / sp) % 2) * sp * 0.5; x < W + 3; x += sp) {
       const p: Pt = [x + (rnd() - 0.5) * sp * 0.7, y + (rnd() - 0.5) * sp * 0.7];
-      const f = clearing(p[0], p[1]);
+      const f = field.at([Math.max(0, Math.min(W, p[0])), Math.max(0, Math.min(H, p[1]))]);
       if (f > 0.2 || (f > -0.05 && rnd() < 0.6) || (f > 0 && rnd() < 0.9)) continue;
       if (wet(p, 1.2)) continue;
-      m.trees.push({ p, r: 2 + 1.8 * rnd(), shade: rnd() });
+      const r = 2 + 1.8 * rnd();
+      // Paths stay open to the sky, if narrowly: crowns may overhang them only a little.
+      if (m.paths.some((l) => l.some((q, k) => k > 0 && distSeg(p, l[k - 1], q) < r * 0.75 + 0.6))) continue;
+      m.trees.push({ p, r, shade: rnd() });
     }
   }
-  if (has('rocks') || rnd() < 0.4) {
-    for (let q = 0; q < 3 + Math.floor(rnd() * 6); q++) {
-      const p: Pt = [c0[0] + (rnd() - 0.5) * R * 1.6, c0[1] + (rnd() - 0.5) * R * 1.6];
-      if (field.at(p) > 0.05 && !busy(p, 1)) m.rocks.push(blob(p, 0.4 + 1.1 * rnd() ** 2, rnd, 6));
-    }
-  }
-  // Grass tufts and flowers in the open.
+  // Grass tufts, flowers in the meadow (and here and there elsewhere if the site is flowery).
+  const meadow = cl.findIndex((_, i) => feats[i] === 'flowers');
   for (let t = 0; t < (W * H) / 6; t++) {
     const p: Pt = [rnd() * W, rnd() * H];
     if (field.at(p) <= 0.04 || busy(p, 0.3)) continue;
-    if (has('flowers') && rnd() < 0.25) {
+    const inMeadow = meadow >= 0 && ellipse(cl[meadow], p[0], p[1]) > -0.1;
+    if ((inMeadow && rnd() < 0.5) || (has('flowers') && rnd() < 0.06)) {
       const c = Math.floor(fbm(noise, p[0] / 6, p[1] / 6, 7, 1) * 3 + 3) % 3;
       for (let q = 0; q < 3; q++) m.flowers.push({ p: [p[0] + (rnd() - 0.5), p[1] + (rnd() - 0.5)], c });
-    } else if (rnd() < (has('dry') ? 0.35 : 0.6)) m.tufts.push(p);
+    } else if (rnd() < (dry ? 0.35 : 0.6)) m.tufts.push(p);
   }
+
+  // The key: one entry per clearing, numbered from the way in; the ford if a stream crosses a path.
+  const entry = pathLines[pathLines.length - 1][pathLines[pathLines.length - 1].length - 1];
+  const order = cl.map((_, i) => i).sort((a, b) => Math.hypot(cl[a].c[0] - entry[0], cl[a].c[1] - entry[1]) - Math.hypot(cl[b].c[0] - entry[0], cl[b].c[1] - entry[1]));
+  for (const i of order) {
+    const [name, texts] = GROVE_KEY[feats[i]];
+    const q = cl[i];
+    // The number sits off the feature, toward the clearing's rim, on dry open ground.
+    let lp: Pt = q.c;
+    for (let k = 0; k < 12; k++) {
+      const a = q.rot + Math.PI / 2 + (k * Math.PI * 2) / 12, d = q.r * (k < 6 ? 0.6 : 0.45);
+      const c: Pt = [q.c[0] + Math.cos(a) * d, q.c[1] + Math.sin(a) * d * q.asp];
+      if (field.at(c) > 0.12 && !busy(c, 0.6)) {
+        lp = c;
+        break;
+      }
+    }
+    m.rooms.push({ n: m.rooms.length + 1, p: lp, name, text: texts[Math.floor(rnd() * texts.length)] });
+  }
+  if (m.stream) {
+    for (const l of m.paths) {
+      const st = m.stream;
+      const hit = l.find((p) => st.pts.some((q, k) => k > 0 && distSeg(p, st.pts[k - 1], q) < st.w + 0.2) && p[0] > 2 && p[1] > 2 && p[0] < W - 2 && p[1] < H - 2);
+      if (hit) {
+        const [name, texts] = GROVE_KEY.stream;
+        m.rooms.push({ n: m.rooms.length + 1, p: [hit[0] + 1.8, hit[1] + 1.8], name, text: texts[Math.floor(rnd() * texts.length)] });
+        break;
+      }
+    }
+  }
+  m.mouths = [{ p: [Math.max(0, Math.min(W, entry[0])), Math.max(0, Math.min(H, entry[1]))], dir: Math.atan2(cl[order[0]].c[1] - entry[1], cl[order[0]].c[0] - entry[0]) }];
+  m.hook = GROVE_HOOKS[Math.floor(rnd() * GROVE_HOOKS.length)];
+
+  if (hollowAt) {
+    const inside = buildHollow(site, rnd, m.rooms.length + 1);
+    const at: Pt = [hollowAt[0] + 0.6, hollowAt[1] + 0.6];
+    m.links.push({ p: at, dir: 'down', to: 1, style: 'shaft' });
+    m.levelName = 'The grove';
+    m.levels = [m, inside];
+    inside.levels = m.levels;
+  }
+  return m;
+}
+
+/** The hollow among a great tree's roots: a chamber or two of earth and wood, entered from above. */
+function buildHollow(site: LairSite, rnd: Rng, n0: number): LairMap {
+  const W = 30, H = 25;
+  const noise = new Simplex3(mulberry32(hashString(`hollow#${site.seed}`)));
+  const c: Pt = [W / 2, H / 2];
+  const lobes: { c: Pt; r: number }[] = [{ c, r: 4.6 }];
+  const nL = 2 + Math.floor(rnd() * 2), a0 = rnd() * Math.PI * 2;
+  for (let k = 0; k < nL; k++) {
+    // Spread round the hollow, each down its own root tunnel.
+    const a = a0 + (k / nL) * Math.PI * 2 + (rnd() - 0.5) * 0.8;
+    lobes.push({ c: [c[0] + Math.cos(a) * 9, c[1] + Math.sin(a) * 7], r: 2.4 + 1.1 * rnd() });
+  }
+  const field = new Field(W, H, (x, y) => Math.max(...lobes.map((l) => 1 - Math.hypot(x - l.c[0], y - l.c[1]) / l.r)) + 0.18 * fbm(noise, x / 3, y / 3, 0.4, 2));
+  for (const l of lobes.slice(1)) {
+    field.stamp(Math.min(c[0], l.c[0]) - 1.2, Math.min(c[1], l.c[1]) - 1.2, Math.max(c[0], l.c[0]) + 1.2, Math.max(c[1], l.c[1]) + 1.2, (x, y) => 1 - distSeg([x, y], c, l.c) / 1.2);
+  }
+  field.clean(10, 6);
+  const open = (p: Pt) => field.at(p) > 0;
+  const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge: () => false, interior: true, level: 1, levelName: 'Inside the hollow tree' };
+  // Roots across the walls and floor.
+  for (let k = 0; k < 14; k++) {
+    const a = rnd() * Math.PI * 2, r = 2 + rnd() * 6;
+    const p: Pt = [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r];
+    if (field.at(p) > 0.05 && Math.hypot(p[0] - c[0], p[1] - c[1]) > 2) m.dots.push({ p, r: 0.12 + 0.18 * rnd() });
+  }
+  m.links.push({ p: [c[0] + 0.6, c[1] + 0.6], dir: 'up', to: 0, style: 'shaft' });
+  const what = [
+    ['Root hollow', 'Roots twist through the earthen walls. Bones and trinkets are wedged among them, gifts or trophies.'],
+    ['Hoard', 'A cache hidden under a root: a rotted satchel, a few coins and a silver brooch.'],
+    ['Nest', 'Something large has made a nest of leaves and fur here. It is still warm.'],
+    ['Spring', 'Water seeps from the roots into a small, cold pool.'],
+  ];
+  m.rooms.push({ n: n0, p: [c[0] - 2.2, c[1] - 2], name: 'The hollow', text: 'The rope drops into a dry, round chamber in the heart of the roots. The smell of earth and old leaves is thick.' });
+  lobes.slice(1).forEach((l, k) => {
+    const [name, text] = what[(k + Math.floor(rnd() * what.length)) % what.length];
+    m.rooms.push({ n: n0 + 1 + k, p: l.c, name, text });
+  });
   return m;
 }
