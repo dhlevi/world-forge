@@ -19,6 +19,9 @@ export function fontFaces(base: string): Record<string, { url: string }[]> {
 const INK = '#3f3126';
 const WATER_INK = '#35566a';
 const HALO = 'rgba(241,233,208,0.85)';
+/** Land, settlement and plan lettering sits on busier ground than water names: larger, on a firmer halo. */
+const LAND_HALO = 'rgba(244,237,214,0.94)';
+const LAND_SCALE = 1.2;
 const e = (x: unknown) => x as ExpressionSpecification;
 
 interface Spec {
@@ -50,6 +53,10 @@ const inBand = ['all', ['>=', ['zoom'], ['coalesce', ['get', 'zlo'], 0]], ['<', 
 
 function layer(s: Spec): LayerSpecification {
   const [z0, z1] = s.z;
+  const water = s.color === WATER_INK;
+  const k = water ? 1 : LAND_SCALE;
+  // Faint lettering (realms, plains) is kept faint, but not too faint to read.
+  const alpha = water ? (s.opacity ?? 1) : Math.min(1, (s.opacity ?? 1) + 0.12);
   const fade = Math.min(0.5, (z1 - z0) / 4);
   return {
     id: s.id,
@@ -61,7 +68,7 @@ function layer(s: Spec): LayerSpecification {
     layout: {
       'text-field': s.upper ? e(['upcase', ['get', 'name']]) : e(['get', 'name']),
       'text-font': [s.font],
-      'text-size': e(['interpolate', ['linear'], ['zoom'], z0, s.size[0], z1, s.size[1]]),
+      'text-size': e(['interpolate', ['linear'], ['zoom'], z0, s.size[0] * k, z1, s.size[1] * k]),
       'text-letter-spacing': s.spacing ?? 0.05,
       'text-max-width': s.maxWidth ?? 9,
       'symbol-placement': s.line === 'repeat' ? 'line' : s.line === 'center' ? 'line-center' : 'point',
@@ -74,10 +81,10 @@ function layer(s: Spec): LayerSpecification {
     },
     paint: {
       'text-color': s.color ?? INK,
-      'text-halo-color': HALO,
-      'text-halo-width': s.halo ?? 1.3,
-      'text-halo-blur': 0.6,
-      'text-opacity': e(['interpolate', ['linear'], ['zoom'], z0, 0, z0 + fade, s.opacity ?? 1, z1 - fade, s.opacity ?? 1, z1, 0]),
+      'text-halo-color': water ? HALO : LAND_HALO,
+      'text-halo-width': (s.halo ?? 1.3) + (water ? 0 : 0.7),
+      'text-halo-blur': water ? 0.6 : 0.35,
+      'text-opacity': e(['interpolate', ['linear'], ['zoom'], z0, 0, z0 + fade, alpha, z1 - fade, alpha, z1, 0]),
     },
   };
 }
@@ -85,7 +92,7 @@ function layer(s: Spec): LayerSpecification {
 /** World labels from the `labels` source, plus rivers, roads and settlements. Order = draw order (last on top). */
 export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   // Realms: faint red small capitals behind everything else.
-  layer({ id: 'lbl-realm', source: 'labels', filter: [kindIs('realm')], z: [2.9, 6.6], size: [11, 18], font: CAPS, color: '#8b4a35', spacing: 0.45, opacity: 0.7, sortKey: 50, maxWidth: 12 }),
+  layer({ id: 'lbl-realm', source: 'labels', filter: [kindIs('realm')], z: [2.9, 6.6], size: [11, 18], font: CAPS, color: '#7a3d2a', spacing: 0.45, opacity: 0.7, sortKey: 50, maxWidth: 12 }),
   layer({ id: 'lbl-continent', source: 'labels', filter: [kindIs('continent'), isPoint], z: [0.5, 3.3], size: [18, 32], font: CAPS, color: '#5b4632', spacing: 0.6, opacity: 0.85, upper: true }),
   layer({ id: 'lbl-continent-l', source: 'labels', filter: [kindIs('continent'), isLine], z: [0.5, 3.3], size: [18, 32], font: CAPS, color: '#5b4632', spacing: 0.6, opacity: 0.85, upper: true, line: 'center' }),
   // Water. Each body keeps its main label until it fills the screen, then a lattice of anchors (one
@@ -105,14 +112,14 @@ export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   layer({ id: 'lbl-river-4', source: 'rivers', filter: [['has', 'name'], ['>=', ['get', 'order'], 4], ['<', ['get', 'order'], 6]], z: [5, 12.2], size: [10, 13.5], font: ITALIC, color: WATER_INK, line: 'repeat', spacing: 0.1, sortKey: 10 }),
   layer({ id: 'lbl-river-2', source: 'rivers', filter: [['has', 'name'], ['<', ['get', 'order'], 4]], z: [6.6, 12.2], size: [10, 13], font: ITALIC, color: WATER_INK, line: 'repeat', spacing: 0.08, sortKey: 12 }),
   // Land regions.
-  layer({ id: 'lbl-desert', source: 'labels', filter: [kindIs('desert', 'plains'), isPoint], z: [3.4, 8.8], size: [11, 17], font: CAPS, color: '#7a5c3a', spacing: 0.45, opacity: 0.85, sortKey: 20 }),
-  layer({ id: 'lbl-desert-l', source: 'labels', filter: [kindIs('desert', 'plains'), isLine], z: [3.4, 8.8], size: [11, 17], font: CAPS, color: '#7a5c3a', spacing: 0.45, opacity: 0.85, line: 'center', sortKey: 20 }),
+  layer({ id: 'lbl-desert', source: 'labels', filter: [kindIs('desert', 'plains'), isPoint], z: [3.4, 8.8], size: [11, 17], font: CAPS, color: '#694d2f', spacing: 0.45, opacity: 0.85, sortKey: 20 }),
+  layer({ id: 'lbl-desert-l', source: 'labels', filter: [kindIs('desert', 'plains'), isLine], z: [3.4, 8.8], size: [11, 17], font: CAPS, color: '#694d2f', spacing: 0.45, opacity: 0.85, line: 'center', sortKey: 20 }),
   layer({ id: 'lbl-mtn', source: 'labels', filter: [kindIs('mountains'), isPoint], z: [3.6, 9.6], size: [11, 16], font: CAPS, color: '#5a4632', spacing: 0.35, sortKey: 14 }),
   layer({ id: 'lbl-mtn-l', source: 'labels', filter: [kindIs('mountains'), isLine], z: [3.6, 9.6], size: [11, 16], font: CAPS, color: '#5a4632', spacing: 0.35, line: 'center', sortKey: 14 }),
-  layer({ id: 'lbl-hills', source: 'labels', filter: [kindIs('hills'), isPoint], z: [4.8, 10.2], size: [10, 14], font: CAPS, color: '#6a5238', spacing: 0.3, sortKey: 18 }),
-  layer({ id: 'lbl-hills-l', source: 'labels', filter: [kindIs('hills'), isLine], z: [4.8, 10.2], size: [10, 14], font: CAPS, color: '#6a5238', spacing: 0.3, line: 'center', sortKey: 18 }),
-  layer({ id: 'lbl-forest', source: 'labels', filter: [kindIs('forest'), isPoint], z: [4.4, 10.2], size: [10, 15], font: CAPS, color: '#47592f', spacing: 0.3, sortKey: 16 }),
-  layer({ id: 'lbl-forest-l', source: 'labels', filter: [kindIs('forest'), isLine], z: [4.4, 10.2], size: [10, 15], font: CAPS, color: '#47592f', spacing: 0.3, line: 'center', sortKey: 16 }),
+  layer({ id: 'lbl-hills', source: 'labels', filter: [kindIs('hills'), isPoint], z: [4.8, 10.2], size: [10, 14], font: CAPS, color: '#5b452e', spacing: 0.3, sortKey: 18 }),
+  layer({ id: 'lbl-hills-l', source: 'labels', filter: [kindIs('hills'), isLine], z: [4.8, 10.2], size: [10, 14], font: CAPS, color: '#5b452e', spacing: 0.3, line: 'center', sortKey: 18 }),
+  layer({ id: 'lbl-forest', source: 'labels', filter: [kindIs('forest'), isPoint], z: [4.4, 10.2], size: [10, 15], font: CAPS, color: '#3e4f27', spacing: 0.3, sortKey: 16 }),
+  layer({ id: 'lbl-forest-l', source: 'labels', filter: [kindIs('forest'), isLine], z: [4.4, 10.2], size: [10, 15], font: CAPS, color: '#3e4f27', spacing: 0.3, line: 'center', sortKey: 16 }),
   layer({ id: 'lbl-marsh', source: 'labels', filter: [kindIs('marsh'), isPoint], z: [5.2, 10.6], size: [10, 14], font: ITALIC, color: '#4a6150', spacing: 0.12, sortKey: 19 }),
   layer({ id: 'lbl-marsh-l', source: 'labels', filter: [kindIs('marsh'), isLine], z: [5.2, 10.6], size: [10, 14], font: ITALIC, color: '#4a6150', spacing: 0.12, line: 'center', sortKey: 19 }),
   layer({ id: 'lbl-peak', source: 'labels', filter: [kindIs('peak')], z: [6.2, 12.5], size: [10, 12.5], font: ITALIC, color: '#4f3d2c', sortKey: 22, maxWidth: 7 }),

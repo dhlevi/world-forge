@@ -87,8 +87,8 @@ export class NameBank {
   }
 }
 
-const INN_ADJ = ['Golden', 'Prancing', 'Drunken', 'Rusty', 'Laughing', 'Sleeping', 'Red', 'Silver', 'Crooked', 'Jolly', 'Wandering', 'Green', 'Black', 'Blind', 'Merry', 'Leaping', 'Gilded', 'Weary', 'Salty', 'Three-Legged'];
-const INN_NOUN = ['Goose', 'Stag', 'Boar', 'Lantern', 'Anchor', 'Crown', 'Dragon', 'Barrel', 'Rose', 'Ox', 'Hound', 'Raven', 'Cup', 'Kettle', 'Plough', 'Wheel', 'Fiddle', 'Mermaid', 'Unicorn', 'Swan', 'Bell', 'Griffin', 'Pony', 'Owl', 'Tankard', 'Pig', 'Hart', 'Ferret', 'Mare', 'Wyvern'];
+const INN_ADJ = ['Golden', 'Black', 'Red', 'Silver', 'Copper', 'Green', 'Prancing', 'Drunken', 'Rusty', 'Laughing', 'Sleeping', 'Red', 'Silver', 'Crooked', 'Jolly', 'Wandering', 'Green', 'Black', 'Blind', 'Merry', 'Leaping', 'Gilded', 'Weary', 'Salty', 'Three-Legged', 'Horned', 'Dead', 'Broken'];
+const INN_NOUN = ['Goose', 'Stag', 'Boar', 'Lantern', 'Anchor', 'Crown', 'Dragon', 'Barrel', 'Rose', 'Ox', 'Hound', 'Raven', 'Cup', 'Kettle', 'Plough', 'Wheel', 'Fiddle', 'Mermaid', 'Unicorn', 'Swan', 'Bell', 'Griffin', 'Pony', 'Owl', 'Tankard', 'Pig', 'Hart', 'Ferret', 'Mare', 'Wyvern', 'Maid', 'Fox', 'Hound'];
 
 /** A tavern or inn sign, e.g. "The Drunken Goose" or "The Crown and Anchor". */
 export function innName(rnd: Rng): string {

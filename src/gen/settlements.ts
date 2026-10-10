@@ -1,6 +1,7 @@
 import { type Grid, distKm, neighbor, pxPerMeterZ20, smoothstep } from './grid';
 import { MinHeap } from './heap';
-import { hash32 } from './rng';
+import { hash32, hashString, mulberry32 } from './rng';
+import { Simplex3 } from './noise';
 import { Biome } from './biomes';
 import { HYDROLOGY, SETTLEMENTS as S } from './config';
 import type { FlowRouting } from './hydrology';
@@ -372,6 +373,7 @@ function buildRoads(
   }
   const features: RoadFeature[] = [];
   let search = 0;
+  const route = new FineRoute(sampler, seed, g, isRiver, shore);
 
   for (const job of jobs) {
     const start = cells[job.a], goal = cells[job.b];
@@ -436,7 +438,9 @@ function buildRoads(
     // The grid route only knows grid cells; at full detail it can cut across bays and lakes.
     // Fit the whole line (it starts and ends on land, at the town centres), then trim the ends
     // back to the town edges, so the road also reaches each town over land.
-    const line0 = chaikin(pts, S.roadSmoothing);
+    const line0 = chaikin(route.line(pts, job.cls === 'major'), S.roadSmoothing);
+    route.wobble(line0);
+    simplifyInPlace(line0, ROUTE.simplifyKm);
     const first = line0[0], last = line0[line0.length - 1];
     for (const pc of fitRoadToLand(line0, sampler, g, shore, sa.radiusM / 1000, sb.radiusM / 1000)) {
       // Pieces keep the original end points (by reference) where they reach a town.
@@ -457,6 +461,8 @@ function buildRoads(
         t = t.slice(0, k + 1);
       }
       if (t.length < 2) continue;
+      // The shoreline fitting samples densely; straight runs need far fewer points.
+      simplifyInPlace(t, ROUTE.simplifyKm * 0.5);
       features.push({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: t },
@@ -466,6 +472,224 @@ function buildRoads(
   }
   return { type: 'FeatureCollection', features };
 }
+
+/**
+ * Lays a road out between the vertices of its grid route at a ~2 km step, so it follows the
+ * ground the tiles draw instead of running straight from one grid cell to the next: it bends
+ * round spurs and hills, keeps to valley floors and runs beside rivers, and wanders a little
+ * where the land is open. Each stretch between two grid vertices is a dynamic programme over a
+ * strip of lanes either side of the straight line (the road moves at most one lane per step, so
+ * it stays smooth and never doubles back). Stretches are cached by their end points, so roads that
+ * share part of a route share exactly the same line there.
+ */
+class FineRoute {
+  private cache = new Map<string, number[][]>();
+  private noise: Simplex3;
+  /** Grid cells on or next to a river: only there is the (costly) river distance looked up. */
+  private riverNear: Uint8Array;
+  constructor(private sampler: DetailSampler, seed: number, private g: Grid, isRiver: Uint8Array, private shore: Uint8Array) {
+    this.noise = new Simplex3(mulberry32(hashString(`road-route#${seed}`)));
+    const { W, H } = g;
+    this.riverNear = new Uint8Array(W * H);
+    for (let c = 0; c < W * H; c++) {
+      if (!isRiver[c]) continue;
+      const i = c % W, j = (c / W) | 0;
+      this.riverNear[c] = 1;
+      for (let k = 0; k < 8; k++) {
+        const n = neighbor(g, i, j, k);
+        if (n >= 0) this.riverNear[n] = 1;
+      }
+    }
+  }
+
+  private cell(lon: number, lat: number): number {
+    const { W, H } = this.g;
+    return Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H))) * W + ((Math.floor(((lon + 180) / 360) * W) % W) + W) % W;
+  }
+
+  line(pts: number[][], major: boolean): number[][] {
+    const out: number[][] = [pts[0]];
+    const strip = major ? ROUTE.major : ROUTE.minor;
+    for (let k = 1; k < pts.length; k++) out.push(...this.stretch(pts[k - 1], pts[k], strip), pts[k]);
+    return out;
+  }
+
+  /**
+   * A slight hand-drawn waver across the line (a smooth noise field of position, so shared
+   * stretches waver alike), fading out over the first and last kilometres.
+   */
+  wobble(line: number[][]): void {
+    const { wobbleKm, wobbleM } = ROUTE;
+    const n = line.length;
+    if (n < 3) return;
+    const fq = 6371 / wobbleKm;
+    const orig = line.map((p) => [p[0], p[1]]);
+    let along = 0;
+    const total = (() => {
+      let t = 0;
+      for (let k = 1; k < n; k++) t += Math.hypot((orig[k][0] - orig[k - 1][0]) * 111.2 * Math.cos((orig[k][1] * Math.PI) / 180), (orig[k][1] - orig[k - 1][1]) * 111.2);
+      return t;
+    })();
+    for (let k = 1; k < n - 1; k++) {
+      const p = orig[k], a = orig[k - 1], b = orig[k + 1];
+      const cl = Math.max(0.05, Math.cos((p[1] * Math.PI) / 180));
+      along += Math.hypot((p[0] - a[0]) * 111.2 * cl, (p[1] - a[1]) * 111.2);
+      const fade = Math.min(1, along / 1.5, (total - along) / 1.5);
+      if (fade <= 0) continue;
+      const tx = (b[0] - a[0]) * cl, ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
+      const la = (p[1] * Math.PI) / 180, lo = (p[0] * Math.PI) / 180;
+      const v = this.noise.noise(Math.cos(la) * Math.cos(lo) * fq + 17.3, Math.cos(la) * Math.sin(lo) * fq, Math.sin(la) * fq);
+      const off = (v * wobbleM * fade) / 1000 / 111.2;
+      line[k][0] = p[0] + ((-ty / tl) * off) / cl;
+      line[k][1] = p[1] + (tx / tl) * off;
+    }
+  }
+
+  /** Points strictly between a and b. */
+  private stretch(a: number[], b: number[], strip: Strip): number[][] {
+    const ka = `${a[0].toFixed(4)},${a[1].toFixed(4)}`, kb = `${b[0].toFixed(4)},${b[1].toFixed(4)}`;
+    const fwd = ka < kb;
+    const key = fwd ? `${ka}|${kb}` : `${kb}|${ka}`;
+    let mid = this.cache.get(key);
+    if (!mid) {
+      mid = fwd ? this.solve(a, b, strip) : this.solve(b, a, strip);
+      this.cache.set(key, mid);
+    }
+    return fwd ? mid : [...mid].reverse();
+  }
+
+  private solve(a: number[], b: number[], strip: Strip): number[][] {
+    const { slopeRefMPerKm, wanderKm, wander, valley } = ROUTE;
+    const { stepKm, laneKm, lanes } = strip;
+    const la = (a[1] + b[1]) / 2, cl = Math.max(0.05, Math.cos((la * Math.PI) / 180));
+    const dx = (b[0] - a[0]) * 111.2 * cl, dy = (b[1] - a[1]) * 111.2;
+    const L = Math.hypot(dx, dy);
+    if (L < stepKm * 1.5) return [];
+    const nS = Math.max(2, Math.round(L / stepKm)), st = L / nS;
+    const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
+    const K = lanes, T = 2 * K + 1;
+    const pos = (i: number, t: number): number[] => {
+      const along = (i / nS) * L, off = (t - K) * laneKm;
+      return [a[0] + (ux * along + nx * off) / (111.2 * cl), a[1] + (uy * along + ny * off) / 111.2];
+    };
+    // Height and cost factor of each reachable node (the ends are pinned to the centre lane).
+    const h = new Float64Array((nS + 1) * T), fac = new Float64Array((nS + 1) * T), add = new Float64Array((nS + 1) * T);
+    const reach = (i: number, t: number) => Math.abs(t - K) <= Math.min(i, nS - i);
+    const sp = this.sampler;
+    for (let i = 0; i <= nS; i++) {
+      for (let t = 0; t < T; t++) {
+        if (!reach(i, t)) continue;
+        const [lon, lat] = pos(i, t), n = i * T + t;
+        const c = this.cell(lon, lat);
+        const hh = sp.height(lon, lat, ROUTE.pxKm, false);
+        h[n] = Math.max(0, hh);
+        if (i > 0 && i < nS && this.shore[c] && sp.isWater(lon, lat, hh)) {
+          fac[n] = 60;
+          continue;
+        }
+        let f = 1;
+        const bank = this.riverNear[c] ? sp.riverBank(lon, lat, valley.reachM) : null;
+        if (bank !== null) {
+          // Bigger rivers cost more to bridge.
+          if (bank.bankM < 0) add[n] = valley.bridgeKm * Math.min(2, 0.5 + bank.order / 4);
+          else if (bank.bankM > valley.nearM) f *= valley.factor;
+        }
+        // Gentle wander: a smooth noise field makes open ground a little cheaper in places.
+        const x = Math.cos((lat * Math.PI) / 180) * Math.cos((lon * Math.PI) / 180), y = Math.cos((lat * Math.PI) / 180) * Math.sin((lon * Math.PI) / 180), z = Math.sin((lat * Math.PI) / 180);
+        const fq = 6371 / wanderKm;
+        f *= 1 + wander * this.noise.noise(x * fq, y * fq, z * fq);
+        fac[n] = f;
+      }
+    }
+    const cost = new Float64Array((nS + 1) * T).fill(Infinity), back = new Int8Array((nS + 1) * T);
+    cost[K] = 0;
+    for (let i = 1; i <= nS; i++) {
+      for (let t = 0; t < T; t++) {
+        if (!reach(i, t)) continue;
+        const n = i * T + t;
+        for (let dt = -1; dt <= 1; dt++) {
+          const tp = t + dt;
+          if (tp < 0 || tp >= T || !reach(i - 1, tp)) continue;
+          const p = (i - 1) * T + tp;
+          if (cost[p] === Infinity) continue;
+          const d = Math.hypot(st, dt * laneKm);
+          const slope = Math.abs(h[n] - h[p]) / d;
+          const c = cost[p] + d * (1 + (slope / slopeRefMPerKm) ** 2) * 0.5 * (fac[n] + fac[p]) + add[n];
+          if (c < cost[n]) {
+            cost[n] = c;
+            back[n] = dt;
+          }
+        }
+      }
+    }
+    const lanesOf: number[] = new Array(nS + 1);
+    for (let i = nS, t = K; i >= 0; i--) {
+      lanesOf[i] = t;
+      t -= back[i * T + t];
+    }
+    const out: number[][] = [];
+    for (let i = 1; i < nS; i++) out.push(pos(i, lanesOf[i]));
+    return out;
+  }
+}
+
+/** Fine road layout (see FineRoute). */
+/** Douglas–Peucker in place (local flat km), keeping the first and last points by reference. */
+function simplifyInPlace(line: number[][], tolKm: number): void {
+  if (line.length < 3) return;
+  const keep = new Uint8Array(line.length);
+  keep[0] = keep[line.length - 1] = 1;
+  const cl = Math.max(0.05, Math.cos((line[line.length >> 1][1] * Math.PI) / 180));
+  const stack: [number, number][] = [[0, line.length - 1]];
+  while (stack.length) {
+    const [i0, i1] = stack.pop()!;
+    const ax = line[i0][0] * cl, ay = line[i0][1], bx = line[i1][0] * cl, by = line[i1][1];
+    const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
+    let best = -1, bd = (tolKm / 111.2) ** 2;
+    for (let k = i0 + 1; k < i1; k++) {
+      const px = line[k][0] * cl - ax, py = line[k][1] - ay;
+      const t = l2 > 0 ? Math.max(0, Math.min(1, (px * dx + py * dy) / l2)) : 0;
+      const ex = px - t * dx, ey = py - t * dy, d = ex * ex + ey * ey;
+      if (d > bd) {
+        bd = d;
+        best = k;
+      }
+    }
+    if (best >= 0) {
+      keep[best] = 1;
+      stack.push([i0, best], [best, i1]);
+    }
+  }
+  let w = 0;
+  for (let k = 0; k < line.length; k++) if (keep[k]) line[w++] = line[k];
+  line.length = w;
+}
+
+interface Strip {
+  stepKm: number;
+  laneKm: number;
+  /** Lanes either side of the straight line (so up to lanes × laneKm off it). */
+  lanes: number;
+}
+const ROUTE = {
+  /** Douglas–Peucker tolerance after smoothing (km): invisible at road zooms, far fewer points. */
+  simplifyKm: 0.06,
+  /** Major roads get a wider, finer strip than the many minor roads. */
+  major: { stepKm: 3, laneKm: 2, lanes: 4 } as Strip,
+  minor: { stepKm: 5, laneKm: 2.5, lanes: 3 } as Strip,
+  /** Terrain detail the layout sees (km per pixel): hills and spurs of ten kilometres and more. */
+  pxKm: 10,
+  /** Fine-scale slope at which the cost of a step doubles (m/km). */
+  slopeRefMPerKm: 45,
+  /** Wander: noise wavelength (km) and strength (± fraction of cost). */
+  wanderKm: 11,
+  wander: 0.5,
+  /** Hand-drawn waver after smoothing: noise wavelength (km) and largest offset (m). */
+  wobbleKm: 5,
+  wobbleM: 320,
+  /** Rivers: roads like to run beside them (cheaper beyond nearM of the bank, within reachM) and pay to cross. */
+  valley: { reachM: 2500, nearM: 150, factor: 0.8, bridgeKm: 2.5 },
+};
 
 /**
  * Keeps a road on land at full terrain detail: the line is resampled about every 200 m, points

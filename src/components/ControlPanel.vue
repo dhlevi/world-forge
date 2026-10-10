@@ -10,6 +10,7 @@ const RESOLUTIONS = [
   { value: 512, label: 'Low (512 × 256)' },
   { value: 1024, label: 'Medium (1024 × 512)' },
   { value: 2048, label: 'High (2048 × 1024)' },
+  { value: 4096, label: 'Ultra (4096 × 2048)' },
 ];
 
 function randomize(): void {

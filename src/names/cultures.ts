@@ -63,7 +63,7 @@ export const CULTURES: Culture[] = [
       marsh: ['{N} Fens', 'the {A} Fens', '{N} Marsh'],
       peak: ['{N} Pike', 'Mount {N}', '{N} Tor'],
     },
-    realm: ['Kingdom of {N}', 'Duchy of {N}', 'the {N} March', 'Earldom of {N}'],
+    realm: ['Kingdom of {N}', 'Duchy of {N}', 'The {N} March', 'Earldom of {N}', 'The Principality of {N}', 'The county of {N}', 'The Republic of {N}', 'The {N} Empire', 'The {N} Republic'],
   },
   {
     id: 'norse',
@@ -157,7 +157,7 @@ export const CULTURES: Culture[] = [
       lake: ['Lake {N}', 'the Oasis of {N}', 'Lake {N}'],
       sea: ['the Sea of {N}', '{N} Sea'],
     },
-    realm: ['Sultanate of {N}', 'Emirate of {N}', 'Caliphate of {N}'],
+    realm: ['Sultanate of {N}', 'Emirate of {N}', 'Caliphate of {N}', 'The {N} Caliphate', 'The {N} Sultanate'],
   },
   {
     id: 'slavic',
@@ -190,7 +190,7 @@ export const CULTURES: Culture[] = [
       peak: ['{N} Peak', 'Mount {N}', '{N} Spire'],
       hills: ['the {N} Hills', 'the {A} Tors'],
     },
-    realm: ['Kingdom under {N}', '{N} Hold', 'Thanedom of {N}'],
+    realm: ['Kingdom under {N}', '{N} Hold', 'Thanedom of {N}', '{N}s Deep'],
   },
   {
     id: 'southern',
@@ -205,7 +205,7 @@ export const CULTURES: Culture[] = [
       sea: ['the {N} Sea', 'Sea of {N}', 'the {A} Sea'],
       island: ['{N}', '{N}', 'Isle of {N}'],
     },
-    realm: ['League of {N}', 'Thalassocracy of {N}', 'Despotate of {N}', 'Republic of {N}'],
+    realm: ['League of {N}', 'Dominion of {N}', 'Despotate of {N}', 'Republic of {N}'],
   },
   {
     id: 'steppe',
@@ -220,7 +220,7 @@ export const CULTURES: Culture[] = [
       desert: ['the {N} Desert', 'the {A} Waste'],
       hills: ['the {N} Hills', 'the {A} Hills'],
     },
-    realm: ['Khaganate of {N}', 'Horde of {N}', 'Khanate of {N}'],
+    realm: ['Khaganate of {N}', 'The {N} Horde', 'Horde of {N}', 'Khanate of {N}'],
   },
   {
     id: 'jungle',
@@ -270,9 +270,10 @@ export const ADJECTIVES = [
   'Grey', 'Black', 'White', 'Red', 'Green', 'Silver', 'Iron', 'Cold', 'High', 'Long', 'Broken', 'Whispering', 'Drowned',
   'Shining', 'Weeping', 'Sunken', 'Hollow', 'Bitter', 'Golden', 'Pale', 'Misty', 'Burning', 'Lonely', 'Endless', 'Shrouded',
   'Ashen', 'Crimson', 'Howling', 'Silent', 'Wandering', 'Forgotten', 'Jagged', 'Twilight', 'Thorny', 'Amber', 'Stormy',
+  'Hallowed', 'Sacred', 'Defiled', 'Cursed', 'Blessed', 'Accursed', 'Enchanted', 'Forsaken', 'Golden', 'Divine', 'Glorious'
 ];
 
 export const MOTIFS = [
   'Mists', 'Storms', 'Sorrows', 'Silence', 'Ash', 'Whispers', 'Shadows', 'Tears', 'Stars', 'Bones', 'Dreams', 'Thorns',
-  'Embers', 'Kings', 'Ghosts', 'Lanterns', 'Wolves', 'Crows', 'Salt', 'Glass',
+  'Embers', 'Kings', 'Ghosts', 'Lanterns', 'Wolves', 'Crows', 'Ravens', 'Eagles', 'Salt', 'Glass', 'Flames', 'Ice'
 ];
