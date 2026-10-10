@@ -3,6 +3,7 @@ import { onMounted } from 'vue';
 import ControlPanel from './components/ControlPanel.vue';
 import MapView from './components/MapView.vue';
 import DwellingView from './components/DwellingView.vue';
+import LairView from './components/LairView.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -12,4 +13,5 @@ onMounted(regenerate);
   <MapView />
   <ControlPanel />
   <DwellingView />
+  <LairView />
 </template>

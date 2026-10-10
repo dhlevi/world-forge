@@ -5,7 +5,7 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { openBuilding, store, world } from '../store';
+import { openBuilding, openLair, store, world } from '../store';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
 import type { PlanFeature } from '../towns/plan';
 import { probeWorld } from '../world/probe';
@@ -13,8 +13,10 @@ import { siteFeatures } from '../towns/manager';
 import { LAYOUT_LABEL } from '../towns/layout';
 import type { TownsRequest, TownsResponse } from '../worker/protocol';
 import {
-  MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES,
+  LAIR_LAYERS, MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES, lairIcons,
 } from './map-style';
+import type { LairSite } from '../lairs/lair';
+import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb, onLair } from '../lairs/view';
 import { PLAN_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
 
 const container = ref<HTMLDivElement>();
@@ -28,6 +30,11 @@ let planIndex = new Map<string, PlanFeature>();
 let hoverBid: string | null = null;
 let hoverFrame = 0;
 const touchOnly = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
+/** The cave or glade being previewed: as a card by the cursor, or laid over the ground when close in. */
+let hoverLair: LairSite | null = null;
+const lairCard = ref<{ x: number; y: number; name: string; sub: string; img: string } | null>(null);
+/** On-screen width (px) from which a cave or glade is laid over the ground instead of carded. */
+const LAIR_OVERLAY_PX = 170;
 
 /** Layers whose tiles draw (and clip) the rivers themselves; the others use the vector river layer. */
 const RASTER_RIVER_LAYERS = new Set(['fantasy', 'terrain']);
@@ -62,6 +69,7 @@ function syncWorld(): void {
     (map.getSource('plans') as GeoJSONSource).setData(empty);
     planIndex = new Map();
     hidePreview();
+    hideLair();
     runTowns();
   }
 }
@@ -97,7 +105,7 @@ const OVERLAY_LAYERS = {
   rivers: ['rivers'],
   wind: ['wind-lines', 'wind-heads'],
   currents: ['current-lines', 'current-heads'],
-  settlements: [...PLAN_GROUND_LAYERS, ...SETTLEMENT_LAYERS, ...MARKER_LAYERS].map((l) => l.id),
+  settlements: [...PLAN_GROUND_LAYERS, ...SETTLEMENT_LAYERS, ...MARKER_LAYERS, ...LAIR_LAYERS].map((l) => l.id),
   labels: [...WORLD_LABEL_LAYERS, ...SETTLEMENT_LABEL_LAYERS, ...PLAN_LABEL_LAYERS].map((l) => l.id),
 };
 
@@ -164,9 +172,66 @@ function onHover(e: MapMouseEvent): void {
   cancelAnimationFrame(hoverFrame);
   hoverFrame = requestAnimationFrame(() => {
     const f = buildingAt(e.point);
-    if (map) map.getCanvas().style.cursor = f ? 'pointer' : '';
+    const l = f ? null : lairAt(e.point, e.lngLat);
+    if (map) map.getCanvas().style.cursor = f || l ? 'pointer' : '';
     showPreview(f);
+    showLair(l, e.point);
   });
+}
+
+/** The cave or glade under a screen point: its icon or name, or (when laid over the ground) its map. */
+function lairAt(point: { x: number; y: number }, ll?: LngLat): LairSite | null {
+  if (!map || !ready || !store.showSettlements || !map.getLayer('lair-icons')) return null;
+  const pad = touchOnly ? 14 : 6;
+  const hit = map.queryRenderedFeatures([[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]], { layers: ['lair-icons', 'lbl-lair'] })[0];
+  if (hit && hit.geometry.type === 'Point') return lairFromFeature(hit.properties ?? {}, hit.geometry.coordinates);
+  // Keep a laid-over map while the cursor is on it.
+  if (hoverLair && ll && lairOverlaid(hoverLair) && onLair(lairMap(hoverLair), ll.lng, ll.lat)) return hoverLair;
+  return null;
+}
+
+/** Is the site big enough on screen to lay its map over the ground? */
+function lairOverlaid(l: LairSite): boolean {
+  if (!map) return false;
+  const m = lairMap(l);
+  const pxPerM = (512 * 2 ** map.getZoom()) / (40075016.686 * Math.cos((l.lat * Math.PI) / 180));
+  return m.W * pxPerM >= LAIR_OVERLAY_PX;
+}
+
+function showLair(l: LairSite | null, point: { x: number; y: number }): void {
+  if (!map) return;
+  if (!l) {
+    hideLair();
+    return;
+  }
+  const m = lairMap(l);
+  if (lairOverlaid(l)) {
+    lairCard.value = null;
+    if (hoverLair?.id === l.id && map.getLayer('lair-preview') && map.getLayoutProperty('lair-preview', 'visibility') !== 'none') return;
+    const img = lairOverlay(m);
+    const src = map.getSource('lair') as ImageSource | undefined;
+    if (!src) {
+      map.addSource('lair', { type: 'image', url: img.url, coordinates: img.coordinates });
+      map.addLayer({ id: 'lair-preview', type: 'raster', source: 'lair', paint: { 'raster-fade-duration': 0, 'raster-opacity': 0.96 } }, 'lair-icons');
+    } else {
+      src.updateImage({ url: img.url, coordinates: img.coordinates });
+      map.setLayoutProperty('lair-preview', 'visibility', 'visible');
+    }
+  } else {
+    if (map.getLayer('lair-preview')) map.setLayoutProperty('lair-preview', 'visibility', 'none');
+    const w = map.getContainer().clientWidth;
+    lairCard.value = {
+      x: Math.min(point.x + 18, w - 250), y: Math.max(8, point.y - 110),
+      name: l.name, sub: `${KIND_LABEL[l.kind]} · ${lairTags(l)}`, img: lairThumb(m),
+    };
+  }
+  hoverLair = l;
+}
+
+function hideLair(): void {
+  hoverLair = null;
+  lairCard.value = null;
+  if (map?.getLayer('lair-preview')) map.setLayoutProperty('lair-preview', 'visibility', 'none');
 }
 
 /** "Anterina · city of 12,400 · planned grid" for the town or city whose plan is under the cursor. */
@@ -275,6 +340,7 @@ onMounted(() => {
           },
         },
         ...MARKER_LAYERS,
+        ...LAIR_LAYERS,
         ...PLAN_LABEL_LAYERS,
         ...WORLD_LABEL_LAYERS,
         ...SETTLEMENT_LABEL_LAYERS,
@@ -292,6 +358,8 @@ onMounted(() => {
   map.addControl(new ScaleControl({ unit: 'metric' }), 'bottom-right');
   map.on('load', () => {
     ready = true;
+    // Cave and glade icons are drawn on a canvas, not fetched.
+    for (const icon of lairIcons()) if (map && !map.hasImage(icon.id)) map.addImage(icon.id, icon.image, { pixelRatio: icon.pixelRatio });
     setVisibility('rivers', store.showRivers);
     setVisibility('wind', store.showWind);
     setVisibility('currents', store.showCurrents);
@@ -306,18 +374,32 @@ onMounted(() => {
   });
   map.on('click', (e) => {
     scheduleProbe(e.lngLat);
-    // Touch: the first tap on a building previews its plan, a second tap goes inside.
+    // Touch: the first tap on a building, cave or glade previews it, a second tap opens it.
     const f = buildingAt(e.point);
     if (f && touchOnly && String(f.properties.bid) === hoverBid) openInterior(f);
     else showPreview(f);
+    const l = f ? null : lairAt(e.point, e.lngLat);
+    if (l && touchOnly && hoverLair?.id === l.id) {
+      openLair.value = l;
+      hideLair();
+    } else if (touchOnly) showLair(l, e.point);
   });
-  // Double-click a building to go inside (instead of zooming).
+  // Double-click a building to go inside, or a cave or glade to open its map (instead of zooming).
   map.on('dblclick', (e) => {
     const f = buildingAt(e.point);
-    if (!f) return;
+    if (f) {
+      e.preventDefault();
+      openInterior(f);
+      return;
+    }
+    const l = lairAt(e.point, e.lngLat);
+    if (!l) return;
     e.preventDefault();
-    openInterior(f);
+    openLair.value = l;
+    hideLair();
   });
+  map.on('mouseout', () => (lairCard.value = null));
+  map.on('movestart', () => (lairCard.value = null));
   map.on('zoomend', () => {
     if (map && map.getZoom() < INTERIOR_ZOOM) hidePreview();
   });
@@ -352,6 +434,12 @@ watch(() => store.showSettlements, (show) => {
 <template>
   <div class="map-view">
     <div ref="container" class="map-canvas" />
+    <div v-if="lairCard" class="lair-card" :style="{ left: `${lairCard.x}px`, top: `${lairCard.y}px` }">
+      <div class="lair-name">{{ lairCard.name }}</div>
+      <div class="lair-sub">{{ lairCard.sub }}</div>
+      <img :src="lairCard.img" alt="" width="220" height="160" />
+      <div class="lair-hint">{{ touchOnly ? 'Tap again to open' : 'Double-click to open' }}</div>
+    </div>
     <div v-if="store.probe" class="probe">
       <div class="probe-title">{{ store.probe.terrain }}</div>
       <div v-if="store.probe.place" class="probe-place">{{ store.probe.place }}</div>
@@ -394,6 +482,37 @@ watch(() => store.showSettlements, (show) => {
   line-height: 1.5;
   pointer-events: none;
   min-width: 170px;
+}
+.lair-card {
+  position: absolute;
+  z-index: 5;
+  width: 232px;
+  padding: 8px 6px 6px;
+  background: #f3ead3;
+  color: #2b2420;
+  border: 1px solid #2b2420;
+  border-radius: 4px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.25);
+  font-family: 'IM Fell English', Georgia, serif;
+  pointer-events: none;
+}
+.lair-name {
+  font-style: italic;
+  font-size: 16px;
+  padding: 0 4px;
+}
+.lair-sub,
+.lair-hint {
+  font-size: 12px;
+  opacity: 0.75;
+  padding: 0 4px 4px;
+}
+.lair-hint {
+  padding: 4px 4px 0;
+}
+.lair-card img {
+  display: block;
+  border: 1px solid rgba(43, 36, 32, 0.35);
 }
 .probe-place {
   font-style: italic;

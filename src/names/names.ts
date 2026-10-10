@@ -111,3 +111,57 @@ export function deityName(bank: NameBank, cultureIdx: number, key: string): stri
   const r = rnd();
   return r < 0.4 ? `Temple of ${n}` : r < 0.7 ? `Shrine of ${n}` : cul.id === 'anglo' || cul.id === 'celtic' ? `St ${n}'s` : `House of ${n}`;
 }
+
+// ---- Caves and glades ----------------------------------------------------------------------
+
+const CAVE_NOUNS: Record<string, string[]> = {
+  small: ['Hole', 'Den', 'Grotto', 'Hollow', 'Burrow', 'Cave'],
+  medium: ['Cave', 'Caves', 'Grotto', 'Lair', 'Cavern', 'Warren'],
+  large: ['Caverns', 'Catacombs', 'Deeps', 'Halls', 'Labyrinth', 'Warrens'],
+  wet: ['Grotto', 'Pools', 'Sinks', 'Wellsprings'],
+};
+const CAVE_ADJ = ['Echoing', 'Dripping', 'Sunless', 'Deep', 'Gloomy', 'Weeping', 'Crystal', 'Whispering', 'Black', 'Hollow', 'Drowned', 'Forgotten', 'Howling', 'Cold', 'Silent', 'Twisting', 'Glittering', 'Shrouded'];
+const CAVE_BEAST = ['Wolf', 'Bear', 'Troll', 'Goblin', 'Wyrm', 'Bat', 'Spider', 'Ogre', 'Hermit', 'Witch', 'Dragon', 'Serpent', 'Kobold', 'Giant', 'Ghoul'];
+const GLADE_NOUNS: Record<string, string[]> = {
+  any: ['Glade', 'Glade', 'Clearing', 'Dell', 'Glen', 'Lea', 'Hollow'],
+  stones: ['Stones', 'Ring', 'Circle'],
+  pond: ['Pool', 'Mere', 'Glade'],
+  tree: ['Oak', 'Glade', 'Tree'],
+  camp: ['Camp', 'Clearing'],
+  ruins: ['Ruins', 'Glade'],
+};
+const GLADE_ADJ = ['Mossy', 'Sunlit', 'Whispering', 'Fey', 'Dappled', 'Quiet', 'Green', 'Hidden', 'Moonlit', 'Fallow', 'Golden', 'Thorny', 'Silver', 'Misty', 'Singing', 'Lost', 'Hallowed', 'Cursed'];
+const GLADE_BEAST = ['Stag', 'Hart', 'Fox', 'Owl', 'Unicorn', 'Dryad', 'Fawn', 'Hare', 'Boar', 'Raven', 'Wolf', 'Satyr', 'Badger', 'Sprite'];
+/** English compounds in the manner of Watabou's names ("Starbog", "Northhoof"). */
+const EN_A = ['Star', 'North', 'Black', 'Grim', 'Raven', 'Wolf', 'Moon', 'Thorn', 'Ash', 'Elder', 'Mist', 'Bone', 'Night', 'Old', 'Deep', 'Stone', 'Silver', 'Fox', 'Owl', 'Hart', 'Frost', 'Hag', 'Oak', 'Bramble', 'Crow'];
+const EN_B = ['bog', 'hoof', 'wood', 'fen', 'fall', 'mere', 'holt', 'barrow', 'crag', 'shade', 'root', 'moss', 'tooth', 'claw', 'wing', 'hide', 'thorn', 'brook', 'gloom', 'hollow'];
+/** Culture flavour for the generic nouns. */
+const CULTURE_CAVE: Record<string, string[]> = { dwarven: ['Delve', 'Deeps', 'Halls', 'Hold'], norse: ['Hellir', 'Hole', 'Barrow'], latin: ['Catacombs', 'Specus', 'Grotto'], desert: ['Ghar', 'Caves'] };
+const CULTURE_GLADE: Record<string, string[]> = { elvish: ['Glen', 'Bower', 'Glade'], celtic: ['Glen', 'Nemeton', 'Dell'], slavic: ['Polana', 'Glade'] };
+
+/**
+ * A name for a cave or glade: a proper name in the local culture (or now and then an English
+ * compound) with a noun fitting its size and features, or a descriptive form
+ * ("the Dripping Grotto", "the Troll's Den", "Glade of Whispers").
+ */
+export function lairName(bank: NameBank, kind: 'cave' | 'glade', cultureIdx: number, key: string, tags: string[]): string {
+  const cul = CULTURES[cultureIdx] ?? CULTURES[0];
+  const rnd = bank.rng(`lair:${key}`);
+  const size = tags.find((t) => t === 'small' || t === 'medium' || t === 'large') ?? 'medium';
+  let nouns: string[];
+  if (kind === 'cave') {
+    nouns = [...CAVE_NOUNS[size], ...(tags.includes('wet') || tags.includes('flooded') ? CAVE_NOUNS.wet : []), ...(CULTURE_CAVE[cul.id] ?? [])];
+  } else {
+    const feat = tags.find((t) => t in GLADE_NOUNS && t !== 'any');
+    nouns = [...GLADE_NOUNS.any, ...(feat ? GLADE_NOUNS[feat] : []), ...(CULTURE_GLADE[cul.id] ?? [])];
+  }
+  const noun = pick(rnd, nouns);
+  const proper = () => (rnd() < 0.3 ? tidy(pick(rnd, EN_A) + pick(rnd, EN_B)) : bank.proper(cul, rnd));
+  const adj = pick(rnd, kind === 'cave' ? CAVE_ADJ : GLADE_ADJ);
+  const beast = pick(rnd, kind === 'cave' ? CAVE_BEAST : GLADE_BEAST);
+  const r = rnd();
+  if (r < 0.55) return `${proper()} ${noun}`;
+  if (r < 0.72) return `the ${adj} ${noun}`;
+  if (r < 0.86) return `the ${beast}'s ${noun.replace(/s$/, '')}`;
+  return `${noun.replace(/s$/, '')} of ${pick(rnd, MOTIFS)}`;
+}

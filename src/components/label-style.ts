@@ -135,7 +135,8 @@ export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
 export const SETTLEMENT_LABEL_LAYERS: LayerSpecification[] = [
   layer({ id: 'lbl-city', source: 'sites', filter: [['==', ['get', 'tier'], 'city']], z: [2.6, 13.2], size: [11, 18], font: CAPS, spacing: 0.08, anchor: 'top', offset: [0, 0.75], sortKey: 0, halo: 1.6 }),
   layer({ id: 'lbl-town', source: 'sites', filter: [['==', ['get', 'tier'], 'town']], z: [5.6, 13.2], size: [10, 15], font: ROMAN, anchor: 'top', offset: [0, 0.7], sortKey: 5, halo: 1.5 }),
-  layer({ id: 'lbl-village', source: 'regional', filter: [isPoint, ['has', 'name']], z: [9.2, 13.6], size: [10, 13], font: ITALIC, anchor: 'top', offset: [0, 0.6], sortKey: 25, halo: 1.5 }),
+  layer({ id: 'lbl-lair', source: 'regional', filter: [isPoint, ['==', ['get', 'tier'], 'lair']], z: [10.4, 18], size: [10, 13], font: ITALIC, color: '#4f3d2c', anchor: 'top', offset: [0, 1.1], sortKey: 28, halo: 1.5 }),
+  layer({ id: 'lbl-village', source: 'regional', filter: [isPoint, ['has', 'name'], ['==', ['get', 'tier'], 'village']], z: [9.2, 13.6], size: [10, 13], font: ITALIC, anchor: 'top', offset: [0, 0.6], sortKey: 25, halo: 1.5 }),
 ];
 
 /** Town-plan lettering: quarters, districts, streets and notable buildings (kinds in the `plans` source). */

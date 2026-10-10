@@ -29,7 +29,7 @@ npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # head
 | Prevailing winds | on/off (default off) | Streamline overlay of the simulated surface winds. |
 | Ocean currents | on/off (default off) | Streamline overlay of surface currents, coloured red (warm) to blue (cold) by their temperature anomaly. |
 
-The world regenerates when a slider is released or the seed changes. Hovering (or tapping on mobile) shows elevation, Köppen climate, temperature (mean, warmest and coldest month), precipitation (and how much falls in summer), prevailing wind, ocean current (at sea), biome and plate for that point. From zoom 17, hovering a building in a town or village draws its ground-floor plan over it; double-click it (on touch screens, tap it a second time) to go inside (see **Building interiors**). The globe button switches between globe and flat Mercator views. The URL hash (`#zoom/lat/lon`) saves the current view.
+The world regenerates when a slider is released or the seed changes. Hovering (or tapping on mobile) shows elevation, Köppen climate, temperature (mean, warmest and coldest month), precipitation (and how much falls in summer), prevailing wind, ocean current (at sea), biome and plate for that point. Hovering a cave or glade icon shows a preview card (or, close in, its map laid over the ground); double-click it to open its map (see **Caves and glades**). From zoom 17, hovering a building in a town or village draws its ground-floor plan over it; double-click it (on touch screens, tap it a second time) to go inside (see **Building interiors**). The globe button switches between globe and flat Mercator views. The URL hash (`#zoom/lat/lon`) saves the current view.
 
 ## Generation pipeline (`src/gen/`)
 
@@ -175,18 +175,31 @@ Views (`render.ts`, `building.ts`, `components/DwellingView.vue`):
 - **Hover preview:** from zoom 17, the ground floor is drawn into an image placed over the building's footprint on the map.
 - **Dwelling view:** double-click a building (or tap it twice) to open a full-screen view with a tab per floor (basement, ground floor, upper floors, attic or loft) and an **Exterior** tab. Plans are inked in a hand-drawn style with a 5 ft grid, room labels, a north arrow and a scale bar; Labels and Grid can be turned off, and **Download PNG** saves the current view for use as a battlemap. The exterior is an isometric drawing: timber-framed or stone walls with the plans' windows and doors, gable ends, the roof (thatch, tile, slate or shingle by type) shaded by slope, and chimneys over the hearths. **Leave building** or Esc returns to the map; the arrow keys change floors.
 
+## Caves and glades (`src/lairs/`)
+
+Caves and glades are placed with the villages, per 1° block on a jittered ~30 km grid (`towns/manager.ts`), and drawn as map icons from zoom 8.6 with their names from zoom 10.4. They follow the **Settlements & roads** toggle.
+
+- **Placement:** caves in hill and mountain country (more likely the higher the ground), in the face of the steepest slope within 1.5 km; glades in the forests (and now and then in riverside woods, scrub and savanna), on the most level ground within 900 m. Both keep clear of towns and villages.
+- **Tags** come from the site: a size (small, medium or large); for caves, sealed (no way out), wet or flooded where it rains, dry in deserts; for glades, one or two features (a great tree, a pond, standing stones, a stream (likelier by a river), a camp, ruins, rocks, flowers), and dry in arid or hot country (no water, yellowed grass and crowns).
+- **Names** (`names/names.ts`, `lairName`) use the local culture's proper names (now and then an English compound, as in Watabou's "Starbog") with a noun that fits the size, water or feature (Hole, Grotto, Caverns, Catacombs, Halls; Glade, Dell, Glen, Stones, Pool, Oak), plus a few culture-specific nouns (dwarven Delve and Deeps, Elvish Bower, Celtic Nemeton). Descriptive forms appear too: "the Dripping Grotto", "the Troll's Den", "Glade of Whispers".
+- **Caves** (`lair.ts`), after [Watabou's Cave Generator](https://watabou.github.io/cave-generator/): chambers of two or three overlapping round halls joined by a spanning tree of winding passages (plus the odd loop), stamped into a field, roughened with noise and traced as smooth walls by marching squares; specks and small pockets are cleaned up. Unless sealed, one or two passages run off the map edge as entrances. Pools fill low noise hollows in wet and flooded caves; boulders sit near the walls, stalagmites stand in clusters.
+- **Glades:** a noise-warped clearing (sometimes with a second lobe) in a forest of tree crowns packed on a jittered grid, with stragglers at the edge and the chosen features inside; grass tufts and flowers fill the open ground.
+- **Drawing** (`render.ts`): caves in ink on parchment, with a rock band and Watabou-style hatching (groups of short parallel strokes) round the walls, a 5 ft grid on the floor, pools, boulders and entrance arrows; glades with scalloped crowns sharing one inked outline, shadows and highlights, a 5 ft grid over the clearing, standing stones, tents and campfire, broken walls and water.
+- **Views** (`view.ts`, `components/LairView.vue`): hovering an icon or name shows a card with the name, tags and a miniature; from about zoom 17, once the map is more than ~170 px wide on screen, hovering lays the map over the ground at its true size instead (with a faded rim). Double-click (or tap twice) to open the full view, with Grid and Entrances toggles, a north arrow, a scale bar and **Download PNG**; **Leave** or Esc returns to the map.
+
 ## Project structure
 
 ```
 index.html
 src/
   main.ts, App.vue, store.ts, style.css
-  components/   MapView.vue, map-style.ts (settlement layer styles), label-style.ts (lettering layers), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
+  components/   MapView.vue, LairView.vue (cave / glade view), map-style.ts (settlement layer styles), label-style.ts (lettering layers), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
   gen/          world.ts (pipeline), tectonics.ts, climate.ts, ocean.ts, koppen.ts, advect.ts, streamlines.ts,
                 hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), features.ts (feature detection and naming), detail.ts (sub-grid terrain sampler),
                 biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
   names/        cultures.ts (naming cultures), names.ts (name bank), culture-map.ts
   render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
+  lairs/        lair.ts (cave and glade generator), render.ts (drawing), view.ts (map card, overlay, caches)
   interiors/    dwelling.ts (interior generator), render.ts (plan and exterior drawing), building.ts (map hover preview, cache)
   towns/        manager.ts (villages, tracks, plan cache), city.ts, layout.ts (city layouts), village.ts, kit.ts (village building blocks),
                 harbour.ts (piers, boats), naming.ts (quarters, districts, streets, notable buildings), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), geom.ts

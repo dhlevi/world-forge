@@ -15,7 +15,8 @@ import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
 import { buildVillage } from './village';
 import { Ground } from './ground';
-import { NameBank } from '../names/names';
+import { NameBank, lairName } from '../names/names';
+import type { LairSite } from '../lairs/lair';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
 export const VILLAGE_ZOOM = 7.5;
@@ -79,7 +80,12 @@ class PointIndex<T> {
 interface Block {
   villages: Settlement[];
   tracks: RoadFeature[];
+  /** Caves and glades. */
+  lairs: LairSite[];
 }
+
+/** Spacing (km) of cave and glade candidates; only suitable ground keeps one (about one per 30–40 km there). */
+const LAIR_SPACING_KM = 30;
 
 export interface TownUpdate {
   villagesChanged: boolean;
@@ -142,6 +148,13 @@ export class TownManager {
     const features: (PlanFeature | RoadFeature)[] = [];
     for (const b of this.blocks.values()) {
       features.push(...b.tracks);
+      for (const l of b.lairs) {
+        features.push({
+          type: 'Feature',
+          geometry: { type: 'Point', coordinates: [l.lon, l.lat] },
+          properties: { id: l.id, tier: 'lair', kind: l.kind, name: l.name, seed: l.seed, tags: l.tags.join(',') },
+        });
+      }
       for (const v of b.villages) {
         features.push({
           type: 'Feature',
@@ -231,7 +244,7 @@ export class TownManager {
 
   /** Villages of the 1° block whose south-west corner is (bx, by) degrees. */
   private block(bx: number, by: number): Block {
-    if (by < -90 || by >= 90) return { villages: [], tracks: [] };
+    if (by < -90 || by >= 90) return { villages: [], tracks: [], lairs: [] };
     const key = this.blockKey(bx + 180, by + 90);
     let blk = this.blocks.get(key);
     if (!blk) {
@@ -347,7 +360,80 @@ export class TownManager {
         if (track) tracks.push(track);
       }
     }
-    return { villages, tracks };
+    return { villages, tracks, lairs: this.lairs(lon0, lat0, key, seed, villages, sample, cellOf) };
+  }
+
+  /**
+   * Caves and glades of a block on a jittered ~30 km grid: caves in hill and mountain country
+   * (in the face of a slope), glades in the forests (on level ground). Each gets size and
+   * character tags from its surroundings and a name in the local culture.
+   */
+  private lairs(
+    lon0: number, lat0: number, key: number, seed: number, villages: Settlement[],
+    sample: (f: Float32Array, lon: number, lat: number) => number, cellOf: (lon: number, lat: number) => number,
+  ): LairSite[] {
+    const { raster } = this.world;
+    const out: LairSite[] = [];
+    const nLat = Math.max(1, Math.round(111.2 / LAIR_SPACING_KM));
+    const nLon = Math.max(1, Math.round((111.2 * Math.cos(((lat0 + 0.5) * Math.PI) / 180)) / LAIR_SPACING_KM));
+    for (let a = 0; a < nLon; a++) {
+      for (let b = 0; b < nLat; b++) {
+        const h0 = hash32(seed ^ ((a * 53 + b + 7001) * 0x85ebca6b));
+        const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
+        let lon = lon0 + (a + 0.1 + 0.8 * rr(1)) / nLon;
+        let lat = lat0 + (b + 0.1 + 0.8 * rr(2)) / nLat;
+        const c = cellOf(lon, lat);
+        if (raster.height[c] <= 0 || raster.lakeDepth[c] > 0) continue;
+        const h = this.sampler.height(lon, lat, 2);
+        if (h <= 0) continue;
+        const biome = raster.biome[c] as Biome;
+        const precip = sample(raster.precip, lon, lat);
+        const tWarm = sample(raster.tempWarm, lon, lat) - LAPSE * Math.max(0, h - Math.max(0, raster.height[c]));
+        const forest = FOREST_BIOMES.has(biome);
+        const hilly = smoothstep(250, 1400, h);
+        // Woods along rivers and in scrub and savanna hold the odd glade too.
+        const woods = forest ? 0.75 : biome === Biome.Riparian || biome === Biome.Shrubland || biome === Biome.Savanna ? 0.2 : 0;
+        let kind: 'cave' | 'glade';
+        if (rr(3) < woods) kind = 'glade';
+        else if (biome !== Biome.IceSheet && rr(4) < 0.15 + 0.7 * hilly) kind = 'cave';
+        else continue;
+        let blocked = false;
+        this.sites.forEach(lon, lat, 15, (s, d) => {
+          if (d < s.radiusM / 1000 + 1.5) blocked = true;
+        });
+        if (blocked || villages.some((v) => distKm(lon, lat, v.lon, v.lat) < 2.5)) continue;
+        // A cave opens in a hillside; a glade lies on level ground.
+        [lon, lat] = kind === 'cave'
+          ? this.bestNear(lon, lat, 1500, (x, y, hh, sl) => Math.min(sl, 0.6) - 2 * Math.max(0, sl - 0.9))
+          : this.bestNear(lon, lat, 900, (x, y, hh, sl) => -sl);
+        if (this.sampler.isWater(lon, lat)) continue;
+        const size = rr(6) < 0.42 ? 'small' : rr(6) < 0.86 ? 'medium' : 'large';
+        const tags = [size];
+        const dry = precip < (kind === 'cave' ? 350 : 450) || tWarm > 30;
+        if (kind === 'cave') {
+          if (rr(7) < 0.15) tags.push('sealed');
+          if (!dry && precip > 600 && rr(8) < 0.6) tags.push(rr(9) < 0.15 ? 'flooded' : 'wet');
+          if (dry) tags.push('dry');
+        } else {
+          const river = this.sampler.riverBank(lon, lat, 3000);
+          const options: [string, number][] = [
+            ['tree', 3], ['stones', 1.5], ['camp', 1], ['ruins', 1], ['rocks', 1],
+            ...(dry ? [] : [['pond', 2], ['stream', river ? 3 : 1], ['flowers', 1.5]] as [string, number][]),
+          ];
+          const nFeat = rr(10) < 0.6 ? 1 : 2;
+          for (let q = 0; q < nFeat; q++) {
+            const total = options.reduce((t, [, w]) => t + w, 0);
+            let t = rr(20 + q) * total;
+            const k = options.findIndex(([, w]) => (t -= w) < 0);
+            if (k >= 0) tags.push(options.splice(k, 1)[0][0]);
+          }
+          if (dry) tags.push('dry');
+        }
+        const id = `l${key}_${out.length}`;
+        out.push({ id, kind, name: lairName(this.names, kind, raster.culture[c] ?? 0, id, tags), seed: hash32(h0 ^ 0x1a17), tags, lon, lat });
+      }
+    }
+    return out;
   }
 
   private cell(lon: number, lat: number): number {

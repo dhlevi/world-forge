@@ -195,7 +195,7 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
 export const MARKER_LAYERS: LayerSpecification[] = [
   {
     id: 'village-markers', type: 'circle', source: 'regional', minzoom: VILLAGE_ZOOM, maxzoom: 13.5,
-    filter: e(['==', ['geometry-type'], 'Point']) as FilterSpecification,
+    filter: e(['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'tier'], 'village']]) as FilterSpecification,
     paint: {
       // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
       'circle-color': e(['match', ['get', 'kind'],
@@ -251,3 +251,95 @@ export const RIVER_WIDTH = e([
   11, ['+', 2, ['get', 'order']],
   20, ['+', 2, ['get', 'order'], ppm(['get', 'widthM'])],
 ]);
+
+/** Zoom from which cave and glade icons show. */
+export const LAIR_ZOOM = 8.6;
+
+/** Cave and glade icons (symbols drawn by `lairIcons`), from the `regional` source. */
+export const LAIR_LAYERS: LayerSpecification[] = [
+  {
+    id: 'lair-icons', type: 'symbol', source: 'regional', minzoom: LAIR_ZOOM,
+    filter: e(['==', ['get', 'tier'], 'lair']) as FilterSpecification,
+    layout: {
+      'icon-image': e(['match', ['get', 'kind'], 'cave', 'lair-cave', 'lair-glade']),
+      'icon-size': e(['interpolate', ['linear'], ['zoom'], LAIR_ZOOM, 0.45, 12, 0.75, 16, 1]),
+      'icon-allow-overlap': true,
+      'icon-padding': 2,
+    },
+    // Fainter close in, where the map itself is laid over the ground on hover.
+    paint: { 'icon-opacity': e(['interpolate', ['linear'], ['zoom'], LAIR_ZOOM, 0, LAIR_ZOOM + 0.6, 1, 16, 1, 17.5, 0.6]) },
+  },
+];
+
+/**
+ * Map icons for caves and glades, in the hand-drawn style of the fantasy map: a dark cave
+ * mouth under a hatched hillock, and a ring of little trees round a clearing.
+ */
+export function lairIcons(): { id: string; image: ImageData; pixelRatio: number }[] {
+  const pr = 2, S = 30 * pr;
+  const make = (draw: (g: CanvasRenderingContext2D) => void) => {
+    const c = document.createElement('canvas');
+    c.width = c.height = S;
+    const g = c.getContext('2d')!;
+    g.scale(pr, pr);
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    draw(g);
+    return g.getImageData(0, 0, S, S);
+  };
+  const cave = make((g) => {
+    // Paper disc so the icon reads over any ground.
+    g.fillStyle = 'rgba(244,236,216,0.9)';
+    g.beginPath();
+    g.arc(15, 16, 13, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = INK;
+    g.lineWidth = 1.6;
+    g.beginPath();
+    g.moveTo(3.5, 23);
+    g.quadraticCurveTo(7, 9, 15, 7);
+    g.quadraticCurveTo(23, 9, 26.5, 23);
+    g.stroke();
+    g.lineWidth = 0.9;
+    for (const [x, y] of [[7, 15], [9.5, 11.5], [21, 12], [23, 16]]) {
+      g.beginPath();
+      g.moveTo(x, y);
+      g.lineTo(x - 1.6, y + 2.6);
+      g.stroke();
+    }
+    g.fillStyle = '#1f1a16';
+    g.beginPath();
+    g.moveTo(10, 23);
+    g.quadraticCurveTo(10.5, 14.5, 15, 14);
+    g.quadraticCurveTo(19.5, 14.5, 20, 23);
+    g.closePath();
+    g.fill();
+    g.lineWidth = 1.4;
+    g.beginPath();
+    g.moveTo(3, 23);
+    g.lineTo(27, 23);
+    g.stroke();
+  });
+  const glade = make((g) => {
+    g.fillStyle = 'rgba(244,236,216,0.9)';
+    g.beginPath();
+    g.arc(15, 15, 13.5, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#e3e5b2';
+    g.beginPath();
+    g.arc(15, 15, 6, 0, Math.PI * 2);
+    g.fill();
+    for (let q = 0; q < 7; q++) {
+      const a = (q / 7) * Math.PI * 2 - Math.PI / 2;
+      const x = 15 + Math.cos(a) * 8.6, y = 15 + Math.sin(a) * 8.6;
+      g.fillStyle = q % 2 ? '#6f8a4a' : '#5f7a3c';
+      g.strokeStyle = INK;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.arc(x, y, 3.6, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    }
+  });
+  return [{ id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr }];
+}
