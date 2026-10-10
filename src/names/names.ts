@@ -108,8 +108,8 @@ export class NameBank {
   }
 }
 
-const INN_ADJ = ['Golden', 'Black', 'Red', 'Silver', 'Copper', 'Green', 'Prancing', 'Drunken', 'Rusty', 'Laughing', 'Sleeping', 'Red', 'Silver', 'Crooked', 'Jolly', 'Wandering', 'Green', 'Black', 'Blind', 'Merry', 'Leaping', 'Gilded', 'Weary', 'Salty', 'Three-Legged', 'Horned', 'Dead', 'Broken'];
-const INN_NOUN = ['Goose', 'Stag', 'Boar', 'Lantern', 'Anchor', 'Crown', 'Dragon', 'Barrel', 'Rose', 'Ox', 'Hound', 'Raven', 'Cup', 'Kettle', 'Plough', 'Wheel', 'Fiddle', 'Mermaid', 'Unicorn', 'Swan', 'Bell', 'Griffin', 'Pony', 'Owl', 'Tankard', 'Pig', 'Hart', 'Ferret', 'Mare', 'Wyvern', 'Maid', 'Fox', 'Hound'];
+const INN_ADJ = ['Whistling', 'Merry', 'Wandering', 'Drunken', 'Golden', 'Black', 'Red', 'Silver', 'Copper', 'Green', 'Prancing', 'Drunken', 'Rusty', 'Laughing', 'Sleeping', 'Crooked', 'Jolly', 'Wandering', 'Blind', 'Merry', 'Leaping', 'Gilded', 'Busty', 'Weary', 'Salty', 'Three-Legged', 'Horned', 'Dead', 'Broken', 'Dancing', 'Winking', 'Blind', 'Greedy', 'Wandering', 'Thirsty', 'Two-Headed'];
+const INN_NOUN = ['Goose', 'Stag', 'Boar', 'Lantern', 'Anchor', 'Crown', 'Dragon', 'Barrel', 'Bottle', 'Rose', 'Ox', 'Hound', 'Raven', 'Cup', 'Kettle', 'Plough', 'Wheel', 'Fiddle', 'Mermaid', 'Unicorn', 'Swan', 'Bell', 'Griffin', 'Pony', 'Owl', 'Tankard', 'Pig', 'Hart', 'Ferret', 'Mare', 'Wyvern', 'Maid', 'Fox', 'Kraken', 'Badger', 'Viper', 'Chimera', 'Basilisk', 'Rooster', 'Mammoth', 'Wolf', 'Cat', 'Anvil', 'Compass', 'Goblet', 'Hammer', 'Lantern', 'Flagon', 'Coin', 'Shield', 'Mariner', 'Huntsman', 'Vagabond', 'Fool', 'Sovereign', 'Tinker', 'Minstrel', 'Ash', 'Willow', 'Sunflower', 'Bramble', 'Cavern', 'Hollow', 'Oak', 'Moon'];
 
 /** A tavern or inn sign, e.g. "The Drunken Goose" or "The Crown and Anchor". */
 export function innName(rnd: Rng): string {
@@ -154,8 +154,36 @@ const GLADE_NOUNS: Record<string, string[]> = {
 const GLADE_ADJ = ['Mossy', 'Sunlit', 'Whispering', 'Fey', 'Dappled', 'Quiet', 'Green', 'Hidden', 'Moonlit', 'Fallow', 'Golden', 'Thorny', 'Silver', 'Misty', 'Singing', 'Lost', 'Hallowed', 'Cursed'];
 const GLADE_BEAST = ['Stag', 'Hart', 'Fox', 'Owl', 'Unicorn', 'Dryad', 'Fawn', 'Hare', 'Boar', 'Raven', 'Wolf', 'Satyr', 'Badger', 'Sprite'];
 /** English compounds in the manner of Watabou's names ("Starbog", "Northhoof"). */
-const EN_A = ['Star', 'North', 'Black', 'Grim', 'Raven', 'Wolf', 'Moon', 'Thorn', 'Ash', 'Elder', 'Mist', 'Bone', 'Night', 'Old', 'Deep', 'Stone', 'Silver', 'Fox', 'Owl', 'Hart', 'Frost', 'Hag', 'Oak', 'Bramble', 'Crow'];
-const EN_B = ['bog', 'hoof', 'wood', 'fen', 'fall', 'mere', 'holt', 'barrow', 'crag', 'shade', 'root', 'moss', 'tooth', 'claw', 'wing', 'hide', 'thorn', 'brook', 'gloom', 'hollow'];
+const EN_A = [
+  // Original
+  'Star', 'North', 'Black', 'Grim', 'Raven', 'Wolf', 'Moon', 'Thorn', 'Ash', 
+  'Elder', 'Mist', 'Bone', 'Night', 'Old', 'Deep', 'Stone', 'Silver', 'Fox', 
+  'Owl', 'Hart', 'Frost', 'Hag', 'Oak', 'Bramble', 'Crow',
+  // First Batch
+  'Storm', 'Wind', 'Rain', 'Dusk', 'Dawn', 'Sun', 'Salt', 'Tide', 
+  'Blood', 'Iron', 'Dread', 'Grave', 'Wraith', 'Witch', 'Wyrm', 'Rot', 
+  'Pine', 'Shroud', 'Whisper',
+  // Doubled Batch
+  'Flame', 'Ember', 'Spark', 'Ice', 'Sleet', 'Winter', 'Summer', 'Shadow', 
+  'Gloom', 'Phantom', 'Ghost', 'Skull', 'Serpent', 'Dragon', 'Bear', 'Boar', 
+  'Stag', 'Lion', 'Hawk', 'Falcon', 'Eagle', 'Viper', 'Toad', 'Spider', 
+  'Web', 'Copper', 'Brass', 'Gold', 'Amber', 'Runes', 'Spell'
+];
+const EN_B = [
+  // Original
+  'bog', 'hoof', 'wood', 'fen', 'fall', 'mere', 'holt', 'barrow', 'crag', 
+  'shade', 'root', 'moss', 'tooth', 'claw', 'wing', 'hide', 'thorn', 
+  'brook', 'gloom', 'hollow',
+  // First Batch
+  'reach', 'watch', 'vale', 'glen', 'cliff', 'ridge', 'ford', 'haven', 
+  'gate', 'spire', 'crest', 'marsh', 'weald', 'mire', 'dell', 'shroud', 
+  'helm', 'basin',
+  // Doubled Batch
+  'keep', 'hold', 'fort', 'wall', 'tower', 'peak', 'summit', 'mound', 
+  'cairn', 'bight', 'bay', 'cove', 'strand', 'shore', 'bank', 'stream', 
+  'river', 'source', 'well', 'spring', 'pool', 'lake', 'hearth', 'home', 
+  'pass', 'trail', 'path', 'road', 'walk'
+];
 /** Culture flavour for the generic nouns. */
 const CULTURE_CAVE: Record<string, string[]> = { dwarven: ['Delve', 'Deeps', 'Halls', 'Hold'], norse: ['Hellir', 'Hole', 'Barrow'], latin: ['Catacombs', 'Specus', 'Grotto'], desert: ['Ghar', 'Caves'] };
 const CULTURE_GLADE: Record<string, string[]> = { elvish: ['Glen', 'Bower', 'Glade'], celtic: ['Glen', 'Nemeton', 'Dell'], slavic: ['Polana', 'Glade'] };

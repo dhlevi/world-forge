@@ -76,10 +76,10 @@ const DUCHY_STYLE: Record<string, string[]> = {
   anglo: ['Duchy of {N}', 'Dukedom of {N}'], norse: ['Duchy of {N}', '{N} Lands'], latin: ['Duchy of {N}', 'Principality of {N}'],
   celtic: ['Lordship of {N}', 'Province of {N}'], elvish: ['Principality of {N}', 'Duchy of {N}'], desert: ['Emirate of {N}'],
   slavic: ['Voivodeship of {N}', 'Principality of {N}'], dwarven: ['Lordship of {N}', 'Deep of {N}'], southern: ['Despotate of {N}', 'Duchy of {N}'],
-  steppe: ['Khanate of {N}', 'Horde of {N}'], jungle: ['Principality of {N}', 'Duchy of {N}'],
+  steppe: ['Khanate of {N}', 'Horde of {N}', 'The {A} Horde'], jungle: ['Principality of {N}', 'Duchy of {N}'],
 };
 const EMPIRE_STYLE: Record<string, string[]> = {
-  anglo: ['Empire of {N}', 'the {N} Empire'], norse: ['High Kingdom of {N}', 'the {N} Empire'], latin: ['Imperium of {N}', 'the {N} Empire'],
+  anglo: ['United Kingdom of {N}', 'Kingdom of {N}', 'the {N} Empire', 'The Confederation of {N}'], norse: ['High Kingdom of {N}', 'the {N} Empire'], latin: ['Imperium of {N}', 'the {N} Empire'],
   celtic: ['High Kingdom of {N}'], elvish: ['High Kingdom of {N}', 'the {N} Dominion'], desert: ['Caliphate of {N}', 'the {N} Caliphate'],
   slavic: ['Empire of {N}', 'the {N} Tsardom'], dwarven: ['High Kingdom under {N}', 'the {N} Throne'], southern: ['Empire of {N}', 'the {N} Basileia'],
   steppe: ['Khaganate of {N}', 'the Great {N} Horde'], jungle: ['Empire of {N}', 'the {N} Empire'],

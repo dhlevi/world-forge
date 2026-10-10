@@ -328,7 +328,7 @@ for (const c of CULTURES) {
 /** Generic templates, used when a culture has none of its own for a kind. */
 export const DEFAULT_TERMS: Record<FeatureKind, string[]> = {
   settlement: ['{N}'],
-  river: ['the {N}', 'River {N}', '{N} River'],
+  river: ['the {N}', 'River {N}', '{N} River', '{N}flow', '{A}flow'],
   lake: ['Lake {N}', '{N} Lake'],
   inlandSea: ['the {N} Sea', 'Sea of {N}', 'the Sea of {M}'],
   sea: ['the {N} Sea', 'Sea of {N}', 'the {A} Sea', 'the Sea of {M}'],
@@ -348,8 +348,8 @@ export const DEFAULT_TERMS: Record<FeatureKind, string[]> = {
   desert: ['the {N} Desert', 'the {A} Waste', 'the {N} Sands'],
   marsh: ['the {N} Marshes', 'the {A} Fens', '{N} Mire'],
   plains: ['the {N} Plains', 'the {A} Plains'],
-  realm: ['Kingdom of {N}'],
-  road: ['the {N} Road', 'the {N} Way', 'the Old {N} Road'],
+  realm: ['Kingdom of {N}', 'Archduchy of {N}'],
+  road: ['the {N} Road', 'the {N} Way', 'the Old {N} Road', 'the {A} Road', 'the {A} Way', 'the Old {A} Road'],
 };
 
 export const ADJECTIVES = [
