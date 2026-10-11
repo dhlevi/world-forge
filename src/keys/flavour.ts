@@ -26,7 +26,7 @@ const CREATURES: Record<SiteKind, string[]> = {
     'Duergar prospectors have claimed this working and do not welcome visitors.',
     'An earth elemental, woken by the blasting, moves slowly through the rock.',
     'A nightwraith-like spirit of a star-crossed maiden weeps bitterly over a collapsed shaft.',
-    'A knockers pack—blind, hunchbacked cave dwellers—hurl stones before scurrying up timber shafts.',
+    'A pack of knockers, blind, hunchbacked cave dwellers, hurl stones before scurrying up timber shafts.',
     'A bloated grave hag crouches over a pile of crushed miners, picking marrow from bone.',
     'Deserters from a brutal local war huddle around a small fire, half-starved and quick to draw steel.',
     'A pack of rotfiends gorge on stale mule carcases, their swollen bellies pulsing dangerously.',

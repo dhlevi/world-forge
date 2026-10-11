@@ -144,14 +144,14 @@ const sub = computed(() => {
         <p class="prose">{{ d.overview }}</p>
         <p class="gov">{{ d.government }}</p>
         <dl class="facts">
-          <div><dt>Ruler</dt><dd>{{ d.ruler?.council ?? d.ruler?.styled ?? '—' }}</dd></div>
+          <div><dt>Ruler</dt><dd>{{ d.ruler?.council ?? d.ruler?.styled ?? '-' }}</dd></div>
           <div><dt>Capital</dt><dd>{{ d.unit.seatName }}</dd></div>
           <div><dt>Founded</dt><dd>{{ d.founded }} ({{ d.year - d.founded }} years ago)</dd></div>
           <div><dt>Area</dt><dd>{{ n(d.people.area) }} km²</dd></div>
           <div><dt>People</dt><dd>about {{ fmtPeople(d.people.total) }}</dd></div>
-          <div><dt>Settlements</dt><dd>{{ d.people.nCities }} cities, {{ d.people.nTowns }} towns, ~{{ n(d.people.nVillages) }} villages</dd></div>
+          <div><dt>Settlements</dt><dd>{{ d.people.nCities }} cities, {{ d.people.nTowns }} towns, {{ n(d.people.nVillages) }} villages</dd></div>
           <div><dt>Wealth</dt><dd>{{ cap(d.economy.word) }} ({{ d.economy.rank }} of {{ d.economy.of }} realms)</dd></div>
-          <div><dt>Revenue</dt><dd>~{{ n(d.economy.revenue) }} {{ d.economy.coin }} a year</dd></div>
+          <div><dt>Revenue</dt><dd>{{ n(d.economy.revenue) }} {{ d.economy.coin }} a year</dd></div>
           <div><dt>Armies</dt><dd>{{ n(d.military.levy) }} levies, {{ n(d.military.standing) }} standing</dd></div>
           <div><dt>Faith</dt><dd>{{ cap(d.faith.sect.id === 0 || d.faith.sect.name === 'the orthodox faith' ? d.faith.faith.name : d.faith.sect.name) }}</dd></div>
         </dl>
@@ -265,7 +265,7 @@ const sub = computed(() => {
           <div><dt>People</dt><dd>{{ n(d.people.total) }}</dd></div>
           <div><dt>In towns</dt><dd>{{ n(d.people.towns) }} ({{ pct(d.people.urban) }})</dd></div>
           <div><dt>Density</dt><dd>{{ d.people.density.toFixed(1) }} per km²</dd></div>
-          <div><dt>Settlements</dt><dd>{{ d.people.nCities }} cities, {{ d.people.nTowns }} towns, ~{{ n(d.people.nVillages) }} villages</dd></div>
+          <div><dt>Settlements</dt><dd>{{ d.people.nCities }} cities, {{ d.people.nTowns }} towns, {{ n(d.people.nVillages) }} villages</dd></div>
         </dl>
         <h3>Peoples</h3>
         <div v-for="t in d.people.cultures" :key="t.name" class="bar"><span class="lbl">{{ t.name }}</span><span class="track"><span :style="{ width: `${t.pct}%` }" /></span><span class="v">{{ pct(t.pct) }}</span></div>

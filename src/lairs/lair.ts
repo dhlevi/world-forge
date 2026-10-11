@@ -362,7 +362,7 @@ const CAVE_HOOKS = [
   'The cave floor is littered with peculiar, heavy iron shackles that don\'t match standard local smithing.',
   'A frantic merchant claims his runaway mule bolted into the dark cave carrying a crate of expensive tax records.',
   'An eccentric hermit claims the cave echoes with a human voice reciting coordinates to a lost trade route.',
-  'Deep underground, a muffled ringing sound—like a heavy bronze bell struck underwater—can be heard at midnight.',
+  'Deep underground, a muffled ringing sound, like a heavy bronze bell struck underwater, can be heard at midnight.',
   'The local tavern keeper\’s grandfather swore he hid his life savings behind a loose stone wall in the shallow damp.',
   'Smoke drifted from a supposedly abandoned fissure yesterday, smelling faintly of rendered animal fat and herbs.',
   'A squad of militia members entered to scout for deserters two days ago, leaving only a bloodstained shield by the rocks.',
