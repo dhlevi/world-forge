@@ -16,7 +16,17 @@ export type Division = 'plain' | 'pale' | 'fess' | 'bend' | 'bendSinister' | 'sa
 export type Ordinary = 'fess' | 'pale' | 'bend' | 'chevron' | 'cross' | 'saltire' | 'chief' | 'pile' | 'pall' | 'bordure';
 export type Charge =
   | 'mullet' | 'crescent' | 'roundel' | 'lozenge' | 'tower' | 'crown' | 'fleur' | 'key' | 'tree' | 'sun' | 'cross'
-  | 'anchor' | 'ship' | 'sword' | 'hammer' | 'axe' | 'eagle' | 'wheel' | 'bell' | 'horn' | 'estoile' | 'heart' | 'acorn' | 'blossom';
+  | 'anchor' | 'ship' | 'sword' | 'hammer' | 'axe' | 'eagle' | 'wheel' | 'bell' | 'horn' | 'estoile' | 'heart' | 'acorn' | 'blossom'
+  | 'tomoe' | 'feather' | 'bird' | 'serpent' | 'cloud';
+
+/**
+ * The form an emblem takes, by culture: the European **shield**; a painted round **hide** shield
+ * hung with feathers (Woodland); a square **chakana** emblem with a stepped cross (Highland); a
+ * square **glyph** cartouche with a stepped-fret band (Jungle); a round **mon** crest (Japonic);
+ * a square **seal** with a key-fret frame (Sinic); a fringed **banner** on a pole (Koreanic); a
+ * round banded **blazon** (Desert); and a brand-mark **tamga** on a disc hung with horsetails (Steppe).
+ */
+export type EmblemStyle = 'shield' | 'hide' | 'chakana' | 'glyph' | 'mon' | 'seal' | 'banner' | 'blazon' | 'tamga';
 
 export interface Arms {
   shield: Shield;
@@ -30,9 +40,22 @@ export interface Arms {
   /** Marks of difference for junior arms. */
   bordure: Tincture | null;
   label: Tincture | null;
-  /** Empires: a crown above the shield. */
+  /** Empires: a crown above the shield (other styles take a gold frame instead). */
   crowned: boolean;
+  /** The emblem's form (absent on older arms: a shield). */
+  style?: EmblemStyle;
+  /** Tamgas: the bits that build the brand mark (a vassal's mark adds to its liege's). */
+  mark?: number;
 }
+
+export const STYLE_BY_CULTURE: Record<string, EmblemStyle> = {
+  woodland: 'hide', highland: 'chakana', jungle: 'glyph', japonic: 'mon', sinic: 'seal', koreanic: 'banner', desert: 'blazon', steppe: 'tamga',
+};
+/** Divisions each emblem form can show (a mon or a seal is one colour on another). */
+const STYLE_DIVISIONS: Record<EmblemStyle, Division[]> = {
+  shield: [], hide: ['plain', 'plain', 'pale', 'fess', 'quarterly'], chakana: ['plain'], glyph: ['plain', 'plain', 'fess'],
+  mon: ['plain'], seal: ['plain'], banner: ['plain', 'plain', 'pale', 'fess'], blazon: ['plain'], tamga: ['plain'],
+};
 
 const METALS: Tincture[] = ['or', 'argent'];
 /** Colours, the common ones listed more often (a weighted pick). */
@@ -61,12 +84,12 @@ const SHIELD_BY_CULTURE: Record<string, Shield> = {
 const CULTURE_CHARGES: Record<string, Charge[]> = {
   anglo: ['tower', 'crown', 'fleur', 'mullet', 'horn', 'acorn'], latin: ['key', 'crown', 'sun', 'tower', 'eagle', 'wheel'],
   celtic: ['tree', 'crescent', 'roundel', 'horn', 'heart'], norse: ['axe', 'ship', 'crescent', 'tree', 'hammer'],
-  elvish: ['tree', 'mullet', 'estoile', 'crescent', 'acorn'], desert: ['crescent', 'mullet', 'sun', 'estoile', 'sword'],
+  elvish: ['tree', 'mullet', 'estoile', 'crescent', 'acorn'], desert: ['crescent', 'mullet', 'sun', 'estoile', 'sword', 'bird'],
   slavic: ['cross', 'crown', 'eagle', 'tower', 'sword'], dwarven: ['hammer', 'axe', 'tower', 'key', 'crown', 'bell'],
   southern: ['sun', 'ship', 'anchor', 'lozenge', 'key'], steppe: ['sun', 'crescent', 'horn', 'sword', 'mullet'],
-  jungle: ['sun', 'roundel', 'heart', 'estoile', 'lozenge'],
-  sinic: ['sun', 'crescent', 'roundel', 'blossom', 'lozenge'], japonic: ['blossom', 'crescent', 'roundel', 'wheel', 'estoile'],
-  koreanic: ['blossom', 'sun', 'wheel', 'mullet'], woodland: ['tree', 'sun', 'crescent', 'horn'], highland: ['sun', 'estoile', 'lozenge', 'crown'],
+  jungle: ['sun', 'serpent', 'bird', 'estoile', 'lozenge', 'heart'],
+  sinic: ['cloud', 'sun', 'blossom', 'crescent', 'serpent', 'lozenge'], japonic: ['blossom', 'tomoe', 'crescent', 'wheel', 'feather', 'cloud'],
+  koreanic: ['blossom', 'sun', 'wheel', 'mullet', 'cloud', 'tomoe'], woodland: ['feather', 'bird', 'sun', 'crescent', 'tree', 'serpent'], highland: ['sun', 'estoile', 'bird', 'lozenge', 'serpent'],
 };
 const ALL_CHARGES: Charge[] = [
   'mullet', 'crescent', 'roundel', 'lozenge', 'tower', 'crown', 'fleur', 'key', 'tree', 'sun', 'cross',
@@ -84,6 +107,8 @@ export interface NewArmsOpts {
 }
 
 export function newArms(rnd: Rng, culture: string, opts: NewArmsOpts = {}): Arms {
+  const style = STYLE_BY_CULTURE[culture] ?? 'shield';
+  if (style !== 'shield') return newEmblem(rnd, culture, style, opts);
   const fr = rnd();
   const field = fr < 0.06 ? pick(rnd, FURS) : fr < 0.64 ? pick(rnd, COLOURS) : pick(rnd, METALS);
   const r = rnd();
@@ -117,8 +142,35 @@ export function newArms(rnd: Rng, culture: string, opts: NewArmsOpts = {}): Arms
   return { shield: SHIELD_BY_CULTURE[culture] ?? 'heater', field, division, field2, ordinary, charge, bordure: null, label: null, crowned: !!opts.crowned };
 }
 
+/** An emblem in a culture's own form: a field (sometimes halved or quartered), one charge (or three), no ordinaries or furs. */
+function newEmblem(rnd: Rng, culture: string, style: EmblemStyle, opts: NewArmsOpts): Arms {
+  // Mons and seals are one colour on another; the rest take a colour or a metal field.
+  const field = style === 'seal' ? (rnd() < 0.75 ? 'gules' : pick(rnd, ['sable', 'azure'] as Tincture[])) : rnd() < 0.65 ? pick(rnd, COLOURS) : pick(rnd, METALS);
+  const field2 = contrast(rnd, field);
+  const division = pick(rnd, STYLE_DIVISIONS[style]);
+  const favs = [...(opts.favour ?? []), ...(CULTURE_CHARGES[culture] ?? []), ...(CULTURE_CHARGES[culture] ?? [])];
+  const kind: Charge = favs.length && rnd() < 0.8 ? pick(rnd, favs) : pick(rnd, ALL_CHARGES);
+  const n = (opts.many || (style === 'mon' && rnd() < 0.35) ? 3 : 1) as 1 | 3;
+  return {
+    shield: 'round', field, division, field2, ordinary: null, charge: { kind, t: division === 'plain' ? field2 : field2, n, counter: division !== 'plain' },
+    bordure: null, label: null, crowned: !!opts.crowned, style, mark: style === 'tamga' ? Math.floor(rnd() * 4096) : undefined,
+  };
+}
+
 /** Arms of a vassal: the liege's field and colours with a new charge (a cadet branch). */
 export function vassalArms(rnd: Rng, liege: Arms, culture: string): Arms {
+  if (liege.style && liege.style !== 'shield') {
+    // Emblems difference by a new charge, swapped colours, or (tamgas) an added stroke on the liege's mark.
+    const a: Arms = { ...liege, crowned: false, bordure: null, label: null, charge: liege.charge ? { ...liege.charge } : null };
+    const favs = CULTURE_CHARGES[culture] ?? ALL_CHARGES;
+    if (a.style === 'tamga') a.mark = ((liege.mark ?? 0) & 0xfff) | ((1 + Math.floor(rnd() * 15)) << 12);
+    else if (rnd() < 0.6 && a.charge) a.charge.kind = pick(rnd, favs.filter((k) => k !== liege.charge?.kind).length ? favs.filter((k) => k !== liege.charge?.kind) : ALL_CHARGES);
+    else {
+      [a.field, a.field2] = [a.field2, a.field];
+      if (a.charge) a.charge.t = a.field2;
+    }
+    return a;
+  }
   const a: Arms = { ...liege, crowned: false, bordure: null, label: null, ordinary: liege.ordinary ? { ...liege.ordinary } : null, charge: liege.charge ? { ...liege.charge } : null };
   const favs = CULTURE_CHARGES[culture] ?? [];
   const r = rnd();
@@ -184,11 +236,23 @@ const CHARGE_NAME: Record<Charge, [string, string]> = {
   ship: ['a lymphad', 'lymphads'], sword: ['a sword erect', 'swords erect'], hammer: ['a hammer', 'hammers'], axe: ['an axe', 'axes'],
   eagle: ['an eagle displayed', 'eagles displayed'], wheel: ['a wheel', 'wheels'], bell: ['a bell', 'bells'], horn: ['a hunting horn', 'hunting horns'],
   estoile: ['an estoile', 'estoiles'], heart: ['a heart', 'hearts'], acorn: ['an acorn', 'acorns'], blossom: ['a blossom', 'blossoms'],
+  tomoe: ['a tomoe', 'tomoe'], feather: ['a feather', 'feathers'], bird: ['a bird volant', 'birds volant'], serpent: ['a serpent', 'serpents'], cloud: ['a cloud', 'clouds'],
 };
 const NUM = ['', '', 'two', 'three'];
 
-/** The arms in heraldic language, e.g. "Per pale Gules and Argent, three mullets Or". */
+const STYLE_NAME: Record<EmblemStyle, string> = {
+  shield: '', hide: 'A painted hide shield hung with feathers', chakana: 'A square emblem with a stepped cross', glyph: 'A glyph cartouche',
+  mon: 'A mon', seal: 'A seal', banner: 'A fringed banner', blazon: 'A banded blazon', tamga: 'A tamga on a horsetail standard',
+};
+
+/** The arms in heraldic language, e.g. "Per pale Gules and Argent, three mullets Or"; emblems are described by their form first. */
 export function blazon(a: Arms): string {
+  if (a.style && a.style !== 'shield') {
+    const field = a.division === 'plain' ? T_NAME[a.field] : `${DIV_NAME[a.division].replace('Per ', 'parted per ').replace('Quarterly', 'quartered')} ${T_NAME[a.field]} and ${T_NAME[a.field2]}`;
+    const ch = a.style === 'tamga' ? `a brand mark ${T_NAME[a.field2]}` : a.charge ? `${a.charge.n === 1 ? CHARGE_NAME[a.charge.kind][0] : `${NUM[a.charge.n]} ${CHARGE_NAME[a.charge.kind][1]}`} ${a.charge.counter ? 'counterchanged' : T_NAME[a.charge.t]}` : '';
+    const marks = [a.bordure ? `a ring ${T_NAME[a.bordure]}` : '', a.label ? `a mark ${T_NAME[a.label]}` : ''].filter(Boolean);
+    return [`${STYLE_NAME[a.style]}: ${field}`, ch, ...marks].filter(Boolean).join(', ');
+  }
   const parts: string[] = [a.division === 'plain' ? T_NAME[a.field] : `${DIV_NAME[a.division]} ${T_NAME[a.field]} and ${T_NAME[a.field2]}`];
   const charge = a.charge ? `${a.charge.n === 1 ? CHARGE_NAME[a.charge.kind][0] : `${NUM[a.charge.n]} ${CHARGE_NAME[a.charge.kind][1]}`} ${a.charge.counter ? 'counterchanged' : T_NAME[a.charge.t]}` : '';
   if (a.ordinary?.kind === 'chief' && a.charge && !a.charge.counter && a.charge.n === 3) parts.push(`on a chief ${T_NAME[a.ordinary.t]} ${charge}`);

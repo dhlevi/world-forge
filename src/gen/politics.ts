@@ -561,7 +561,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
       u.name = fill(pickS(tpls), u.level <= 1 || r() < 0.5 ? u.seatName : own());
       ruler = rl;
       u.title = TRIBAL_TITLE[u.level];
-      favour = id === 'woodland' ? ['tree', 'sun', 'crescent', 'horn', 'estoile'] : id === 'highland' ? ['sun', 'estoile', 'lozenge', 'crown'] : ['sun', 'roundel', 'heart', 'estoile'];
+      favour = id === 'woodland' ? ['feather', 'bird', 'sun', 'serpent', 'tree'] : id === 'highland' ? ['sun', 'bird', 'estoile', 'serpent'] : ['serpent', 'bird', 'sun', 'estoile'];
     } else if (u.gov === 'thalassocracy') {
       const [tpl, rl] = pickS(THALASSO_STYLE[id] ?? [['Thalassocracy of {N}', 'Thalassarch'], ['Sea Kingdom of {N}', 'Sea King'], ['Admiralty of {N}', 'Lord Admiral']]);
       u.name = fill(tpl, r() < 0.4 ? u.seatName : own());
