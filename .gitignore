@@ -1,5 +1,6 @@
 node_modules/
 dist/
 out/
+backups/
 .DS_Store
 tuning/data/

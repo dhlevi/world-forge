@@ -1,5 +1,7 @@
 # World Forge
 
+Demo: https://dhlevi.github.io/world-forge/
+
 A browser-based procedural fantasy world generator. You start with a whole planet on a zoomable globe (or flat map) and can zoom in through roads and villages to the streets and buildings of individual towns. Everything runs client-side, with no server.
 
 Stack: TypeScript, Vue 3, Vite, MapLibre GL JS. Node.js runs the tooling and the headless preview script.
