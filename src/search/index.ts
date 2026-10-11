@@ -1,7 +1,7 @@
 import type { LabelCollection } from '../gen/features';
 import type { RiverCollection } from '../gen/rivers';
 import type { RoadCollection, Settlement } from '../gen/settlements';
-import { LEVEL_NAME, type Politics } from '../gen/politics';
+import type { Politics } from '../gen/politics';
 import { LAYOUT_LABEL } from '../towns/layout';
 import { townUnderground } from '../dungeons/core';
 
@@ -102,8 +102,8 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
   // Realms: every empire, kingdom, duchy and county, at its seat.
   for (const u of w.politics.units) {
     out.push({
-      id: `pol${u.id}`, name: cap(u.name), type: LEVEL_NAME[u.level], cat: 'region', lon: u.lon, lat: u.lat,
-      zoom: [9, 7, 5, 3.6][u.level], rank: 0.45 + 0.15 * u.level, info: `${u.ruler} at ${u.seatName}`,
+      id: `pol${u.id}`, name: cap(u.name), type: u.title, cat: 'region', lon: u.lon, lat: u.lat,
+      zoom: u.gov === 'league' ? 4.6 : [10.4, 9, 7, 5, 3.6][u.level], rank: 0.35 + 0.12 * u.level + (u.parent < 0 ? 0.1 : 0), info: `${u.ruler} at ${u.seatName}`,
     });
   }
   // Rivers: one entry per name, at the middle of its largest stretch.

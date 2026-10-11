@@ -92,7 +92,8 @@ function layer(s: Spec): LayerSpecification {
 /** Adds the realm's arms (image `arms-<unit>`, registered by the map) above a label. */
 function withArms(l: LayerSpecification): LayerSpecification {
   const ly = (l as { layout: Record<string, unknown> }).layout;
-  ly['icon-image'] = e(['concat', 'arms-', ['to-string', ['get', 'unit']]]);
+  // Only labels flagged `arms` have an image registered (empires, kingdoms, leagues, independent realms).
+  ly['icon-image'] = e(['case', ['to-boolean', ['get', 'arms']], ['concat', 'arms-', ['to-string', ['get', 'unit']]], '']);
   ly['icon-size'] = e(['interpolate', ['linear'], ['zoom'], 1.5, 0.5, 6, 0.85]);
   ly['icon-anchor'] = 'bottom';
   ly['text-anchor'] = 'top';
@@ -109,8 +110,10 @@ export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   // Realms, from the political map: empires and kingdoms carry their arms above the name.
   withArms(layer({ id: 'lbl-empire', source: 'labels', filter: [kindIs('empire')], z: [1.4, 4.8], size: [12, 20], font: CAPS, color: '#6e2a1e', spacing: 0.5, opacity: 0.8, sortKey: 48, maxWidth: 14 })),
   withArms(layer({ id: 'lbl-realm', source: 'labels', filter: [kindIs('realm')], z: [2.9, 6.8], size: [11, 18], font: CAPS, color: '#7a3d2a', spacing: 0.45, opacity: 0.7, sortKey: 50, maxWidth: 12 })),
-  layer({ id: 'lbl-duchy', source: 'labels', filter: [kindIs('duchy')], z: [5.2, 8.6], size: [10, 14], font: CAPS, color: '#7a3d2a', spacing: 0.3, opacity: 0.65, sortKey: 52, maxWidth: 10 }),
+  withArms(layer({ id: 'lbl-league', source: 'labels', filter: [kindIs('league')], z: [2.6, 6.4], size: [11, 16], font: ITALIC, color: '#2f5560', spacing: 0.35, opacity: 0.75, sortKey: 49, maxWidth: 14 })),
+  withArms(layer({ id: 'lbl-duchy', source: 'labels', filter: [kindIs('duchy')], z: [5.2, 8.6], size: [10, 14], font: CAPS, color: '#7a3d2a', spacing: 0.3, opacity: 0.65, sortKey: 52, maxWidth: 10 })),
   layer({ id: 'lbl-county', source: 'labels', filter: [kindIs('county')], z: [7.2, 10.4], size: [10, 13], font: ITALIC, color: '#7a3d2a', spacing: 0.1, opacity: 0.6, sortKey: 54, maxWidth: 10 }),
+  layer({ id: 'lbl-barony', source: 'labels', filter: [kindIs('barony')], z: [9.4, 12.4], size: [10, 12.5], font: ITALIC, color: '#7a3d2a', spacing: 0.05, opacity: 0.55, sortKey: 56, maxWidth: 9 }),
   layer({ id: 'lbl-continent', source: 'labels', filter: [kindIs('continent'), isPoint], z: [0.5, 3.3], size: [18, 32], font: CAPS, color: '#5b4632', spacing: 0.6, opacity: 0.85, upper: true }),
   layer({ id: 'lbl-continent-l', source: 'labels', filter: [kindIs('continent'), isLine], z: [0.5, 3.3], size: [18, 32], font: CAPS, color: '#5b4632', spacing: 0.6, opacity: 0.85, upper: true, line: 'center' }),
   // Water. Each body keeps its main label until it fills the screen, then a lattice of anchors (one

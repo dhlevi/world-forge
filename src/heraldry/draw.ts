@@ -55,7 +55,65 @@ function divisionPath(g: Ctx, d: Division): void {
     case 'quarterly': g.rect(50, 0, 50, 58); g.rect(0, 58, 50, 62); break;
     case 'saltire': g.moveTo(0, 0); g.lineTo(50, 60); g.lineTo(0, 120); g.closePath(); g.moveTo(100, 0); g.lineTo(50, 60); g.lineTo(100, 120); g.closePath(); break;
     case 'chevron': g.moveTo(0, 120); g.lineTo(50, 50); g.lineTo(100, 120); g.closePath(); break;
+    case 'bendSinister': g.moveTo(100, 0); g.lineTo(0, 120); g.lineTo(100, 120); g.closePath(); break;
+    case 'paly': for (let k = 1; k < 6; k += 2) g.rect((k * 100) / 6, 0, 100 / 6, 120); break;
+    case 'barry': for (let k = 1; k < 8; k += 2) g.rect(0, (k * 120) / 8, 100, 120 / 8); break;
+    case 'chequy':
+      for (let j = 0; j < 7; j++) for (let i = 0; i < 6; i++) if ((i + j) % 2) g.rect((i * 100) / 6, (j * 120) / 7, 100 / 6, 120 / 7);
+      break;
+    case 'gyronny':
+      // Eight wedges about the centre; every other one.
+      for (let k = 0; k < 8; k += 2) {
+        const a0 = (k * Math.PI) / 4, a1 = ((k + 1) * Math.PI) / 4;
+        g.moveTo(50, 60);
+        g.lineTo(50 + Math.cos(a0) * 120, 60 + Math.sin(a0) * 120);
+        g.lineTo(50 + Math.cos(a1) * 120, 60 + Math.sin(a1) * 120);
+        g.closePath();
+      }
+      break;
     default: break;
+  }
+}
+
+/** Fur patterns over a filled area (already clipped): ermine spots on argent, or vair bells. */
+function furPattern(g: Ctx, t: Tincture): void {
+  if (t === 'ermine') {
+    g.fillStyle = TINCTURE_HEX.sable;
+    for (let j = 0; j < 6; j++) {
+      for (let i = 0; i < 5; i++) {
+        const x = 10 + i * 20 + (j % 2) * 10, y = 10 + j * 20;
+        g.beginPath();
+        // An ermine spot: three dots over a tail.
+        g.arc(x, y - 3, 1.6, 0, Math.PI * 2);
+        g.arc(x - 3, y, 1.6, 0, Math.PI * 2);
+        g.arc(x + 3, y, 1.6, 0, Math.PI * 2);
+        g.moveTo(x, y);
+        g.lineTo(x + 3, y + 9);
+        g.lineTo(x, y + 6);
+        g.lineTo(x - 3, y + 9);
+        g.closePath();
+        g.fill();
+      }
+    }
+  } else if (t === 'vair') {
+    g.fillStyle = TINCTURE_HEX.azure;
+    for (let j = 0; j < 6; j++) {
+      for (let i = -1; i < 6; i++) {
+        const x = i * 20 + (j % 2) * 10, y = j * 20;
+        g.beginPath();
+        // A vair bell: blue cups, alternate rows offset.
+        g.moveTo(x + 2, y + 20);
+        g.lineTo(x + 2, y + 10);
+        g.lineTo(x + 6, y + 6);
+        g.lineTo(x + 6, y);
+        g.lineTo(x + 14, y);
+        g.lineTo(x + 14, y + 6);
+        g.lineTo(x + 18, y + 10);
+        g.lineTo(x + 18, y + 20);
+        g.closePath();
+        g.fill();
+      }
+    }
   }
 }
 
@@ -158,6 +216,160 @@ function chargePath(g: Ctx, kind: Charge, x: number, y: number, s: number): void
         g.closePath();
       }
       break;
+    case 'anchor':
+      g.arc(0, -8.5, 2.4, 0, Math.PI * 2);
+      g.arc(0, -8.5, 1.1, 0, Math.PI * 2, true);
+      g.rect(-1.2, -6.2, 2.4, 15);
+      g.rect(-5, -4.5, 10, 2);
+      g.moveTo(-9, 2);
+      g.quadraticCurveTo(-8, 10, 0, 10.5);
+      g.quadraticCurveTo(8, 10, 9, 2);
+      g.lineTo(10.5, 4.5);
+      g.lineTo(9.5, 1);
+      g.lineTo(6.5, 1.5);
+      g.lineTo(7.4, 3.5);
+      g.quadraticCurveTo(6, 8, 0, 8.3);
+      g.quadraticCurveTo(-6, 8, -7.4, 3.5);
+      g.lineTo(-6.5, 1.5);
+      g.lineTo(-9.5, 1);
+      g.lineTo(-10.5, 4.5);
+      g.closePath();
+      break;
+    case 'ship':
+      // A lymphad: a galley hull with a mast and a furled-out sail and pennon.
+      g.moveTo(-11, 3);
+      g.lineTo(11, 3);
+      g.quadraticCurveTo(8, 10, 0, 10);
+      g.quadraticCurveTo(-8, 10, -11, 3);
+      g.closePath();
+      g.rect(-0.8, -11, 1.6, 14);
+      g.moveTo(-7, -8);
+      g.quadraticCurveTo(0, -5, 7, -8);
+      g.lineTo(7, 0.5);
+      g.quadraticCurveTo(0, -1.5, -7, 0.5);
+      g.closePath();
+      g.moveTo(0.8, -11);
+      g.lineTo(6, -9.8);
+      g.lineTo(0.8, -8.6);
+      g.closePath();
+      break;
+    case 'sword':
+      g.moveTo(0, -11);
+      g.lineTo(1.6, -8);
+      g.lineTo(1.6, 4);
+      g.lineTo(-1.6, 4);
+      g.lineTo(-1.6, -8);
+      g.closePath();
+      g.rect(-6, 4, 12, 1.8);
+      g.rect(-0.9, 5.8, 1.8, 3.8);
+      g.moveTo(2, 10.6);
+      g.arc(0, 10.6, 2, 0, Math.PI * 2);
+      break;
+    case 'hammer':
+      g.rect(-7, -10, 14, 6);
+      g.rect(-1.4, -4, 2.8, 15);
+      break;
+    case 'axe':
+      g.rect(-1.2, -11, 2.4, 22);
+      g.moveTo(1, -9);
+      g.quadraticCurveTo(11, -8, 10, 1);
+      g.quadraticCurveTo(6, -1, 1, -1);
+      g.closePath();
+      break;
+    case 'eagle':
+      // Displayed: wings spread and raised, head to the dexter.
+      g.ellipse(0, 1, 3.2, 6, 0, 0, Math.PI * 2);
+      g.moveTo(1.8, -5);
+      g.arc(0, -6.5, 2.4, 0, Math.PI * 2);
+      g.moveTo(-2, -6.8);
+      g.lineTo(-4.6, -6);
+      g.lineTo(-2, -5.4);
+      for (const sx of [-1, 1]) {
+        g.moveTo(2 * sx, -2);
+        g.lineTo(11 * sx, -9);
+        g.lineTo(10 * sx, -4);
+        g.lineTo(11.5 * sx, -3.5);
+        g.lineTo(9.6 * sx, 0);
+        g.lineTo(10.8 * sx, 0.8);
+        g.lineTo(8 * sx, 3.5);
+        g.lineTo(2 * sx, 2);
+        g.closePath();
+        g.moveTo(1 * sx, 6);
+        g.lineTo(4 * sx, 11);
+        g.lineTo(1.5 * sx, 10);
+        g.closePath();
+      }
+      g.moveTo(-2.5, 6);
+      g.lineTo(0, 11);
+      g.lineTo(2.5, 6);
+      g.closePath();
+      break;
+    case 'wheel':
+      g.arc(0, 0, 10, 0, Math.PI * 2);
+      g.arc(0, 0, 7.6, 0, Math.PI * 2, true);
+      g.moveTo(2.4, 0);
+      g.arc(0, 0, 2.4, 0, Math.PI * 2);
+      for (let k = 0; k < 4; k++) {
+        g.save();
+        g.rotate((k * Math.PI) / 4);
+        g.rect(-0.8, -8, 1.6, 16);
+        g.restore();
+      }
+      break;
+    case 'bell':
+      g.moveTo(-1.5, -9);
+      g.arc(0, -9, 1.5, Math.PI, 0);
+      g.lineTo(1.5, -8);
+      g.quadraticCurveTo(6.5, -7.5, 6.5, 0);
+      g.quadraticCurveTo(6.5, 5, 9, 7);
+      g.lineTo(-9, 7);
+      g.quadraticCurveTo(-6.5, 5, -6.5, 0);
+      g.quadraticCurveTo(-6.5, -7.5, -1.5, -8);
+      g.closePath();
+      g.moveTo(2.2, 9);
+      g.arc(0, 9, 2.2, 0, Math.PI * 2);
+      break;
+    case 'horn':
+      // A hunting horn, mouth to the dexter, with its strap above.
+      g.moveTo(-10, -2);
+      g.quadraticCurveTo(-2, 9, 9, -1);
+      g.lineTo(11, 3);
+      g.lineTo(9.4, 4.4);
+      g.quadraticCurveTo(-2, 12, -10, 1);
+      g.closePath();
+      g.moveTo(-6, 1.5);
+      g.quadraticCurveTo(0, -11, 6, 1.5);
+      g.lineTo(4.8, 2);
+      g.quadraticCurveTo(0, -8.4, -4.8, 2.3);
+      g.closePath();
+      break;
+    case 'estoile':
+      // Six wavy rays.
+      for (let k = 0; k < 6; k++) {
+        const a = -Math.PI / 2 + (k * Math.PI) / 3;
+        const ca = Math.cos(a), sa = Math.sin(a), cp = Math.cos(a + Math.PI / 2), sp = Math.sin(a + Math.PI / 2);
+        g.moveTo(cp * 1.8, sp * 1.8);
+        g.quadraticCurveTo(ca * 5 + cp * 2.4, sa * 5 + sp * 2.4, ca * 11, sa * 11);
+        g.quadraticCurveTo(ca * 5 - cp * 2.4, sa * 5 - sp * 2.4, -cp * 1.8, -sp * 1.8);
+        g.closePath();
+      }
+      g.moveTo(2.6, 0);
+      g.arc(0, 0, 2.6, 0, Math.PI * 2);
+      break;
+    case 'heart':
+      g.moveTo(0, 9);
+      g.bezierCurveTo(-12, 0, -8, -11, 0, -4);
+      g.bezierCurveTo(8, -11, 12, 0, 0, 9);
+      g.closePath();
+      break;
+    case 'acorn':
+      g.ellipse(0, 3, 5, 6.5, 0, 0, Math.PI * 2);
+      g.moveTo(-6.4, -1);
+      g.quadraticCurveTo(-6, -7, 0, -7);
+      g.quadraticCurveTo(6, -7, 6.4, -1);
+      g.closePath();
+      g.rect(-0.8, -10.5, 1.6, 4);
+      break;
     case 'cross':
       for (let k = 0; k < 4; k++) {
         g.save();
@@ -187,6 +399,7 @@ export function drawArms(g: Ctx, a: Arms, x: number, y: number, w: number): void
   const fill = (t: Tincture) => (g.fillStyle = TINCTURE_HEX[t]);
   fill(a.field);
   g.fillRect(0, 0, 100, 120);
+  furPattern(g, a.field);
   fill(a.field2);
   divisionPath(g, a.division);
   if (a.division !== 'plain') g.fill();
@@ -204,16 +417,33 @@ export function drawArms(g: Ctx, a: Arms, x: number, y: number, w: number): void
         g.moveTo(108, 8); g.lineTo(92, -8); g.lineTo(-8, 112); g.lineTo(8, 128); g.closePath();
         break;
       case 'chevron': g.moveTo(0, 96); g.lineTo(50, 40); g.lineTo(100, 96); g.lineTo(100, 120); g.lineTo(50, 64); g.lineTo(0, 120); g.closePath(); break;
+      case 'pile': g.moveTo(22, 0); g.lineTo(78, 0); g.lineTo(50, 100); g.closePath(); break;
+      case 'pall':
+        g.moveTo(-6, 6); g.lineTo(6, -6); g.lineTo(50, 44); g.lineTo(94, -6); g.lineTo(106, 6); g.lineTo(58, 54);
+        g.lineTo(58, 130); g.lineTo(42, 130); g.lineTo(42, 54); g.closePath();
+        break;
+      case 'bordure': break;
     }
-    g.fill();
+    if (a.ordinary.kind === 'bordure') {
+      g.save();
+      shieldPath(g, a.shield);
+      g.strokeStyle = TINCTURE_HEX[a.ordinary.t];
+      g.lineWidth = 22;
+      g.stroke();
+      g.restore();
+    } else g.fill();
   }
   if (a.charge) {
     fill(a.charge.t);
-    const onChief = a.ordinary?.kind === 'chief';
-    const cy = onChief ? 74 : a.ordinary?.kind === 'fess' ? 58 : 56;
+    const chief = a.ordinary?.kind === 'chief';
+    const inBordure = a.ordinary?.kind === 'bordure' ? 0.8 : 1;
+    const cy = chief ? 74 : a.ordinary?.kind === 'fess' ? 58 : 56;
+    // Three charges with a chief stand on the chief; one or two lie in the field below it.
     const spots: [number, number, number][] = a.charge.n === 3
-      ? onChief ? [[22, 17, 17], [50, 17, 17], [78, 17, 17]] : [[30, cy - 20, 24], [70, cy - 20, 24], [50, cy + 24, 24]]
-      : [[50, onChief ? 74 : cy, onChief ? 40 : 52]];
+      ? chief ? [[22, 17, 17], [50, 17, 17], [78, 17, 17]] : [[30, cy - 20, 24 * inBordure], [70, cy - 20, 24 * inBordure], [50, cy + 24, 24 * inBordure]]
+      : a.charge.n === 2
+        ? [[30, chief ? 70 : cy, (chief ? 26 : 30) * inBordure], [70, chief ? 70 : cy, (chief ? 26 : 30) * inBordure]]
+        : [[50, chief ? 74 : cy, (chief ? 40 : 52) * inBordure]];
     for (const [cx, yy, s] of spots) {
       chargePath(g, a.charge.kind, cx, yy, s);
       g.fill('nonzero');

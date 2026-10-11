@@ -355,6 +355,30 @@ const CAVE_HOOKS = [
   'Villagers leave offerings at the mouth to keep whatever lives inside from coming out.',
   'A hunting party chased a wounded beast into the cave. Only their dogs came back.',
   'Strange carvings at the entrance match those on a ring found in a dead traveller\'s pack.',
+  'Local children claim a spectral white wolf dares them to step inside, but none who cross the threshold return before sundown.',
+  'A ruined shrine just inside the cavern was defaced recently, and fresh boot prints lead into the dark.',
+  'The local miller\'s water wheel jammed because old bones and silt washed down from the cave\'s subterranean stream.',
+  'A band of desperate outlaws took refuge from a royal patrol inside the cavern, but haven\'t been seen leaving.',
+  'The cave floor is littered with peculiar, heavy iron shackles that don\'t match standard local smithing.',
+  'A frantic merchant claims his runaway mule bolted into the dark cave carrying a crate of expensive tax records.',
+  'An eccentric hermit claims the cave echoes with a human voice reciting coordinates to a lost trade route.',
+  'Deep underground, a muffled ringing sound—like a heavy bronze bell struck underwater—can be heard at midnight.',
+  'The local tavern keeper\’s grandfather swore he hid his life savings behind a loose stone wall in the shallow damp.',
+  'Smoke drifted from a supposedly abandoned fissure yesterday, smelling faintly of rendered animal fat and herbs.',
+  'A squad of militia members entered to scout for deserters two days ago, leaving only a bloodstained shield by the rocks.',
+  'Stolen grain keeps disappearing from nearby barns, and the tracks lead straight into the yawning cave mouth.',
+  'An itinerant herbalist dropped his rare leather satchel of rare mountain roots while fleeing an aggressive bear near the ledge.',
+  'A rusted iron gate, locked from the outside, was recently found blown off its hinges by an unknown force.',
+  'The local blacksmith lost his favorite heirloom hammer when a thief dove into the dark crevice to escape justice.',
+  'A pack of rabid wild dogs made their den inside, and they have acquired a taste for human livestock.',
+  'Strange, oily black footprints lead out of the cave every morning, disappearing halfway across the muddy pasture.',
+  'A disgraced knight rode into the caves seeking atonement or a glorious end, and his riderless horse wanders the hills.',
+  'Villagers avoid the ridge entirely because the wind blowing through the cave vents sounds eerily like weeping women.', 
+  'An old map bought from a traveling tinker marks this specific cave as the entrance to an abandoned silver prospect.',
+  'A band of tax collectors went missing near the ridge; their empty carriage sits abandoned with the horses unhitched.',
+  'Unusually heavy seasonal rains have washed away a mudslide, exposing a previously hidden, sealed stone portal.',
+  'A flock of crows circles endlessly above the chimney vent, refusing to roost anywhere else in the valley.',
+  'The local lord\’s prize hunting hound bolted into the cavern after something small, scaly, and unnatural.'
 ];
 
 const CAVE_ROOMS: Record<string, [string, string[]]> = {
@@ -366,6 +390,12 @@ const CAVE_ROOMS: Record<string, [string, string[]]> = {
   arrival: ['Foot of the way', ['The way from above ends here, in a chamber of damp stone.', 'Scratches on the rock mark where others have climbed down before.']],
   grotto: ['Grotto', ['A low side chamber; one must stoop to enter.', 'A small grotto with a smooth, sandy floor.', 'A cramped alcove where the walls press in on either side.', 'A side pocket of the cave, its floor heaped with old leaves blown in from outside.', 'A round niche in the rock, smoothed by water long gone.']],
   chamber: ['Chamber', ['A rough chamber of broken rock.', 'An irregular chamber with a sloping floor and a low roof.', 'A chamber where the floor is cracked into great plates.', 'A long chamber with a ledge running along one wall.', 'A chamber of pale limestone, streaked with rust-red stains.', 'A wide, low chamber where the roof comes down almost to head height.']],
+  squeeze: ['Narrow crawl', ['The passage pinches down, forcing travelers to drop to their hands and knees.', 'A tight fissure that requires squeezing through sideways in total dark.']],
+  rubble: ['Rubble pile', ['A massive collapse blocks half the chamber with jagged boulders.', 'Loose scree covers the floor, shifting treacherously underfoot with every step.']],
+  nest: ['Beast den', ['The floor is thick with chewed bones, matted fur, and a pungent, musky odor.', 'A sheltered corner heaped with shredded leaves and scraps of old hides.']],
+  mine: ['Old workings', ['Tool marks scar the walls where ancient picks bit into the stone.', 'A rusted ore cart sits abandoned beside a low, shored-up timber tunnel.']],
+  shrine: ['Forgotten shrine', ['A crude stone altar stands against the back wall, stained with old, dark residue.', 'Niches carved into the damp rock hold the remnants of weathered clay figurines.']],
+  bone: ['Ossuary alcove', ['The walls are stacked neatly with old human bones, undisturbed for centuries.', 'A pile of mismatched skeletons lies half-buried in the silt.']],
 };
 
 /** Numbers the chambers of every cave level (from the way in) and writes a heading and a description for each. */
@@ -584,8 +614,22 @@ const GROVE_HOOKS = [
   'Children from the nearest village have gone missing, and their trail leads into these woods.',
   'Each midsummer, lights dance among the stones; this year they came early.',
   'A noble\'s hunting party chased a white hart into the grove and has not returned.',
+  'A local alderman promises a bag of crowns to anyone who can rid the ancient oak of a corpse-eating monster.',
+  'A grieving mother left a swaddled infant at the hollow tree as a tribute, but the creature rejected the offering.',
+  'Travelers on the trade road hear a weeping woman from the thicket, but locals warn it is just a monster luring prey.',
+  'A village maiden vanished on her wedding eve; blood on the moss suggests a wedding gift was exacted by old forest pacts.',
+  'An herbalist seeking rare wolfsbane found a witch\'s altar draped in fresh offal and sheep skulls.',
+  'A cursed soldier who turned into a creature of the wood haunts the clearing, begging travelers for a mercy kill.',
+  'The local ealdorman posted a bounty on the grove\'s lessee after three tax collectors were found hung by their ankles from the boughs.',
+  'Poachers set iron snares near the sacred mound, only to find their own legs caught in crude bone traps the next dawn.',
+  'A traveling witcher\'s silver medallion spun wildly near the treeline before he vanished into the fog without his sword.',
+  'The village priest desecrated an old wooden idol in the glade, and now the wells in town run red with pig\'s blood.',
+  'Rebels hiding from the king\'s cavalry took shelter in the grove, but their commander was found drained of blood in his tent.',
+  'A gnarled leshy-mark was freshly carved into the boundary post, warning all who enter that human steel is forbidden.',
+  'A local cobbler found his dead wife wandering the grove at dusk, dressed in leaves and unable to recognize her own name.',
+  'A striga-like howl echoes from the sunken hollow whenever the crescent moon hangs low over the canopy.',
+  'An old war hero buried his cursed relic beneath the heart-tree, but the dark magic has begun seeping into the groundwater.',
 ];
-
 /**
  * A grove: several clearings in the forest joined by winding paths, each with its own feature
  * (a great or hollow tree, standing stones, a pond or spring, a shrine, a druid's hut, a camp,

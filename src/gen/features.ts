@@ -18,7 +18,7 @@ import type { NameBank } from '../names/names';
  * lettering along them).
  */
 
-export type LabelKind = FeatureKind | 'city' | 'town' | 'empire' | 'duchy' | 'county';
+export type LabelKind = FeatureKind | 'city' | 'town' | 'empire' | 'duchy' | 'county' | 'barony' | 'league';
 
 export interface LabelFeature {
   type: 'Feature';
@@ -28,7 +28,7 @@ export interface LabelFeature {
    * zlo/zhi (water only): whole-zoom band this anchor belongs to. A water body keeps one label
    * until it fills the screen, then is lettered from a lattice of anchors (see `waterAnchors`).
    */
-  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number };
+  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number; arms?: number };
 }
 
 export interface LabelCollection {

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
 import { store, world } from '../store';
-import { LEVEL_NAME, type PolUnit } from '../gen/politics';
+import { LEVEL_NAME, type PolUnit, chainOf } from '../gen/politics';
 import { type Arms, blazon, vassalArms } from '../heraldry/arms';
 import { armsImage } from '../heraldry/draw';
 import { LAYOUT_LABEL } from '../towns/layout';
@@ -45,9 +45,9 @@ const info = computed<Line | null>(() => {
   };
   const c = at(W, H);
   const units = w.politics.units;
-  const cu = w.politics.countyOf[at(w.politics.W, w.politics.H)];
-  const chain: PolUnit[] = [];
-  for (let u: PolUnit | null = cu >= 0 ? units[cu] : null; u; u = u.parent >= 0 ? units[u.parent] : null) chain.push(u);
+  const cu = w.politics.baronyOf[at(w.politics.W, w.politics.H)];
+  // Barony up to the independent realm, then its league if any.
+  const chain: PolUnit[] = chainOf(units, cu);
   const region = w.regionOf[c] >= 0 ? w.labels.features[w.regionOf[c]]?.properties.name : undefined;
 
   if (height[c] <= 0 && cu < 0) {
@@ -69,45 +69,63 @@ const info = computed<Line | null>(() => {
   }
 
   // The settlement under the centre, at close zoom.
+  const barony = chain[0];
   if (store.zoom >= 11) {
-    const county = chain[0];
     for (const s of w.settlements) {
       if (s.tier === 'village' || km(lon, lat, s.lon, s.lat) * 1000 > s.radiusM * 1.1) continue;
       let a = townArms.get(s.id);
       if (!a) {
-        a = vassalArms(mulberry32(s.seed ^ 0x7a11), county.arms, CULTURES[county.culture]?.id ?? 'anglo');
-        if (s.id === county.seat) a = county.arms;
+        a = s.id === barony.seat ? barony.arms : vassalArms(mulberry32(s.seed ^ 0x7a11), barony.arms, CULTURES[barony.culture]?.id ?? 'anglo');
         townArms.set(s.id, a);
       }
       const kind = s.tier === 'city' ? 'City' : 'Town';
+      const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
-        name: s.name ?? '', sub: `${kind} of ${s.population.toLocaleString('en')}${s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : ''}`,
+        name: s.name ?? '',
+        sub: [`${kind} of ${s.population.toLocaleString('en')}`, s.layout ? LAYOUT_LABEL[s.layout] : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
       };
     }
     if (store.here) {
+      // Keeps are baronial holdings, monasteries abbey lands, within the barony they stand in.
+      const h = store.here;
+      const tie = h.kind === 'keep' ? `a holding of the ${barony.name}` : h.kind === 'monastery' ? `abbey lands in the ${barony.name}` : '';
       return {
-        name: store.here.name, sub: `${VILLAGE[store.here.kind] ?? 'Village'} of ${store.here.population.toLocaleString('en')}`,
+        name: h.name, sub: [`${VILLAGE[h.kind] ?? 'Village'} of ${h.population.toLocaleString('en')}`, tie].filter(Boolean).join(' · '),
         arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
       };
     }
   }
-  // The realm level for this zoom (the highest the chain has, if it stops short).
-  const want = store.zoom < 4.3 ? 3 : store.zoom < 6.3 ? 2 : store.zoom < 8.3 ? 1 : 0;
-  let k = chain.findIndex((u) => u.level >= want);
-  if (k < 0) k = chain.length - 1;
-  const u = chain[k];
+  // The level for this zoom (the nearest the chain has): empire, kingdom, duchy, county, barony.
+  const want = store.zoom < 4.3 ? 4 : store.zoom < 6.3 ? 3 : store.zoom < 8.3 ? 2 : store.zoom < 10 ? 1 : 0;
+  const realms = chain.filter((u) => u.gov !== 'league');
+  let k = realms.findIndex((u) => u.level >= want);
+  if (k < 0) k = realms.length - 1;
+  const u = realms[k];
   const parts = [`${u.ruler} at ${u.seatName}`];
-  if (u.level > 0) parts.push(`${u.vassals} ${u.vassals === 1 ? LEVEL_NAME[u.level - 1].toLowerCase() : plural(LEVEL_NAME[u.level - 1])}`);
+  if (u.parent < 0 || u.level >= 3) parts.push(u.title);
+  const held = holdings(u);
+  if (held) parts.push(held);
   if (region && u.level <= 1) parts.push(cap(region));
-  return { name: cap(u.name), sub: parts.join(' · '), arms: u.arms, armsKey: `u${u.id}`, crumbs: crumbs(chain, k + 1), chain };
+  return { name: cap(u.name), sub: parts.join(' · '), arms: u.arms, armsKey: `u${u.id}`, crumbs: crumbs(chain, chain.indexOf(u) + 1), chain };
 });
+
+/** "3 duchies, 2 counties" (the vassals by level), or "5 members" for a league. */
+function holdings(u: PolUnit): string {
+  const w = world.value;
+  if (!w || u.level === 0) return '';
+  const kids = w.politics.units.filter((v) => (u.gov === 'league' ? v.league === u.id : v.parent === u.id));
+  if (u.gov === 'league') return `${kids.length} members`;
+  const by = [0, 0, 0, 0, 0];
+  for (const v of kids) by[v.level]++;
+  return by.map((n, l) => (n ? `${n} ${n === 1 ? LEVEL_NAME[l].toLowerCase() : plural(LEVEL_NAME[l])}` : '')).filter(Boolean).reverse().join(', ');
+}
 
 function crumbs(chain: PolUnit[], from: number) {
   return chain.slice(from).filter((u, k, a) => !(k > 0 && a[k - 1].seat === u.seat && a[k - 1].name === u.name)).reverse()
     .map((u) => ({ name: cap(u.name), arms: u.arms, key: `u${u.id}`, unit: u }));
 }
-const plural = (s: string) => (s === 'County' ? 'counties' : s === 'Duchy' ? 'duchies' : `${s.toLowerCase()}s`);
+const plural = (s: string) => (s === 'County' ? 'counties' : s === 'Duchy' ? 'duchies' : s === 'Barony' ? 'baronies' : `${s.toLowerCase()}s`);
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const detail = computed(() => (info.value?.chain ?? []).slice().reverse());
@@ -132,7 +150,8 @@ const detail = computed(() => (info.value?.chain ?? []).slice().reverse());
         <img :src="armsImage(u.arms, 44, `u${u.id}`)" alt="" />
         <div>
           <div class="rname">{{ cap(u.name) }}</div>
-          <div class="rsub">{{ u.ruler }} at {{ u.seatName }} · {{ Math.round(u.areaKm2).toLocaleString('en') }} km² · {{ u.pop.toLocaleString('en') }} in towns</div>
+          <div class="rsub">{{ u.title }} · {{ u.ruler }} at {{ u.seatName }} · {{ Math.round(u.areaKm2).toLocaleString('en') }} km² · {{ u.pop.toLocaleString('en') }} in towns</div>
+          <div v-if="holdings(u)" class="rsub">{{ holdings(u) }}</div>
           <div class="blazon">{{ blazon(u.arms) }}</div>
         </div>
       </div>

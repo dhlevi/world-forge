@@ -95,9 +95,10 @@ function registerArms(): void {
   for (const id of armsIds) if (map.hasImage(id)) map.removeImage(id);
   armsIds = [];
   for (const u of world.value.politics.units) {
-    if (u.level < 2) continue;
+    // Arms for the labels that carry them: empires, kingdoms, leagues and every independent realm.
+    if (u.level < 3 && u.parent >= 0) continue;
     const id = `arms-${u.id}`;
-    map.addImage(id, armsImageData(u.arms, u.level === 3 ? 30 : 24), { pixelRatio: 2 });
+    map.addImage(id, armsImageData(u.arms, u.level === 4 ? 30 : u.level === 3 || u.gov === 'league' ? 24 : 20), { pixelRatio: 2 });
     armsIds.push(id);
   }
 }

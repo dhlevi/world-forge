@@ -490,27 +490,38 @@ const lvl = (l: number) => e(['==', ['get', 'level'], l]) as FilterSpecification
 const BORDER_INK = '#7c2c20';
 export const BORDER_LAYERS: LayerSpecification[] = [
   {
-    id: 'border-wash', type: 'line', source: 'borders', filter: e(['>=', ['get', 'level'], 2]) as FilterSpecification, maxzoom: 10,
+    id: 'border-wash', type: 'line', source: 'borders', filter: e(['all', ['>=', ['get', 'level'], 3], ['<=', ['get', 'level'], 4]]) as FilterSpecification, maxzoom: 10,
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
       'line-color': 'rgba(160,52,36,0.2)',
-      'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, ['match', ['get', 'level'], 3, 5, 3.5], 7, ['match', ['get', 'level'], 3, 12, 9]]),
+      'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, ['match', ['get', 'level'], 4, 5, 3.5], 7, ['match', ['get', 'level'], 4, 12, 9]]),
       'line-blur': 2,
       'line-opacity': e(['interpolate', ['linear'], ['zoom'], 8, 1, 10, 0]),
     },
   },
+  // Leagues and confederacies: a blue-green wash and a long-dashed line round the union.
   {
-    id: 'border-3', type: 'line', source: 'borders', filter: lvl(3),
+    id: 'border-league-wash', type: 'line', source: 'borders', filter: lvl(5), maxzoom: 9,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': 'rgba(47,85,96,0.22)', 'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, 4, 7, 10]), 'line-blur': 2 },
+  },
+  {
+    id: 'border-league', type: 'line', source: 'borders', filter: lvl(5),
+    layout: { 'line-join': 'round' },
+    paint: { 'line-color': '#2f5560', 'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, 0.9, 8, 1.8]), 'line-dasharray': [6, 3], 'line-offset': 1.5 },
+  },
+  {
+    id: 'border-4', type: 'line', source: 'borders', filter: lvl(4),
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: { 'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, 1.2, 8, 2.6]), 'line-dasharray': [5, 1.5, 1, 1.5] },
   },
   {
-    id: 'border-2', type: 'line', source: 'borders', filter: lvl(2),
+    id: 'border-3', type: 'line', source: 'borders', filter: lvl(3),
     layout: { 'line-join': 'round' },
     paint: { 'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 1.5, 0.9, 8, 2]), 'line-dasharray': [4, 2] },
   },
   {
-    id: 'border-1', type: 'line', source: 'borders', filter: lvl(1), minzoom: 3.8,
+    id: 'border-2', type: 'line', source: 'borders', filter: lvl(2), minzoom: 3.8,
     layout: { 'line-join': 'round' },
     paint: {
       'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 4, 0.7, 9, 1.4]), 'line-dasharray': [3, 2.5],
@@ -518,11 +529,19 @@ export const BORDER_LAYERS: LayerSpecification[] = [
     },
   },
   {
-    id: 'border-0', type: 'line', source: 'borders', filter: lvl(0), minzoom: 5.8, maxzoom: 12.5,
+    id: 'border-1', type: 'line', source: 'borders', filter: lvl(1), minzoom: 5.8, maxzoom: 12.5,
     layout: { 'line-join': 'round', 'line-cap': 'round' },
     paint: {
       'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 6, 0.6, 10, 1.1]), 'line-dasharray': [0.2, 2.6],
       'line-opacity': e(['interpolate', ['linear'], ['zoom'], 5.8, 0, 6.6, 0.6, 11.5, 0.6, 12.5, 0]),
+    },
+  },
+  {
+    id: 'border-0', type: 'line', source: 'borders', filter: lvl(0), minzoom: 8, maxzoom: 13,
+    layout: { 'line-join': 'round', 'line-cap': 'round' },
+    paint: {
+      'line-color': BORDER_INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 8, 0.5, 11, 0.9]), 'line-dasharray': [0.1, 3.2],
+      'line-opacity': e(['interpolate', ['linear'], ['zoom'], 8, 0, 8.8, 0.45, 12, 0.45, 13, 0]),
     },
   },
 ];
