@@ -200,7 +200,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   progress('Realms', 0.995);
   // The political map works at up to 1024 × 512: realms are hundreds of km across, and the
   // borders are smoothed anyway, so finer grids only cost time.
-  let pg = g, pf = { height, lakeDepth, culture, newWorld, biome };
+  let pg = g, pf = { height, lakeDepth, culture, newWorld, biome, temp: climate.temp, precip: climate.precip };
   if (W > 1024) {
     const k = W / 1024;
     pg = makeGrid(1024, 512);
@@ -215,6 +215,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
     pf = {
       height: take(height, (n) => new Float32Array(n)), lakeDepth: take(lakeDepth, (n) => new Float32Array(n)), culture: take(culture, (n) => new Uint8Array(n)),
       newWorld: take(newWorld, (n) => new Uint8Array(n)), biome: take(biome, (n) => new Uint8Array(n)),
+      temp: take(climate.temp, (n) => new Float32Array(n)), precip: take(climate.precip, (n) => new Float32Array(n)),
     };
   }
   const { politics, labels: realmLabels } = buildPolitics(pg, pf, settlements, rivers, bank, params.seed);

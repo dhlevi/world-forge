@@ -24,6 +24,10 @@ interface Prepared {
   gen: number;
   W: number;
   H: number;
+  /** Independent realm per cell, or -1. */
+  realm: Int32Array;
+  baronyOf: Int32Array;
+  units: PolUnit[];
   /** Colour per cell for each detail band (realm, duchy, county): RGB, and edge strength 0..1. */
   bands: { rgb: Uint8Array; edge: Float32Array }[];
 }
@@ -143,7 +147,7 @@ export function preparePolitical(gen: number, p: Politics): void {
     }
     return { rgb, edge };
   });
-  current = { gen, W, H, bands };
+  current = { gen, W, H, bands, realm, baronyOf, units };
 }
 
 let registered = false;
@@ -201,6 +205,151 @@ async function renderTile(gen: number, z: number, x: number, y: number): Promise
         d[o + 2] = b / a;
         // Coverage fades the wash out at the edge of claimed land; realm edges are washed deeper.
         d[o + 3] = Math.round(255 * Math.min(1, a) * (0.62 + 0.38 * Math.min(1, e / a)));
+      }
+    }
+  }
+  return createImageBitmap(img);
+}
+
+// ---- Relations of an open realm -----------------------------------------------------------------
+
+/** Tints for a realm's relations: RGB and alpha. */
+const REL_TINT: Record<string, [number, number, number, number]> = {
+  self: [214, 160, 30, 0.42], realm: [214, 160, 30, 0.16], league: [60, 120, 200, 0.34], alliance: [52, 104, 196, 0.38], friendly: [96, 150, 210, 0.2],
+  truce: [130, 130, 130, 0.22], rival: [226, 128, 36, 0.36], war: [196, 36, 30, 0.46],
+};
+
+interface RelPrepared {
+  gen: number;
+  ver: number;
+  rgba: Uint8Array;
+  /** War hatching weight and edge strength per cell. */
+  hatch: Uint8Array;
+  edge: Uint8Array;
+}
+let rel: RelPrepared | null = null;
+let relVer = 0;
+
+/**
+ * Colours the map for an open realm: its own lands gold (the rest of its realm, for a vassal,
+ * paler gold), allies blue, friends pale blue, rivals orange, enemies at war red and hatched.
+ * Returns the version for the tile URL, or -1 when nothing is to be shown.
+ */
+export function setRelations(gen: number, sel: { unit: number; top: number; rel: Map<number, string> } | null): number {
+  const P = current;
+  if (!P || P.gen !== gen || !sel) {
+    rel = null;
+    return -1;
+  }
+  const { W, H, realm, baronyOf, units } = P;
+  const N = W * H;
+  // Baronies within the selected unit.
+  const inSel = new Map<number, boolean>();
+  const within = (b: number) => {
+    let v = inSel.get(b);
+    if (v === undefined) {
+      v = false;
+      for (let u: PolUnit | null = units[b]; u; u = u.parent >= 0 ? units[u.parent] : null) {
+        if (u.id === sel.unit || u.league === sel.unit) {
+          v = true;
+          break;
+        }
+      }
+      inSel.set(b, v);
+    }
+    return v;
+  };
+  const kind = new Uint8Array(N);
+  const KINDS = ['', 'self', 'realm', 'league', 'alliance', 'friendly', 'truce', 'rival', 'war'];
+  const code = (k: string) => Math.max(0, KINDS.indexOf(k));
+  for (let c = 0; c < N; c++) {
+    const r = realm[c];
+    if (r < 0) continue;
+    if (within(baronyOf[c])) kind[c] = 1;
+    else if (r === sel.top) kind[c] = 2;
+    else {
+      const k = sel.rel.get(r);
+      if (k && k !== 'neutral') kind[c] = code(k);
+    }
+  }
+  const rgba = new Uint8Array(N * 4), hatch = new Uint8Array(N), edge = new Uint8Array(N);
+  for (let j = 0; j < H; j++) {
+    for (let i = 0; i < W; i++) {
+      const c = j * W + i, k = kind[c];
+      if (!k) continue;
+      const t = REL_TINT[KINDS[k]];
+      rgba.set([t[0], t[1], t[2], Math.round(t[3] * 255)], c * 4);
+      if (k === 8) hatch[c] = 255;
+      // Edge of the group (another kind next door).
+      for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+        const jj = j + dj;
+        if (jj < 0 || jj >= H) continue;
+        const n = jj * W + ((i + di + W) % W);
+        if (kind[n] !== k && (k === 1 || realm[n] !== realm[c])) {
+          edge[c] = 255;
+          break;
+        }
+      }
+    }
+  }
+  rel = { gen, ver: ++relVer, rgba, hatch, edge };
+  return rel.ver;
+}
+
+let relRegistered = false;
+/** Registers the `relations://` tile protocol (once). */
+export function registerRelationsProtocol(): void {
+  if (relRegistered) return;
+  relRegistered = true;
+  addProtocol('relations', async (params) => {
+    const m = /^relations:\/\/(\d+)\/(\d+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+    if (!m) throw new Error(`Bad relations tile URL: ${params.url}`);
+    return { data: await renderRelTile(+m[1], +m[2], +m[3], +m[4], +m[5]) };
+  });
+}
+
+async function renderRelTile(gen: number, ver: number, z: number, x: number, y: number): Promise<ImageBitmap> {
+  const img = new ImageData(SIZE, SIZE);
+  const P = current, R = rel;
+  if (P && R && P.gen === gen && R.gen === gen && R.ver === ver) {
+    const { W, H } = P;
+    const n = 2 ** z;
+    const d = img.data;
+    const lonPx: number[] = [];
+    for (let i = 0; i < SIZE; i++) lonPx.push((((x + (i + 0.5) / SIZE) / n) * 360) / 360 * W - 0.5);
+    for (let j = 0; j < SIZE; j++) {
+      const yy = Math.PI * (1 - (2 * (y + (j + 0.5) / SIZE)) / n);
+      const lat = (Math.atan(Math.sinh(yy)) * 180) / Math.PI;
+      const fy = ((90 - lat) / 180) * H - 0.5;
+      const j0 = Math.max(0, Math.min(H - 1, Math.floor(fy))), j1 = Math.min(H - 1, j0 + 1), ty = Math.max(0, Math.min(1, fy - j0));
+      for (let i = 0; i < SIZE; i++) {
+        const fx = lonPx[i];
+        const i0f = Math.floor(fx), tx = fx - i0f;
+        const i0 = ((i0f % W) + W) % W, i1 = (i0 + 1) % W;
+        const cells = [j0 * W + i0, j0 * W + i1, j1 * W + i0, j1 * W + i1];
+        const ws = [(1 - tx) * (1 - ty), tx * (1 - ty), (1 - tx) * ty, tx * ty];
+        let r = 0, g = 0, b = 0, a = 0, cov = 0, h = 0, e = 0;
+        for (let k = 0; k < 4; k++) {
+          const c = cells[k], w = ws[k];
+          const ca = R.rgba[c * 4 + 3];
+          if (!ca) continue;
+          r += R.rgba[c * 4] * w;
+          g += R.rgba[c * 4 + 1] * w;
+          b += R.rgba[c * 4 + 2] * w;
+          a += ca * w;
+          h += R.hatch[c] * w;
+          e += R.edge[c] * w;
+          cov += w;
+        }
+        if (cov <= 0) continue;
+        const o = (j * SIZE + i) * 4;
+        // Hatching in screen space for wars; edges drawn deeper.
+        const hatchOn = h / cov > 128 && (i + j) % 9 < 3;
+        const alpha = (a / cov) * Math.min(1, cov * 1.4) * (1 + 0.9 * (e / cov / 255)) + (hatchOn ? 70 : 0);
+        d[o] = r / cov;
+        d[o + 1] = g / cov;
+        d[o + 2] = b / cov;
+        d[o + 3] = Math.min(235, Math.round(alpha));
       }
     }
   }

@@ -7,7 +7,7 @@ import type { BuildingView } from './interiors/building';
 import type { LairSite } from './lairs/lair';
 import type { DungeonSite } from './dungeons/core';
 import { SearchIndex } from './search/index';
-import { registerPoliticalProtocol } from './world/political';
+import { registerPoliticalProtocol, registerRelationsProtocol } from './world/political';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
 
@@ -62,9 +62,12 @@ export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; na
 export const openLair = shallowRef<LairSite | null>(null);
 /** The tower, crypt, ruin, mine, catacomb or sewer open in the dungeon view, if any. */
 export const openDungeon = shallowRef<DungeonSite | null>(null);
+/** The realm (political unit id) open in the realm details window, if any. */
+export const openRealm = shallowRef<number | null>(null);
 export const client = new WorldClient();
 client.registerProtocol();
 registerPoliticalProtocol();
+registerRelationsProtocol();
 
 export async function regenerate(): Promise<void> {
   store.generating = true;

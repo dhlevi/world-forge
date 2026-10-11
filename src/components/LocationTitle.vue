@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { store, world } from '../store';
+import { openRealm, store, world } from '../store';
 import { LEVEL_NAME, type PolUnit, chainOf } from '../gen/politics';
 import { type Arms, blazon, vassalArms } from '../heraldry/arms';
 import { armsImage } from '../heraldry/draw';
@@ -23,6 +23,8 @@ interface Line {
   armsKey: string;
   crumbs: { name: string; arms: Arms; key: string; unit: PolUnit }[];
   chain: PolUnit[];
+  /** The realm named, if any (clicking opens its details). */
+  unit?: number;
 }
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
@@ -121,7 +123,7 @@ const info = computed<Line | null>(() => {
   const held = holdings(u);
   if (held) parts.push(held);
   if (region && u.level <= 1) parts.push(cap(region));
-  return { name: cap(u.name), sub: parts.join(' · '), arms: u.arms, armsKey: `u${u.id}`, crumbs: crumbs(chain, chain.indexOf(u) + 1), chain };
+  return { name: cap(u.name), sub: parts.join(' · '), arms: u.arms, armsKey: `u${u.id}`, crumbs: crumbs(chain, chain.indexOf(u) + 1), chain, unit: u.id };
 });
 
 /** "3 duchies, 2 counties" (the vassals by level), or "5 members" for a league. */
@@ -143,24 +145,38 @@ const plural = (s: string) => (s === 'County' ? 'counties' : s === 'Duchy' ? 'du
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 const detail = computed(() => (info.value?.chain ?? []).slice().reverse());
+
+function openUnit(id: number): void {
+  openRealm.value = id;
+}
+
+/** Clicking the name or arms opens the realm's details (or, for a town, its barony's); the arrow shows the hierarchy. */
+function onMain(): void {
+  const i = info.value;
+  if (!i) return;
+  const id = i.unit ?? i.chain[0]?.id;
+  if (id !== undefined) openRealm.value = id;
+  else open.value = !open.value;
+}
 </script>
 
 <template>
-  <div v-if="info" class="where" :class="{ open }" @click="open = !open">
-    <div class="main">
+  <div v-if="info" class="where" :class="{ open }">
+    <div class="main" :title="info.chain.length ? 'Open the realm\'s details' : ''" @click="onMain">
       <img v-if="info.arms" class="arms" :src="armsImage(info.arms, 40, info.armsKey)" :title="blazon(info.arms)" alt="" />
       <div class="text">
         <div v-if="info.crumbs.length" class="crumbs">
-          <span v-for="(c, k) in info.crumbs" :key="c.key">
+          <span v-for="(c, k) in info.crumbs" :key="c.key" class="crumb" @click.stop="openUnit(c.unit.id)">
             <img :src="armsImage(c.arms, 14, c.key)" alt="" />{{ c.name }}<span v-if="k < info.crumbs.length - 1" class="sep">›</span>
           </span>
         </div>
         <div class="name">{{ info.name }}</div>
         <div v-if="info.sub" class="sub">{{ info.sub }}</div>
       </div>
+      <button v-if="detail.length" class="more" :title="open ? 'Hide the hierarchy' : 'Show the hierarchy'" @click.stop="open = !open">{{ open ? '▴' : '▾' }}</button>
     </div>
     <div v-if="open && detail.length" class="detail" @click.stop>
-      <div v-for="u in detail" :key="u.id" class="row">
+      <div v-for="u in detail" :key="u.id" class="row" title="Open the realm's details" @click="openUnit(u.id)">
         <img :src="armsImage(u.arms, 44, `u${u.id}`)" alt="" />
         <div>
           <div class="rname">{{ cap(u.name) }}</div>
@@ -203,6 +219,27 @@ const detail = computed(() => (info.value?.chain ?? []).slice().reverse());
 }
 .text {
   min-width: 0;
+  flex: 1;
+}
+.crumb:hover,
+.row:hover .rname {
+  text-decoration: underline;
+}
+.row {
+  cursor: pointer;
+}
+.more {
+  flex: none;
+  align-self: center;
+  font: inherit;
+  font-size: 14px;
+  width: 28px;
+  height: 28px;
+  border: 1px solid rgba(43, 36, 32, 0.4);
+  border-radius: 4px;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
 }
 .crumbs {
   font-size: 12px;
@@ -291,6 +328,10 @@ const detail = computed(() => (info.value?.chain ?? []).slice().reverse());
   }
   .crumbs {
     display: none;
+  }
+  .more {
+    width: 44px;
+    height: 44px;
   }
   .name {
     font-size: 17px;

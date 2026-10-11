@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { flyTarget, search, searchState, store } from '../store';
+import { flyTarget, openRealm, search, searchState, store } from '../store';
 import { CAT_LABEL, type SearchCat, type SearchHit, bearing } from '../search/index';
 
 const q = ref('');
@@ -46,6 +46,8 @@ function detail(h: SearchHit): string {
 function choose(h: SearchHit | undefined): void {
   if (!h) return;
   flyTarget.value = { lon: h.e.lon, lat: h.e.lat, zoom: h.e.zoom, name: h.e.name, t: performance.now() };
+  // A realm also opens its details.
+  if (/^pol\d+$/.test(h.e.id)) openRealm.value = Number(h.e.id.slice(3));
   open.value = false;
   input.value?.blur();
   if (window.matchMedia('(max-width: 768px)').matches) expanded.value = false;

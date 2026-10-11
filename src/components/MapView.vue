@@ -5,7 +5,7 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { flyTarget, openBuilding, openDungeon, openLair, search, searchState, store, world } from '../store';
+import { flyTarget, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
 import { blockEntry, planEntries, worldEntries } from '../search/index';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
 import type { PlanFeature } from '../towns/plan';
@@ -22,7 +22,9 @@ import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb,
 import type { DungeonSite } from '../dungeons/core';
 import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
 import { PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
-import { preparePolitical, registerPoliticalProtocol } from '../world/political';
+import { preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
+import { relationsForMap } from '../lore/realm';
+import { currentLore } from './realm-lore';
 
 const container = ref<HTMLDivElement>();
 let map: MapLibreMap | null = null;
@@ -79,6 +81,7 @@ function syncWorld(): void {
   } else pol.setTiles([polUrl]);
   bigArmsGen = -1;
   setVisibility('political', store.showPolitical);
+  updateRelations();
   setVisibility('rivers', store.showRivers);
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
   (map.getSource('wind') as GeoJSONSource).setData(world.value.wind);
@@ -105,6 +108,58 @@ function syncWorld(): void {
     searchState.version++;
     runTowns();
   }
+}
+
+/**
+ * While a realm's details are open, tint its allies, rivals and enemies on the map
+ * (`relations://` tiles, see world/political.ts) and draw its trade routes.
+ */
+function updateRelations(): void {
+  if (!map || !ready || !world.value) return;
+  const w = world.value;
+  const id = openRealm.value;
+  const c = id !== null ? currentLore() : null;
+  const sel = c && id !== null ? relationsForMap(c, id) : null;
+  const ver = setRelations(w.gen, sel ? { unit: id!, top: sel.self, rel: sel.rel } : null);
+  const url = `relations://${w.gen}/${Math.max(0, ver)}/{z}/{x}/{y}`;
+  const src = map.getSource('relations') as RasterTileSource | undefined;
+  if (!src) {
+    map.addSource('relations', { type: 'raster', tiles: [url], tileSize: 256, maxzoom: 9 });
+    map.addLayer(
+      {
+        id: 'relations', type: 'raster', source: 'relations', layout: { visibility: 'none' },
+        paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear', 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.95, 8, 0.7, 11, 0.25, 13, 0] },
+      },
+      PLAN_GROUND_LAYERS[0].id,
+    );
+  } else src.setTiles([url]);
+  map.setLayoutProperty('relations', 'visibility', ver >= 0 ? 'visible' : 'none');
+  // Trade routes: from the realm's seat to each partner's, the short way round.
+  const links = (map.getSource('realm-links') as GeoJSONSource | undefined);
+  if (!links) return;
+  const features: { type: 'Feature'; geometry: { type: 'LineString'; coordinates: number[][] }; properties: Record<string, never> }[] = [];
+  if (sel && sel.self >= 0) {
+    const u = w.politics.units;
+    const a = u[sel.self];
+    for (const pId of sel.partners) {
+      const b = u[pId];
+      let lon = b.lon;
+      while (lon - a.lon > 180) lon -= 360;
+      while (lon - a.lon < -180) lon += 360;
+      features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [[a.lon, a.lat], [lon, b.lat]] }, properties: {} });
+    }
+  }
+  links.setData({ type: 'FeatureCollection', features });
+}
+
+/** The realm whose label or arms is under a screen point. */
+function realmLabelAt(point: { x: number; y: number }): number | null {
+  if (!map || !ready) return null;
+  const ids = ['pol-realm', 'pol-league', 'lbl-empire', 'lbl-realm', 'lbl-league', 'lbl-duchy', 'lbl-county', 'lbl-barony'].filter((x) => map!.getLayer(x) && map!.getLayoutProperty(x, 'visibility') !== 'none');
+  if (!ids.length) return null;
+  const pad = touchOnly ? 10 : 4;
+  const hit = map.queryRenderedFeatures([[point.x - pad, point.y - pad], [point.x + pad, point.y + pad]], { layers: ids }).find((f) => f.properties?.unit !== undefined);
+  return hit ? Number(hit.properties!.unit) : null;
 }
 
 /** Map images of the arms of every kingdom and empire (`arms-<unit>`), for their labels. */
@@ -262,7 +317,7 @@ function onHover(e: MapMouseEvent): void {
     const f = buildingAt(e.point);
     const l = f ? null : lairAt(e.point, e.lngLat);
     const dn = f || l ? null : dungeonAt(e.point);
-    if (map) map.getCanvas().style.cursor = f || l || dn ? 'pointer' : '';
+    if (map) map.getCanvas().style.cursor = f || l || dn || realmLabelAt(e.point) !== null ? 'pointer' : '';
     showPreview(f);
     showLair(l, e.point);
     if (!l) showDungeon(dn, e.point);
@@ -408,6 +463,7 @@ onMounted(() => {
         currents: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         labels: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         'search-hit': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
+        'realm-links': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         borders: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         ...SETTLEMENT_SOURCES,
       },
@@ -479,6 +535,12 @@ onMounted(() => {
           },
         },
         ...BORDER_LAYERS,
+        // An open realm's trade routes to its partners.
+        {
+          id: 'realm-links', type: 'line', source: 'realm-links',
+          layout: { 'line-cap': 'round' },
+          paint: { 'line-color': '#7a5418', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1.2, 6, 2.4], 'line-dasharray': [2, 2], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.85, 8, 0.6, 10, 0] },
+        },
         ...MARKER_LAYERS,
         ...LAIR_LAYERS,
         // The place chosen in search: a ring that pulses for a few seconds.
@@ -548,6 +610,11 @@ onMounted(() => {
       openDungeon.value = dn;
       showDungeon(null, e.point);
     } else if (touchOnly && !l) showDungeon(dn, e.point);
+    // A realm's name or arms opens its details.
+    if (!f && !l && !dn) {
+      const r = realmLabelAt(e.point);
+      if (r !== null) openRealm.value = r;
+    }
   });
   // Double-click a building to go inside, or a cave or glade to open its map (instead of zooming).
   map.on('dblclick', (e) => {
@@ -609,6 +676,7 @@ onBeforeUnmount(() => {
 });
 
 watch([world, () => store.layer], syncWorld);
+watch(openRealm, updateRelations);
 watch(() => store.showRivers, () => {
   syncWorld();
   setVisibility('labels', store.showLabels);

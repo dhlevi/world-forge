@@ -76,7 +76,33 @@ export interface Politics {
   baronyOf: Int32Array;
   units: PolUnit[];
   borders: { type: 'FeatureCollection'; features: BorderFeature[] };
+  /** Land statistics per barony, for realm details (see `RealmStats`). */
+  stats: RealmStats;
 }
+
+/**
+ * Land statistics per barony (unit ids 0 to `nb` - 1 are the baronies), summed up the tiers on
+ * demand for a realm's details: its land by biome, its people by culture, coast, uplands and
+ * climate, and which baronies border which.
+ */
+export interface RealmStats {
+  nb: number;
+  /** Biome count per barony: km² of each biome (`nb` × `NB_BIOME`). */
+  biome: Float32Array;
+  /** Habitable km² by culture (`nb` × `NB_CULTURE`), for the mix of peoples. */
+  culture: Float32Array;
+  /** Coastline, km (land cells on the open sea, times the cell size). */
+  coastKm: Float32Array;
+  /** Land above 1200 m, km². */
+  highKm2: Float32Array;
+  /** Mean annual temperature (°C) and precipitation (mm) over the barony's land. */
+  temp: Float32Array;
+  precip: Float32Array;
+  /** Bordering barony pairs, flattened (a, b, a, b, ...), each pair once with a < b. */
+  adj: Int32Array;
+}
+export const NB_BIOME = 18;
+export const NB_CULTURE = 24;
 
 /** The chain of lieges from a unit up to its independent realm, then its league if it has one. */
 export function chainOf(units: PolUnit[], id: number): PolUnit[] {
@@ -199,6 +225,8 @@ export interface PoliticsFields {
   /** 1 on New World land. */
   newWorld?: Uint8Array;
   biome?: Uint8Array;
+  temp?: Float32Array;
+  precip?: Float32Array;
 }
 
 /** Country people per km² of fully habitable land, by world, for the population estimate. */
@@ -668,7 +696,48 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
     });
   }
 
-  return { politics: { W, H, baronyOf, units, borders: borders(g, baronyOf, units, land) }, labels };
+  return { politics: { W, H, baronyOf, units, borders: borders(g, baronyOf, units, land), stats: realmStats(g, f, baronyOf, baronies.length, land) }, labels };
+}
+
+function realmStats(g: Grid, f: PoliticsFields, baronyOf: Int32Array, nb: number, land: (c: number) => boolean): RealmStats {
+  const { W, N } = g;
+  const biome = new Float32Array(nb * NB_BIOME), culture = new Float32Array(nb * NB_CULTURE);
+  const coastKm = new Float32Array(nb), highKm2 = new Float32Array(nb), temp = new Float32Array(nb), precip = new Float32Array(nb), area = new Float32Array(nb);
+  const pairs = new Set<number>();
+  for (let c = 0; c < N; c++) {
+    const b = baronyOf[c];
+    if (b < 0 || b >= nb) continue;
+    const j = (c / W) | 0, i = c % W, a = g.areaKm2[j];
+    const bi = f.biome ? f.biome[c] : 4;
+    biome[b * NB_BIOME + Math.min(NB_BIOME - 1, bi)] += a;
+    culture[b * NB_CULTURE + Math.min(NB_CULTURE - 1, f.culture[c])] += a * (BIOME_HAB[bi] ?? 0.5);
+    if (f.height[c] > 1200) highKm2[b] += a;
+    temp[b] += (f.temp?.[c] ?? 12) * a;
+    precip[b] += (f.precip?.[c] ?? 700) * a;
+    area[b] += a;
+    let shore = false;
+    for (const d of [1, 3, 4, 6]) {
+      const n = neighbor(g, i, j, d);
+      if (n < 0) continue;
+      if (f.height[n] <= 0 && f.lakeDepth[n] <= 0) shore = true;
+      const o = baronyOf[n];
+      if (o >= 0 && o !== b && o < nb && land(n)) pairs.add(Math.min(o, b) * 1048576 + Math.max(o, b));
+    }
+    if (shore) coastKm[b] += Math.sqrt(a);
+  }
+  for (let b = 0; b < nb; b++) {
+    if (area[b] > 0) {
+      temp[b] /= area[b];
+      precip[b] /= area[b];
+    }
+  }
+  const adj = new Int32Array(pairs.size * 2);
+  let k = 0;
+  for (const p of pairs) {
+    adj[k++] = Math.floor(p / 1048576);
+    adj[k++] = p % 1048576;
+  }
+  return { nb, biome, culture, coastKm, highKm2, temp, precip, adj };
 }
 
 /**
