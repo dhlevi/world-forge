@@ -577,7 +577,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
     const caps = kind === 'realm' || kind === 'empire' || kind === 'league';
     labels.push({
       type: 'Feature', geometry: { type: 'Point', coordinates: [lonOf(at), latOf(at)] },
-      properties: { kind: kind as LabelFeature['properties']['kind'], name: caps ? u.name.toUpperCase() : u.name, rank, minz: 0, maxz: 0, unit: u.id, arms: u.parent < 0 || u.level >= 3 ? 1 : 0 } as LabelFeature['properties'],
+      properties: { kind: kind as LabelFeature['properties']['kind'], name: caps ? u.name.toUpperCase() : u.name, rank, minz: 0, maxz: 0, unit: u.id, arms: u.parent < 0 || u.level >= 3 ? 1 : 0, top: u.parent < 0 ? 1 : 0 } as LabelFeature['properties'],
     });
   }
 

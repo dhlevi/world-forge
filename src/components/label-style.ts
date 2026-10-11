@@ -104,6 +104,30 @@ function withArms(l: LayerSpecification): LayerSpecification {
   return l;
 }
 
+/** Political map: independent realms lettered large, with large arms (`parms-<unit>`), and leagues. */
+function withBigArms(l: LayerSpecification): LayerSpecification {
+  const ly = (l as { layout: Record<string, unknown> }).layout;
+  ly['icon-image'] = e(['concat', 'parms-', ['to-string', ['get', 'unit']]]);
+  ly['icon-size'] = e(['interpolate', ['linear'], ['zoom'], 1.2, ['match', ['get', 'rank'], 0, 0.75, 1, 0.65, 0.5], 6, ['match', ['get', 'rank'], 0, 1.1, 1, 1, 0.9]]);
+  ly['icon-anchor'] = 'bottom';
+  ly['text-anchor'] = 'top';
+  ly['text-offset'] = [0, 0.2];
+  ly['icon-optional'] = false;
+  ly['text-optional'] = true;
+  // Larger realms first, and larger type for them.
+  ly['symbol-sort-key'] = e(['get', 'rank']);
+  const k = ['match', ['get', 'rank'], 0, 1.35, 1, 1.15, 2, 1, 0.85];
+  ly['text-size'] = e(['interpolate', ['linear'], ['zoom'], 1.2, ['*', 11, k], 7.5, ['*', 22, k]]);
+  const pt = (l as { paint: Record<string, unknown> }).paint;
+  pt['icon-opacity'] = pt['text-opacity'];
+  pt['text-halo-width'] = 2;
+  return l;
+}
+export const POLITICAL_LABEL_LAYERS: LayerSpecification[] = [
+  withBigArms(layer({ id: 'pol-realm', source: 'labels', filter: [['==', ['get', 'top'], 1], ['!=', ['get', 'kind'], 'league']], z: [1.2, 7.6], size: [11, 22], font: CAPS, color: '#3b2418', spacing: 0.35, opacity: 0.95, sortKey: 0, maxWidth: 12 })),
+  withBigArms(layer({ id: 'pol-league', source: 'labels', filter: [kindIs('league')], z: [1.6, 7], size: [11, 19], font: ITALIC, color: '#1f4650', spacing: 0.3, opacity: 0.95, sortKey: 0, maxWidth: 14 })),
+];
+
 /** World labels from the `labels` source, plus rivers, roads and settlements. Order = draw order (last on top). */
 export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   // Realms: faint red small capitals behind everything else.

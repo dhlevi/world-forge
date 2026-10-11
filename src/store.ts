@@ -7,6 +7,7 @@ import type { BuildingView } from './interiors/building';
 import type { LairSite } from './lairs/lair';
 import type { DungeonSite } from './dungeons/core';
 import { SearchIndex } from './search/index';
+import { registerPoliticalProtocol } from './world/political';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
 
@@ -29,6 +30,8 @@ export const store = reactive({
   showLabels: true,
   /** Political borders (empires, kingdoms, duchies, counties). */
   showBorders: true,
+  /** Political map: realms washed in colour, with large titles and arms. */
+  showPolitical: false,
   showWind: false,
   showCurrents: false,
   generating: false,
@@ -60,6 +63,7 @@ export const openLair = shallowRef<LairSite | null>(null);
 export const openDungeon = shallowRef<DungeonSite | null>(null);
 export const client = new WorldClient();
 client.registerProtocol();
+registerPoliticalProtocol();
 
 export async function regenerate(): Promise<void> {
   store.generating = true;

@@ -28,7 +28,7 @@ export interface LabelFeature {
    * zlo/zhi (water only): whole-zoom band this anchor belongs to. A water body keeps one label
    * until it fills the screen, then is lettered from a lattice of anchors (see `waterAnchors`).
    */
-  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number; arms?: number };
+  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number; arms?: number; top?: number };
 }
 
 export interface LabelCollection {

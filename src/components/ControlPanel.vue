@@ -96,6 +96,10 @@ function randomize(): void {
           Borders
         </label>
         <label class="check">
+          <input v-model="store.showPolitical" type="checkbox" />
+          Political map
+        </label>
+        <label class="check">
           <input v-model="store.showWind" type="checkbox" />
           Prevailing winds
         </label>

@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import {
   GlobeControl, MapLibreMap, NavigationControl, ScaleControl,
-  type GeoJSONSource, type ImageSource, type LngLat, type MapMouseEvent, type PointLike, type RasterTileSource,
+  type FilterSpecification, type GeoJSONSource, type ImageSource, type LngLat, type MapMouseEvent, type PointLike, type RasterTileSource,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
@@ -21,7 +21,8 @@ import { armsImageData } from '../heraldry/draw';
 import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb, onLair } from '../lairs/view';
 import type { DungeonSite } from '../dungeons/core';
 import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
-import { PLAN_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
+import { PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
+import { preparePolitical, registerPoliticalProtocol } from '../world/political';
 
 const container = ref<HTMLDivElement>();
 let map: MapLibreMap | null = null;
@@ -58,6 +59,26 @@ function syncWorld(): void {
   } else {
     raster.setTiles([tileUrl()]);
   }
+  // The political overlay: a wash of realm colours, drawn on the main thread (render/political.ts).
+  preparePolitical(world.value.gen, world.value.politics);
+  const polUrl = `politics://${world.value.gen}/{z}/{x}/{y}`;
+  const pol = map.getSource('political') as RasterTileSource | undefined;
+  if (!pol) {
+    map.addSource('political', { type: 'raster', tiles: [polUrl], tileSize: 256, maxzoom: 9 });
+    map.addLayer(
+      {
+        id: 'political', type: 'raster', source: 'political',
+        layout: { visibility: store.showPolitical ? 'visible' : 'none' },
+        paint: {
+          'raster-fade-duration': 0, 'raster-resampling': 'linear',
+          'raster-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.85, 4, 0.8, 6.5, 0.55, 9, 0.25, 11.5, 0],
+        },
+      },
+      PLAN_GROUND_LAYERS[0].id,
+    );
+  } else pol.setTiles([polUrl]);
+  bigArmsGen = -1;
+  setVisibility('political', store.showPolitical);
   setVisibility('rivers', store.showRivers);
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
   (map.getSource('wind') as GeoJSONSource).setData(world.value.wind);
@@ -100,6 +121,22 @@ function registerArms(): void {
     const id = `arms-${u.id}`;
     map.addImage(id, armsImageData(u.arms, u.level === 4 ? 30 : u.level === 3 || u.gov === 'league' ? 24 : 20), { pixelRatio: 2 });
     armsIds.push(id);
+  }
+}
+
+/** Large arms (`parms-<unit>`) for the political map's labels: every independent realm and league. */
+let bigArmsIds: string[] = [];
+let bigArmsGen = -1;
+function registerBigArms(): void {
+  if (!map || !world.value || bigArmsGen === world.value.gen) return;
+  bigArmsGen = world.value.gen;
+  for (const id of bigArmsIds) if (map.hasImage(id)) map.removeImage(id);
+  bigArmsIds = [];
+  for (const u of world.value.politics.units) {
+    if (u.parent >= 0) continue;
+    const id = `parms-${u.id}`;
+    map.addImage(id, armsImageData(u.arms, u.level >= 3 || u.gov === 'league' ? 46 : 38), { pixelRatio: 2 });
+    bigArmsIds.push(id);
   }
 }
 
@@ -147,16 +184,27 @@ const OVERLAY_LAYERS = {
   settlements: [...PLAN_GROUND_LAYERS, ...SETTLEMENT_LAYERS, ...MARKER_LAYERS, ...LAIR_LAYERS].map((l) => l.id),
   labels: [...WORLD_LABEL_LAYERS, ...SETTLEMENT_LABEL_LAYERS, ...PLAN_LABEL_LAYERS].map((l) => l.id),
   borders: BORDER_LAYERS.map((l) => l.id),
+  political: ['political', ...POLITICAL_LABEL_LAYERS.map((l) => l.id)],
 };
+/** Realm labels the political map letters larger instead (independent realms, kingdoms, empires, leagues). */
+const REPLACED_BY_POLITICAL = new Set(['lbl-empire', 'lbl-realm', 'lbl-league']);
 
 function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): void {
   if (!map || !ready) return;
+  if (overlay === 'labels' && map.getLayer('lbl-duchy')) {
+    // Independent small realms are lettered by the political map instead, when it is on.
+    const base = (WORLD_LABEL_LAYERS.find((l) => l.id === 'lbl-duchy') as { filter: unknown }).filter;
+    map.setFilter('lbl-duchy', (store.showPolitical ? ['all', base, ['!=', ['get', 'top'], 1]] : base) as FilterSpecification);
+  }
+  if (overlay === 'political' && show) registerBigArms();
   if (overlay === 'rivers' && rasterRivers()) show = false;
   for (const id of OVERLAY_LAYERS[overlay]) {
     let vis = show;
     // Name layers also follow the overlay they belong to.
+    if (overlay === 'political') vis = show && (id === 'political' || store.showLabels);
     if (overlay === 'labels') {
-      if (id.startsWith('lbl-river')) vis = show && store.showRivers;
+      if (REPLACED_BY_POLITICAL.has(id)) vis = show && !store.showPolitical;
+      else if (id.startsWith('lbl-river')) vis = show && store.showRivers;
       else if (id === 'lbl-road' || SETTLEMENT_LABEL_LAYERS.some((l) => l.id === id) || PLAN_LABEL_LAYERS.some((l) => l.id === id)) vis = show && store.showSettlements;
     }
     map.setLayoutProperty(id, 'visibility', vis ? 'visible' : 'none');
@@ -443,6 +491,7 @@ onMounted(() => {
         },
         ...PLAN_LABEL_LAYERS,
         ...WORLD_LABEL_LAYERS,
+        ...POLITICAL_LABEL_LAYERS.map((l) => ({ ...l, layout: { ...(l as { layout: object }).layout, visibility: 'none' } }) as typeof l),
         ...SETTLEMENT_LABEL_LAYERS,
       ],
     },
@@ -467,6 +516,7 @@ onMounted(() => {
     setVisibility('settlements', store.showSettlements);
     setVisibility('labels', store.showLabels);
     setVisibility('borders', store.showBorders);
+    setVisibility('political', store.showPolitical);
     syncWorld();
   });
   map.on('moveend', () => {
@@ -567,6 +617,10 @@ watch(() => store.showWind, (show) => setVisibility('wind', show));
 watch(() => store.showCurrents, (show) => setVisibility('currents', show));
 watch(() => store.showLabels, (show) => setVisibility('labels', show));
 watch(() => store.showBorders, (show) => setVisibility('borders', show));
+watch(() => store.showPolitical, (show) => {
+  setVisibility('political', show);
+  setVisibility('labels', store.showLabels);
+});
 watch(() => store.showSettlements, (show) => {
   setVisibility('settlements', show);
   setVisibility('labels', store.showLabels);
