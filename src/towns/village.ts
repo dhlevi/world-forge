@@ -27,6 +27,7 @@ export function buildVillage(inp: PlanInput): void {
     case 'mining': mining(k); break;
     case 'monastery': monastery(k); break;
     case 'keep': keep(k); break;
+    case 'tribal': tribal(k); break;
     default: farming(k);
   }
   villageLabels(k);
@@ -44,7 +45,10 @@ function villageLabels(k: Kit): void {
   };
   const used = new Set<object>();
   for (const b of k.buildings) {
-    if (b.use === 'temple') {
+    if (b.use === 'temple' && s.kind === 'tribal') {
+      mark(b, 'temple', 'Council House');
+      used.add(b);
+    } else if (b.use === 'temple') {
       mark(b, 'temple', deityName(names, culture, `${s.id}:chapel`).replace('Temple of', 'Chapel of'));
       used.add(b);
       // A churchyard beside the chapel.
@@ -76,6 +80,87 @@ function chapel(k: Kit): void {
   for (let t = 0; t < 12; t++) {
     if (k.house(k.polar(15 + k.rnd() * 25, k.rnd() * 2 * Math.PI), k.rnd() * Math.PI, 16, 9, 'temple')) return;
   }
+}
+
+/**
+ * A New World village or tribal town: an open dancing ground with a council house at its heart,
+ * longhouses set round it in one or two rings facing the centre, round lodges and drying racks
+ * between, a palisade round the larger ones, and garden plots and forest beyond.
+ */
+function tribal(k: Kit): void {
+  const { rnd, core, R, inp } = k;
+  const big = inp.s.population > 400;
+  const ends = k.exitLanes();
+  // The dancing ground and council house.
+  const plaza: Pt[] = [];
+  const rG = Math.max(10, core * 0.22);
+  for (let q = 0; q < 16; q++) {
+    const a = (q / 16) * Math.PI * 2;
+    plaza.push([Math.cos(a) * rG * (0.9 + 0.2 * rnd()), Math.sin(a) * rG * (0.9 + 0.2 * rnd())]);
+  }
+  inp.out.poly('green', plaza);
+  k.blocked.push(plaza);
+  const hall = k.house(k.polar(rG + 8, rnd() * Math.PI * 2), rnd() * Math.PI, 22, 9, 'temple');
+  void hall;
+  // Longhouses in rings round the ground, their long sides facing the centre.
+  const nHouses = Math.max(4, Math.round(inp.s.population / 22));
+  let placed = 0;
+  for (let ring = 0; ring < 4 && placed < nHouses; ring++) {
+    const r = rG + 18 + ring * 20;
+    if (r > core * 1.0) break;
+    const n = Math.floor((2 * Math.PI * r) / 24);
+    const a0 = rnd() * Math.PI;
+    for (let q = 0; q < n && placed < nHouses; q++) {
+      const a = a0 + (q / n) * Math.PI * 2 + (rnd() - 0.5) * 0.12;
+      const c = k.polar(r + (rnd() - 0.5) * 5, a);
+      const long = 16 + rnd() * 10;
+      if (k.house(c, a + Math.PI / 2, long, 6.5)) placed++;
+    }
+  }
+  // Round lodges and drying racks scattered between.
+  for (let t = 0; t < nHouses * 2; t++) {
+    const rMax = Math.min(core, rG + 82);
+    const c = k.polar(rG + 10 + rnd() * (rMax - rG - 10), rnd() * Math.PI * 2);
+    if (inp.water(c) || k.inBlocked(c) || k.nearLane(c, 3) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 5)) continue;
+    if (rnd() < 0.6) {
+      const r = 3 + rnd() * 2;
+      const ring: Pt[] = [];
+      for (let q = 0; q < 12; q++) ring.push([c[0] + Math.cos((q / 12) * Math.PI * 2) * r, c[1] + Math.sin((q / 12) * Math.PI * 2) * r]);
+      if (!inp.ground.allOk(ring, { maxSlope: 0.3, marginM: 1 })) continue;
+      inp.out.poly('building', ring, { use: 'lodge' });
+      k.houses.push({ c, r: r + 1 });
+    } else {
+      inp.out.poly('logs', rect(c[0], c[1], rnd() * Math.PI, 6, 1.4));
+      k.houses.push({ c, r: 4 });
+    }
+  }
+  // The palisade round the larger villages, open where the trails come in.
+  if (big) {
+    const ring: Pt[] = [];
+    // Just outside the houses.
+    const rP = Math.max(rG + 30, ...k.houses.map((h) => Math.hypot(...h.c) + h.r)) + 8;
+    for (let q = 0; q <= 48; q++) {
+      const a = (q / 48) * Math.PI * 2;
+      const wob = 1 + 0.05 * Math.sin(a * 3 + rnd()) + 0.03 * Math.sin(a * 7);
+      ring.push([Math.cos(a) * rP * wob, Math.sin(a) * rP * wob]);
+    }
+    // Gaps for the gates.
+    const gates = ends.map((e) => Math.atan2(e[1], e[0]));
+    let run: Pt[] = [];
+    for (const p of ring) {
+      const a = Math.atan2(p[1], p[0]);
+      const atGate = gates.some((g) => Math.abs(((a - g + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < 0.09);
+      if (atGate || inp.water(p)) {
+        if (run.length > 1) inp.out.line('wall', run, { w: 1.4 });
+        run = [];
+      } else run.push(p);
+    }
+    if (run.length > 1) inp.out.line('wall', run, { w: 1.4 });
+  }
+  // Garden plots (maize, beans and squash) close in, then the forest.
+  k.fieldRing(core * 1.15, Math.min(R, core * 2.1), 2500, 0.45);
+  k.forest(core * 1.6, Math.min(R, core * 2.6), 12, 0.55);
+  k.clumps(4, core * 0.6, R);
 }
 
 /** Lanes from each track to a common centre, houses along them, fields with furrows around. */

@@ -67,7 +67,7 @@ export function nameWorld(
   // ---- Settlements -------------------------------------------------------------------------
   for (const s of settlements) {
     const c = cellOf(g, s.lon, s.lat);
-    s.name = bank.place(f.culture[c], s.id);
+    s.name = bank.place(s.culture ?? f.culture[c], s.id);
     if (s.tier === 'city' || s.tier === 'town') {
       // Local relief: the largest height step to a neighbouring cell.
       const i = c % W, j = (c / W) | 0;
@@ -78,9 +78,21 @@ export function nameWorld(
       }
       s.layout = chooseLayout({
         tier: s.tier, population: s.population, river: s.river, coastal: s.coastal, relief,
-        culture: CULTURES[f.culture[c]]?.id ?? '', r: bank.rng(`layout:${s.id}`)(),
+        culture: CULTURES[s.culture ?? f.culture[c]]?.id ?? '', r: bank.rng(`layout:${s.id}`)(),
       });
     }
+  }
+  // Colonies are named after their founders' towns ("New Ashford"), or as forts and landings.
+  const homeTowns = (cul: number) => settlements.filter((t) => !t.newWorld && t.name && (t.culture ?? f.culture[cellOf(g, t.lon, t.lat)]) === cul);
+  for (const s of settlements) {
+    if (!s.colony || !s.name) continue;
+    const r = bank.rng(`colony:${s.id}`);
+    const home = homeTowns(s.culture ?? 0);
+    const x = r();
+    if (s.colony === 'fort') s.name = `Fort ${s.name}`;
+    else if (s.colony === 'post') s.name = x < 0.5 ? `${s.name} Landing` : `${s.name} Post`;
+    else if (home.length && x < 0.55) s.name = `New ${home[Math.floor(r() * home.length)].name}`;
+    else if (x < 0.75) s.name = `Port ${s.name}`;
   }
   const named = (lo: number, la: number, km: number) => {
     let best: Settlement | null = null, bd = km;

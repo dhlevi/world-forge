@@ -14,6 +14,8 @@ import { RiverIndex } from './river-index';
 import { type LabelCollection, nameWorld } from './features';
 import { type Politics, buildPolitics } from './politics';
 import { cultureMap } from '../names/culture-map';
+import { newWorldMask } from './oldworld';
+import { chooseColonies } from './colonies';
 import { NameBank } from '../names/names';
 import { CLIMATE, HYDROLOGY } from './config';
 
@@ -26,6 +28,8 @@ export interface WorldParams {
   erosion: number;
   /** Grid width in cells; height is width / 2. */
   resolution: number;
+  /** Share of the land that is the settled Old World (0.2..1; 1 = all of it); the rest is the sparse, tribal New World. */
+  settled?: number;
   /** Optional elevation (m, W×H row-major from the north-west) replacing tectonics and erosion, e.g. real Earth. */
   heightmap?: Float32Array;
 }
@@ -62,6 +66,8 @@ export interface RasterWorld {
   koppen: Uint8Array;
   /** Index into CULTURES (names/cultures.ts): whose names the land and nearby sea bear. */
   culture: Uint8Array;
+  /** 1 on New World land (sparse, tribal), 0 elsewhere (gen/oldworld.ts). */
+  newWorld: Uint8Array;
 }
 
 export interface WorldSummary {
@@ -180,19 +186,21 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
 
   progress('Settlements & roads', 0.97);
   const sampler = new DetailSampler({ seed: params.seed, W, H, height, lakeDepth, waterLevel }, new RiverIndex(rivers, params.seed));
+  const newWorld = newWorldMask(g, { height, lakeDepth, temp: climate.temp, precip: climate.precip }, Math.max(0.2, Math.min(1, params.settled ?? 0.6)), params.seed);
   const { settlements, roads } = buildSettlements(g, {
-    height, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, biome, lakeDepth, acc, flow,
+    height, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, biome, lakeDepth, acc, flow, newWorld,
   }, seedHash, sampler);
 
   progress('Names', 0.99);
-  const culture = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome }, params.seed);
+  const culture = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome, newWorld }, params.seed);
+  chooseColonies(g, settlements, culture, seedHash);
   const bank = new NameBank(params.seed);
   const regionOf = new Int32Array(W * H).fill(-1);
   const labels = nameWorld(g, { height, lakeDepth, biome, culture }, bank, settlements, rivers, roads, sampler, regionOf);
   progress('Realms', 0.995);
   // The political map works at up to 1024 × 512: realms are hundreds of km across, and the
   // borders are smoothed anyway, so finer grids only cost time.
-  let pg = g, pf = { height, lakeDepth, culture };
+  let pg = g, pf = { height, lakeDepth, culture, newWorld, biome };
   if (W > 1024) {
     const k = W / 1024;
     pg = makeGrid(1024, 512);
@@ -204,7 +212,10 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       }
       return out;
     };
-    pf = { height: take(height, (n) => new Float32Array(n)), lakeDepth: take(lakeDepth, (n) => new Float32Array(n)), culture: take(culture, (n) => new Uint8Array(n)) };
+    pf = {
+      height: take(height, (n) => new Float32Array(n)), lakeDepth: take(lakeDepth, (n) => new Float32Array(n)), culture: take(culture, (n) => new Uint8Array(n)),
+      newWorld: take(newWorld, (n) => new Uint8Array(n)), biome: take(biome, (n) => new Uint8Array(n)),
+    };
   }
   const { politics, labels: realmLabels } = buildPolitics(pg, pf, settlements, rivers, bank, params.seed);
   labels.features.push(...realmLabels);
@@ -243,6 +254,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       precipWinter: climate.precipWinter,
       koppen,
       culture,
+      newWorld,
     },
     rivers,
     wind,

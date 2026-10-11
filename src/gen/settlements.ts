@@ -10,7 +10,9 @@ import type { DetailSampler } from './detail';
 import { chaikin, riverVertex, riverWidthM } from './rivers';
 
 export type Tier = 'city' | 'town' | 'village';
-export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep';
+export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal';
+/** A New World town founded by an Old World realm. */
+export type ColonyKind = 'colony' | 'fort' | 'post';
 
 export interface Settlement {
   id: string;
@@ -19,6 +21,11 @@ export interface Settlement {
   tier: Tier;
   /** Villages only. */
   kind?: VillageKind;
+  /** In the New World (sparse, tribal lands). */
+  newWorld?: boolean;
+  /** New World colonies: what kind, and whose culture (index into CULTURES) names and rules it. */
+  colony?: ColonyKind;
+  culture?: number;
   lon: number;
   lat: number;
   population: number;
@@ -177,6 +184,8 @@ interface SettlementFields {
   lakeDepth: Float32Array;
   acc: Float32Array;
   flow: FlowRouting;
+  /** 1 on New World land (gen/oldworld.ts). */
+  newWorld: Uint8Array;
 }
 
 /**
@@ -237,8 +246,9 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
   };
   const nearCity = new Uint8Array(N), nearTown = new Uint8Array(N);
   const sites: { c: number; tier: Tier }[] = [];
+  // Cities only in the Old World; New World towns stand far apart.
   for (const c of cand) {
-    if (score[c] < S.cityMinScore || nearCity[c] || nearTown[c]) continue;
+    if (f.newWorld[c] || score[c] < S.cityMinScore || nearCity[c] || nearTown[c]) continue;
     sites.push({ c, tier: 'city' });
     stamp(nearCity, c, S.citySpacingKm);
     stamp(nearTown, c, S.townSpacingKm);
@@ -246,7 +256,7 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
   for (const c of cand) {
     if (nearTown[c]) continue;
     sites.push({ c, tier: 'town' });
-    stamp(nearTown, c, S.townSpacingKm);
+    stamp(nearTown, c, f.newWorld[c] ? S.newWorldTownSpacingKm : S.townSpacingKm);
   }
 
   let nCity = 0, nTown = 0;
@@ -279,6 +289,16 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
       s = makeSettlement(tier, id, lon, lat, score[c], sseed, coastal[c] === 1, false);
     }
     [s.lon, s.lat] = nudgeOntoLand(sampler, s.lon, s.lat);
+    if (f.newWorld[c]) {
+      // New World towns are tribal towns (smaller), until some are chosen as colonies.
+      s.newWorld = true;
+      s.kind = 'tribal';
+      s.population = Math.round(s.population * 0.45);
+      s.coreM = Math.sqrt(((s.population / S.villageDensityPerHa) * 10000) / Math.PI);
+      s.radiusM = s.coreM * 2.6 + 160;
+      s.walls = false;
+      s.citadel = false;
+    }
     return s;
   });
   const cells = sites.map((s) => s.c);

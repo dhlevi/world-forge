@@ -57,7 +57,7 @@ const LABEL_TYPE: Record<string, [string, SearchCat]> = {
 };
 
 const VILLAGE_TYPE: Record<string, string> = {
-  farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery',
+  farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village',
 };
 
 const mid = (c: number[][]) => c[c.length >> 1];
@@ -103,7 +103,7 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
   for (const u of w.politics.units) {
     out.push({
       id: `pol${u.id}`, name: cap(u.name), type: u.title, cat: 'region', lon: u.lon, lat: u.lat,
-      zoom: u.gov === 'league' ? 4.6 : [10.4, 9, 7, 5, 3.6][u.level], rank: 0.35 + 0.12 * u.level + (u.parent < 0 ? 0.1 : 0), info: `${u.ruler} at ${u.seatName}`,
+      zoom: u.gov === 'league' ? 4.6 : [10.4, 9, 7, 5, 3.6][u.level], rank: 0.35 + 0.12 * u.level + (u.parent < 0 ? 0.1 : 0), info: `${u.ruler} at ${u.seatName}${u.people ? ` · about ${u.people >= 1e6 ? `${(u.people / 1e6).toFixed(1)} million` : (Math.round(u.people / 1000) * 1000).toLocaleString('en')} people` : ''}`,
     });
   }
   // Rivers: one entry per name, at the middle of its largest stretch.

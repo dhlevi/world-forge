@@ -287,8 +287,8 @@ export function packLines(lines: number[][][]): string {
  * half the towns. The plan then places the entrances (a grate on a main street; a stair in the
  * graveyard, by the temple, or in the market).
  */
-export function townUnderground(s: { id: string; tier: string; population: number; seed: number; name?: string }): { dkind: 'sewer' | 'catacomb'; did: string; name: string; tags: string[] }[] {
-  if (s.tier !== 'city' && s.tier !== 'town') return [];
+export function townUnderground(s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string }): { dkind: 'sewer' | 'catacomb'; did: string; name: string; tags: string[] }[] {
+  if ((s.tier !== 'city' && s.tier !== 'town') || s.kind === 'tribal') return [];
   const out: { dkind: 'sewer' | 'catacomb'; did: string; name: string; tags: string[] }[] = [];
   const u = (k: number) => hash(s.seed ^ k) / 4294967296;
   const size = s.tier === 'city' ? 'large' : 'medium';

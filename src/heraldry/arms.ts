@@ -16,7 +16,7 @@ export type Division = 'plain' | 'pale' | 'fess' | 'bend' | 'bendSinister' | 'sa
 export type Ordinary = 'fess' | 'pale' | 'bend' | 'chevron' | 'cross' | 'saltire' | 'chief' | 'pile' | 'pall' | 'bordure';
 export type Charge =
   | 'mullet' | 'crescent' | 'roundel' | 'lozenge' | 'tower' | 'crown' | 'fleur' | 'key' | 'tree' | 'sun' | 'cross'
-  | 'anchor' | 'ship' | 'sword' | 'hammer' | 'axe' | 'eagle' | 'wheel' | 'bell' | 'horn' | 'estoile' | 'heart' | 'acorn';
+  | 'anchor' | 'ship' | 'sword' | 'hammer' | 'axe' | 'eagle' | 'wheel' | 'bell' | 'horn' | 'estoile' | 'heart' | 'acorn' | 'blossom';
 
 export interface Arms {
   shield: Shield;
@@ -55,6 +55,7 @@ const contrast = (rnd: Rng, t: Tincture, avoid?: Tincture) => {
 const SHIELD_BY_CULTURE: Record<string, Shield> = {
   anglo: 'heater', latin: 'spanish', celtic: 'heater', norse: 'round', elvish: 'kite', desert: 'round', slavic: 'french',
   dwarven: 'kite', southern: 'spanish', steppe: 'round', jungle: 'french',
+  sinic: 'round', japonic: 'round', koreanic: 'round', woodland: 'round', highland: 'french',
 };
 /** Favourite charges by culture (a light touch). */
 const CULTURE_CHARGES: Record<string, Charge[]> = {
@@ -64,10 +65,12 @@ const CULTURE_CHARGES: Record<string, Charge[]> = {
   slavic: ['cross', 'crown', 'eagle', 'tower', 'sword'], dwarven: ['hammer', 'axe', 'tower', 'key', 'crown', 'bell'],
   southern: ['sun', 'ship', 'anchor', 'lozenge', 'key'], steppe: ['sun', 'crescent', 'horn', 'sword', 'mullet'],
   jungle: ['sun', 'roundel', 'heart', 'estoile', 'lozenge'],
+  sinic: ['sun', 'crescent', 'roundel', 'blossom', 'lozenge'], japonic: ['blossom', 'crescent', 'roundel', 'wheel', 'estoile'],
+  koreanic: ['blossom', 'sun', 'wheel', 'mullet'], woodland: ['tree', 'sun', 'crescent', 'horn'], highland: ['sun', 'estoile', 'lozenge', 'crown'],
 };
 const ALL_CHARGES: Charge[] = [
   'mullet', 'crescent', 'roundel', 'lozenge', 'tower', 'crown', 'fleur', 'key', 'tree', 'sun', 'cross',
-  'anchor', 'ship', 'sword', 'hammer', 'axe', 'eagle', 'wheel', 'bell', 'horn', 'estoile', 'heart', 'acorn',
+  'anchor', 'ship', 'sword', 'hammer', 'axe', 'eagle', 'wheel', 'bell', 'horn', 'estoile', 'heart', 'acorn', 'blossom',
 ];
 const PATTERNS: Division[] = ['paly', 'barry', 'chequy', 'gyronny'];
 
@@ -180,7 +183,7 @@ const CHARGE_NAME: Record<Charge, [string, string]> = {
   sun: ['a sun in splendour', 'suns'], cross: ['a cross pattée', 'crosses pattée'], anchor: ['an anchor', 'anchors'],
   ship: ['a lymphad', 'lymphads'], sword: ['a sword erect', 'swords erect'], hammer: ['a hammer', 'hammers'], axe: ['an axe', 'axes'],
   eagle: ['an eagle displayed', 'eagles displayed'], wheel: ['a wheel', 'wheels'], bell: ['a bell', 'bells'], horn: ['a hunting horn', 'hunting horns'],
-  estoile: ['an estoile', 'estoiles'], heart: ['a heart', 'hearts'], acorn: ['an acorn', 'acorns'],
+  estoile: ['an estoile', 'estoiles'], heart: ['a heart', 'hearts'], acorn: ['an acorn', 'acorns'], blossom: ['a blossom', 'blossoms'],
 };
 const NUM = ['', '', 'two', 'three'];
 

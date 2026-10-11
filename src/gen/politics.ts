@@ -5,6 +5,7 @@ import type { RiverCollection } from './rivers';
 import type { Settlement } from './settlements';
 import type { LabelFeature } from './features';
 import { CULTURES } from '../names/cultures';
+import { Biome } from './biomes';
 import type { NameBank } from '../names/names';
 import { type Arms, type Charge, cadetArms, newArms, vassalArms } from '../heraldry/arms';
 
@@ -23,7 +24,7 @@ import { type Arms, type Charge, cadetArms, newArms, vassalArms } from '../heral
  */
 export type PolLevel = 0 | 1 | 2 | 3 | 4;
 export const LEVEL_NAME = ['Barony', 'County', 'Duchy', 'Kingdom', 'Empire'] as const;
-export type Gov = 'feudal' | 'city-state' | 'republic' | 'theocracy' | 'thalassocracy' | 'league';
+export type Gov = 'feudal' | 'city-state' | 'republic' | 'theocracy' | 'thalassocracy' | 'league' | 'tribal' | 'colony';
 
 export interface PolUnit {
   id: number;
@@ -49,8 +50,12 @@ export interface PolUnit {
   league: number;
   culture: number;
   arms: Arms;
-  /** People in its cities and towns. */
+  /** People in its cities and towns (town-dwellers). */
   pop: number;
+  /** Estimated people in all, countryside included (from its land's habitability). */
+  people: number;
+  /** In the New World. */
+  nw: boolean;
   areaKm2: number;
   /** Direct vassals (members, for a league). */
   vassals: number;
@@ -96,12 +101,15 @@ const RULERS: Record<string, [string, string, string, string, string]> = {
   slavic: ['Boyar', 'Zhupan', 'Voivode', 'Tsar', 'Emperor'], dwarven: ['Thane', 'Lord', 'Lord', 'King', 'High King'],
   southern: ['Demarch', 'Archon', 'Despot', 'King', 'Autokrator'], steppe: ['Noyan', 'Bey', 'Khan', 'Khan', 'Khagan'],
   jungle: ['Lord', 'Lord', 'Prince', 'King', 'Emperor'],
+  sinic: ['Magistrate', 'Prefect', 'Governor', 'King', 'Emperor'], japonic: ['Lord', 'Daimyo', 'Shugo', 'Shogun', 'Emperor'],
+  koreanic: ['Magistrate', 'Gunsu', 'Governor', 'King', 'Emperor'],
 };
 const BARONY_STYLE: Record<string, string[]> = {
   anglo: ['Barony of {S}', 'Manor of {S}'], norse: ['Herad of {S}', 'Barony of {S}'], latin: ['Barony of {S}', 'Signory of {S}'],
   celtic: ['Tuath of {S}', 'Lordship of {S}'], elvish: ['Demesne of {S}', 'Wardenry of {S}'], desert: ['Timar of {S}', 'Iqta of {S}'],
   slavic: ['Volost of {S}', 'Barony of {S}'], dwarven: ['Thanedom of {S}', 'Hall of {S}'], southern: ['Deme of {S}', 'Barony of {S}'],
   steppe: ['Ulus of {S}', 'Aul of {S}'], jungle: ['Lordship of {S}', 'Barony of {S}'],
+  sinic: ['County of {S}', 'Xian of {S}'], japonic: ['Fief of {S}', '{S} Fief'], koreanic: ['Hyeon of {S}', 'County of {S}'],
 };
 const COUNTY_STYLE: Record<string, string[]> = {
   anglo: ['County of {S}', '{S}shire', 'Earldom of {S}'], norse: ['Jarldom of {S}', 'County of {S}'],
@@ -109,27 +117,30 @@ const COUNTY_STYLE: Record<string, string[]> = {
   elvish: ['March of {S}', 'Lordship of {S}'], desert: ['Beylik of {S}', 'Sanjak of {S}'], slavic: ['Zhupa of {S}', 'County of {S}'],
   dwarven: ['Hold of {S}', 'Delving of {S}'], southern: ['Archonate of {S}', 'Nome of {S}'], steppe: ['Beylik of {S}', 'Tumen of {S}'],
   jungle: ['Lordship of {S}', 'County of {S}'],
+  sinic: ['Prefecture of {S}', '{S} Prefecture'], japonic: ['{S} Domain', 'Domain of {S}'], koreanic: ['Gun of {S}', 'Prefecture of {S}'],
 };
 const DUCHY_STYLE: Record<string, string[]> = {
   anglo: ['Duchy of {N}', 'Dukedom of {N}'], norse: ['Duchy of {N}', '{N} Lands'], latin: ['Duchy of {N}', 'Principality of {N}'],
   celtic: ['Principality of {N}', 'Province of {N}'], elvish: ['Principality of {N}', 'Duchy of {N}'], desert: ['Emirate of {N}'],
   slavic: ['Voivodeship of {N}', 'Principality of {N}'], dwarven: ['Lordship of {N}', 'Deep of {N}'], southern: ['Despotate of {N}', 'Duchy of {N}'],
   steppe: ['Khanate of {N}', 'Horde of {N}', 'the {A} Horde'], jungle: ['Principality of {N}', 'Duchy of {N}'],
+  sinic: ['Province of {N}', '{N} Province'], japonic: ['Province of {N}', '{N} Province'], koreanic: ['Province of {N}', '{N}-do'],
 };
 const EMPIRE_STYLE: Record<string, string[]> = {
   anglo: ['United Kingdom of {N}', 'the {N} Empire', 'Empire of {N}'], norse: ['High Kingdom of {N}', 'the {N} Empire'], latin: ['Imperium of {N}', 'the {N} Empire'],
   celtic: ['High Kingdom of {N}'], elvish: ['High Kingdom of {N}', 'the {N} Dominion'], desert: ['Caliphate of {N}', 'the {N} Caliphate'],
   slavic: ['Empire of {N}', 'the {N} Tsardom'], dwarven: ['High Kingdom under {N}', 'the {N} Throne'], southern: ['Empire of {N}', 'the {N} Basileia'],
   steppe: ['Khaganate of {N}', 'the Great {N} Horde'], jungle: ['Empire of {N}', 'the {N} Empire'],
+  sinic: ['the {N} Empire', 'the {N} Dynasty', 'Middle Kingdom of {N}'], japonic: ['Empire of {N}', 'the {N} Empire'], koreanic: ['Great {N} Empire', 'the {N} Empire'],
 };
 /** Kingdom names come from each culture's `realm` list, less the styles that now belong to a government or another tier. */
 const NOT_KINGDOM = /republic|league|confedera|empire|imperium|county|duchy|earldom|caliphate|dominion|province/i;
 
 const CITY_RULER: Record<string, string> = {
   anglo: 'Lord Mayor', latin: 'Podesta', norse: 'Burgomaster', slavic: 'Burgomaster', desert: 'Wali', southern: 'Archon',
-  celtic: 'Provost', elvish: 'Steward', dwarven: 'Steward', steppe: 'Governor', jungle: 'Governor',
+  celtic: 'Provost', elvish: 'Steward', dwarven: 'Steward', steppe: 'Governor', jungle: 'Governor', sinic: 'Magistrate', japonic: 'Machi-bugyo', koreanic: 'Magistrate',
 };
-const REPUBLIC_RULER: Record<string, string> = {
+const REPUBLIC_RULER: Record<string, string> = { sinic: 'Chancellor', japonic: 'Council Elder', koreanic: 'Chancellor',
   anglo: 'Lord Protector', latin: 'Doge', norse: 'Lawspeaker', slavic: 'Posadnik', desert: 'Grand Vizier', southern: 'Archon',
   celtic: 'Speaker', elvish: 'Speaker', dwarven: 'High Steward', steppe: 'Khan', jungle: 'Speaker',
 };
@@ -154,18 +165,19 @@ const THALASSO_STYLE: Record<string, [string, string][]> = {
   latin: [['Maritime Republic of {N}', 'Doge'], ['Thalassocracy of {N}', 'Thalassarch']],
 };
 const LEAGUE_STYLE: Record<string, string[]> = {
+  woodland: ['the {N} Confederacy', 'League of the {N} Nations'], jungle: ['the {N} League', 'Triple Alliance of {N}'], highland: ['the {N} Confederation'],
   southern: ['the {N} League', 'Amphictyony of {N}'], norse: ['Hanse of {N}', 'the {N} League'], anglo: ['the {N} Confederation', 'League of {N}'],
   steppe: ['Confederacy of {N}', 'the {N} Confederacy'], celtic: ['Confederacy of {N}'], latin: ['League of {N}', 'the {N} League'],
 };
-const LEAGUE_RULER: Record<string, string> = { norse: 'Allthing', steppe: 'Kurultai', anglo: 'Diet', southern: 'Synedrion', celtic: 'Council of Chiefs' };
+const LEAGUE_RULER: Record<string, string> = { woodland: 'Council of Chiefs', jungle: 'Council of Lords', highland: 'Council of Lords', norse: 'Allthing', steppe: 'Kurultai', anglo: 'Diet', southern: 'Synedrion', celtic: 'Council of Chiefs' };
 const ADJ = ['Golden', 'White', 'Blue', 'Black', 'Red', 'Great', 'Silver', 'Grey'];
 
 /** Culture leanings (0 to 1, or a weight). */
-const CITY_STATE_P: Record<string, number> = { southern: 0.6, latin: 0.14, anglo: 0.06, norse: 0.06, slavic: 0.06, desert: 0.08, jungle: 0.06, elvish: 0.05, dwarven: 0.05, celtic: 0.02, steppe: 0 };
-const REPUBLIC_P: Record<string, number> = { southern: 0.4, latin: 0.12, anglo: 0.1, dwarven: 0.12, elvish: 0.06, jungle: 0.05, desert: 0.03, slavic: 0.03, norse: 0.03, celtic: 0.02, steppe: 0 };
-const INDEP_DUCHY_P: Record<string, number> = { southern: 0.16, latin: 0.08, elvish: 0.08, dwarven: 0.08, jungle: 0.08, steppe: 0.1, anglo: 0.05, desert: 0.05, norse: 0.015, slavic: 0.015, celtic: 0.015 };
-const EMPIRE_W: Record<string, number> = { latin: 3, desert: 3, steppe: 1.4, anglo: 1, jungle: 1, slavic: 0.6, southern: 0.5, elvish: 0.7, dwarven: 0.6, norse: 0.4, celtic: 0.4 };
-const LEAGUE_P: Record<string, number> = { southern: 0.55, norse: 0.4, steppe: 0.4, celtic: 0.35, anglo: 0.3, latin: 0.3 };
+const CITY_STATE_P: Record<string, number> = { sinic: 0.02, japonic: 0.03, koreanic: 0.02, southern: 0.6, latin: 0.14, anglo: 0.06, norse: 0.06, slavic: 0.06, desert: 0.08, jungle: 0.06, elvish: 0.05, dwarven: 0.05, celtic: 0.02, steppe: 0 };
+const REPUBLIC_P: Record<string, number> = { sinic: 0.01, japonic: 0.01, koreanic: 0.01, southern: 0.4, latin: 0.12, anglo: 0.1, dwarven: 0.12, elvish: 0.06, jungle: 0.05, desert: 0.03, slavic: 0.03, norse: 0.03, celtic: 0.02, steppe: 0 };
+const INDEP_DUCHY_P: Record<string, number> = { japonic: 0.12, sinic: 0.03, koreanic: 0.04, southern: 0.16, latin: 0.08, elvish: 0.08, dwarven: 0.08, jungle: 0.08, steppe: 0.1, anglo: 0.05, desert: 0.05, norse: 0.015, slavic: 0.015, celtic: 0.015 };
+const EMPIRE_W: Record<string, number> = { latin: 3, desert: 3, sinic: 3, steppe: 1.4, anglo: 1, jungle: 1.5, highland: 3, japonic: 0.8, koreanic: 0.6, slavic: 0.6, southern: 0.5, elvish: 0.7, dwarven: 0.6, norse: 0.4, celtic: 0.4, woodland: 0.3 };
+const LEAGUE_P: Record<string, number> = { southern: 0.55, norse: 0.4, steppe: 0.4, celtic: 0.35, anglo: 0.3, latin: 0.3, woodland: 0.85, jungle: 0.45, highland: 0.2, sinic: 0.1, japonic: 0.15 };
 
 const STYLE_RULER: [RegExp, string][] = [
   [/Sultanate/i, 'Sultan'], [/Emirate/i, 'Emir'], [/Caliphate/i, 'Caliph'], [/Principality/i, 'Prince'], [/Grand Duchy/i, 'Grand Duke'],
@@ -174,16 +186,40 @@ const STYLE_RULER: [RegExp, string][] = [
   [/Thanedom/i, 'Thane'], [/Herad/i, 'Hersir'], [/Timar|Iqta/i, 'Sipahi'], [/Signory/i, 'Signore'], [/Tuath/i, 'Lord'], [/Deme of/i, 'Demarch'],
   [/Ulus|Aul of/i, 'Noyan'], [/Tumen/i, 'Noyan'], [/Zhupa/i, 'Zhupan'], [/Cantref|Chiefdom/i, 'Chieftain'], [/Wardenry/i, 'Warden'],
   [/Lordship/i, 'Lord'], [/Dukedom|Duchy/i, 'Duke'], [/^County/i, 'Count'], [/Archonate/i, 'Archon'], [/Nome of/i, 'Nomarch'],
-  [/Imperium|Empire/i, 'Emperor'], [/High Kingdom/i, 'High King'], [/^(the )?Kingdom/i, 'King'],
+  [/Shogunate/i, 'Shogun'], [/Domain/i, 'Daimyo'], [/Fief/i, 'Lord'], [/Prefecture/i, 'Prefect'], [/Xian of|Hyeon of/i, 'Magistrate'], [/^Gun of/i, 'Gunsu'],
+  [/Dynasty|Middle Kingdom|Imperium|Empire/i, 'Emperor'], [/High Kingdom/i, 'High King'], [/^(the )?Kingdom/i, 'King'],
 ];
 /** Lesser titles a kingdom or empire never takes from its style. */
-const LESSER = new Set(['Thane', 'Lord', 'Baron', 'Count', 'Jarl', 'Earl', 'Bey', 'Margrave', 'Voivode', 'Despot', 'Hersir', 'Sipahi', 'Signore', 'Demarch', 'Noyan', 'Zhupan', 'Chieftain', 'Warden', 'Archon', 'Nomarch']);
+const LESSER = new Set(['Thane', 'Lord', 'Baron', 'Count', 'Jarl', 'Earl', 'Bey', 'Margrave', 'Voivode', 'Despot', 'Hersir', 'Sipahi', 'Signore', 'Demarch', 'Noyan', 'Zhupan', 'Chieftain', 'Warden', 'Archon', 'Nomarch', 'Daimyo', 'Prefect', 'Magistrate', 'Gunsu']);
 
 export interface PoliticsFields {
   height: Float32Array;
   lakeDepth: Float32Array;
   culture: Uint8Array;
+  /** 1 on New World land. */
+  newWorld?: Uint8Array;
+  biome?: Uint8Array;
 }
+
+/** Country people per km² of fully habitable land, by world, for the population estimate. */
+const RURAL_DENSITY = { old: 8, new: 1 };
+const BIOME_HAB: Record<number, number> = {
+  [Biome.IceSheet]: 0, [Biome.Tundra]: 0.05, [Biome.BorealForest]: 0.35, [Biome.ColdDesert]: 0.15, [Biome.Grassland]: 1, [Biome.Shrubland]: 0.6,
+  [Biome.TemperateForest]: 1, [Biome.TemperateRainforest]: 0.7, [Biome.HotDesert]: 0.05, [Biome.Savanna]: 0.6, [Biome.TropicalDryForest]: 0.6,
+  [Biome.TropicalRainforest]: 0.4, [Biome.Alpine]: 0.2, [Biome.MontaneForest]: 0.4, [Biome.Wetland]: 0.4, [Biome.Mangrove]: 0.3, [Biome.Riparian]: 1.2, [Biome.SaltFlat]: 0,
+};
+
+/** New World (tribal) styles by culture: [band, chiefdom, tribe, nation, empire] with their rulers. */
+const TRIBAL_STYLE: Record<string, [string[], string][]> = {
+  woodland: [[['Village of {S}', '{S} Band'], 'Headman'], [['Chiefdom of {S}', '{S} Clan'], 'Chief'], [['the {N} Tribe', 'the {N} People'], 'Paramount Chief'], [['the {N} Nation'], 'Great Chief'], [['Empire of {N}'], 'Great Sun']],
+  highland: [[['Village of {S}', 'Valley of {S}'], 'Headman'], [['Lordship of {S}', 'Chiefdom of {S}'], 'Lord'], [['the {N} Realm', 'Kingdom of {N}'], 'High Lord'], [['Kingdom of {N}', 'the {N} Realm'], 'Sun King'], [['Empire of the {N} Sun', 'the Four Quarters of {N}'], 'Child of the Sun']],
+  jungle: [[['Village of {S}', 'Hamlet of {S}'], 'Headman'], [['City of {S}', 'Lordship of {S}'], 'Holy Lord'], [['Kingdom of {N}', 'the {N} Kingdom'], 'Holy Lord'], [['Kingdom of {N}', 'the {N} Overkingdom'], 'Overking'], [['Empire of {N}', 'the {N} Empire'], 'Great Speaker']],
+};
+const TRIBAL_DEFAULT: [string[], string][] = [[['Village of {S}', '{S} Band'], 'Headman'], [['Chiefdom of {S}'], 'Chief'], [['the {N} Tribe', 'the {N} People'], 'Paramount Chief'], [['the {N} Nation'], 'Great Chief'], [['Empire of {N}'], 'Great Sun']];
+const TRIBAL_TITLE = ['Band', 'Chiefdom', 'Tribe', 'Nation', 'Empire'];
+const COLONY_STYLE: Record<string, [string, string, string]> = {
+  colony: ['Colony of {S}', 'Governor', 'Colony'], fort: ['Garrison of {S}', 'Commander', 'Fort'], post: ['Trading Post of {S}', 'Factor', 'Trading post'],
+};
 
 export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlement[], rivers: RiverCollection, bank: NameBank, seed: string): { politics: Politics; labels: LabelFeature[] } {
   const { W, H, N } = g;
@@ -259,17 +295,24 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   const area = new Float64Array(seats.length);
   for (let c = 0; c < N; c++) if (bOwner[c] >= 0) area[bOwner[c]] += g.areaKm2[(c / W) | 0];
   const blank = (o: Partial<PolUnit> & Pick<PolUnit, 'level' | 'seat' | 'seatName' | 'lon' | 'lat' | 'culture' | 'pop' | 'areaKm2' | 'city'>): PolUnit => ({
-    id: units.length, gov: 'feudal', title: '', name: '', ruler: '', parent: -1, league: -1, arms: null as unknown as Arms, vassals: 0, ...o,
+    id: units.length, gov: 'feudal', title: '', name: '', ruler: '', parent: -1, league: -1, arms: null as unknown as Arms, vassals: 0, people: 0, nw: false, ...o,
   });
+  // Habitable area per barony claim, for the population estimate.
+  const habArea = new Float64Array(seats.length);
+  for (let c = 0; c < N; c++) if (bOwner[c] >= 0) habArea[bOwner[c]] += g.areaKm2[(c / W) | 0] * (f.biome ? BIOME_HAB[f.biome[c]] ?? 0.5 : 0.5);
   seats.forEach((s, k) => {
     if (area[k] <= 0) {
       seatUnit.push(-1);
       return;
     }
     seatUnit.push(units.length);
+    const nw = !!s.newWorld;
     units.push(blank({
-      level: 0, seat: s.id, seatName: s.name ?? '', lon: s.lon, lat: s.lat, culture: f.culture[cellOf(s.lon, s.lat)],
-      pop: s.population, areaKm2: area[k], city: s.tier === 'city',
+      level: 0, seat: s.id, seatName: s.name ?? '', lon: s.lon, lat: s.lat, culture: s.culture ?? f.culture[cellOf(s.lon, s.lat)],
+      pop: s.population, areaKm2: area[k], city: s.tier === 'city', nw,
+      // Colonies are held from overseas; other New World towns are tribal.
+      gov: s.colony ? 'colony' : nw ? 'tribal' : 'feudal', title: s.colony ?? '',
+      people: s.population + habArea[k] * (nw && !s.colony ? RURAL_DENSITY.new : RURAL_DENSITY.old),
     }));
   });
   for (let c = 0; c < N; c++) if (bOwner[c] >= 0) baronyOf[c] = seatUnit[bOwner[c]];
@@ -284,7 +327,8 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
     const lieges = heads.map((h) => ({ head: h, members: [] as PolUnit[] }));
     for (const m of members) {
       const k = owner[cellOf(m.lon, m.lat)];
-      if (k >= 0) lieges[k].members.push(m);
+      // Old and New World realms never mix.
+      if (k >= 0 && m.nw === heads[k].nw) lieges[k].members.push(m);
     }
     const made: PolUnit[] = [];
     for (const l of lieges) {
@@ -292,6 +336,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
       const u = blank({
         level, seat: l.head.seat, seatName: l.head.seatName, lon: l.head.lon, lat: l.head.lat, culture: l.head.culture, city: l.head.city,
         pop: l.members.reduce((a, m) => a + m.pop, 0), areaKm2: l.members.reduce((a, m) => a + m.areaKm2, 0), vassals: l.members.length,
+        people: l.members.reduce((a, m) => a + m.people, 0), nw: l.head.nw, gov: l.head.nw ? 'tribal' : 'feudal',
       });
       units.push(u);
       made.push(u);
@@ -305,19 +350,19 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
     for (const u of [...cands].sort((a, b) => score(b) - score(a))) if (out.every((h) => distKm(h.lon, h.lat, u.lon, u.lat) > minKm)) out.push(u);
     return out;
   };
-  const free = (u: PolUnit) => u.parent < 0 && u.gov === 'feudal';
+  const free = (u: PolUnit) => u.parent < 0 && (u.gov === 'feudal' || u.gov === 'tribal');
 
   // City-states: some cities (most in the south) stand apart, alone or with the towns close around them.
   for (const b of baronies) {
-    if (!b.city || b.pop < 6000 || rnd() >= pref(CITY_STATE_P, b)) continue;
+    if (b.nw || !b.city || b.pop < 6000 || rnd() >= pref(CITY_STATE_P, b)) continue;
     b.gov = 'city-state';
   }
   for (const b of baronies) {
     if (b.gov !== 'city-state' || rnd() < 0.45) continue;
     // A contado: the free towns within 110 km.
-    const near = baronies.filter((t) => t !== b && t.gov === 'feudal' && t.parent < 0 && !t.city && distKm(t.lon, t.lat, b.lon, b.lat) < 110);
+    const near = baronies.filter((t) => t !== b && t.gov === 'feudal' && t.parent < 0 && !t.city && distKm(t.lon, t.lat, b.lon, b.lat) < 80);
     if (!near.length) continue;
-    const u = blank({ level: 1, seat: b.seat, seatName: b.seatName, lon: b.lon, lat: b.lat, culture: b.culture, city: true, pop: b.pop, areaKm2: b.areaKm2, vassals: 1 + near.length, gov: 'city-state' });
+    const u = blank({ level: 1, seat: b.seat, seatName: b.seatName, lon: b.lon, lat: b.lat, culture: b.culture, city: true, pop: b.pop, areaKm2: b.areaKm2, vassals: 1 + near.length, gov: 'city-state', people: b.people });
     units.push(u);
     b.parent = u.id;
     b.gov = 'feudal';
@@ -325,45 +370,75 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
       t.parent = u.id;
       u.pop += t.pop;
       u.areaKm2 += t.areaKm2;
+      u.people += t.people;
     }
   }
 
   // ---- Counties: baronies around the larger seats -----------------------------------------------
   const bFree = baronies.filter(free);
-  group(1, bFree, spaced(bFree, 170, (u) => u.pop * (u.city ? 2 : 1)), { maxCost: 650, seaKm: 60, cultureCost: 0, minVassals: 1 });
+  group(1, bFree, spaced(bFree, 95, (u) => u.pop * (u.city ? 2 : 1)), { maxCost: 380, seaKm: 60, cultureCost: 0, minVassals: 1 });
   // Some counties are held by the church: prince-bishoprics, abbacies, imamates.
   const counties = units.filter((u) => u.level === 1 && u.gov === 'feudal');
   for (const c of counties) if (rnd() < (cid(c) === 'desert' ? 0.012 : 0.006)) c.gov = 'theocracy';
 
   // ---- Duchies: counties around the strongest seats; a duchy needs two counties at least ---------
   const cFree = units.filter((u) => u.level <= 1 && free(u));
-  group(2, cFree, spaced(cFree.filter((u) => u.level === 1), 420, (u) => u.pop), { maxCost: 1100, seaKm: 220, cultureCost: 0, minVassals: 2 });
+  group(2, cFree, spaced(cFree.filter((u) => u.level === 1), 300, (u) => u.pop), { maxCost: 800, seaKm: 220, cultureCost: 0, minVassals: 2 });
   // Some duchies keep out of any kingdom (grand duchies, and republics later), by culture.
   const dIndep = new Set<PolUnit>();
   for (const d of units.filter((u) => u.level === 2)) if (rnd() < pref(INDEP_DUCHY_P, d)) dIndep.add(d);
 
   // ---- Kingdoms: duchies and the counties and baronies left between them -------------------------
   const kMembers = units.filter((u) => u.level <= 2 && free(u) && !dIndep.has(u));
-  group(3, kMembers, spaced(kMembers.filter((u) => u.level === 2), 1000, (u) => u.pop), { maxCost: 2400, seaKm: 450, cultureCost: 140, minVassals: 2 });
+  group(3, kMembers, spaced(kMembers.filter((u) => u.level === 2), 600, (u) => u.pop), { maxCost: 1500, seaKm: 450, cultureCost: 140, minVassals: 2 });
 
   // ---- Empires: two or three of the greatest kingdoms, with the realms around them ---------------
   const eMembers = units.filter((u) => u.level <= 3 && free(u) && !dIndep.has(u));
-  const kings = units.filter((u) => u.level === 3);
-  const eScore = (u: PolUnit) => u.pop * pref(EMPIRE_W, u, 1);
-  const cands = spaced(kings, 2500, eScore).slice(0, 6);
-  if (cands.length) {
+  const eScore = (u: PolUnit) => u.people * pref(EMPIRE_W, u, 1);
+  const chosen: PolUnit[] = [];
+  // Two or three empires in the Old World (of different peoples where possible), and perhaps one in the New.
+  for (const nw of [false, true]) {
+    const kings = units.filter((u) => u.level === 3 && u.nw === nw);
+    const cands = spaced(kings, 2000, eScore).slice(0, 6);
+    if (!cands.length) continue;
     // A trial claim: which candidates would gather at least three realms, two of them kingdoms?
-    const owner = claim(cands.map((h) => ({ c: cellOf(h.lon, h.lat), w: 1, max: 2300 })), { seaKm: 600, cultureCost: 260, within: (c) => baronyOf[c] >= 0 });
+    const owner = claim(cands.map((h) => ({ c: cellOf(h.lon, h.lat), w: 1, max: 1500 })), { seaKm: 600, cultureCost: 260, within: (c) => baronyOf[c] >= 0 });
     const ok = cands.filter((h, k) => {
-      const got = eMembers.filter((m) => owner[cellOf(m.lon, m.lat)] === k);
+      const got = eMembers.filter((m) => m.nw === nw && owner[cellOf(m.lon, m.lat)] === k);
       return got.length >= 3 && got.filter((m) => m.level === 3).length >= 2;
     });
-    // Two or three empires, of different peoples where the world allows.
-    const want = 2 + (rnd() < 0.45 ? 1 : 0);
-    const chosen: PolUnit[] = [];
-    for (const h of ok) if (chosen.length < want && !chosen.some((c) => c.culture === h.culture)) chosen.push(h);
-    for (const h of ok) if (chosen.length < want && !chosen.includes(h)) chosen.push(h);
-    group(4, eMembers, chosen, { maxCost: 2300, seaKm: 600, cultureCost: 260, minVassals: 3 });
+    const want = nw ? (ok[0] && pref(EMPIRE_W, ok[0], 1) >= 1.5 && rnd() < 0.7 ? 1 : 0) : 2 + (rnd() < 0.45 ? 1 : 0);
+    const mine: PolUnit[] = [];
+    for (const h of ok) if (mine.length < want && !mine.some((c) => c.culture === h.culture)) mine.push(h);
+    for (const h of ok) if (mine.length < want && !mine.includes(h)) mine.push(h);
+    chosen.push(...mine);
+  }
+  group(4, eMembers, chosen, { maxCost: 1500, seaKm: 600, cultureCost: 260, minVassals: 3 });
+
+  // ---- Colonies: held from overseas by a realm of their founders' people ------------------------
+  for (const b of baronies) {
+    if (b.gov !== 'colony') continue;
+    const kind = b.title || 'colony';
+    const homes = units.filter((u) => u.parent < 0 && !u.nw && u.gov !== 'league' && u.level >= 2);
+    const same = homes.filter((u) => u.culture === b.culture);
+    const home = (same.length ? same : homes).reduce<PolUnit | null>((a, u) => (!a || (same.length ? u.people > a.people : distKm(u.lon, u.lat, b.lon, b.lat) < distKm(a.lon, a.lat, b.lon, b.lat)) ? u : a), null);
+    b.gov = 'feudal';
+    b.title = '';
+    if (!home) continue;
+    const col = blank({
+      level: 1, seat: b.seat, seatName: b.seatName, lon: b.lon, lat: b.lat, culture: b.culture, city: false, pop: b.pop, areaKm2: b.areaKm2,
+      vassals: 1, gov: 'colony', title: kind, people: b.people, nw: true,
+    });
+    units.push(col);
+    b.parent = col.id;
+    col.parent = home.id;
+    home.vassals++;
+    // Its people and land count to the realm that holds it.
+    for (let u: PolUnit | null = home; u; u = u.parent >= 0 ? units[u.parent] : null) {
+      u.pop += col.pop;
+      u.people += col.people;
+      u.areaKm2 += col.areaKm2;
+    }
   }
 
   // ---- Governments of the independent realms ------------------------------------------------
@@ -416,7 +491,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   };
   const tops = units.filter((u) => u.parent < 0);
   for (const u of tops) {
-    if (u.gov !== 'feudal' || u.level === 4) continue;
+    if (u.gov !== 'feudal' || u.level === 4 || u.nw) continue;
     if (u.level >= 2 && islandRealm(u) && rnd() < 0.7) u.gov = 'thalassocracy';
     else if (u.level >= 2 && rnd() < pref(REPUBLIC_P, u)) u.gov = 'republic';
     else if (u.level >= 2 && rnd() < (cid(u) === 'desert' ? 0.08 : 0.04)) u.gov = 'theocracy';
@@ -424,15 +499,16 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   }
 
   // ---- Leagues: small independent neighbours band together -------------------------------------
-  const small = tops.filter((u) => u.level <= 2 && u.gov !== 'theocracy');
+  const small = tops.filter((u) => u.level <= 2 && u.gov !== 'theocracy' && u.gov !== 'colony');
   const inLeague = new Set<PolUnit>();
   for (const u of [...small].sort((a, b) => b.pop - a.pop)) {
     if (inLeague.has(u)) continue;
-    const band = small.filter((v) => !inLeague.has(v) && distKm(u.lon, u.lat, v.lon, v.lat) < 650);
+    const band = small.filter((v) => !inLeague.has(v) && v.nw === u.nw && distKm(u.lon, u.lat, v.lon, v.lat) < (u.nw ? 900 : 650));
     if (band.length < 3 || rnd() >= pref(LEAGUE_P, u, 0.3)) continue;
     const lg = blank({
       level: Math.min(3, Math.max(...band.map((v) => v.level)) + 1) as PolLevel, gov: 'league', seat: u.seat, seatName: u.seatName, lon: u.lon, lat: u.lat,
       culture: u.culture, city: u.city, pop: band.reduce((a, v) => a + v.pop, 0), areaKm2: band.reduce((a, v) => a + v.areaKm2, 0), vassals: band.length,
+      people: band.reduce((a, v) => a + v.people, 0), nw: u.nw,
     });
     units.push(lg);
     for (const v of band) {
@@ -475,6 +551,17 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
       ruler = rl;
       u.title = u.level <= 1 ? (/Imamate/.test(u.name) ? 'Imamate' : 'Prince-bishopric') : 'Theocracy';
       favour = ['cross', 'key', 'sun', 'bell'];
+    } else if (u.gov === 'colony') {
+      const [tpl, rl, title] = COLONY_STYLE[u.title] ?? COLONY_STYLE.colony;
+      u.name = fill(tpl, u.seatName);
+      ruler = rl;
+      u.title = title;
+    } else if (u.gov === 'tribal') {
+      const [tpls, rl] = (TRIBAL_STYLE[id] ?? TRIBAL_DEFAULT)[u.level];
+      u.name = fill(pickS(tpls), u.level <= 1 || r() < 0.5 ? u.seatName : own());
+      ruler = rl;
+      u.title = TRIBAL_TITLE[u.level];
+      favour = id === 'woodland' ? ['tree', 'sun', 'crescent', 'horn', 'estoile'] : id === 'highland' ? ['sun', 'estoile', 'lozenge', 'crown'] : ['sun', 'roundel', 'heart', 'estoile'];
     } else if (u.gov === 'thalassocracy') {
       const [tpl, rl] = pickS(THALASSO_STYLE[id] ?? [['Thalassocracy of {N}', 'Thalassarch'], ['Sea Kingdom of {N}', 'Sea King'], ['Admiralty of {N}', 'Lord Admiral']]);
       u.name = fill(tpl, r() < 0.4 ? u.seatName : own());

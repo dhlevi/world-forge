@@ -237,6 +237,128 @@ export const CULTURES: Culture[] = [
     },
     realm: ['Empire of {N}', 'Kingdom of {N}', 'the {N} Confederacy'],
   },
+  // East Asian-inspired cultures of the Old World.
+  {
+    id: 'sinic',
+    likes: (c) => near(c.temp, 8, 22, 6) * near(c.precip, 600, 2000, 400) * (c.heightM < 1500 ? 1.05 : 0.6),
+    starts: [
+      'Bei', 'Nan', 'Xi', 'Dong', 'Jin', 'Lin', 'Chang', 'Lu', 'Hua', 'Yun', 'Qing', 'Shan', 'He', 'Tai', 'Ping', 'An', 'Fu', 'Guang', 'Su', 'Yang',
+      'Han', 'Wu', 'Zhao', 'Song', 'Ming', 'Bai', 'Huang', 'Long', 'Feng', 'Jiang', 'Ning', 'Kai', 'Lan', 'Mei', 'Shou', 'Tian', 'Wen', 'Xing', 'Yu', 'Zhen',
+      'Qi', 'Liang', 'Chen', 'Hong', 'Jing', 'Le', 'Pu', 'Rui', 'Shi', 'Tong', 'Gao', 'Hai', 'Kun', 'Luo', 'Mao', 'Qiu', 'Sui', 'Wei', 'Xu', 'Zhu',
+    ],
+    mids: ['shan', 'he', 'an', 'jia', 'ling', 'ping', 'yang'],
+    ends: [
+      'zhou', 'jing', 'yang', 'an', 'ling', 'cheng', 'du', 'ning', 'shan', 'men', 'kou', 'ping', 'chuan', 'hai', 'tai', 'yuan', 'he', 'xi', 'ting', 'guan',
+      'lin', 'qiao', 'fu', 'bao', 'dian', 'hu', 'tan', 'wan', 'zhen', 'sha', 'tang', 'yi', 'gang', 'pu', 'quan', 'shui', 'feng', 'tun', 'kang', 'chi',
+    ],
+    midChance: 0.15,
+    terms: {
+      river: ['the {N} He', 'the {N} Jiang', '{N} River'],
+      lake: ['{N} Hu', 'Lake {N}'],
+      mountains: ['the {N} Shan', 'the {N} Mountains', 'the {A} Range'],
+      hills: ['the {N} Hills', 'the {A} Hills'],
+      peak: ['Mount {N}', '{N} Feng', '{N} Shan'],
+      island: ['{N} Dao', '{N} Island'],
+      plains: ['the {N} Plain', 'the {N} Yuan'],
+      desert: ['the {N} Desert', 'the {A} Waste'],
+      sea: ['the {N} Sea', 'the {A} Sea'],
+    },
+    realm: ['Kingdom of {N}', 'the {N} State', 'the {N} Kingdom', 'Kingdom of {N}'],
+  },
+  {
+    id: 'japonic',
+    likes: (c) => near(c.temp, 6, 18, 6) * (c.coastal ? 1.5 : 0.45) * near(c.precip, 900, 2500, 500),
+    starts: [
+      'Aki', 'Kiri', 'Naga', 'Taka', 'Yama', 'Kawa', 'Shima', 'Hiro', 'Matsu', 'Kita', 'Minami', 'Asa', 'Ise', 'Oka', 'Fuji', 'Kuro', 'Shira', 'Tsu', 'Mori', 'Sakura',
+      'Hana', 'Ume', 'Ao', 'Ishi', 'Kami', 'Mizu', 'Nishi', 'Higashi', 'Sawa', 'Tomo', 'Yoshi', 'Hoshi', 'Kaze', 'Iwa', 'Kiyo', 'Sato', 'Toyo', 'Wata', 'Furu', 'Hida',
+      'Kane', 'Nara', 'Sugi', 'Take', 'Uta', 'Yuki', 'Haru', 'Natsu', 'Fuyu', 'Tama',
+    ],
+    mids: ['no', 'ga', 'ka', 'ta', 'mi', 'ri', 'ki'],
+    ends: [
+      'saki', 'moto', 'yama', 'gawa', 'shima', 'hara', 'zawa', 'oka', 'mura', 'kawa', 'ta', 'da', 'be', 'tsu', 'kura', 'no', 'ura', 'hama', 'sato', 'mori',
+      'zaki', 'iwa', 'tani', 'numa', 'hashi', 'sawa', 'kubo', 'ike', 'mine', 'zuka',
+    ],
+    midChance: 0.25,
+    terms: {
+      river: ['the {N} River', 'the {N}-gawa'],
+      lake: ['Lake {N}', '{N}-ko'],
+      mountains: ['the {N} Mountains', 'the {N} Range', 'the {A} Peaks'],
+      hills: ['the {N} Hills', 'the {A} Hills'],
+      peak: ['Mount {N}', '{N}-san', '{N}-dake'],
+      island: ['{N}-jima', '{N}-shima', '{N} Island'],
+      bay: ['{N} Bay', '{N}-wan'],
+      strait: ['{N} Strait', 'the {N} Narrows'],
+      sea: ['the {N} Sea', 'the {A} Sea'],
+    },
+    realm: ['Shogunate of {N}', 'Kingdom of {N}', 'the {N} Shogunate'],
+  },
+  {
+    id: 'koreanic',
+    likes: (c) => near(c.temp, 2, 14, 6) * (c.coastal ? 1.25 : 0.8) * near(c.precip, 600, 1600, 400),
+    starts: [
+      'Han', 'Gyeong', 'Jeon', 'Cheong', 'Gwang', 'Dae', 'Sang', 'Mun', 'Yeong', 'Pyeong', 'Ham', 'Chung', 'Gang', 'Seo', 'Nam', 'Bu', 'Hwa', 'Il', 'Jin', 'Su',
+      'An', 'Bo', 'Dong', 'Geum', 'Hae', 'Hong', 'Jang', 'Mok', 'Ok', 'Sin', 'Tae', 'Ui', 'Wol', 'Yang', 'Chil', 'Gok', 'Nae', 'Sa', 'Song', 'Myeong',
+    ],
+    mids: ['an', 'eun', 'o', 'yeo', 'ha'],
+    ends: [
+      'ju', 'san', 'won', 'do', 'seong', 'yang', 'cheon', 'pyeong', 'gang', 'hae', 'nam', 'gok', 'dong', 'ri', 'ryeong', 'po', 'jin', 'am', 'bong', 'gu',
+      'mun', 'dang', 'chon', 'hwa', 'ul', 'sil', 'gye', 'ak',
+    ],
+    midChance: 0.15,
+    terms: {
+      river: ['the {N} River', 'the {N}-gang'],
+      lake: ['Lake {N}', '{N} Lake'],
+      mountains: ['the {N} Mountains', 'the {N}-san Range', 'the {A} Ridges'],
+      peak: ['Mount {N}', '{N}-san', '{N}-bong'],
+      island: ['{N}-do', '{N} Island'],
+      bay: ['{N} Bay', '{N}-man'],
+    },
+    realm: ['Kingdom of {N}', 'the {N} Kingdom'],
+  },
+  // New World peoples (with the jungle culture above): tribal lands, few towns.
+  {
+    id: 'woodland',
+    likes: (c) => near(c.temp, -2, 16, 6) * (c.forest ? 1.3 : 0.8) * (c.dry ? 0.7 : 1),
+    starts: [
+      'Ota', 'Wena', 'Kesa', 'Mishi', 'Nako', 'Tawa', 'Sena', 'Owa', 'Kana', 'Pemi', 'Wabi', 'Chena', 'Oki', 'Mani', 'Seka', 'Tolo', 'Ahna', 'Kito', 'Wasa', 'Neko',
+      'Ishpi', 'Mato', 'Hono', 'Kawi', 'Tesa', 'Yona', 'Alo', 'Pawa', 'Minu', 'Shawa', 'Ketu', 'Namo', 'Sopa', 'Wita', 'Ekwa',
+    ],
+    mids: ['ka', 'na', 'wa', 'sa', 'ta', 'mi', 'qua'],
+    ends: [
+      'gan', 'tawa', 'wick', 'see', 'nee', 'mak', 'poka', 'wan', 'ka', 'tuk', 'sha', 'neka', 'wa', 'naw', 'gamee', 'hela', 'tonka', 'kee', 'sota', 'wanee',
+      'ock', 'muk', 'quin', 'sippi', 'nock', 'tic',
+    ],
+    midChance: 0.35,
+    terms: {
+      river: ['the {N}', 'the {N} River', 'River {N}'],
+      lake: ['Lake {N}', '{N} Water'],
+      forest: ['the {N} Woods', 'the {A} Woods', '{N} Forest'],
+      mountains: ['the {N} Mountains', 'the {A} Ridges'],
+      hills: ['the {N} Hills', 'the {A} Knobs'],
+      plains: ['the {N} Prairie', 'the {A} Grasslands'],
+      peak: ['{N} Peak', 'Mount {N}'],
+    },
+    realm: ['the {N} Nation', 'the {N} Confederacy'],
+  },
+  {
+    id: 'highland',
+    likes: (c) => (c.heightM > 1800 ? 1.45 : c.heightM > 900 ? 0.7 : 0.2) * near(c.temp, -2, 20, 8),
+    starts: [
+      'Pacha', 'Inti', 'Quil', 'Huay', 'Tiwa', 'Cuz', 'Ayac', 'Kall', 'Mayu', 'Sach', 'Tupa', 'Wari', 'Chak', 'Puma', 'Kusi', 'Yaku', 'Hatun', 'Rumi', 'Tampu', 'Qori',
+      'Wayra', 'Illa', 'Saqsa', 'Chaw', 'Muyu', 'Sumaq', 'Paru', 'Ankas', 'Llam', 'Ccoll',
+    ],
+    mids: ['ya', 'hua', 'ra', 'ri', 'ta'],
+    ends: ['marca', 'pampa', 'bamba', 'cocha', 'huasi', 'pata', 'llacta', 'cancha', 'tambo', 'qasa', 'huay', 'rumi', 'yoc', 'mayo', 'coto', 'punku', 'ccasa', 'urqu', 'chaca'],
+    midChance: 0.25,
+    terms: {
+      mountains: ['the {N} Cordillera', 'the {N} Range', 'the {A} Cordillera'],
+      peak: ['{N} Peak', 'Mount {N}'],
+      lake: ['Lake {N}', '{N}cocha'],
+      plains: ['the {N} Altiplano', 'the {N} Puna'],
+      river: ['the {N}', 'River {N}'],
+    },
+    realm: ['Kingdom of {N}', 'the {N} Realm'],
+  },
 ];
 
 /**

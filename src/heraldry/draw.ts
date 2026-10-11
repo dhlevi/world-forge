@@ -362,6 +362,14 @@ function chargePath(g: Ctx, kind: Charge, x: number, y: number, s: number): void
       g.bezierCurveTo(8, -11, 12, 0, 0, 9);
       g.closePath();
       break;
+    case 'blossom':
+      // Five round petals about the centre.
+      for (let k = 0; k < 5; k++) {
+        const ang = -Math.PI / 2 + (k * 2 * Math.PI) / 5;
+        g.moveTo(Math.cos(ang) * 5.8 + 4.6, Math.sin(ang) * 5.8);
+        g.arc(Math.cos(ang) * 5.8, Math.sin(ang) * 5.8, 4.6, 0, Math.PI * 2);
+      }
+      break;
     case 'acorn':
       g.ellipse(0, 3, 5, 6.5, 0, 0, Math.PI * 2);
       g.moveTo(-6.4, -1);

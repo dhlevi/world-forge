@@ -10,7 +10,12 @@ export interface CultureFields {
   tempCold: Float32Array;
   precip: Float32Array;
   biome: Uint8Array;
+  /** 1 on New World land: its hearths take New World cultures, the Old World's the others. */
+  newWorld?: Uint8Array;
 }
+
+/** Cultures of the New World (tribal lands); the rest belong to the Old World. */
+export const NEW_WORLD_CULTURES = new Set(['jungle', 'woodland', 'highland']);
 
 const FOREST = new Set<Biome>([
   Biome.BorealForest, Biome.TemperateForest, Biome.TemperateRainforest, Biome.TropicalRainforest, Biome.TropicalDryForest, Biome.MontaneForest,
@@ -59,7 +64,9 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string): Uint8Array 
       forest: FOREST.has(f.biome[c] as Biome), dry: DRY.has(f.biome[c] as Biome) || f.precip[c] < 400, coastal: coastal(c),
     };
     let best = 0, bestS = -Infinity;
+    const nw = f.newWorld ? f.newWorld[c] === 1 : false;
     CULTURES.forEach((cu, k) => {
+      if (f.newWorld && NEW_WORLD_CULTURES.has(cu.id) !== nw) return;
       const s = cu.likes(site) + 0.35 * rnd() - 0.5 * uses[k];
       if (s > bestS) {
         bestS = s;
@@ -87,7 +94,9 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string): Uint8Array 
       if (n < 0) continue;
       const d = g.nbDist[j * 8 + k];
       const sea = f.height[n] <= 0;
-      const cost = d * (sea ? 4 : 1 + (f.height[n] > 1500 ? 2.5 : f.height[n] > 800 ? 0.8 : 0));
+      let cost = d * (sea ? 4 : 1 + (f.height[n] > 1500 ? 2.5 : f.height[n] > 800 ? 0.8 : 0));
+      // Old World cultures hardly reach New World land, and the other way about.
+      if (!sea && f.newWorld && NEW_WORLD_CULTURES.has(CULTURES[out[c]]?.id ?? '') !== (f.newWorld[n] === 1)) cost += 4000;
       if (dc + cost < dist[n]) {
         dist[n] = dc + cost;
         out[n] = out[c];

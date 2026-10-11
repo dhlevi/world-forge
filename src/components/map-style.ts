@@ -199,7 +199,7 @@ export const MARKER_LAYERS: LayerSpecification[] = [
     paint: {
       // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
       'circle-color': e(['match', ['get', 'kind'],
-        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, INK]),
+        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, 'tribal', '#8a5a3a', INK]),
       'circle-radius': e(['interpolate', ['linear'], ['zoom'],
         8, ['match', ['get', 'kind'], ['keep', 'monastery'], 2, 1.5],
         12, ['match', ['get', 'kind'], ['keep', 'monastery'], 4, 3]]),

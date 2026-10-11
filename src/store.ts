@@ -20,10 +20,11 @@ export const store = reactive({
   params: {
     seed: randomSeed(),
     landFraction: 0.35,
+    settled: 0.6,
     plates: 14,
     erosion: 0.5,
     resolution: 1024,
-  } as WorldParams,
+  } as WorldParams & { settled: number },
   layer: 'fantasy' as LayerId,
   showRivers: true,
   showSettlements: true,

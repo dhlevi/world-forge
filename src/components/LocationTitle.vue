@@ -26,8 +26,16 @@ interface Line {
 }
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
-const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery' };
+const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village' };
 const townArms = new Map<string, Arms>();
+const PEOPLES: Record<string, string> = { woodland: 'woodland peoples', highland: 'highland peoples', jungle: 'forest peoples' };
+
+/** "2.3 million", "34,000", "870". */
+function people(n: number): string {
+  if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)} million`;
+  if (n >= 1e4) return (Math.round(n / 1000) * 1000).toLocaleString('en');
+  return (Math.round(n / 10) * 10).toLocaleString('en');
+}
 
 function km(lon1: number, lat1: number, lon2: number, lat2: number): number {
   const dl = ((((lon2 - lon1) % 360) + 540) % 360) - 180;
@@ -65,6 +73,11 @@ const info = computed<Line | null>(() => {
     return { name: cap(best.name), sub: '', arms: null, armsKey: '', crumbs: [], chain: [] };
   }
   if (!chain.length) {
+    // In the New World, land beyond the towns is the tribes' own.
+    if (w.raster.newWorld?.[c]) {
+      const people = PEOPLES[CULTURES[w.raster.culture[c]]?.id ?? ''] ?? 'scattered peoples';
+      return { name: region ? cap(region) : 'Tribal lands', sub: `Lands of the ${people} · no settled realm`, arms: null, armsKey: '', crumbs: [], chain: [] };
+    }
     return { name: region ? cap(region) : 'Unclaimed wilds', sub: region ? 'Unclaimed land' : 'No realm holds this land', arms: null, armsKey: '', crumbs: [], chain: [] };
   }
 
@@ -82,7 +95,7 @@ const info = computed<Line | null>(() => {
       const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
         name: s.name ?? '',
-        sub: [`${kind} of ${s.population.toLocaleString('en')}`, s.layout ? LAYOUT_LABEL[s.layout] : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
+        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' ? LAYOUT_LABEL[s.layout] : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
       };
     }
@@ -104,6 +117,7 @@ const info = computed<Line | null>(() => {
   const u = realms[k];
   const parts = [`${u.ruler} at ${u.seatName}`];
   if (u.parent < 0 || u.level >= 3) parts.push(u.title);
+  parts.push(`about ${people(u.people)} people`);
   const held = holdings(u);
   if (held) parts.push(held);
   if (region && u.level <= 1) parts.push(cap(region));
@@ -150,7 +164,7 @@ const detail = computed(() => (info.value?.chain ?? []).slice().reverse());
         <img :src="armsImage(u.arms, 44, `u${u.id}`)" alt="" />
         <div>
           <div class="rname">{{ cap(u.name) }}</div>
-          <div class="rsub">{{ u.title }} · {{ u.ruler }} at {{ u.seatName }} · {{ Math.round(u.areaKm2).toLocaleString('en') }} km² · {{ u.pop.toLocaleString('en') }} in towns</div>
+          <div class="rsub">{{ u.title }} · {{ u.ruler }} at {{ u.seatName }} · {{ Math.round(u.areaKm2).toLocaleString('en') }} km² · about {{ people(u.people) }} people, {{ u.pop.toLocaleString('en') }} in its towns</div>
           <div v-if="holdings(u)" class="rsub">{{ holdings(u) }}</div>
           <div class="blazon">{{ blazon(u.arms) }}</div>
         </div>

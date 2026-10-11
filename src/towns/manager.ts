@@ -397,8 +397,21 @@ export class TownManager {
         let kind: VillageKind;
         let score = base;
         let minePos: [number, number] | null = null;
-        // Mines need real relief: a camp at the foot of a steep slope, not on a high plateau.
-        if (mountain > 0 && rr(5) < 0.35 * mountain && (minePos = this.mineSite(lon, lat))) kind = 'mining';
+        // The New World: fewer villages, and tribal ones, except round the Old World's colonies.
+        const nwCell = raster.newWorld?.[c] === 1;
+        let colonial = false;
+        if (nwCell) {
+          if (rr(9) > S.newWorldVillageShare) continue;
+          this.sites.forEach(lon, lat, 60, (s) => {
+            if (s.colony) colonial = true;
+          });
+        }
+        if (nwCell && !colonial) {
+          if (base <= 0) continue;
+          score = base * (1 + 0.4 * Math.exp(-(river?.d ?? 99) / 4)) * (coastal ? 1.3 : 1);
+          if (rr(3) > smoothstep(S.villageMinScore, S.villageMinScore + 0.5, score)) continue;
+          kind = 'tribal';
+        } else if (mountain > 0 && rr(5) < 0.35 * mountain && (minePos = this.mineSite(lon, lat))) kind = 'mining';
         else if (FOREST_BIOMES.has(biome) && base > 0.05 && rr(5) < 0.3) kind = 'logging';
         else {
           if (base <= 0) continue;
@@ -432,7 +445,7 @@ export class TownManager {
             pos = this.bestNear(lon, lat, 1200, (x, y, hh, sl) => hh * 0.004 - 6 * Math.max(0, sl - 0.08));
           }
         }
-        if (kind === 'farming' || (kind === 'keep' && pos[0] === lon && pos[1] === lat)) {
+        if (kind === 'farming' || kind === 'tribal' || (kind === 'keep' && pos[0] === lon && pos[1] === lat)) {
           // Farmers settle the flattest ground nearby; too steep everywhere and there is no village.
           pos = this.bestNear(lon, lat, 900, (x, y, hh, sl) => -sl - 0.00002 * distKm(lon, lat, x, y) * 1000);
           if (this.slopeAt(pos[0], pos[1]) > 0.16) continue;
@@ -499,7 +512,10 @@ export class TownManager {
         if (h <= 0) continue;
         const hilly = smoothstep(200, 1200, h);
         const r = rr(3);
-        const kind: DungeonSite['kind'] = r < 0.2 + 0.25 * hilly ? 'tower' : r < 0.68 ? 'ruin' : 'crypt';
+        // The New World has no towers or crypts, only the odd ruin of an older people.
+        const nw = raster.newWorld?.[c] === 1;
+        if (nw && rr(11) < 0.6) continue;
+        const kind: DungeonSite['kind'] = nw ? 'ruin' : r < 0.2 + 0.25 * hilly ? 'tower' : r < 0.68 ? 'ruin' : 'crypt';
         let blocked = false;
         this.sites.forEach(lon, lat, 15, (s, d) => {
           if (d < s.radiusM / 1000 + 1.5) blocked = true;
@@ -910,7 +926,8 @@ export class TownManager {
     const ground = new Ground(terrain, water);
     const culture = this.world.raster.culture[this.cell(s.lon, s.lat)] ?? 0;
     const inp = { s, exits, water, terrain, ground, out, names: this.names, culture };
-    if (s.tier === 'village') {
+    if (s.tier === 'village' || s.kind === 'tribal') {
+      // Villages, and the New World's tribal towns, are built as villages.
       buildVillage(inp);
       if (s.kind === 'mining') this.mineEntry(s, out, frame, culture);
     } else {

@@ -222,9 +222,13 @@ export const BIOMES = {
 };
 
 export const SETTLEMENTS = {
-  /** Minimum spacing (km) between cities, and between any two towns or cities. */
-  citySpacingKm: 380,
-  townSpacingKm: 130,
+  /** Minimum spacing (km) between cities, and between any two towns or cities, in the Old World. */
+  citySpacingKm: 280,
+  townSpacingKm: 65,
+  /** New World: no cities, and towns (tribal towns, colonies) far apart. */
+  newWorldTownSpacingKm: 190,
+  /** New World villages: the share of village candidates kept (they are sparser). */
+  newWorldVillageShare: 0.4,
   /** Habitability (0..~1.5) needed to found a city / town / village. */
   cityMinScore: 0.75,
   townMinScore: 0.4,
