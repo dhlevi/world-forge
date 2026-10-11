@@ -3,6 +3,3 @@ dist/
 out/
 .DS_Store
 tuning/data/
-.claude-backup/
-Claude outputs
-_to_delete

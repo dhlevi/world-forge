@@ -1,6 +1,6 @@
 # World Forge
 
-A browser-based procedural fantasy world generator. You start with a whole planet on a zoomable globe and can zoom in through roads and villages to the streets and buildings of individual towns; later phases will add dungeons and battlemaps. Everything runs client-side, with no server and no account.
+A browser-based procedural fantasy world generator. You start with a whole planet on a zoomable globe (or flat map) and can zoom in through roads and villages to the streets and buildings of individual towns. Everything runs client-side, with no server.
 
 Stack: TypeScript, Vue 3, Vite, MapLibre GL JS. Node.js runs the tooling and the headless preview script.
 
@@ -12,6 +12,12 @@ npm run dev        # http://localhost:5173
 npm run build      # type-check + production build to dist/
 npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # headless PNGs in out/ (tiles use the first layer)
 ```
+
+### GitHub Pages
+
+`.github/workflows/deploy-pages.yml` builds the site and publishes it to GitHub Pages on every push to `main` (or by hand: **Actions › Deploy to GitHub Pages › Run workflow**). Once, in the repository's **Settings › Pages**, set **Source** to **GitHub Actions**. The site is then at `https://<owner>.github.io/<repository>/` (for this repository, https://dhlevi.github.io/world-forge/).
+
+Pages serves a project site from `/<repository>/`, so the workflow builds with `BASE_PATH=/<repository>/`, which `vite.config.ts` uses as Vite's `base`. Local builds default to `/`; to test a Pages build locally, run `BASE_PATH=/world-forge/ npm run build && BASE_PATH=/world-forge/ npm run serve` and open http://localhost:4173/world-forge/.
 
 ## Controls
 
@@ -308,20 +314,14 @@ npm run earth:eval -- --res=512          # faster, coarser
 
 After any change to climate code or `CLIMATE`/`KOPPEN` constants, run `npm run earth:eval` and make sure the objective did not regress. Data: Fick & Hijmans (2017), WorldClim 2.1, CC BY 4.0.
 
-## Roadmap
+## Roaadmap
 
-Phase 1 (done): world generation and a zoomable globe.
+Most of the initial baseline for the procedurally generated world is in place. From this starting point, an expansion on the cultures is planned next, so instead of a small set of fixed types mimicing "real world" cultures, we can generate unique cultures and languages.
 
-Phase 2: zoom into sites. [Watabou's generators](https://watabou.github.io/) set the visual bar for each scale:
-
-| Scale | Reference | Plan |
-|---|---|---|
-| Region / realm | [Realm](https://watabou.github.io/realm.html) | **Done:** settlements, roads, villages, realms (counties to empires) with borders, labels and arms. |
-| City | [City](https://watabou.github.io/city.html) | **Done:** walls, wards, streets, buildings, rivers and coasts, slope-aware layout, harbours and docks. |
-| Village | [Village](https://watabou.github.io/village.html) | **Done:** farming and fishing villages, logging and mining camps, monasteries, keeps. |
-| Building interiors | [Dwelling](https://watabou.github.io/dwelling.html) | **Done:** floor plans for every building (hover preview, double-click to go inside), with an isometric exterior. |
-| Caves | [Cave](https://watabou.github.io/cave.html) | **Done:** Cave systems seeded from mountain and karst sites. |
-| Groves | [Glade](https://watabou.github.io/glade.html) | **Done:** multi-clearing groves with paths, shrines, huts, standing stones, a hollow tree with a level below, and a key. |
-| Dungeons | [One Page Dungeon](https://watabou.github.io/one-page-dungeon/) | **Done:** mines, towers, crypts, ruins, catacombs and city sewers, with levels, numbered rooms and a key. |
-
-Each site gets a seed derived from the world seed and its location, so every zoom level is deterministic and shareable.
+- Language generator using predefined templates
+ - including modal dialogs in the realm info screens to show language structure
+- Culture creator
+ - including modal dialogs in the realm info screens to show the culture details including
+- Religion / Faith generator
+ - Enhanced from existing generator to include a greater variation, with expanded tenets and philosophies, tied into the culture/language
+- Improved real/settlement procedural generation to natuarlly expand cultures and refine the history
