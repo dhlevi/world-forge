@@ -99,9 +99,9 @@ const distKm = (a: number, b: number, c: number, d: number) => {
   return Math.hypot(dl * 111.32 * Math.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
 };
 
-const ERAS = [['of the Reckoning', 'R'], ['after the Founding', 'AF'], ['of the Crowning', 'C'], ['after the Sundering', 'AS'], ['of the Long Count', 'LC'], ['of the Lamp', 'L'], ['after the Flood', 'AFl']];
-const PLAGUE = ['the Grey Death', 'the Sweating Sickness', 'the Red Pox', 'the Weeping Plague', 'the Black Fever', 'the Wasting', 'the Rat Plague', 'the Blue Cough'];
-const WAR_ADJ = ['Long', 'Bitter', 'Red', 'Thirty Years\'', 'Hundred Years\'', 'Black', 'Lost', 'Cold', 'Holy', 'Barons\'', 'Brothers\'', 'Salt', 'Iron', 'Crown', 'Winter', 'Burning', 'Silent'];
+const ERAS = [['of the Reckoning', 'R'], ['after the Founding', 'AF'], ['of the Crowning', 'C'], ['after the Sundering', 'AS'], ['of the Long Count', 'LC'], ['of the Lamp', 'L'], ['after the Flood', 'AFl'], ['of the New Dawn', 'ND'], ['of the New Gods', 'NG'], ['after the Cataclysm', 'AC']];
+const PLAGUE = ['the Grey Death', 'the Sweating Sickness', 'the Red Pox', 'the Weeping Plague', 'the Black Fever', 'the Wasting', 'the Rat Plague', 'the Blue Cough', 'the Silent Plague', 'the Fever'];
+const WAR_ADJ = ['Long', 'Bitter', 'Red', 'Great', 'Seven Years\'', 'Thirty Years\'', 'Hundred Years\'', 'Lords\'', 'Black', 'Lost', 'Cold', 'Holy', 'Barons\'', 'Brothers\'', 'Salt', 'Iron', 'Crown', 'Winter', 'Burning', 'Silent', 'Peasants', 'Trade', 'Divine', 'Old Gods\'', 'Blessed'];
 
 export function buildWorldLore(seed: string, p: Politics, settlements: Settlement[]): WorldLore {
   const rnd = mulberry32(hashString(`${seed}#lore`));
@@ -160,7 +160,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
   for (let k = 0; k < nPlague; k++) {
     const y = year - 30 - Math.floor(rnd() * 600);
     const name = PLAGUE[(Math.floor(rnd() * PLAGUE.length) + k) % PLAGUE.length];
-    events.push({ year: y, name, text: `${name} swept the Old World, killing ${pick(rnd, ['a third', 'a quarter', 'half', 'one in five'])} of its people`, oldWorld: true });
+    events.push({ year: y, name, text: `${name} swept the continent, killing ${pick(rnd, ['a third', 'a quarter', 'half', 'one in five'])} of its people`, oldWorld: true });
   }
   const sail = year - 40 - Math.floor(rnd() * 140);
   const hasColonies = units.some((u) => u.gov === 'colony');

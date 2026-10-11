@@ -95,7 +95,7 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string): Uint8Array 
       const d = g.nbDist[j * 8 + k];
       const sea = f.height[n] <= 0;
       let cost = d * (sea ? 4 : 1 + (f.height[n] > 1500 ? 2.5 : f.height[n] > 800 ? 0.8 : 0));
-      // Old World cultures hardly reach New World land, and the other way about.
+      // Old World cultures hardly reach New World land, and the other way about. Except for colonies if age of sail flag is set.
       if (!sea && f.newWorld && NEW_WORLD_CULTURES.has(CULTURES[out[c]]?.id ?? '') !== (f.newWorld[n] === 1)) cost += 4000;
       if (dc + cost < dist[n]) {
         dist[n] = dc + cost;

@@ -22,7 +22,7 @@ function randomize(): void {
 <template>
   <aside class="panel" :class="{ collapsed }">
     <header>
-      <h1>Map Forge</h1>
+      <h1>World Forge</h1>
       <button class="icon" :aria-label="collapsed ? 'Expand panel' : 'Collapse panel'" @click="collapsed = !collapsed">
         {{ collapsed ? '+' : '−' }}
       </button>

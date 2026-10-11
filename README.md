@@ -1,4 +1,4 @@
-# Map Forge
+# World Forge
 
 A browser-based procedural fantasy world generator. You start with a whole planet on a zoomable globe and can zoom in through roads and villages to the streets and buildings of individual towns; later phases will add dungeons and battlemaps. Everything runs client-side, with no server and no account.
 
