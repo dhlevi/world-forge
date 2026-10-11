@@ -1,5 +1,6 @@
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import { Simplex3, fbm } from '../gen/noise';
+import { type KeyNote, hookTail, roomNotes, senseDetail } from '../keys/flavour';
 
 /**
  * Caves and glades in the manner of Watabou's Cave / Glade Generator: a cave is a set of
@@ -68,6 +69,8 @@ export interface LairMap {
 }
 
 export interface LairRoom {
+  /** Creature, hazard and treasure notes. */
+  notes?: KeyNote[];
   n: number;
   p: Pt;
   name: string;
@@ -306,10 +309,12 @@ const empty = (site: LairSite, W: number, H: number): Omit<LairMap, 'outlines' |
 function buildCave(site: LairSite): LairMap {
   const n = lairLevels(site);
   const levels: LairMap[] = [];
+  const allChambers: { c: Pt; r: number }[][] = [];
   let anchors: { p: Pt; style: LinkStyle }[] = [];
   for (let L = 0; L < n; L++) {
     const rnd = mulberry32(site.seed + L * 7919);
     const { map, chambers } = buildCaveLevel(site, L, anchors.map((a) => a.p), rnd);
+    allChambers.push(chambers);
     for (const a of anchors) map.links.push({ p: a.p, dir: 'up', to: L - 1, style: a.style });
     if (L + 1 < n) {
       // Ways down: chambers far from the entrance (or the way in from above), not those already linked.
@@ -338,7 +343,90 @@ function buildCave(site: LairSite): LairMap {
     levels.push(map);
   }
   for (const m of levels) m.levels = levels;
+  caveKey(site, levels, allChambers);
+  annotate(levels, 'cave', mulberry32(site.seed ^ 0xf1a));
   return levels[0];
+}
+
+const CAVE_HOOKS = [
+  'Shepherds have lost sheep near the cave mouth, and last night a shepherd boy as well.',
+  'A dwarf prospector swears there is a vein of mithril somewhere in the deepest chamber.',
+  'The cave was a smugglers\' store in the old days; their last cargo was never collected.',
+  'Villagers leave offerings at the mouth to keep whatever lives inside from coming out.',
+  'A hunting party chased a wounded beast into the cave. Only their dogs came back.',
+  'Strange carvings at the entrance match those on a ring found in a dead traveller\'s pack.',
+];
+
+const CAVE_ROOMS: Record<string, [string, string[]]> = {
+  mouth: ['Cave mouth', ['Daylight fades a few paces in. Old ashes mark where travellers have sheltered.', 'The entrance is choked with dead leaves and the bones of small animals.']],
+  great: ['Great cavern', ['The roof rises out of the lamplight; every sound returns doubled.', 'A vast hall of stone, its floor broken by fallen blocks the size of carts.', 'Fallen slabs lie heaped in the middle of the hall, as if the roof once came down all at once.']],
+  pool: ['Pool chamber', ['A still black pool fills much of the floor. Pale fish turn in its depths.', 'Water has gathered here in a deep, cold pool fed by a trickle from the roof.', 'A shallow pool with a floor of white pebbles; the water is warmer than it should be.']],
+  spires: ['Stalagmite hall', ['A forest of stalagmites crowds the chamber, some taller than a man.', 'Columns of dripstone join floor and roof, glistening when the light catches them.', 'Stalactites hang like teeth over a floor ribbed with flowstone.']],
+  descent: ['The way down', ['The floor drops away to the level below.', 'A steep way leads down into deeper darkness, and the air from it is colder.']],
+  arrival: ['Foot of the way', ['The way from above ends here, in a chamber of damp stone.', 'Scratches on the rock mark where others have climbed down before.']],
+  grotto: ['Grotto', ['A low side chamber; one must stoop to enter.', 'A small grotto with a smooth, sandy floor.', 'A cramped alcove where the walls press in on either side.', 'A side pocket of the cave, its floor heaped with old leaves blown in from outside.', 'A round niche in the rock, smoothed by water long gone.']],
+  chamber: ['Chamber', ['A rough chamber of broken rock.', 'An irregular chamber with a sloping floor and a low roof.', 'A chamber where the floor is cracked into great plates.', 'A long chamber with a ledge running along one wall.', 'A chamber of pale limestone, streaked with rust-red stains.', 'A wide, low chamber where the roof comes down almost to head height.']],
+};
+
+/** Numbers the chambers of every cave level (from the way in) and writes a heading and a description for each. */
+function caveKey(site: LairSite, levels: LairMap[], chambers: { c: Pt; r: number }[][]): void {
+  const rnd = mulberry32(site.seed ^ 0xca7e);
+  const usedText = new Set<string>();
+  let n = 1;
+  levels.forEach((m, L) => {
+    const start = m.mouths[0]?.p ?? m.links.find((l) => l.dir === 'up')?.p ?? [m.W / 2, m.H / 2];
+    const ch = chambers[L].filter((c) => m.open(c.c) || m.open([c.c[0] + c.r * 0.3, c.c[1]]))
+      .sort((a, b) => Math.hypot(a.c[0] - start[0], a.c[1] - start[1]) - Math.hypot(b.c[0] - start[0], b.c[1] - start[1]));
+    // Sizes relative to this cave: the largest fifth are great caverns, the smallest third grottoes.
+    const rs = ch.map((c) => c.r).sort((a, b) => a - b);
+    const big = rs[Math.floor(rs.length * 0.8)] ?? 99, small = rs[Math.floor(rs.length * 0.33)] ?? 0;
+    ch.forEach((c, i) => {
+      const near = (p: Pt, d: number) => Math.hypot(p[0] - c.c[0], p[1] - c.c[1]) < d;
+      const down = m.links.find((l) => l.dir === 'down' && near(l.p, c.r + 1));
+      const up = m.links.find((l) => l.dir === 'up' && near(l.p, c.r + 1));
+      const spires = m.dots.filter((d) => near(d.p, c.r)).length;
+      let kind = 'chamber';
+      if (L === 0 && m.mouths.length && (i === 0 || m.mouths.some((mo) => near(mo.p, c.r + 6)))) kind = 'mouth';
+      else if (down) kind = 'descent';
+      else if (up) kind = 'arrival';
+      else if (m.water.length && inLoops(m.water, c.c)) kind = 'pool';
+      else if (c.r >= big && ch.length > 2) kind = 'great';
+      else if (spires >= 6) kind = 'spires';
+      else if (c.r <= small) kind = 'grotto';
+      const [name, all] = CAVE_ROOMS[kind];
+      const texts = all.filter((t) => !usedText.has(t));
+      let text = (texts.length ? texts : all)[Math.floor(rnd() * (texts.length || all.length))];
+      usedText.add(text);
+      if (down) text += down.style === 'shaft' ? ' A shaft drops sheer; a rope ladder hangs into it.' : down.style === 'slope' ? ' A slope of loose scree runs down to the level below.' : ' Rough steps are cut down into the rock.';
+      // The number: the chamber's middle, unless a way up or down stands there.
+      let p: Pt = c.c;
+      const link = down ?? up;
+      if (link && Math.hypot(link.p[0] - p[0], link.p[1] - p[1]) < 3) {
+        const a = Math.atan2(p[1] - link.p[1], p[0] - link.p[0]) || 0;
+        const q: Pt = [link.p[0] + Math.cos(a) * 3.2, link.p[1] + Math.sin(a) * 3.2];
+        p = m.open(q) ? q : [link.p[0] - 3.2, link.p[1]];
+      }
+      m.rooms.push({ n: n++, p, name, text, tag: kind } as LairRoom & { tag: string });
+    });
+  });
+  levels[0].hook = [CAVE_HOOKS[Math.floor(rnd() * CAVE_HOOKS.length)], hookTail(rnd)].filter(Boolean).join(' ');
+}
+
+/** Creatures, hazards, treasure and a detail for the senses, for every numbered place on every level. */
+function annotate(levels: LairMap[], kind: 'cave' | 'grove', rnd: Rng): void {
+  const used = new Set<string>();
+  levels.forEach((m, L) => {
+    for (const r of m.rooms) {
+      const tag = (r as LairRoom & { tag?: string }).tag ?? (r.name === 'Hoard' ? 'hollow' : '');
+      // A detail for the senses, each used at most twice in a site.
+      const sense = senseDetail(kind, rnd);
+      if (sense && !used.has(`2:${sense}`)) {
+        used.add(used.has(`1:${sense}`) ? `2:${sense}` : `1:${sense}`);
+        r.text += ` ${sense}`;
+      }
+      r.notes = roomNotes(kind, rnd, { tag, entry: tag === 'mouth' || (L === 0 && r.n === 1), depth: L, used });
+    }
+  });
 }
 
 function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng): { map: LairMap; chambers: { c: Pt; r: number }[] } {
@@ -745,6 +833,10 @@ function buildGlade(site: LairSite): LairMap {
     m.levels = [m, inside];
     inside.levels = m.levels;
   }
+  // Flavour from its own stream of numbers, so the map stays as it was.
+  const frnd = mulberry32(site.seed ^ 0xf1a);
+  m.hook = [m.hook, hookTail(frnd)].filter(Boolean).join(' ');
+  annotate(m.levels, 'grove', frnd);
   return m;
 }
 

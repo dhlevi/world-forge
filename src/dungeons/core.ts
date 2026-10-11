@@ -1,4 +1,5 @@
 import type { Rng } from '../gen/rng';
+import type { KeyNote } from '../keys/flavour';
 
 /**
  * Dungeons in the manner of Watabou's One Page Dungeon: a grid of 5 ft squares carved into rooms
@@ -51,6 +52,8 @@ export interface DRoom {
   text: string;
   /** What the generator put there, for the key: "sarcophagus", "ore", "cistern". */
   tags: string[];
+  /** Creature, trap and treasure notes (key.ts). */
+  notes: KeyNote[];
 }
 
 export type DoorKind = 'arch' | 'door' | 'locked' | 'secret' | 'portcullis' | 'bars';
@@ -243,7 +246,7 @@ export function doorsForRooms(L: DLevel, rooms: Rect[], rnd: Rng, pick: () => Do
 }
 
 export function roomOf(r: Rect, n: number, tags: string[] = []): DRoom {
-  return { n, x: r.x, y: r.y, w: r.w, h: r.h, lx: r.x + r.w / 2, ly: r.y + r.h / 2, name: '', text: '', tags };
+  return { n, x: r.x, y: r.y, w: r.w, h: r.h, lx: r.x + r.w / 2, ly: r.y + r.h / 2, name: '', text: '', tags, notes: [] };
 }
 
 /** Cells reachable from (x, y) through open cells. */

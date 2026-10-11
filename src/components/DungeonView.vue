@@ -145,6 +145,7 @@ watch(stage, (el, old) => {
         <ol>
           <li v-for="r in rooms" :key="r.n" :value="r.n">
             <strong>{{ r.name }}.</strong> {{ r.text }}
+            <div v-for="(nt, k) in r.notes" :key="k" class="note" :class="nt.label.toLowerCase()"><em>{{ nt.label }}.</em> {{ nt.text }}</div>
           </li>
         </ol>
         <p v-if="!rooms.length" class="none">No numbered rooms on this level.</p>
@@ -265,6 +266,25 @@ ol {
 }
 li {
   margin-bottom: 8px;
+}
+.note {
+  margin-top: 3px;
+  padding-left: 8px;
+  border-left: 2px solid rgba(43, 36, 32, 0.25);
+  font-size: 13.5px;
+}
+.note em {
+  font-weight: bold;
+}
+.note.creature {
+  border-left-color: #8a3b2e;
+}
+.note.trap,
+.note.hazard {
+  border-left-color: #b07a1f;
+}
+.note.treasure {
+  border-left-color: #4f6b3a;
 }
 li::marker {
   font-weight: bold;

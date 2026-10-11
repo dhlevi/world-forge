@@ -309,7 +309,9 @@ function mineLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number, num
       const r = 2 + rnd() * 2.2;
       carveCircle(L, to[0] + 0.5, to[1] + 0.5, r);
       carveCircle(L, to[0] + 0.5 + (rnd() - 0.5) * 3, to[1] + 0.5 + (rnd() - 0.5) * 3, r * 0.7);
-      rects.push({ x: Math.floor(to[0] - r), y: Math.floor(to[1] - r), w: Math.ceil(2 * r), h: Math.ceil(2 * r) });
+      const box = { x: Math.floor(to[0] - r), y: Math.floor(to[1] - r), w: Math.ceil(2 * r), h: Math.ceil(2 * r) };
+      // Stopes that run together are one chamber in the key.
+      if (rects.every((q) => !overlaps(q, box, 0))) rects.push(box);
     }
   }
   for (const [x, y] of anchors) {

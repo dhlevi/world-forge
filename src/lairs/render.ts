@@ -608,11 +608,15 @@ export function lairPage(m: LairMap, opts: { grid: boolean; labels: boolean; sub
   const scale = Math.min(18, 1500 / Math.max(m.W, m.H)), pad = 36, keyW = 420;
   const mapW = Math.round(m.W * scale), mapH = Math.round(m.H * scale);
   const meas = document.createElement('canvas').getContext('2d')!;
-  const lines: { text: string; font: string; gap: number }[] = [];
+  const lines: { text: string; font: string; gap: number; indent?: number }[] = [];
   for (const r of m.rooms) {
     lines.push({ text: `${r.n}. ${r.name}`, font: "bold 16px 'IM Fell English', Georgia, serif", gap: 6 });
     meas.font = "15px 'IM Fell English', Georgia, serif";
     for (const t of wrap(meas, r.text, keyW)) lines.push({ text: t, font: "15px 'IM Fell English', Georgia, serif", gap: 0 });
+    for (const nt of r.notes ?? []) {
+      meas.font = "italic 14px 'IM Fell English', Georgia, serif";
+      wrap(meas, `${nt.label}: ${nt.text}`, keyW - 14).forEach((t, k) => lines.push({ text: t, font: "italic 14px 'IM Fell English', Georgia, serif", gap: k ? 0 : 2, indent: 14 }));
+    }
   }
   const top = m.levels[0];
   meas.font = "italic 16px 'IM Fell English', Georgia, serif";
@@ -646,7 +650,7 @@ export function lairPage(m: LairMap, opts: { grid: boolean; labels: boolean; sub
   for (const l of lines) {
     y += l.gap;
     g.font = l.font;
-    g.fillText(l.text, x, y);
+    g.fillText(l.text, x + (l.indent ?? 0), y);
     y += 19;
   }
   return c;

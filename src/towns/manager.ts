@@ -172,6 +172,8 @@ export class TownManager {
         });
       }
       for (const d of b.dungeons) {
+        // Mines are drawn on their camp's plan, not as a site of their own.
+        if (d.town) continue;
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [d.lon, d.lat] },
@@ -475,15 +477,12 @@ export class TownManager {
       if (v.kind !== 'mining') continue;
       const h0 = hash32(v.seed ^ 0x313e);
       const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
-      // The adit opens in the hillside a little way from the camp.
-      const a = rr(1) * Math.PI * 2, dKm = 0.5 + 0.5 * rr(2);
-      const lon = v.lon + (Math.cos(a) * dKm) / (111.32 * Math.cos((v.lat * Math.PI) / 180)), lat = v.lat + (Math.sin(a) * dKm) / 110.57;
-      const [x, y] = this.bestNear(lon, lat, 400, (_x, _y, _h, sl) => Math.min(sl, 0.5));
-      if (this.sampler.isWater(x, y)) continue;
+      // The mine opens at the camp itself: its plan draws the adit, and the entrance is marked there.
       const r = rr(3);
       const levels = r < 0.25 ? 1 : r < 0.6 ? 2 : r < 0.88 ? 3 : 4;
       const base = (v.name ?? '').replace(/ (Mine|Diggings)$/, '');
-      add('mine', x, y, h0, [rr(4) < 0.3 ? 'abandoned' : 'worked', ...(rr(5) < 0.3 ? ['wet'] : []), ...(levels > 1 ? [`${levels} levels`] : [])], base || undefined);
+      add('mine', v.lon, v.lat, h0, [rr(4) < 0.3 ? 'abandoned' : 'worked', ...(rr(5) < 0.3 ? ['wet'] : []), ...(levels > 1 ? [`${levels} levels`] : [])], base || undefined);
+      out[out.length - 1].town = v.id;
     }
     const nLat = Math.max(1, Math.round(111.2 / DUNGEON_SPACING_KM));
     const nLon = Math.max(1, Math.round((111.2 * Math.cos(((lat0 + 0.5) * Math.PI) / 180)) / DUNGEON_SPACING_KM));
@@ -685,6 +684,23 @@ export class TownManager {
         out.point('dentry', f ? centroid(local(f)) : [0, 0], props);
       }
     }
+  }
+
+  /** The way into a mining camp's mine, marked at the mouth of its first adit on the camp's plan. */
+  private mineEntry(s: Settlement, out: PlanOut, frame: LocalFrame, culture: number): void {
+    let site: DungeonSite | undefined;
+    for (const b of this.blocks.values()) {
+      site = b.dungeons.find((d) => d.town === s.id);
+      if (site) break;
+    }
+    if (!site) return;
+    const adit = out.features.find((f) => f.properties.kind === 'mine');
+    let p: Pt = [0, 0];
+    if (adit && adit.geometry.type === 'Polygon') {
+      const ring = adit.geometry.coordinates[0].slice(0, -1).map((c) => frame.fromLL(c[0], c[1]) as Pt);
+      p = [ring.reduce((a, q) => a + q[0], 0) / ring.length, ring.reduce((a, q) => a + q[1], 0) / ring.length];
+    }
+    out.point('dentry', p, { did: site.id, dkind: 'mine', name: site.name, seed: site.seed, tags: site.tags.join(','), culture, sid: s.id });
   }
 
   /** A village name in the local culture, dressed for its kind ("Ashby Keep", "Thorn Abbey"). */
@@ -894,8 +910,10 @@ export class TownManager {
     const ground = new Ground(terrain, water);
     const culture = this.world.raster.culture[this.cell(s.lon, s.lat)] ?? 0;
     const inp = { s, exits, water, terrain, ground, out, names: this.names, culture };
-    if (s.tier === 'village') buildVillage(inp);
-    else {
+    if (s.tier === 'village') {
+      buildVillage(inp);
+      if (s.kind === 'mining') this.mineEntry(s, out, frame, culture);
+    } else {
       buildCity(inp);
       this.underground(s, out, frame, water, culture);
     }

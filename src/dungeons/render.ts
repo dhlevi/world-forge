@@ -719,12 +719,16 @@ export function dungeonPage(d: Dungeon, level: number, opts: { grid: boolean; la
   const meas = document.createElement('canvas').getContext('2d')!;
   // Measure the key.
   const rooms = L.rooms.filter((r) => r.n);
-  const lines: { text: string; font: string; gap: number }[] = [];
+  const lines: { text: string; font: string; gap: number; indent?: number }[] = [];
   for (const r of rooms) {
     meas.font = `bold 16px ${SERIF}`;
     lines.push({ text: `${r.n}. ${r.name}`, font: `bold 16px ${SERIF}`, gap: 6 });
     meas.font = `15px ${SERIF}`;
     for (const t of wrap(meas, r.text, keyW)) lines.push({ text: t, font: `15px ${SERIF}`, gap: 0 });
+    for (const nt of r.notes) {
+      meas.font = `italic 14px ${SERIF}`;
+      wrap(meas, `${nt.label}: ${nt.text}`, keyW - 14).forEach((t, k) => lines.push({ text: t, font: `italic 14px ${SERIF}`, gap: k ? 0 : 2, indent: 14 }));
+    }
   }
   const keyH = lines.reduce((a, l) => a + 19 + l.gap, 0);
   meas.font = `italic 16px ${SERIF}`;
@@ -756,7 +760,7 @@ export function dungeonPage(d: Dungeon, level: number, opts: { grid: boolean; la
   for (const l of lines) {
     y += l.gap;
     g.font = l.font;
-    g.fillText(l.text, x, y);
+    g.fillText(l.text, x + (l.indent ?? 0), y);
     y += 19;
   }
   return c;
