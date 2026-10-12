@@ -28,7 +28,7 @@ export interface LabelFeature {
    * zlo/zhi (water only): whole-zoom band this anchor belongs to. A water body keeps one label
    * until it fills the screen, then is lettered from a lattice of anchors (see `waterAnchors`).
    */
-  properties: { kind: LabelKind; name: string; en?: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number; arms?: number; top?: number };
+  properties: { kind: LabelKind; name: string; en?: string; old?: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number; arms?: number; top?: number };
 }
 
 export interface LabelCollection {
@@ -61,7 +61,7 @@ export function nameWorld(
   const point = (c: number): number[] => [lon(c), lat(c)];
   /** A label: its name in the local language, and in English where that differs. */
   const push = (kind: LabelKind, n: Named, geom: LabelFeature['geometry'], rank: number, minz: number, maxz: number) =>
-    labels.push({ type: 'Feature', geometry: geom, properties: { kind, name: n.name, ...(n.en !== n.name ? { en: n.en } : {}), rank, minz, maxz } }) - 1;
+    labels.push({ type: 'Feature', geometry: geom, properties: { kind, name: n.name, ...(n.en !== n.name ? { en: n.en } : {}), ...(n.old ? { old: n.old } : {}), rank, minz, maxz } }) - 1;
   /** Water bodies to letter at close zoom: a set of cells (lakes, enclosed seas) or a seed with a reach on the open sea. */
   const waters: WaterBody[] = [];
 
@@ -75,6 +75,7 @@ export function nameWorld(
     });
     s.name = nm.name;
     s.nameEn = nm.en;
+    if (nm.old) s.nameOld = nm.old;
     if (s.tier === 'city' || s.tier === 'town') {
       // Local relief: the largest height step to a neighbouring cell.
       const i = c % W, j = (c / W) | 0;
@@ -108,6 +109,7 @@ export function nameWorld(
     if (nm) {
       s.name = nm.name;
       s.nameEn = nm.en;
+      delete s.nameOld;
     }
   }
   const named = (lo: number, la: number, km: number) => {
@@ -457,6 +459,7 @@ export function nameWorld(
     if (n) {
       rf.properties.name = n.name;
       if (n.en !== n.name) rf.properties.en = n.en;
+      if (n.old) rf.properties.old = n.old;
     }
   }
 

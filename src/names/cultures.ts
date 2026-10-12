@@ -59,7 +59,28 @@ export interface WorldCulture extends Culture {
   nw: boolean;
   hearth: [number, number];
   env: CultureEnv | null;
+  /** Index into FAMILIES: the language family this people's tongue belongs to (-1 without a world). */
+  family: number;
+  /** A neighbouring family whose older tongue left names in this people's lands (-1 if none). */
+  substrate: number;
 }
+
+/**
+ * A language family: the cultures whose tongues descend from one proto-language. A people whose
+ * tongue has no living kin still has a family of one, with its older form as the proto-language.
+ */
+export interface LangFamily {
+  index: number;
+  /** English name ("Varskic"), or the one member's name for a lone tongue. */
+  name: string;
+  /** "Proto-Varskic", or "Old Varskish" for a lone tongue. */
+  protoName: string;
+  proto: Language;
+  /** Culture indices, the founder (the largest) first. */
+  members: number[];
+}
+/** The current world's language families. */
+export const FAMILIES: LangFamily[] = [];
 
 export interface SiteClimate {
   temp: number;
@@ -795,7 +816,7 @@ const NO_MODS_C = { cityState: 1, republic: 1, theocracy: 1, empire: 1, league: 
 export function plainCulture(t: Culture, index: number, template: number): WorldCulture {
   const name = TEMPLATE_LABEL[t.id] ?? t.id;
   return {
-    ...t, index, template, name, people: `the ${name}`, endonym: name, endonymIpa: '', language: null, ethos: '', traditions: [], customs: null, mods: { ...NO_MODS_C }, nw: false, hearth: [0, 0], env: null,
+    ...t, index, template, name, people: `the ${name}`, endonym: name, endonymIpa: '', language: null, ethos: '', traditions: [], customs: null, mods: { ...NO_MODS_C }, nw: false, hearth: [0, 0], env: null, family: -1, substrate: -1,
   };
 }
 

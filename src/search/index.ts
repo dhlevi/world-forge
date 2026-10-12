@@ -84,7 +84,7 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
     out.push({
       id: s.id, name: s.name, ...(s.nameEn && s.nameEn !== s.name ? { alt: s.nameEn } : {}), type: s.tier === 'city' ? 'City' : 'Town', cat: 'settlement', lon: s.lon, lat: s.lat,
       zoom: s.tier === 'city' ? 12.4 : 13, rank: 0.5 + 0.5 * Math.sqrt(s.population / maxPop),
-      info: `${s.population.toLocaleString('en')} people${s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : ''}`,
+      info: `${s.population.toLocaleString('en')} people${s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : ''}${s.nameOld ? ' · an old name' : ''}`,
     });
     // Sewers and catacombs, at the town until its plan is drawn and gives the entrance's spot.
     const ci = s.culture ?? cultureAt(s.lon, s.lat);
@@ -123,15 +123,15 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
     out.push({ id: `cul${c.index}`, name: c.name, type: 'Culture', cat: 'region', lon: c.hearth[0], lat: c.hearth[1], zoom: 4, rank: 0.6, info: `their own name: ${c.endonym}` });
   }
   // Rivers: one entry per name, at the middle of its largest stretch.
-  const rivers = new Map<string, { c: number[]; order: number; en?: string }>();
+  const rivers = new Map<string, { c: number[]; order: number; en?: string; old?: string }>();
   for (const f of w.rivers.features) {
     const n = f.properties.name;
     if (!n) continue;
     const r = rivers.get(n);
-    if (!r || f.properties.order > r.order) rivers.set(n, { c: mid(f.geometry.coordinates), order: f.properties.order, en: f.properties.en });
+    if (!r || f.properties.order > r.order) rivers.set(n, { c: mid(f.geometry.coordinates), order: f.properties.order, en: f.properties.en, old: f.properties.old });
   }
   for (const [n, r] of rivers) {
-    out.push({ id: `r:${n}`, name: cap(n), ...(r.en ? { alt: cap(r.en) } : {}), type: 'River', cat: 'water', lon: r.c[0], lat: r.c[1], zoom: r.order >= 5 ? 7.5 : 9, rank: Math.min(0.8, 0.3 + r.order / 12) });
+    out.push({ id: `r:${n}`, name: cap(n), ...(r.en ? { alt: cap(r.en) } : {}), type: 'River', cat: 'water', lon: r.c[0], lat: r.c[1], zoom: r.order >= 5 ? 7.5 : 9, rank: Math.min(0.8, 0.3 + r.order / 12), ...(r.old ? { info: r.old } : {}) });
   }
   w.roads.features.forEach((f, k) => {
     const n = f.properties.name;

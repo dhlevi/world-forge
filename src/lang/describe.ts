@@ -1,4 +1,4 @@
-import type { Language, Token } from './language';
+import { type Language, SAMPLE, type Token, type Word } from './language';
 import { BACKS, CONS, HEIGHTS, MANNERS, PLACES, VOW } from './phonemes';
 import { PRONOUNS } from './lexicon';
 import { translate } from './translate';
@@ -70,4 +70,32 @@ export function spellingNotes(L: Language): string[] {
   for (const [ipa, sp] of L.spelling) if (sp && sp !== ipa) out.push(`/${ipa}/ is written ${sp}`);
   for (const r of L.rules) out.push(r.note);
   return out;
+}
+
+/**
+ * The sound changes from the parent language, in order, each with an example word where one
+ * shows it ("*aqua > acma ‘water’").
+ */
+export function soundChangeNotes(L: Language): { note: string; example: string }[] {
+  const P = L.parent;
+  if (!P) return [];
+  const words = SAMPLE.filter((g) => L.word(g).src === 'inherited').map((g) => ({ g, segs: P.segments(P.word(g)) }));
+  const used = new Set<string>();
+  return L.changes.map((ch, k) => {
+    for (const { g, segs } of words) {
+      if (used.has(g)) continue;
+      let cur = segs;
+      for (let i = 0; i < k; i++) cur = L.changes[i].apply(cur);
+      if (ch.apply(cur).join(' ') === cur.join(' ')) continue;
+      used.add(g);
+      return { note: ch.note, example: `*${P.word(g).spell} > ${L.word(g).spell} ‘${g}’` };
+    }
+    return { note: ch.note, example: '' };
+  });
+}
+
+/** Words of a family side by side: the proto-language's and each member's (with whether it was inherited). */
+export const COGNATES = ['water', 'fire', 'stone', 'sun', 'night', 'mother', 'king', 'horse', 'river', 'black', 'two', 'three', 'eat', 'die'];
+export function cognates(proto: Language, langs: Language[]): { en: string; proto: string; words: (Word & { kin: boolean })[] }[] {
+  return COGNATES.map((en) => ({ en, proto: proto.word(en).spell, words: langs.map((L) => ({ ...L.word(en), kin: L.word(en).src === 'inherited' })) }));
 }

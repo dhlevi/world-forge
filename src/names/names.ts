@@ -1,7 +1,7 @@
 import { hash32, hashString, mulberry32, type Rng } from '../gen/rng';
 import { awkward, cap, join, tidy } from '../lang/text';
 import { PROPER, nameCase, translate } from '../lang/translate';
-import { ADJECTIVES, CULTURES, type Culture, DEFAULT_TERMS, type FeatureKind, MOTIFS, type WorldCulture } from './cultures';
+import { ADJECTIVES, CULTURES, type Culture, DEFAULT_TERMS, FAMILIES, type FeatureKind, MOTIFS, type WorldCulture } from './cultures';
 
 const pick = <T>(rnd: Rng, a: T[]): T => a[Math.floor(rnd() * a.length)];
 /**
@@ -115,6 +115,13 @@ export class NameBank {
     const cul = CULTURES[cultureIdx] ?? CULTURES[0];
     const rnd = this.rng(`${kind}:${key}`);
     const pats = FEATURE_PATTERNS[kind] ?? ['{N}'];
+    // Rivers and islands often keep the oldest names of all, from a tongue no longer spoken.
+    if (!base && (kind === 'river' || kind === 'island') && rnd() < (kind === 'river' ? 0.4 : 0.25)) {
+      const adj = pick(rnd, KIND_ADJ[kind] ?? ['old']);
+      const head = kind === 'island' ? 'island' : rnd() < 0.6 ? 'river' : 'water';
+      const old = this.oldNamed(cultureIdx, rnd, adj, head, `${cap(adj)} ${kind === 'island' ? 'Isle' : cap(head)}`);
+      if (old) return kind === 'river' ? { ...this.named(cultureIdx, 'the {0}', [old]), old: old.old } : old;
+    }
     for (let t = 0; t < 8; t++) {
       const pat = pick(rnd, pats);
       const adjs = KIND_ADJ[kind] ?? [];
@@ -135,6 +142,27 @@ export class NameBank {
   }
 
   /**
+   * An old name: a modifier and a head word ("black", "ford") said in an older tongue, run
+   * together and worn down by the sound changes since ("Svartvadu" to "Sorrad"). Most come from
+   * the people's own ancestral tongue; some from a neighbouring family's, left by the people who
+   * lived there first. The English keeps the meaning; `old` says where the name came from.
+   */
+  oldNamed(cultureIdx: number, rnd: Rng, mod: string, head: string, en: string): Named | null {
+    const cul = CULTURES[cultureIdx];
+    const L = cul?.language;
+    if (!L || cul.family < 0) return null;
+    const borrowed = cul.substrate >= 0 && rnd() < 0.35;
+    const fam = FAMILIES[borrowed ? cul.substrate : cul.family];
+    if (!fam) return null;
+    const o = L.oldName(fam.proto.compound === 'initial' ? [head, mod] : [mod, head], fam.proto);
+    if (!o) return null;
+    const name = cap(o.word.spell);
+    if (awkward(name) || (this.unique && this.used.has(name))) return null;
+    if (this.unique) this.used.add(name);
+    return { name, en, old: `Old name, ${borrowed ? 'borrowed ' : ''}from ${fam.protoName} *${o.old}` };
+  }
+
+  /**
    * A settlement's name from where it stands: a modifier (a colour or quality, a tree or beast,
    * or a founder's name) and a place word fitting the site ("Black Ford", "Oak Hill", "Salt
    * Harbour"), made one word in languages that compound ("Svartvad") or a phrase in those that
@@ -144,7 +172,17 @@ export class NameBank {
     const cul = CULTURES[cultureIdx] ?? CULTURES[0];
     const rnd = this.rng(`place:${key}`);
     const L = cul.language;
-    if (!L || !site || rnd() < 0.27) return this.opaque(cul, rnd, true);
+    const roll = rnd();
+    if (!L || !site || roll < 0.27) {
+      // An old name, its meaning remembered by the learned: "Black Ford" in a tongue gone by.
+      if (L && site && roll < 0.14) {
+        const head = weightedPick(rnd, siteHeads(site));
+        const mod = rnd() < 0.55 ? weightedPick(rnd, siteAdjs(site)) : weightedPick(rnd, siteNouns(site));
+        const old = this.oldNamed(cultureIdx, rnd, mod, head, `${cap(mod)} ${HEAD_EN[head] ?? cap(head)}`);
+        if (old) return old;
+      }
+      return this.opaque(cul, rnd, true);
+    }
     for (let t = 0; t < 10; t++) {
       const head = weightedPick(rnd, siteHeads(site));
       const m = rnd();
@@ -201,6 +239,8 @@ export function namePhrase(cultureIdx: number, tpl: string, propers: Named[] = [
 export interface Named {
   name: string;
   en: string;
+  /** For old names: where the name came from ("Old name, from Proto-Varskic *svart-vad"). */
+  old?: string;
 }
 
 /** What a settlement's site is like, for its name. */

@@ -27,6 +27,8 @@ interface Line {
   unit?: number;
   /** The name in the other language (English, or the local name when names are shown in English). */
   alt?: string;
+  /** For an old name: where it came from. */
+  old?: string;
 }
 
 /** A name and its other form, by the chosen lettering (local names, English, or both). */
@@ -71,18 +73,18 @@ const info = computed<Line | null>(() => {
 
   if (height[c] <= 0 && cu < 0) {
     // At sea: the nearest named water (within reach).
-    let best: { name: string; en?: string; d: number; kind: string } | null = null;
+    let best: { name: string; en?: string; old?: string; d: number; kind: string } | null = null;
     for (const f of w.labels.features) {
       const p = f.properties;
       if (!WATER.has(p.kind) || p.zlo || f.geometry.type !== 'Point') continue;
       const [x, y] = f.geometry.coordinates;
       const d = km(lon, lat, x, y);
       const reach = p.kind === 'ocean' ? 3500 : p.kind === 'sea' ? 1300 : 500;
-      if (d < reach && (!best || d < best.d)) best = { name: p.name, en: p.en, d, kind: p.kind };
+      if (d < reach && (!best || d < best.d)) best = { name: p.name, en: p.en, old: p.old, d, kind: p.kind };
     }
     if (!best) return null;
     const nm = pair(cap(best.name), best.en ? cap(best.en) : undefined);
-    return { name: nm.name, alt: nm.alt, sub: '', arms: null, armsKey: '', crumbs: [], chain: [] };
+    return { name: nm.name, alt: nm.alt, old: best.old, sub: '', arms: null, armsKey: '', crumbs: [], chain: [] };
   }
   if (!chain.length) {
     // In the New World, land beyond the towns is the tribes' own.
@@ -106,7 +108,7 @@ const info = computed<Line | null>(() => {
       const kind = s.tier === 'city' ? 'City' : 'Town';
       const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
-        ...pair(s.name ?? '', s.nameEn),
+        ...pair(s.name ?? '', s.nameEn), old: s.nameOld,
         sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' ? LAYOUT_LABEL[s.layout] : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
       };
@@ -182,6 +184,7 @@ function onMain(): void {
         </div>
         <div class="name">{{ info.name }}<span v-if="info.alt" class="alt">{{ info.alt }}</span></div>
         <div v-if="info.sub" class="sub">{{ info.sub }}</div>
+        <div v-if="info.old" class="sub old">{{ info.old }}</div>
       </div>
       <button v-if="detail.length" class="more" :title="open ? 'Hide the hierarchy' : 'Show the hierarchy'" @click.stop="open = !open">{{ open ? '▴' : '▾' }}</button>
     </div>
@@ -283,6 +286,9 @@ function onMain(): void {
 .sub {
   font-size: 12.5px;
   opacity: 0.8;
+}
+.old {
+  font-style: italic;
 }
 .detail {
   margin-top: 8px;

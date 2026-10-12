@@ -1,13 +1,13 @@
 import { NB_CULTURE } from '../gen/politics';
-import { CULTURES, TEMPLATES, type WorldCulture } from '../names/cultures';
+import { CULTURES, FAMILIES, type LangFamily, TEMPLATES, type WorldCulture } from '../names/cultures';
 import { LANG_TEMPLATES } from '../lang/templates';
 import type { Faith, Sect } from './faiths';
 import type { Ctx } from './realm';
 
 /**
  * What the culture window shows beyond the culture itself: how many people share it and where
- * (the realms its people rule, largest first), its faith, and its kin (cultures grown from the
- * same template).
+ * (the realms its people rule, largest first), its faith, and its kin (the other peoples of its
+ * language family).
  */
 export interface CultureInfo {
   culture: WorldCulture;
@@ -18,7 +18,11 @@ export interface CultureInfo {
   vassals: number;
   faith: Faith | null;
   sect: Sect | null;
+  /** The other peoples of its language family. */
   kin: number[];
+  family: LangFamily | null;
+  /** The family whose older tongue left names in its lands, if any. */
+  substrate: LangFamily | null;
   templateName: string;
   after: string;
 }
@@ -49,7 +53,8 @@ export function cultureInfo(c: Ctx, ci: number): CultureInfo {
   const fs = c.L.faiths.ofCulture[ci] >= 0 ? c.L.faiths.sectOf(ci, culture.hearth[0], culture.hearth[1]) : null;
   return {
     culture, people: peopleByCulture(c)[ci] ?? 0, realms: tops, vassals, faith: fs?.faith ?? null, sect: fs?.sect ?? null,
-    kin: CULTURES.filter((x) => x.template === culture.template && x.index !== ci).map((x) => x.index),
+    kin: FAMILIES[culture.family]?.members.filter((k) => k !== ci) ?? [],
+    family: FAMILIES[culture.family] ?? null, substrate: FAMILIES[culture.substrate] ?? null,
     templateName: TEMPLATES[culture.template]?.id ?? '', after: LANG_TEMPLATES[culture.id]?.after ?? '',
   };
 }

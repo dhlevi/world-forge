@@ -1,8 +1,12 @@
 import { hashString, mulberry32, type Rng } from '../gen/rng';
-import { CONS, VOW, isVowel } from './phonemes';
+import { CONS, HEIGHTS, PLACES, VOW, isNasal, isVowel } from './phonemes';
 import { type FormKey, type GrammarBias, type LangTemplate, type Order } from './templates';
 import { LEX, type POS, PRONOUNS } from './lexicon';
 import { awkward, cap, join, tidy } from './text';
+import { type SoundChange, pickChanges, segment, syncope } from './sound-change';
+
+const PLACE_ORDER: readonly string[] = PLACES;
+const HEIGHT_ORDER: readonly string[] = HEIGHTS;
 
 /**
  * A generated language. It grows from a template: the template's sounds, syllables, spelling
@@ -27,6 +31,8 @@ export interface Word {
   spell: string;
   /** IPA with stress (and tone) marks, between slashes when shown. */
   ipa: string;
+  /** Where the word came from: the parent language (through sound changes), the template's old words, or new. */
+  src?: 'inherited' | 'old' | 'new';
 }
 export interface Token {
   form: string;
@@ -67,6 +73,12 @@ const BASIC_READING: Record<string, string> = {
   a: 'a', e: 'e', i: 'i', o: 'o', u: 'u', ä: 'æ', ö: 'ø', ü: 'y', å: 'ɔ', æ: 'æ', ø: 'ø', é: 'eː', á: 'aː', í: 'iː', ó: 'oː', ú: 'uː', â: 'aː', ë: 'eː', ñ: 'ɲ',
   b: 'b', d: 'd', f: 'f', g: 'g', h: 'h', k: 'k', l: 'l', m: 'm', n: 'n', p: 'p', r: 'r', s: 's', t: 't', v: 'v', z: 'z',
 };
+/** Broad classes of consonants: a lost sound is replaced from its own class where it can be (l by r, not n). */
+const CLASS: Record<string, string> = {
+  plosive: 'stop', affricate: 'fricative', fricative: 'fricative', 'lateral fricative': 'fricative', nasal: 'nasal', trill: 'liquid', tap: 'liquid', 'lateral approximant': 'liquid', approximant: 'glide',
+};
+/** Common words, to see which sound changes would matter to a language. */
+export const SAMPLE = ['water', 'fire', 'stone', 'tree', 'river', 'mountain', 'sun', 'moon', 'star', 'night', 'day', 'man', 'woman', 'mother', 'father', 'king', 'horse', 'dog', 'wolf', 'bird', 'fish', 'black', 'white', 'red', 'green', 'old', 'new', 'big', 'small', 'one', 'two', 'three', 'four', 'five', 'hand', 'head', 'eye', 'heart', 'blood', 'bone', 'house', 'city', 'field', 'road', 'sea', 'wind', 'rain', 'snow', 'gold', 'iron', 'sword', 'war', 'god', 'name', 'give', 'eat', 'see', 'go', 'come', 'die'];
 const PLACE_CONCEPTS = ['town', 'fort', 'hill', 'river', 'field', 'ford', 'home', 'lake', 'valley', 'harbour', 'stone', 'wood', 'island', 'mountain', 'city', 'village', 'farm', 'spring', 'bridge', 'meadow'];
 const ROOT_CONCEPTS = ['black', 'white', 'red', 'old', 'new', 'high', 'great', 'cold', 'iron', 'stone', 'wolf', 'oak', 'ash', 'raven', 'eagle', 'bear', 'sun', 'moon', 'star', 'thorn', 'gold', 'silver', 'deep', 'holy', 'king', 'storm', 'fire', 'salt', 'wild'];
 
@@ -92,6 +104,10 @@ export interface LangSpec {
   legacy?: { starts: string[]; mids: string[]; ends: string[]; midChance: number; roots?: string[]; suffixes?: string[]; compoundChance?: number; prefixes?: string[]; prefixChance?: number };
   given?: [string[], string[]];
   families?: string[];
+  /** The parent language (a family's proto-language), whose words this one inherits. */
+  parent?: Language;
+  /** Share of the parent's words still in use (the rest replaced by new ones). */
+  retention?: number;
 }
 
 export class Language {
@@ -119,7 +135,16 @@ export class Language {
   readonly stress: LangTemplate['stress'];
   /** How names are built (see `LangTemplate.compound`). */
   readonly compound: LangTemplate['compound'];
+  /** The parent language, if any, and the sound changes since (in order). */
+  readonly parent: Language | null;
+  readonly changes: SoundChange[];
+  readonly retention: number;
+  /** True for languages whose syllables end in vowels (or nasals) only. */
+  readonly open: boolean;
+  /** The vowel added to break up clusters the language does not allow. */
+  readonly epenthetic: string;
   private readonly spec: LangSpec;
+  private readonly adaptCache = new Map<string, string>();
   private readonly cache = new Map<string, Word>();
 
   constructor(spec: LangSpec) {
@@ -211,6 +236,18 @@ export class Language {
     }
     const rp = mulberry32(hashString(`${this.key}#person`));
     this.personEndings = PRONOUNS.slice(0, 6).map(() => this.morpheme(rp, 'suffix'));
+
+    // Descent: sound changes since the parent language (more with more drift).
+    this.parent = spec.parent ?? null;
+    const rd = mulberry32(hashString(`${this.key}#descent`));
+    // Only changes that touch some of the parent's common words (a language without x cannot lose it).
+    const P = this.parent;
+    const sample = P ? SAMPLE.map((g) => P.segments(P.word(g))) : [];
+    const touches = (c: SoundChange) => sample.filter((w) => c.apply(w).join(' ') !== w.join(' ')).length >= 2;
+    this.changes = P ? pickChanges(rd, Math.max(1, Math.round(1 + d * 4 + rd() * 2)), touches) : [];
+    this.retention = Math.max(0, Math.min(1, spec.retention ?? 0.85));
+    this.open = this.syl.every(([p, w]) => w < 0.3 || /[VN]$/.test(p));
+    this.epenthetic = ['ə', 'e', 'u', 'i', 'a'].find((v) => this.vowels.some((x) => x.ipa === v)) ?? this.vowels[0].ipa;
   }
 
   // ---- Sounds to words ---------------------------------------------------------------------------
@@ -354,16 +391,23 @@ export class Language {
     const r = mulberry32(hashString(`${this.key}#w#${key}`));
     const c = LEX.get(key);
     const seed = this.t.seeds[key];
+    const P = this.parent;
     let w: Word | null = null;
-    if (seed && r() < this.pTemplate + 0.15) {
+    // A language whose parent grew from the same template inherits its old words from the parent;
+    // one from another template keeps some of its own.
+    if (seed && (!P || P.t.id !== this.t.id) && r() < (this.pTemplate + 0.15) * (P ? 0.5 : 1)) {
       const spell = this.respell(seed);
-      w = { spell, ipa: this.toIpa(spell) };
+      w = { spell, ipa: this.toIpa(spell), src: 'old' };
+    }
+    if (!w && P) {
+      const core = c?.pos === 'pron' || c?.pos === 'num' || /^(pronoun|adposition):/.test(key);
+      if (r() < (core ? Math.min(0.97, this.retention + 0.12) : this.retention)) w = this.inherit(P.segments(P.word(key)));
     }
     if (!w) {
       const [lo, hi] = this.t.roots;
       const short = c?.short || c?.pos === 'pron' || c?.pos === 'adv' || /^(pronoun|adposition):/.test(key);
       const n = short ? 1 : Math.max(1, lo + Math.floor(r() * (hi - lo + 1)) - (c && c.pos !== 'n' && c.pos !== 'v' && r() < 0.4 ? 1 : 0));
-      w = this.gen(r, n);
+      w = { ...this.gen(r, n), src: 'new' };
     }
     this.cache.set(key, w!);
     return w!;
@@ -382,6 +426,144 @@ export class Language {
     if (/^(woman|mother|daughter|sister|queen|lady|girl|she)$/.test(en)) return 1;
     if (/^(man|father|son|brother|king|lord|boy|prince|he)$/.test(en)) return 0;
     return (hashString(`${this.key}#g#${en}`) & 1) as 0 | 1;
+  }
+
+  // ---- Descent -------------------------------------------------------------------------------------
+
+  /** A word's sounds as segments. */
+  segments(w: Word): string[] {
+    return segment(w.ipa);
+  }
+
+  /** The nearest sound this language has to a sound (its own, if it has it). */
+  private adapt(s: string): string {
+    const hit = this.adaptCache.get(s);
+    if (hit !== undefined) return hit;
+    let out = '';
+    const c = CONS.get(s), v = VOW.get(s);
+    if (this.spelling.has(s)) out = s;
+    else if (c) {
+      let best = -1;
+      for (const p of this.consonants) {
+        const x = CONS.get(p.ipa);
+        if (!x) continue;
+        const sc = (x.place === c.place ? 3 : 0) + (x.manner === c.manner ? 4 : 0) + (CLASS[x.manner] === CLASS[c.manner] ? 2.5 : 0) + (x.voiced === c.voiced ? 1.5 : 0) - Math.abs(PLACE_ORDER.indexOf(x.place) - PLACE_ORDER.indexOf(c.place)) * 0.4 + p.w * 0.01;
+        if (sc > best) {
+          best = sc;
+          out = p.ipa;
+        }
+      }
+      // A glottal stop or a sound with nothing near simply goes.
+      if (best < 3) out = '';
+    } else if (v) {
+      let best = -Infinity;
+      for (const p of this.vowels) {
+        const x = VOW.get(p.ipa);
+        if (!x) continue;
+        const sc = -Math.abs(HEIGHT_ORDER.indexOf(x.height) - HEIGHT_ORDER.indexOf(v.height)) * 1.2 - (x.back === v.back ? 0 : 1) - (x.rounded === v.rounded ? 0 : 0.6) - (!!x.long === !!v.long ? 0 : 0.5) + p.w * 0.01;
+        if (sc > best) {
+          best = sc;
+          out = p.ipa;
+        }
+      }
+    }
+    this.adaptCache.set(s, out);
+    return out;
+  }
+
+  /**
+   * A parent's word (as segments) as this language says it: through its sound changes, into its
+   * own sounds, its clusters and endings mended, spelled its own way. Null if nothing usable is left.
+   */
+  inherit(segs: string[], src: Word['src'] = 'inherited'): Word | null {
+    let w = segs;
+    for (const ch of this.changes) w = ch.apply(w);
+    w = w.map((s) => this.adapt(s)).filter(Boolean);
+    w = this.mend(w);
+    if (!w.some(isVowel)) return null;
+    const syls = this.syllabify(w);
+    if (this.tones) {
+      const h = hashString(`${this.key}#tone#${w.join('')}`);
+      syls.forEach((s, i) => s.push(`#${1 + ((h >>> (i * 3)) % this.tones)}`));
+    }
+    const spell = this.spellOf(syls);
+    if (spell.length < 1 || awkward(spell)) return null;
+    return { spell, ipa: this.ipaOf(syls), src };
+  }
+
+  /** Mends a word to the language's patterns: no runs of three consonants, allowed clusters and endings. */
+  private mend(w: string[]): string[] {
+    const out: string[] = [];
+    for (const s of w) {
+      const prev = out[out.length - 1];
+      // Doubled sounds become one (a long vowel where the language has it).
+      if (s === prev) {
+        if (isVowel(s) && this.spelling.has(`${s}ː`)) out[out.length - 1] = `${s}ː`;
+        continue;
+      }
+      if (isVowel(s) && prev && isVowel(prev) && (prev.startsWith(s) || s.startsWith(prev))) continue;
+      out.push(s);
+    }
+    const C = (s?: string) => !!s && !isVowel(s);
+    // Three consonants in a row lose the middle one.
+    for (let i = 1; i < out.length - 1; i++) if (C(out[i - 1]) && C(out[i]) && C(out[i + 1])) out.splice(i--, 1);
+    // Onset clusters the language does not allow lose their first sound.
+    if (C(out[0]) && C(out[1]) && !this.onsets.some((o) => o[0] === out[0] && o[1] === out[1])) out.shift();
+    // Open-syllable languages break up clusters (but keep a nasal before a consonant if they allow one).
+    if (this.open) {
+      const nasalCoda = this.syl.some(([p, wt]) => wt >= 0.3 && p.endsWith('N'));
+      for (let i = 0; i < out.length - 1; i++) {
+        if (C(out[i]) && C(out[i + 1]) && !(nasalCoda && isNasal(out[i]))) out.splice(i + 1, 0, this.epenthetic);
+      }
+    }
+    // A sound that may not end a word: dropped, or given a vowel after it in open languages.
+    for (let t = 0; t < 2; t++) {
+      const last = out[out.length - 1];
+      if (!C(last) || this.finals.has(last)) break;
+      if (this.open || out.length < 3) out.push(this.epenthetic);
+      else out.pop();
+    }
+    return out;
+  }
+
+  /** Segments into syllables: each vowel a nucleus, one consonant (or an allowed pair) starting the next. */
+  private syllabify(w: string[]): string[][] {
+    const nuc = w.map((s, i) => (isVowel(s) ? i : -1)).filter((i) => i >= 0);
+    const out: string[][] = [];
+    let start = 0;
+    nuc.forEach((v, k) => {
+      const next = nuc[k + 1];
+      let end: number;
+      if (next === undefined) end = w.length;
+      else {
+        const run = next - v - 1;
+        let onset = run > 0 ? 1 : 0;
+        if (run >= 2 && this.onsets.some((o) => o[0] === w[next - 2] && o[1] === w[next - 1])) onset = 2;
+        end = next - onset;
+      }
+      out.push(w.slice(start, end));
+      start = end;
+    });
+    return out.length ? out : [w];
+  }
+
+  /**
+   * An old name: English glosses said in an older language (the parent, or a neighbour's), run
+   * together and worn down to two or three syllables, then through this language's changes.
+   * Returns the name and the old form it came from.
+   */
+  oldName(glosses: string[], from: Language): { word: Word; old: string } | null {
+    const parts = glosses.map((g) => from.word(g));
+    let segs = parts.flatMap((p) => from.segments(p));
+    segs = syncope(segs, 3);
+    const w = from === this.parent || this.parent === null ? this.inherit(segs, 'old') : this.borrow(segs);
+    if (!w || w.spell.length < 3 || w.spell.length > 12) return null;
+    return { word: w, old: parts.map((p) => p.spell).join('-') };
+  }
+
+  /** A word taken from another language long ago: its sounds made this language's, then changed with the rest. */
+  borrow(segs: string[]): Word | null {
+    return this.inherit(segs.map((s) => this.adapt(s)).filter(Boolean), 'old');
   }
 
   // ---- Names ---------------------------------------------------------------------------------------

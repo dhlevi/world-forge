@@ -20,6 +20,8 @@ export interface Settlement {
   name?: string;
   /** The name in English, where it means something ("Black Ford"). */
   nameEn?: string;
+  /** For an old name: where it came from. */
+  nameOld?: string;
   tier: Tier;
   /** Villages only. */
   kind?: VillageKind;

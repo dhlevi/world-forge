@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
 import { flyTarget, openCulture, openRealm, world } from '../store';
-import { CULTURES } from '../names/cultures';
+import { CULTURES, TEMPLATE_LABEL } from '../names/cultures';
 import { ETHOS, TRADITIONS } from '../names/traits';
 import { LEXICON } from '../lang/lexicon';
-import { consonantChart, examples, grammarNotes, pronounTable, spellingNotes, vowelChart } from '../lang/describe';
+import { cognates, consonantChart, examples, grammarNotes, pronounTable, soundChangeNotes, spellingNotes, vowelChart } from '../lang/describe';
 import { translate } from '../lang/translate';
 import { cultureInfo } from '../lore/culture';
 import { fmtPeople } from '../lore/realm';
@@ -14,9 +14,10 @@ import { currentLore } from './realm-lore';
 /**
  * The culture window: a people of the world, their outlook, traditions and customs, where they
  * live and rule, and their language: its sounds (with IPA), syllables, spelling, grammar,
- * examples word by word, a dictionary and a box that translates English into it.
+ * examples word by word, its family (the proto-language, the sound changes since, and cognates
+ * in the sister tongues), a dictionary and a box that translates English into it.
  */
-type Tab = 'overview' | 'sounds' | 'grammar' | 'dictionary' | 'translate';
+type Tab = 'overview' | 'sounds' | 'grammar' | 'family' | 'dictionary' | 'translate';
 const tab = ref<Tab>('overview');
 const query = ref('');
 const phrase = ref('The old king rules the great city.');
@@ -33,7 +34,7 @@ watch(openCulture, () => {
 });
 watch(world, () => (openCulture.value = null));
 
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['sounds', 'Sounds'], ['grammar', 'Grammar'], ['dictionary', 'Dictionary'], ['translate', 'Translate']];
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['sounds', 'Sounds'], ['grammar', 'Grammar'], ['family', 'Family'], ['dictionary', 'Dictionary'], ['translate', 'Translate']];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const units = computed(() => world.value?.politics.units ?? []);
 const arms = (id: number) => armsImage(units.value[id].arms, 16, `u${id}`);
@@ -44,6 +45,19 @@ const notes = computed(() => (L.value ? grammarNotes(L.value) : []));
 const prons = computed(() => (L.value ? pronounTable(L.value) : []));
 const exs = computed(() => (L.value ? examples(L.value) : []));
 const spells = computed(() => (L.value ? spellingNotes(L.value) : []));
+const fam = computed(() => info.value?.family ?? null);
+/** This people first, then its kin (at most five columns). */
+const famMembers = computed(() => (c.value && fam.value ? [c.value.index, ...fam.value.members.filter((k) => k !== c.value!.index)].slice(0, 5) : []));
+const changes = computed(() => (L.value ? soundChangeNotes(L.value) : []));
+const cogs = computed(() => (fam.value ? cognates(fam.value.proto, famMembers.value.map((k) => CULTURES[k].language!)) : []));
+const famText = computed(() => {
+  const f = fam.value, x = c.value;
+  if (!f || !x) return '';
+  if (f.members.length < 2) return `${x.name} has no living kin: it is the only descendant of ${f.protoName}, the tongue its people spoke long ago.`;
+  const others = f.members.filter((k) => k !== x.index).map((k) => CULTURES[k].name);
+  const tpls = new Set(f.members.map((k) => CULTURES[k].id));
+  return `${x.name} is one of the ${f.name} languages, which all descend from ${f.protoName}: its sisters are ${others.slice(0, -1).join(', ')}${others.length > 1 ? ' and ' : ''}${others[others.length - 1]}.${tpls.size > 1 ? ` The family spans peoples of different stock (${[...tpls].map((t) => TEMPLATE_LABEL[t] ?? t).join(', ')}), so the sisters share fewer words.` : ''}`;
+});
 const dict = computed(() => {
   const lang = L.value;
   if (!lang) return [];
@@ -138,7 +152,7 @@ function showHome(): void {
           <p v-if="info.realms.length > 12" class="note">and {{ info.realms.length - 12 }} more.</p>
         </template>
         <template v-if="info?.kin.length">
-          <h3>Kindred peoples</h3>
+          <h3>Kindred peoples<span v-if="info.family" class="dim"> ({{ info.family.name }} languages)</span></h3>
           <p><template v-for="(k, i) in info.kin" :key="k"><a href="#" @click.prevent="goCulture(k)">{{ CULTURES[k].name }}</a><span v-if="i < info.kin.length - 1">, </span></template></p>
         </template>
         <p class="note">Grown from the familiar {{ info?.templateName }} template (after {{ info?.after }}); its language has drifted {{ Math.round((L?.drift ?? 0) * 100) }}% from it.</p>
@@ -170,8 +184,8 @@ function showHome(): void {
           <ul class="plain"><li v-for="n in spells" :key="n">{{ n }}</li></ul>
         </template>
         <template v-if="L.shifts.length">
-          <h3>Sound changes</h3>
-          <p class="note">Old names and words inherited from the template have changed:</p>
+          <h3>Respellings</h3>
+          <p class="note">Old names and words kept from the template's stock are respelled (see the Family tab for the sound changes since the parent tongue):</p>
           <ul class="plain"><li v-for="s in L.shifts" :key="s.note">{{ s.note }}</li></ul>
         </template>
       </section>
@@ -191,10 +205,38 @@ function showHome(): void {
         </div>
       </section>
 
+      <section v-else-if="tab === 'family' && L">
+        <p>{{ famText }}</p>
+        <template v-if="changes.length">
+          <h3>Sound changes since {{ fam?.protoName }}</h3>
+          <ol class="plain">
+            <li v-for="(s, i) in changes" :key="i">{{ s.note }}<span v-if="s.example" class="dim"> · <i>{{ s.example }}</i></span></li>
+          </ol>
+          <p class="note">They happened in this order, and to every word alike; that is why words in sister tongues match sound for sound.</p>
+        </template>
+        <h3>Words compared</h3>
+        <div class="scroll">
+          <table class="dict cog">
+            <tr><th /><th>{{ fam?.protoName }}</th><th v-for="k in famMembers" :key="k"><a v-if="k !== c.index" href="#" @click.prevent="goCulture(k)">{{ CULTURES[k].name }}</a><template v-else>{{ CULTURES[k].name }}</template></th></tr>
+            <tr v-for="row in cogs" :key="row.en">
+              <td>{{ row.en }}</td>
+              <td class="dim">*{{ row.proto }}</td>
+              <td v-for="(w, i) in row.words" :key="i" :class="{ dim: !w.kin }" :title="w.kin ? `/${w.ipa}/, from *${row.proto}` : w.src === 'old' ? `/${w.ipa}/, a word of its own older stock` : `/${w.ipa}/, a newer word`"><b v-if="w.kin">{{ w.spell }}</b><template v-else>{{ w.spell }}{{ w.src === 'old' ? '°' : '†' }}</template></td>
+            </tr>
+          </table>
+        </div>
+        <p class="note">Starred forms are the reconstructed parent tongue's. A dagger marks a newer word that replaced the inherited one; a ring, a word kept from the people's own older stock (in kin of another stock).</p>
+        <template v-if="info?.substrate">
+          <h3>Older names</h3>
+          <p>Some places in their lands keep names from {{ info.substrate.protoName }}, the tongue of the {{ info.substrate.members.length > 1 ? `${info.substrate.name} peoples` : CULTURES[info.substrate.members[0]].people }} who lived nearby long ago; others keep {{ fam?.protoName }} names worn down by the changes above. Both show on the map with their meaning, such as a river still called by a word for “white water” no one now speaks.</p>
+        </template>
+        <p v-else class="note">Some places keep {{ fam?.protoName }} names, worn down by the changes above; their meaning is shown in English.</p>
+      </section>
+
       <section v-else-if="tab === 'dictionary' && L">
         <input v-model="query" class="search" type="search" placeholder="Search English or the language…" />
         <table class="dict">
-          <tr v-for="x in dict" :key="x.en"><td>{{ x.en }}</td><td><b>{{ x.w.spell }}</b><small v-if="x.g" class="dim"> ({{ x.g }})</small></td><td class="ipa">/{{ x.w.ipa }}/</td><td class="dim">{{ x.pos }}</td></tr>
+          <tr v-for="x in dict" :key="x.en"><td>{{ x.en }}</td><td><b>{{ x.w.spell }}</b><small v-if="x.g" class="dim"> ({{ x.g }})</small><small v-if="x.w.src === 'inherited' && L.parent" class="dim" :title="`From ${fam?.protoName}`"> &lt; *{{ L.parent.word(x.en).spell }}</small></td><td class="ipa">/{{ x.w.ipa }}/</td><td class="dim">{{ x.pos }}</td></tr>
         </table>
         <p class="note">Any English word can be looked up; words outside the core vocabulary are made on demand, the same way every time.</p>
       </section>
@@ -407,6 +449,19 @@ table {
 }
 .dict {
   width: 100%;
+}
+.cog th {
+  font-weight: normal;
+  font-style: italic;
+  text-align: left;
+  padding-right: 10px;
+}
+.cog td {
+  white-space: nowrap;
+}
+ol.plain {
+  margin: 4px 0;
+  padding-left: 22px;
 }
 .dict td {
   padding: 3px 8px 3px 0;

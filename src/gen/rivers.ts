@@ -11,7 +11,7 @@ export interface RiverFeature {
    * order = log2(flow / threshold); flow = precipitation-weighted drainage area (km²);
    * widthM = physical width; ppm20 = map pixels per metre at zoom 20 (for physical line widths).
    */
-  properties: { order: number; flow: number; widthM: number; ppm20: number; rid: number; name?: string; en?: string };
+  properties: { order: number; flow: number; widthM: number; ppm20: number; rid: number; name?: string; en?: string; old?: string };
 }
 
 export interface RiverCollection {
