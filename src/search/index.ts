@@ -1,3 +1,4 @@
+import type { Faith } from '../lore/faiths';
 import type { LabelCollection } from '../gen/features';
 import type { RiverCollection } from '../gen/rivers';
 import type { RoadCollection, Settlement } from '../gen/settlements';
@@ -143,6 +144,14 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
 }
 
 /** Compact entries the towns worker sends for villages, caves and glades. */
+/** The world's faiths (from the lore): each opens the faith window. */
+export function faithEntries(faiths: Faith[]): SearchEntry[] {
+  return faiths.map((f) => {
+    const at = f.holySites[0] ?? { lon: f.head.lon, lat: f.head.lat };
+    return { id: `fai${f.id}`, name: f.name.charAt(0).toUpperCase() + f.name.slice(1), ...(f.native && f.native !== f.name ? { alt: f.native } : {}), type: 'Faith', cat: 'region' as SearchCat, lon: at.lon, lat: at.lat, zoom: 6, rank: 0.55, info: f.kind };
+  });
+}
+
 export function blockEntry(o: { id: string; name: string; tier: string; kind: string; lon: number; lat: number; info?: string; en?: string }): SearchEntry {
   const alt = o.en ? { alt: cap(o.en) } : {};
   if (o.tier === 'lair') {

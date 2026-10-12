@@ -73,6 +73,13 @@ const BASIC_READING: Record<string, string> = {
   a: 'a', e: 'e', i: 'i', o: 'o', u: 'u', ä: 'æ', ö: 'ø', ü: 'y', å: 'ɔ', æ: 'æ', ø: 'ø', é: 'eː', á: 'aː', í: 'iː', ó: 'oː', ú: 'uː', â: 'aː', ë: 'eː', ñ: 'ɲ',
   b: 'b', d: 'd', f: 'f', g: 'g', h: 'h', k: 'k', l: 'l', m: 'm', n: 'n', p: 'p', r: 'r', s: 's', t: 't', v: 'v', z: 'z',
 };
+/** English-style respellings of sounds, for "sounds like" (vowels differ in open and closed syllables). */
+const SAY_C: Record<string, string> = {
+  ŋ: 'ng', θ: 'th', ð: 'dh', ʃ: 'sh', ʒ: 'zh', tʃ: 'ch', tʃʰ: 'ch', dʒ: 'j', x: 'kh', ɣ: 'gh', χ: 'kh', ʁ: 'r', j: 'y', ɾ: 'r', ɬ: 'hl', tɬ: 'tl', ɲ: 'ny', ʎ: 'ly',
+  ʔ: '\'', ç: 'hy', ɕ: 'sy', ʑ: 'zy', tɕ: 'ch', tɕʰ: 'ch', ʂ: 'sh', ʐ: 'zh', β: 'v', ɸ: 'f', ʋ: 'v', ħ: 'h', ʕ: '\'', tsʰ: 'ts', q: 'q',
+};
+const SAY_OPEN: Record<string, string> = { a: 'ah', e: 'eh', i: 'ee', o: 'oh', u: 'oo', ɛ: 'eh', ɔ: 'aw', æ: 'a', ə: 'uh', ɪ: 'ih', ʊ: 'oo', y: 'ew', ø: 'eu', œ: 'eu', ɨ: 'ih', ɯ: 'eu', ʌ: 'uh', ɑ: 'ah' };
+const SAY_SHUT: Record<string, string> = { a: 'a', e: 'e', i: 'i', o: 'o', u: 'u', ɛ: 'e', ɔ: 'aw', æ: 'a', ə: 'uh', ɪ: 'i', ʊ: 'oo', y: 'ew', ø: 'eu', œ: 'eu', ɨ: 'ih', ɯ: 'eu', ʌ: 'u', ɑ: 'ah' };
 /** Broad classes of consonants: a lost sound is replaced from its own class where it can be (l by r, not n). */
 const CLASS: Record<string, string> = {
   plosive: 'stop', affricate: 'fricative', fricative: 'fricative', 'lateral fricative': 'fricative', nasal: 'nasal', trill: 'liquid', tap: 'liquid', 'lateral approximant': 'liquid', approximant: 'glide',
@@ -491,6 +498,25 @@ export class Language {
     return { spell, ipa: this.ipaOf(syls), src };
   }
 
+  /**
+   * How a written form is said: IPA with the language's stress, and a rough English-style
+   * respelling with the stressed syllable in capitals ("VAHR-skish").
+   */
+  pronounce(spell: string): { ipa: string; sounds: string } {
+    const segs = segment(this.toIpa(spell));
+    if (!segs.some(isVowel)) return { ipa: segs.join(''), sounds: spell };
+    const syls = this.syllabify(segs);
+    const n = syls.length;
+    const at = this.stress === 'none' || n < 2 ? -1 : this.stress === 'initial' ? 0 : this.stress === 'final' ? n - 1 : Math.max(0, n - 2);
+    const ipa = syls.map((s, i) => (i === at ? 'ˈ' : '') + s.join('')).join(n > 1 && at < 0 ? '.' : '');
+    const sounds = syls.map((s, i) => {
+      const closed = !isVowel(s[s.length - 1]);
+      const w = s.map((x) => (isVowel(x) ? (closed ? SAY_SHUT : SAY_OPEN)[x.replace('ː', '')] ?? x : SAY_C[x] ?? x.replace('ʰ', ''))).join('');
+      return i === at ? w.toUpperCase() : w;
+    }).join('-');
+    return { ipa, sounds };
+  }
+
   /** Mends a word to the language's patterns: no runs of three consonants, allowed clusters and endings. */
   private mend(w: string[]): string[] {
     const out: string[] = [];
@@ -537,7 +563,8 @@ export class Language {
       if (next === undefined) end = w.length;
       else {
         const run = next - v - 1;
-        let onset = run > 0 ? 1 : 0;
+        // ŋ never starts a syllable; it closes the one before.
+        let onset = run > 0 && !(run === 1 && w[next - 1] === 'ŋ') ? 1 : 0;
         if (run >= 2 && this.onsets.some((o) => o[0] === w[next - 2] && o[1] === w[next - 1])) onset = 2;
         end = next - onset;
       }
@@ -591,10 +618,11 @@ export class Language {
     return tidy(this.gen(r, 2).spell);
   }
 
-  /** A given name. */
-  givenName(r: Rng, female: boolean): string {
+  /** A given name (`fresh`: made from the language's sounds, never a familiar one). */
+  givenName(r: Rng, female: boolean, fresh = false): string {
     const list = this.spec.given?.[female ? 1 : 0];
-    if (list?.length && r() < this.pTemplate) return this.respell(pick(r, list));
+    // Fresh names never come from the template's list of familiar names (for gods and spirits).
+    if (!fresh && list?.length && r() < this.pTemplate) return this.respell(pick(r, list));
     const ends = female ? this.t.fem : this.t.masc;
     for (let t = 0; t < 8; t++) {
       const root = this.gen(r, this.t.roots[1] <= 1 ? 1 + (r() < 0.4 ? 1 : 0) : 1 + (r() < 0.35 ? 1 : 0)).spell;

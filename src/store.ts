@@ -8,7 +8,7 @@ import type { LairSite } from './lairs/lair';
 import type { DungeonSite } from './dungeons/core';
 import { SearchIndex } from './search/index';
 import { setWorldCultures } from './names/world-cultures';
-import { registerPoliticalProtocol, registerRelationsProtocol } from './world/political';
+import { registerFaithProtocol, registerPoliticalProtocol, registerRelationsProtocol } from './world/political';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
 
@@ -37,6 +37,8 @@ export const store = reactive({
   showBorders: true,
   /** Political map: realms washed in colour, with large titles and arms. */
   showPolitical: false,
+  /** Faith map: each land washed in the colour of its people's faith (shaded by sect), with holy places. */
+  showFaiths: false,
   showWind: false,
   showCurrents: false,
   generating: false,
@@ -70,10 +72,15 @@ export const openDungeon = shallowRef<DungeonSite | null>(null);
 export const openRealm = shallowRef<number | null>(null);
 /** The culture (index into CULTURES) open in the culture window, if any. */
 export const openCulture = shallowRef<number | null>(null);
+/** The faith (id in the world lore's faiths) open in the faith window, if any. */
+export const openFaith = shallowRef<number | null>(null);
+/** The faith map's key: each faith shown, with its colour. */
+export const faithLegend = shallowRef<{ id: number; name: string; rgb: [number, number, number] }[]>([]);
 export const client = new WorldClient();
 client.registerProtocol();
 registerPoliticalProtocol();
 registerRelationsProtocol();
+registerFaithProtocol();
 
 export async function regenerate(): Promise<void> {
   store.generating = true;

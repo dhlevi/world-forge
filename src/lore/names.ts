@@ -81,10 +81,79 @@ export interface House {
 }
 
 const MOTTO = [
+  // --- Original Entries ---
   'We Do Not Kneel', 'Faith and Steel', 'Ever Vigilant', 'By Right of Blood', 'Honour Above All', 'The Tide Rises', 'From Ash, Fire', 'Steadfast',
   'None Shall Pass', 'Light in Darkness', 'We Endure', 'Strength Through Unity', 'Fortune Favours the Bold', 'Our Word Is Iron', 'The Crown Remembers',
   'Root and Branch', 'First to Ride', 'Glory to the Faithful', 'Patience Wins', 'Through Storm', 'Ours Is the Harvest', 'Silent and Sure',
   'The Stars Guide Us', 'Hold Fast', 'Blood Will Tell', 'Without Fear', 'Sword and Plough', 'Wisdom Before Wrath', 'The Old Ways', 'Watch and Wait',
+
+  // --- Hardened Duty & Feudal Honor ---
+  'Bound by Oath',
+  'Steel Cuts Deep',
+  'No Rest for the Worthy',
+  'Faithful to the End',
+  'In Blood We Trust',
+  'Our Honor, Our Shield',
+  'By Blade and Law',
+  'Iron in the Bone',
+  'Deeds, Not Words',
+  'Unyielding, Unbroken',
+  'The Shield of the Realm',
+  'Dutiful and Undaunted',
+  'To the Last Drop',
+  'We Pay Our Debts',
+  'True to the Crown',
+
+  // --- Heritage, Land & Lineage ---
+  'Deep Are the Roots',
+  'Sown in Ancient Soil',
+  'Blood of the Firstmen',
+  'The Mountain Does Not Move',
+  'Guardians of the Pass',
+  'Ours by Conquest',
+  'Built on Cold Stone',
+  'Born of Oak and Iron',
+  'The Forest Whispers',
+  'Sovereign on the Ridge',
+  'Born to Rule',
+  'Lineage Unbroken',
+  'We Mark the Boundary',
+  'Masters of the Valley',
+  'Our Soil, Our Blood',
+
+  // --- Darker, Pragmatic & Gritty ---
+  'Winter Comes for All',
+  'Fear Is the Weapon',
+  'We Yield to None',
+  'From Darkness, Strength',
+  'Mercy Is Earned',
+  'An Eye for an Eye',
+  'In Silence We Strike',
+  'Death Before Dishonor',
+  'Steel Answers All',
+  'Cold as the North',
+  'We Reap What You Sow',
+  'Beware the Shadow',
+  'No Mercy for Treason',
+  'Vengeance Is Sure',
+  'To Dust We Return',
+
+  // --- Tactical & Sentinel Themes ---
+  'First in the Breach',
+  'The Wall Stands',
+  'Always Prepared',
+  'Sighted in the Dark',
+  'Never Taken by Surprise',
+  'Iron Gates, Open Hearts',
+  'Vigilance Is Victory',
+  'The Falcon Soars',
+  'Sharp Eye, Keen Edge',
+  'Shielding the Innocents',
+  'We Guard the Gates',
+  'Standing in the Gap',
+  'The Watcher Never Sleeps',
+  'Clear Skies, Cold Steel',
+  'First to Answer',
 ];
 
 /** A family name in the cultures that put it first. */

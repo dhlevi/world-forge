@@ -5,7 +5,8 @@ import type { Settlement } from '../gen/settlements';
 import { CULTURES } from '../names/cultures';
 import { nameCase, translate } from '../lang/translate';
 import { goodName, production, tradeOf } from './economy';
-import type { Faith, Sect } from './faiths';
+import { type Faith, type Sect, toleranceOf } from './faiths';
+import type { LabelFeature } from '../gen/features';
 import { COURT, cultureFolk, cultureId, cultureLabel, epithet, givenName, type House, houseName, personName, roman, traits } from './names';
 import { buildWorldLore, type Claim, type Relation, type War, type WorldLore } from './world';
 
@@ -165,9 +166,9 @@ export interface Ctx {
 let ctx: Ctx | null = null;
 
 /** The world's lore (built on first use, kept for the world). */
-export function loreFor(key: string, seed: string, p: Politics, settlements: Settlement[]): Ctx {
+export function loreFor(key: string, seed: string, p: Politics, settlements: Settlement[], features: LabelFeature[] = []): Ctx {
   if (ctx && ctx.seed === key) return ctx;
-  const L = buildWorldLore(seed, p, settlements);
+  const L = buildWorldLore(seed, p, settlements, features);
   ctx = { L, p, units: p.units, settlements, seed: key, details: new Map(), reigns: new Map() };
   return ctx;
 }
@@ -180,7 +181,7 @@ const FEM: Record<string, string> = {
   King: 'Queen', Emperor: 'Empress', Duke: 'Duchess', Count: 'Countess', Earl: 'Countess', Baron: 'Baroness', Prince: 'Princess', Tsar: 'Tsarina', Khan: 'Khatun',
   Khagan: 'Khatun', Sultan: 'Sultana', Emir: 'Emira', Lord: 'Lady', 'Grand Duke': 'Grand Duchess', Margrave: 'Margravine', 'High King': 'High Queen', 'Sea King': 'Sea Queen',
   Voivode: 'Voivodess', Despot: 'Despotess', Autokrator: 'Autokratorissa', Caliph: 'Caliph', 'Prince-Bishop': 'Princess-Abbess', Abbot: 'Abbess', Patriarch: 'Matriarch',
-  'High Godi': 'High Volva', Godi: 'Gydja', Warden: 'Warden', Thane: 'Thane', Shogun: 'Shogun', Headman: 'Headwoman', Chief: 'Chief', 'Lord Mayor': 'Lady Mayor', Overking: 'Overqueen',
+  'High Godi': 'High Volva', Godi: 'Gydja', 'High Priest': 'High Priestess', Hierarch: 'Hierarch', 'Rune-priest': 'Rune-priestess', 'Shaman-Khan': 'Shaman-Khatun', 'Celestial Master': 'Celestial Mistress', Imam: 'Imam', Warden: 'Warden', Thane: 'Thane', Shogun: 'Shogun', Headman: 'Headwoman', Chief: 'Chief', 'Lord Mayor': 'Lady Mayor', Overking: 'Overqueen',
 };
 const NO_NUMERAL = new Set(['sinic', 'japonic', 'koreanic', 'woodland']);
 const SURNAME_FIRST = new Set(['sinic', 'japonic', 'koreanic']);
@@ -229,7 +230,9 @@ function reignsOf(c: Ctx, id: number): Reign[] {
       const life = u.gov === 'theocracy' || (u.gov === 'republic' && /Doge/.test(u.ruler));
       const len = life ? 3 + Math.floor(r() * 18) : u.gov === 'colony' ? 3 + Math.floor(r() * 9) : 2 + Math.floor(r() * 7);
       const end = t + len;
-      const female = r() < (FEMALE_P[cul] ?? 0.1) * (u.gov === 'theocracy' ? 0.5 : 1);
+      // A faith served by priestesses is ruled by them; an open priesthood lets either serve.
+      const clergy = u.gov === 'theocracy' ? L.faiths.faiths[L.faiths.ofCulture[u.culture]]?.doctrines.clergy : undefined;
+      const female = clergy === 'priestesses' ? (r(), true) : r() < (clergy === 'open' ? 0.4 : (FEMALE_P[cul] ?? 0.1) * (u.gov === 'theocracy' ? 0.5 : 1));
       const age = 38 + Math.floor(r() * 30);
       // Priests take a holy name; others keep their own.
       const holy = u.gov === 'theocracy' ? givenName(u.culture, female, r) : undefined;
@@ -321,7 +324,6 @@ function succession(u: PolUnit, cul: string, home?: PolUnit): string {
   return table[cul] ?? 'The eldest son inherits, then the eldest daughter';
 }
 
-const TOLERANCE = ['tolerant of other faiths', 'wary of other faiths', 'harsh toward heretics', 'willing to shelter other faiths for a tax', 'devout and strict', 'lax in matters of faith'];
 
 const TERRAIN: [string, Biome[]][] = [
   ['farmland and meadows', [Biome.Grassland, Biome.Riparian]], ['forest', [Biome.TemperateForest, Biome.TemperateRainforest, Biome.MontaneForest]], ['pine forest', [Biome.BorealForest]],
@@ -515,8 +517,15 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
       continue;
     }
     const s = L.faiths.sectOf(x.idx, u.lon, u.lat);
-    const nm = s.faith.id === state.faith.id ? (s.sect.id === state.sect.id ? `${cap(state.sect.id === 0 ? s.faith.name : s.sect.name)}` : cap(s.sect.name === 'the orthodox faith' ? s.faith.name : s.sect.name)) : cap(s.faith.name);
-    fmap.set(nm, (fmap.get(nm) ?? 0) + x.pct);
+    const nm = cap(s.faith.id === state.faith.id ? s.sect.name : s.faith.name);
+    // A converted people keeps some of its old believers.
+    const old = L.faiths.formerOf.get(x.idx);
+    const keep = old !== undefined ? (0.04 + 0.16 * r()) * (L.faiths.faiths[s.faith.id].doctrines.others === 'fundamentalist' ? 0.4 : 1) : 0;
+    fmap.set(nm, (fmap.get(nm) ?? 0) + x.pct * (1 - keep));
+    if (keep) {
+      const on = cap(L.faiths.faiths[old!].name);
+      fmap.set(on, (fmap.get(on) ?? 0) + x.pct * keep);
+    }
   }
   // A dissenting sect of the state faith, here and there.
   const others = state.faith.sects.filter((s) => s.id !== state.sect.id);
@@ -524,7 +533,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
     const s = pick(r, others);
     const pct = 2 + r() * 9;
     for (const k of fmap.keys()) fmap.set(k, fmap.get(k)! * (1 - pct / 100));
-    const nm = cap(s.name === 'the orthodox faith' ? state.faith.name : s.name);
+    const nm = cap(s.name);
     fmap.set(nm, (fmap.get(nm) ?? 0) + pct);
   }
   const faithsMix = [...fmap].map(([name, pct]) => ({ name, pct })).sort((a, b) => b.pct - a.pct);
@@ -568,7 +577,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   const fortresses = towns.filter((s) => s.walls).length;
 
   // ---- Faith -------------------------------------------------------------------------------------
-  const tolerance = state.faith.family === 'church' || state.faith.family === 'crescent' ? pick(r, TOLERANCE) : pick(r, [TOLERANCE[0], TOLERANCE[0], TOLERANCE[5], TOLERANCE[4]]);
+  const tolerance = toleranceOf(state.faith, r);
 
   // ---- Chronicle ---------------------------------------------------------------------------------
   const chronicle = buildChronicle(c, id, reigns, wars.concat(pastWars), r);
@@ -581,7 +590,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   sents.push(`${cap(u.name)} is a ${word} ${govWord} of about ${fmtPeople(u.people)} people${lands ? `, ${lands}` : ''}.`);
   if (ruler && !ruler.heldBy && !ruler.council && now) sents.push(`${cap(ELECTED.has(u.gov) ? 'It has been led' : 'It has been ruled')} since ${now.from} by the ${listAnd(ruler.traits.map((x) => x.toLowerCase()))} ${now.styled}${ruler.house && !SURNAME_FIRST.has(cul) ? ` of ${ruler.house.name}` : ''}.`);
   else if (ruler?.heldBy !== undefined) sents.push(`It is held in person by the ${liege!.ruler} of ${liege!.name}.`);
-  if (cultures.length) sents.push(`Its people are mostly ${cultures[0].name}${cultures[1] && cultures[1].pct > 12 ? `, with many ${cultures[1].name}` : ''}, and keep ${state.sect.id === 0 || state.sect.name === 'the orthodox faith' ? state.faith.name : state.sect.name}.`);
+  if (cultures.length) sents.push(`Its people are mostly ${cultures[0].name}${cultures[1] && cultures[1].pct > 12 ? `, with many ${cultures[1].name}` : ''}, and keep ${state.sect.name}.`);
   if (wars.length && isTop) sents.push(`It is at war with ${listAnd(wars.flatMap((w) => w.enemies).slice(0, 3).map((x) => units[x].name))}.`);
   else if (rivals.length && isTop) sents.push(`Its old rival is ${rivals[0].name}.`);
   if (allies.length && isTop) sents.push(`It stands allied with ${listAnd(allies.slice(0, 3).map((x) => x.name))}.`);
@@ -692,12 +701,27 @@ function buildChronicle(c: Ctx, id: number, reigns: Reign[], wars: WarView[], r:
   }
   // Faith.
   const conv = L.faiths.converted.get(u.culture);
-  if (conv !== undefined && conv > f) {
+  const nowFaith = L.faiths.faiths[L.faiths.ofCulture[u.culture]];
+  const oldFaith = L.faiths.faiths[L.faiths.formerOf.get(u.culture) ?? -1];
+  if (conv !== undefined && conv > f && nowFaith) {
     const ra = rulerAt(c, id, conv);
-    out.push({ year: conv, text: `${ra ? ra.styled : 'The ruler'} converted to ${L.faiths.faiths[L.faiths.ofCulture[u.culture]]?.name}, and the old shrines were closed`, kind: 'faith' });
+    const who = ra ? ra.styled : 'The ruler';
+    const fate = nowFaith.doctrines.others === 'pluralist' ? 'the old shrines were left to those who kept the old ways'
+      : nowFaith.doctrines.others === 'fundamentalist' ? `the shrines of ${oldFaith?.name ?? 'the old gods'} were thrown down and their priests driven out`
+      : 'the old shrines were closed';
+    const how = nowFaith.doctrines.conversion === 'sword' && r() < 0.6 ? `was brought to ${nowFaith.name} by the sword` : pick(r, [`was won to ${nowFaith.name} by its missionaries`, `took up ${nowFaith.name}`, `was baptised into ${nowFaith.name}`.replace('baptised into', nowFaith.family === 'church' ? 'baptised into' : 'received into')]);
+    out.push({ year: conv, text: `${who} ${how}, and ${fate}`, kind: 'faith' });
+  }
+  // The birth of a missionary faith in its founders' realm.
+  if (nowFaith?.missionary && nowFaith.sects[0]?.culture === u.culture && nowFaith.founded > f && L.baronies(id).some((b) => units[b].seatName === nowFaith.sects[0].originName)) {
+    out.push({ year: nowFaith.founded, text: `The prophet ${nowFaith.prophet} began to preach at ${nowFaith.sects[0].originName}, and ${nowFaith.name} was born`, kind: 'faith' });
   }
   const st = L.faiths.sectOf(u.culture, u.lon, u.lat);
   if (st.sect.id > 0 && st.sect.founded > f) out.push({ year: st.sect.founded + Math.floor(r() * 30), text: `The realm took up ${st.sect.name}, which ${st.sect.note}`, kind: 'faith' });
+  if (st.faith.tenets.includes('pilgrimage') && r() < 0.5) {
+    const site = st.faith.holySites.find((h) => L.baronies(id).some((b) => units[b].seatName === h.name));
+    if (site) out.push({ year: f + 1 + Math.floor(r() * Math.max(1, L.year - f - 2)), text: `Pilgrims began to come to ${site.name} in great numbers, and the town grew rich on them`, kind: 'faith' });
+  }
   // Building, ruin and wonders.
   const span = Math.max(1, L.year - f - 2);
   const at = () => f + 1 + Math.floor(r() * span);

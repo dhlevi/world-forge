@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { flyTarget, openCulture, openRealm, world } from '../store';
+import { flyTarget, openCulture, openFaith, openRealm, world } from '../store';
+import { DOCTRINES, TENETS, godly } from '../lore/faiths';
 import { CULTURES } from '../names/cultures';
 import { LEVEL_NAME, type PolUnit } from '../gen/politics';
 import { blazon } from '../heraldry/arms';
@@ -54,6 +55,9 @@ function go(id: number): void {
   if (openRealm.value === id) return;
   if (openRealm.value !== null) back.value.push(openRealm.value);
   openRealm.value = id;
+}
+function goFaith(id: number): void {
+  openFaith.value = id;
 }
 function goCulture(k: number): void {
   openCulture.value = k;
@@ -159,7 +163,7 @@ const sub = computed(() => {
           <div><dt>Wealth</dt><dd>{{ cap(d.economy.word) }} ({{ d.economy.rank }} of {{ d.economy.of }} realms)</dd></div>
           <div><dt>Revenue</dt><dd>{{ n(d.economy.revenue) }} {{ d.economy.coin }} a year</dd></div>
           <div><dt>Armies</dt><dd>{{ n(d.military.levy) }} levies, {{ n(d.military.standing) }} standing</dd></div>
-          <div><dt>Faith</dt><dd>{{ cap(d.faith.sect.id === 0 || d.faith.sect.name === 'the orthodox faith' ? d.faith.faith.name : d.faith.sect.name) }}</dd></div>
+          <div><dt>Faith</dt><dd><a href="#" title="Open the faith" @click.prevent="goFaith(d.faith.faith.id)">{{ cap(d.faith.sect.name) }}</a></dd></div>
         </dl>
         <h3>Land</h3>
         <p>{{ d.land.climate }}. <span v-if="d.land.coastKm > 20">About {{ n(d.land.coastKm) }} km of coast. </span><span v-if="d.land.highPct > 5">{{ Math.round(d.land.highPct) }}% upland above 1,200 m.</span></p>
@@ -316,24 +320,27 @@ const sub = computed(() => {
       <!-- Faith -->
       <section v-else-if="tab === 'faith'">
         <div class="card">
-          <h3>{{ cap(d.faith.faith.name) }}</h3>
-          <p class="dim">{{ cap(d.faith.faith.kind) }} · its faithful call themselves {{ d.faith.faith.adherents }} · symbol: {{ d.faith.faith.symbol }}</p>
+          <h3><a href="#" title="Open the faith" @click.prevent="goFaith(d.faith.faith.id)">{{ cap(d.faith.faith.name) }}</a> <span class="dim">({{ d.faith.faith.native }})</span></h3>
+          <p class="dim">{{ cap(d.faith.faith.kind) }}{{ d.faith.faith.missionary ? `, founded by the prophet ${d.faith.faith.prophet}` : '' }} · its faithful call themselves {{ d.faith.faith.adherents }} · symbol: {{ d.faith.faith.symbol }}</p>
           <p v-if="d.faith.faith.sects.length > 1">The realm keeps <em>{{ d.faith.sect.name }}</em><template v-if="d.faith.sect.id > 0">, which {{ d.faith.sect.note }} (from {{ d.faith.sect.originName }}, {{ d.faith.sect.founded }})</template>.</p>
           <p>The realm is {{ d.faith.tolerance }}.</p>
         </div>
-        <h3>{{ d.faith.faith.deities.length > 2 ? 'Gods and holy figures' : 'Holy figures' }}</h3>
-        <ul class="plain"><li v-for="g in d.faith.faith.deities" :key="g.name"><em>{{ cap(g.name) }}</em>, {{ g.domain }}</li></ul>
-        <h3>Teachings</h3>
-        <ul class="plain"><li v-for="t in d.faith.faith.tenets" :key="t">{{ t }}</li></ul>
+        <h3>Doctrines and tenets</h3>
+        <ul class="plain">
+          <li v-for="(v, g) in d.faith.faith.doctrines" :key="g"><em>{{ DOCTRINES[g][v]?.name }}</em> · {{ godly(d.faith.faith, DOCTRINES[g][v]?.text ?? '') }}</li>
+          <li v-for="t in d.faith.faith.tenets" :key="t"><em>{{ TENETS[t]?.name }}</em> · {{ godly(d.faith.faith, TENETS[t]?.text ?? '') }}</li>
+        </ul>
+        <h3>{{ d.faith.faith.deities.length > 2 && !d.faith.faith.missionary ? 'Gods and spirits' : 'Holy figures' }}</h3>
+        <ul class="plain"><li v-for="g in d.faith.faith.deities" :key="g.name"><em>{{ g.name }}</em>, {{ g.domain }}</li></ul>
         <h3>Church and clergy</h3>
-        <p>Led by the {{ d.faith.faith.head.title }}<template v-if="d.faith.faith.head.seatName"> at {{ d.faith.faith.head.seatName }}</template>. Served by {{ d.faith.faith.clergy }}, in {{ d.faith.faith.temple }}. Its lore is kept in {{ d.faith.faith.scripture }}.</p>
+        <p><template v-if="d.faith.faith.doctrines.head !== 'none'">Led by the {{ d.faith.faith.head.title }}<template v-if="d.faith.faith.head.seatName"> at {{ d.faith.faith.head.seatName }}</template>. </template>Served by {{ d.faith.faith.clergy }}, in {{ d.faith.faith.temple }}. Its lore is kept in {{ d.faith.faith.scripture }}.</p>
         <template v-if="d.faith.faith.holySites.length">
           <h3>Holy places</h3>
           <ul class="plain"><li v-for="h in d.faith.faith.holySites" :key="h.name"><a href="#" @click.prevent="flyTo(h.lon, h.lat, h.name)">{{ h.name }}</a>, {{ h.what }}</li></ul>
         </template>
         <template v-if="d.faith.faith.sects.length > 1">
           <h3>Branches of the faith</h3>
-          <ul class="plain"><li v-for="s in d.faith.faith.sects" :key="s.id">{{ cap(s.name === 'the orthodox faith' ? d.faith.faith.name : s.name) }} <span class="dim">({{ s.id === 0 ? 'the mother faith' : `${s.note}, ${s.founded}` }}{{ s.originName ? `; from ${s.originName}` : '' }})</span></li></ul>
+          <ul class="plain"><li v-for="s in d.faith.faith.sects" :key="s.id">{{ cap(s.name) }} <span class="dim">({{ s.id === 0 ? s.note : `${s.note}, ${s.founded}` }}{{ s.originName ? `; from ${s.originName}` : '' }})</span></li></ul>
         </template>
       </section>
 

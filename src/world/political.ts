@@ -159,17 +159,16 @@ export function registerPoliticalProtocol(): void {
   addProtocol('politics', async (params) => {
     const m = /^politics:\/\/(\d+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
     if (!m) throw new Error(`Bad politics tile URL: ${params.url}`);
-    return { data: await renderTile(+m[1], +m[2], +m[3], +m[4]) };
+    return { data: await renderTile(current, +m[1], +m[2], +m[3], +m[4]) };
   });
 }
 
 const SIZE = 256;
 
-async function renderTile(gen: number, z: number, x: number, y: number): Promise<ImageBitmap> {
+async function renderTile(P: { gen: number; W: number; H: number; bands: { rgb: Uint8Array; edge: Float32Array }[] } | null, gen: number, z: number, x: number, y: number): Promise<ImageBitmap> {
   const img = new ImageData(SIZE, SIZE);
-  const P = current;
   if (P && P.gen === gen) {
-    const band = P.bands[z < 5 ? 0 : z < 8 ? 1 : 2];
+    const band = P.bands[Math.min(P.bands.length - 1, z < 5 ? 0 : z < 8 ? 1 : 2)];
     const { W, H } = P;
     const n = 2 ** z;
     const d = img.data;
@@ -214,7 +213,7 @@ async function renderTile(gen: number, z: number, x: number, y: number): Promise
 // ---- Relations of an open realm -----------------------------------------------------------------
 
 /** Tints for a realm's relations: RGB and alpha. */
-const REL_TINT: Record<string, [number, number, number, number]> = {
+export const REL_TINT: Record<string, [number, number, number, number]> = {
   self: [214, 160, 30, 0.42], realm: [214, 160, 30, 0.16], league: [60, 120, 200, 0.34], alliance: [52, 104, 196, 0.38], friendly: [96, 150, 210, 0.2],
   truce: [130, 130, 130, 0.22], rival: [226, 128, 36, 0.36], war: [196, 36, 30, 0.46],
 };
@@ -354,4 +353,110 @@ async function renderRelTile(gen: number, ver: number, z: number, x: number, y: 
     }
   }
   return createImageBitmap(img);
+}
+
+// ---- Faiths -----------------------------------------------------------------------------------
+
+let faithMap: { gen: number; W: number; H: number; bands: { rgb: Uint8Array; edge: Float32Array }[] } | null = null;
+
+/**
+ * The faith map: each barony washed in the colour of the faith its people keep (neighbouring
+ * faiths in different colours), from zoom 5 with lighter and darker shades for sects, and deeper
+ * edges between faiths. `of` gives a barony's faith and sect. Returns each faith's colour.
+ */
+export function prepareFaithMap(gen: number, of: (barony: number) => [number, number] | null): Map<number, [number, number, number]> {
+  const P = current;
+  const out = new Map<number, [number, number, number]>();
+  if (!P || P.gen !== gen) return out;
+  const { W, H, baronyOf } = P;
+  const N = W * H;
+  const faith = new Int32Array(N).fill(-1), sect = new Int32Array(N).fill(-1);
+  const cache = new Map<number, [number, number] | null>();
+  for (let c = 0; c < N; c++) {
+    const b = baronyOf[c];
+    if (b < 0) continue;
+    let v = cache.get(b);
+    if (v === undefined) cache.set(b, (v = of(b)));
+    if (!v) continue;
+    faith[c] = v[0];
+    sect[c] = v[0] * 1000 + v[1];
+  }
+  // Faith adjacency and size, for colouring.
+  const adj = new Map<number, Set<number>>();
+  const size = new Map<number, number>();
+  for (let j = 0; j < H; j++) {
+    for (let i = 0; i < W; i++) {
+      const c = j * W + i, a = faith[c];
+      if (a < 0) continue;
+      size.set(a, (size.get(a) ?? 0) + 1);
+      for (const n of [j * W + ((i + 1) % W), j + 1 < H ? c + W : -1]) {
+        const b = n >= 0 ? faith[n] : -1;
+        if (b < 0 || b === a) continue;
+        (adj.get(a) ?? adj.set(a, new Set()).get(a)!).add(b);
+        (adj.get(b) ?? adj.set(b, new Set()).get(b)!).add(a);
+      }
+    }
+  }
+  const dist = (a: number, b: number) => Math.hypot(...PALETTE[a].map((v, q) => v - PALETTE[b][q]));
+  const colour = new Map<number, number>();
+  const used = new Map<number, number>();
+  for (const f of [...size.keys()].sort((a, b) => size.get(b)! - size.get(a)!)) {
+    const near = [...(adj.get(f) ?? [])].map((v) => colour.get(v)).filter((v): v is number => v !== undefined);
+    let best = 0, bd = -Infinity;
+    for (let k = 0; k < PALETTE.length; k++) {
+      const d = (near.length ? Math.min(...near.map((n) => dist(k, n))) : 999) - 60 * (used.get(k) ?? 0);
+      if (d > bd) {
+        bd = d;
+        best = k;
+      }
+    }
+    colour.set(f, best);
+    used.set(best, (used.get(best) ?? 0) + 1);
+    out.set(f, PALETTE[best]);
+  }
+  const bands = [false, true].map((sects) => {
+    const rgb = new Uint8Array(N * 3), edge = new Float32Array(N);
+    const shade = new Map<number, number>();
+    for (let c = 0; c < N; c++) {
+      if (faith[c] < 0) continue;
+      const base = PALETTE[colour.get(faith[c]) ?? 0];
+      let sh = 0;
+      if (sects && sect[c] % 1000 > 0) {
+        let v = shade.get(sect[c]);
+        if (v === undefined) shade.set(sect[c], (v = ((sect[c] % 1000) % 2 ? 1 : -1) * (0.14 + 0.08 * hash(sect[c]))));
+        sh = v;
+      }
+      for (let q = 0; q < 3; q++) rgb[c * 3 + q] = Math.max(1, Math.min(255, sh >= 0 ? base[q] + (255 - base[q]) * sh : base[q] * (1 + sh)));
+    }
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        const c = j * W + i;
+        if (faith[c] < 0) continue;
+        let e = 0;
+        for (const [di, dj] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+          const jj = j + dj;
+          if (jj < 0 || jj >= H) continue;
+          const n = jj * W + ((i + di + W) % W);
+          if (faith[n] >= 0 && faith[n] !== faith[c]) e = 1;
+          else if (sects && e < 0.45 && sect[n] >= 0 && sect[n] !== sect[c]) e = 0.45;
+        }
+        edge[c] = e;
+      }
+    }
+    return { rgb, edge };
+  });
+  faithMap = { gen, W, H, bands };
+  return out;
+}
+
+let faithRegistered = false;
+/** Registers the `faiths://` tile protocol (once). */
+export function registerFaithProtocol(): void {
+  if (faithRegistered) return;
+  faithRegistered = true;
+  addProtocol('faiths', async (params) => {
+    const m = /^faiths:\/\/(\d+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
+    if (!m) throw new Error(`Bad faiths tile URL: ${params.url}`);
+    return { data: await renderTile(faithMap, +m[1], +m[2], +m[3], +m[4]) };
+  });
 }

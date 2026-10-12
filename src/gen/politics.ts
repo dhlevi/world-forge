@@ -8,6 +8,7 @@ import { CULTURES } from '../names/cultures';
 import type { CultureMods } from '../names/traits';
 import { Biome } from './biomes';
 import type { NameBank } from '../names/names';
+import { type FaithFamily, faithOfCulture } from '../lore/faiths';
 import { type Arms, type Charge, cadetArms, newArms, vassalArms } from '../heraldry/arms';
 
 /**
@@ -179,13 +180,21 @@ const REPUBLIC_STYLE: Record<string, string[]> = {
   southern: ['Republic of {N}', 'the {N} Republic', 'Koinon of {N}'], latin: ['Republic of {N}', 'the Serene Republic of {N}'],
   anglo: ['Commonwealth of {N}', 'Republic of {N}', 'United Provinces of {N}'], dwarven: ['Commonwealth of the {N} Holds', 'Republic of {N}'],
 };
-const THEOCRACY_SMALL: Record<string, [string, string][]> = {
-  desert: [['Imamate of {S}', 'Imam']], celtic: [['Druidry of {S}', 'Archdruid']], elvish: [['Sanctuary of {S}', 'High Priestess']],
-  norse: [['Temple-lands of {S}', 'Godi']], steppe: [['Ordu of {S}', 'Shaman-Khan']],
-};
-const THEOCRACY_BIG: Record<string, [string, string][]> = {
-  desert: [['Imamate of {N}', 'Imam']], celtic: [['Holy Isle of {N}', 'Archdruid']], elvish: [['Sacred Realm of {N}', 'High Priestess']],
-  norse: [['Holy Realm of {N}', 'High Godi']], southern: [['Hierocracy of {N}', 'Hierarch']],
+/** Theocracies by the faith they serve (small: a city and its lands; big: a duchy or more). */
+const FAITH_THEOCRACY: Partial<Record<FaithFamily, { small: [string, string][]; big: [string, string][]; charges: Charge[] }>> = {
+  church: { small: [['Prince-Bishopric of {S}', 'Prince-Bishop'], ['Abbacy of {S}', 'Abbot'], ['Holy City of {S}', 'Patriarch']], big: [['Holy Realm of {N}', 'Patriarch'], ['Holy See of {S}', 'Pontiff'], ['Theocracy of {N}', 'Hierarch']], charges: ['cross', 'key', 'sun', 'bell'] },
+  crescent: { small: [['Imamate of {S}', 'Imam']], big: [['Imamate of {N}', 'Imam'], ['Caliphate of {N}', 'Caliph']], charges: ['crescent', 'mullet', 'estoile'] },
+  pantheon: { small: [['Temple-state of {S}', 'High Priest'], ['Sanctuary of {S}', 'Oracle']], big: [['Hierocracy of {N}', 'Hierarch']], charges: ['bird', 'estoile', 'tree'] },
+  oldgods: { small: [['Temple-lands of {S}', 'Godi']], big: [['Holy Realm of {N}', 'High Godi']], charges: ['hammer', 'bird', 'axe'] },
+  druid: { small: [['Druidry of {S}', 'Archdruid']], big: [['Holy Isle of {N}', 'Archdruid']], charges: ['tree', 'acorn', 'crescent'] },
+  stars: { small: [['Sanctuary of {S}', 'High Priestess']], big: [['Sacred Realm of {N}', 'High Priestess']], charges: ['estoile', 'crescent', 'tree'] },
+  ancestors: { small: [['Rune-hold of {S}', 'Rune-priest']], big: [['Holy Hold of {N}', 'High Forgepriest']], charges: ['hammer', 'tower'] },
+  sky: { small: [['Ordu of {S}', 'Shaman-Khan']], big: [['Sky Realm of {N}', 'Shaman-Khan']], charges: ['sun', 'eagle', 'horn'] },
+  heaven: { small: [['Temple-lands of {S}', 'Abbot']], big: [['Celestial Realm of {N}', 'Celestial Master']], charges: ['cloud', 'serpent', 'blossom'] },
+  kami: { small: [['Shrine-lands of {S}', 'High Priest']], big: [['Sacred Realm of {N}', 'High Priestess']], charges: ['sun', 'tomoe', 'blossom'] },
+  sun: { small: [['Temple-city of {S}', 'High Priest']], big: [['Sun Realm of {N}', 'High Priest of the Sun']], charges: ['sun', 'eagle'] },
+  serpent: { small: [['Temple-city of {S}', 'High Priest']], big: [['Holy Realm of {N}', 'Speaker of the Calendar']], charges: ['serpent', 'sun'] },
+  spirits: { small: [['Medicine-lands of {S}', 'Keeper of the Medicine']], big: [['Sacred Lands of {N}', 'Keeper of the Medicine']], charges: ['feather', 'bird'] },
 };
 const THALASSO_STYLE: Record<string, [string, string][]> = {
   norse: [['Sea Kingdom of {N}', 'Sea King'], ['the {N} Isles', 'Sea King']], southern: [['Thalassocracy of {N}', 'Thalassarch']],
@@ -350,6 +359,14 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   const pref = (t: Record<string, number>, u: PolUnit, d = 0.05) => t[cid(u)] ?? d;
   /** A culture's trait multiplier (names/traits.ts). */
   const mod = (u: PolUnit, k: keyof CultureMods) => CULTURES[u.culture]?.mods?.[k] ?? 1;
+  /** The faith a unit's people keep (planned for the whole world: lore/faiths.ts). */
+  const faith = (u: PolUnit) => faithOfCulture(seed, u.culture);
+  /** How readily a faith rules lands itself: a head of faith makes for prince-bishops; sacred kings leave fewer. */
+  const theo = (u: PolUnit) => {
+    const fa = faith(u);
+    if (!fa) return 1;
+    return ({ pontiff: 1.25, ruler: 0.55, none: 0.75 } as Record<string, number>)[fa.doctrines.head] * (1 + 0.25 * fa.zeal) * (fa.family === 'crescent' ? 2 : 1);
+  };
 
   /** Units of `members` grouped under new lieges of `level` headed by `heads` (members themselves); groups smaller than `minVassals` stay independent. */
   const group = (level: PolLevel, members: PolUnit[], heads: PolUnit[], o: { maxCost: number; seaKm: number; cultureCost: number; minVassals: number }) => {
@@ -410,7 +427,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   group(1, bFree, spaced(bFree, 95, (u) => u.pop * (u.city ? 2 : 1)), { maxCost: 380, seaKm: 60, cultureCost: 0, minVassals: 1 });
   // Some counties are held by the church: prince-bishoprics, abbacies, imamates.
   const counties = units.filter((u) => u.level === 1 && u.gov === 'feudal');
-  for (const c of counties) if (rnd() < (cid(c) === 'desert' ? 0.012 : 0.006) * mod(c, 'theocracy')) c.gov = 'theocracy';
+  for (const c of counties) if (rnd() < 0.006 * theo(c) * mod(c, 'theocracy')) c.gov = 'theocracy';
 
   // ---- Duchies: counties around the strongest seats; a duchy needs two counties at least ---------
   const cFree = units.filter((u) => u.level <= 1 && free(u));
@@ -525,7 +542,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
     if (u.gov !== 'feudal' || u.level === 4 || u.nw) continue;
     if (u.level >= 2 && islandRealm(u) && rnd() < 0.7) u.gov = 'thalassocracy';
     else if (u.level >= 2 && rnd() < pref(REPUBLIC_P, u) * mod(u, 'republic')) u.gov = 'republic';
-    else if (u.level >= 2 && rnd() < (cid(u) === 'desert' ? 0.08 : 0.04) * mod(u, 'theocracy')) u.gov = 'theocracy';
+    else if (u.level >= 2 && rnd() < 0.04 * theo(u) * mod(u, 'theocracy')) u.gov = 'theocracy';
     else if (u.level <= 1 && u.city && rnd() < pref(CITY_STATE_P, u) * 0.6 * mod(u, 'cityState')) u.gov = 'city-state';
   }
 
@@ -575,13 +592,13 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
       ruler = REPUBLIC_RULER[id] ?? 'Doge';
       u.title = 'Republic';
     } else if (u.gov === 'theocracy') {
-      const [tpl, rl] = u.level <= 1
-        ? pickS(THEOCRACY_SMALL[id] ?? [['Prince-Bishopric of {S}', 'Prince-Bishop'], ['Abbacy of {S}', 'Abbot'], ['Holy City of {S}', 'Patriarch']])
-        : pickS(THEOCRACY_BIG[id] ?? [['Theocracy of {N}', 'Hierarch'], ['Holy Realm of {N}', 'Patriarch'], ['Holy See of {S}', 'Pontiff']]);
+      // Styled by the faith it serves, not the people's habits.
+      const fs = FAITH_THEOCRACY[faith(u)?.family ?? 'church'] ?? FAITH_THEOCRACY.church!;
+      const [tpl, rl] = u.level <= 1 ? pickS(fs.small) : pickS(fs.big);
       u.name = fill(tpl, u.level <= 1 || r() < 0.5 ? u.seatName : own());
       ruler = rl;
-      u.title = u.level <= 1 ? (/Imamate/.test(u.name) ? 'Imamate' : 'Prince-bishopric') : 'Theocracy';
-      favour = ['cross', 'key', 'sun', 'bell'];
+      u.title = u.level <= 1 ? (/Imamate/.test(u.name) ? 'Imamate' : /Prince-Bishopric|Abbacy/.test(u.name) ? 'Prince-bishopric' : 'Temple-state') : 'Theocracy';
+      favour = fs.charges;
     } else if (u.gov === 'colony') {
       const [tpl, rl, title] = COLONY_STYLE[u.title] ?? COLONY_STYLE.colony;
       u.name = fill(tpl, u.seatName);
@@ -915,6 +932,6 @@ export const STYLE_WORDS: Set<string> = (() => {
     else if (Array.isArray(x)) x.forEach(walk);
     else if (x && typeof x === 'object') Object.values(x).forEach(walk);
   };
-  walk([RULERS, BARONY_STYLE, COUNTY_STYLE, DUCHY_STYLE, EMPIRE_STYLE, CITY_RULER, REPUBLIC_RULER, CITY_STATE_STYLE, REPUBLIC_STYLE, THEOCRACY_SMALL, THEOCRACY_BIG, THALASSO_STYLE, LEAGUE_STYLE, LEAGUE_RULER, TRIBAL_STYLE, COLONY_STYLE, ADJ, CULTURES.map((c) => c.realm)]);
+  walk([RULERS, BARONY_STYLE, COUNTY_STYLE, DUCHY_STYLE, EMPIRE_STYLE, CITY_RULER, REPUBLIC_RULER, CITY_STATE_STYLE, REPUBLIC_STYLE, Object.values(FAITH_THEOCRACY).flatMap((x) => [...x!.small, ...x!.big]), THALASSO_STYLE, LEAGUE_STYLE, LEAGUE_RULER, TRIBAL_STYLE, COLONY_STYLE, ADJ, CULTURES.map((c) => c.realm)]);
   return out;
 })();

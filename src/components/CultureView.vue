@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { flyTarget, openCulture, openRealm, world } from '../store';
+import { flyTarget, openCulture, openFaith, openRealm, world } from '../store';
 import { CULTURES, TEMPLATE_LABEL } from '../names/cultures';
 import { ETHOS, TRADITIONS } from '../names/traits';
 import { LEXICON } from '../lang/lexicon';
@@ -75,6 +75,8 @@ const dict = computed(() => {
   return hit;
 });
 const translated = computed(() => (L.value && phrase.value.trim() ? translate(L.value, phrase.value, { capitalsProper: true }) : []));
+/** How the translation is said, word by word. */
+const spoken = computed(() => (L.value ? translated.value.map((t) => L.value!.pronounce(t.form)) : []));
 
 const description = computed(() => {
   const x = c.value, i = info.value;
@@ -91,6 +93,9 @@ function close(): void {
 function goRealm(id: number): void {
   openCulture.value = null;
   openRealm.value = id;
+}
+function goFaith(id: number): void {
+  openFaith.value = id;
 }
 function goCulture(k: number): void {
   openCulture.value = k;
@@ -142,7 +147,8 @@ function showHome(): void {
         </template>
         <template v-if="info?.faith">
           <h3>Faith</h3>
-          <p>{{ cap(info.sect && info.sect.id > 0 ? info.sect.name : info.faith.name) }}<span class="dim"> · {{ info.faith.kind }}</span></p>
+          <p><a href="#" title="Open the faith" @click.prevent="goFaith(info.faith.id)">{{ cap(info.sect ? info.sect.name : info.faith.name) }}</a><span class="dim"> · {{ info.faith.kind }}</span></p>
+          <p v-if="info.oldFaith" class="dim">Before, they kept <a href="#" @click.prevent="goFaith(info.oldFaith.id)">{{ info.oldFaith.name }}</a>, until {{ info.converted }}.</p>
         </template>
         <template v-if="info?.realms.length">
           <h3>Realms they rule</h3>
@@ -236,7 +242,7 @@ function showHome(): void {
       <section v-else-if="tab === 'dictionary' && L">
         <input v-model="query" class="search" type="search" placeholder="Search English or the language…" />
         <table class="dict">
-          <tr v-for="x in dict" :key="x.en"><td>{{ x.en }}</td><td><b>{{ x.w.spell }}</b><small v-if="x.g" class="dim"> ({{ x.g }})</small><small v-if="x.w.src === 'inherited' && L.parent" class="dim" :title="`From ${fam?.protoName}`"> &lt; *{{ L.parent.word(x.en).spell }}</small></td><td class="ipa">/{{ x.w.ipa }}/</td><td class="dim">{{ x.pos }}</td></tr>
+          <tr v-for="x in dict" :key="x.en"><td>{{ x.en }}</td><td><b>{{ x.w.spell }}</b><small v-if="x.g" class="dim"> ({{ x.g }})</small><small v-if="x.w.src === 'inherited' && L.parent" class="dim" :title="`From ${fam?.protoName}`"> &lt; *{{ L.parent.word(x.en).spell }}</small></td><td class="ipa">/{{ x.w.ipa }}/</td><td class="dim say-cell">{{ L.pronounce(x.w.spell).sounds }}</td><td class="dim">{{ x.pos }}</td></tr>
         </table>
         <p class="note">Any English word can be looked up; words outside the core vocabulary are made on demand, the same way every time.</p>
       </section>
@@ -245,10 +251,12 @@ function showHome(): void {
         <textarea v-model="phrase" rows="3" placeholder="Type English: a name, a phrase or a simple sentence" />
         <div v-if="translated.length" class="ex big">
           <div class="native">{{ translated.map((t) => t.form).join(' ') }}</div>
+          <div class="say"><span class="ipa">/{{ spoken.map((x) => x.ipa).join(' ') }}/</span> · sounds like <b>{{ spoken.map((x) => x.sounds).join(' ') }}</b></div>
           <div class="gloss">
             <span v-for="(t, i) in translated" :key="i" class="tok"><b>{{ t.form }}</b><small>{{ t.gloss }}</small></span>
           </div>
         </div>
+        <p class="note">The pronunciation is read from the spelling: IPA with the stressed syllable marked, then a rough English respelling with the stressed syllable in capitals<template v-if="L.tones"> (tones are not shown)</template>.</p>
         <p class="note">Handles names and noun phrases (“the black ford”, “the king’s sword”, “city of the river”) and simple sentences with one verb (“The warriors will not fight the giants.”), in the language's word order, with its articles, plurals, possession, tenses and agreement.</p>
       </section>
     </div>
@@ -481,6 +489,14 @@ ol.plain {
   font-style: italic;
   margin-bottom: 4px;
 }
+.say {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.say b {
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
 .gloss {
   display: flex;
   flex-wrap: wrap;
@@ -521,6 +537,9 @@ textarea {
   }
   .facts {
     grid-template-columns: 1fr;
+  }
+  .say-cell {
+    display: none;
   }
 }
 </style>

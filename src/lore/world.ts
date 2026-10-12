@@ -4,7 +4,8 @@ import type { Settlement } from '../gen/settlements';
 import { CULTURES } from '../names/cultures';
 import { NameBank } from '../names/names';
 import { type Economy, type Land, addLand, coinOf, emptyLand, finishLand, GOOD_IDS, production, tradeOf } from './economy';
-import { buildFaiths, type FaithWorld } from './faiths';
+import { buildFaiths, enmity, type FaithWorld } from './faiths';
+import type { LabelFeature } from '../gen/features';
 import { cultureId, type House, houseMotto, houseName, personName } from './names';
 
 const SURNAME_FIRST_LORE = new Set(['sinic', 'japonic', 'koreanic']);
@@ -103,7 +104,7 @@ const ERAS = [['of the Reckoning', 'R'], ['after the Founding', 'AF'], ['of the 
 const PLAGUE = ['the Grey Death', 'the Sweating Sickness', 'the Red Pox', 'the Weeping Plague', 'the Black Fever', 'the Wasting', 'the Rat Plague', 'the Blue Cough', 'the Silent Plague', 'the Fever'];
 const WAR_ADJ = ['Long', 'Bitter', 'Red', 'Great', 'Seven Years\'', 'Thirty Years\'', 'Hundred Years\'', 'Lords\'', 'Black', 'Lost', 'Cold', 'Holy', 'Barons\'', 'Brothers\'', 'Salt', 'Iron', 'Crown', 'Winter', 'Burning', 'Silent', 'Peasants', 'Trade', 'Divine', 'Old Gods\'', 'Blessed'];
 
-export function buildWorldLore(seed: string, p: Politics, settlements: Settlement[]): WorldLore {
+export function buildWorldLore(seed: string, p: Politics, settlements: Settlement[], features: LabelFeature[] = []): WorldLore {
   const rnd = mulberry32(hashString(`${seed}#lore`));
   const R = (key: string) => mulberry32(hashString(`${seed}#lore#${key}`));
   const units = p.units;
@@ -262,7 +263,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
 
   // ---- Faiths ------------------------------------------------------------------------------------
   const present = new Set<number>(units.filter((u) => u.level === 0).map((u) => u.culture));
-  const faiths = buildFaiths(seed, year, bank, units, present);
+  const faiths = buildFaiths(seed, year, bank, units, present, features);
 
   // ---- Neighbours ------------------------------------------------------------------------------
   const neighbours = new Map<number, Map<number, number>>();
@@ -295,7 +296,8 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
   // ---- Past wars -------------------------------------------------------------------------------
   const wars: War[] = [];
   const faithOf = (id: number) => faiths.ofCulture[units[id].culture];
-  const familyOf = (id: number) => faiths.faiths[faithOf(id)]?.family;
+  /** Hostility between two realms' faiths (in a given year: before a people converted, its old faith). */
+  const enmityOf = (a: number, b: number, y = year) => enmity(faiths.faithAt(units[a].culture, y), faiths.faithAt(units[b].culture, y));
   const lostTo = new Map<string, War[]>();
   const recentWars = (a: number, b: number) => (lostTo.get(a < b ? `${a}|${b}` : `${b}|${a}`) ?? []);
   for (const a of tops) {
@@ -307,7 +309,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
       const lo = Math.max(founded(a), founded(b));
       const span = year - lo - 3;
       if (span < 10) continue;
-      const hot = (familyOf(a) !== familyOf(b) ? 1.5 : 1) * (ua.league >= 0 && ua.league === ub.league ? 0.3 : 1);
+      const hot = (1 + 0.4 * enmityOf(a, b)) * (ua.league >= 0 && ua.league === ub.league ? 0.3 : 1);
       const n = Math.min(5, Math.floor((span / 150) * (0.4 + r() * 0.9) * hot + r()));
       const starts = Array.from({ length: n }, () => lo + Math.floor(r() * span)).sort((x, y) => x - y);
       let busyTo = -Infinity;
@@ -337,12 +339,13 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
         }
         const lname = units[l].seatName, wname = units[w].seatName;
         const nameT = r();
+        const zeal = enmityOf(a, b, start);
         const name = prize !== undefined && nameT < 0.4 ? `the War of ${units[prize].seatName}`
           : nameT < 0.55 && dur >= 20 ? `the ${dur >= 80 ? 'Hundred Years\'' : dur >= 25 ? 'Long' : 'Thirty Years\''} War`
           : nameT < 0.7 ? `the ${wname}-${lname} War`
-          : nameT < 0.82 && familyOf(a) !== familyOf(b) ? `the ${pick(r, ['Holy', 'Great Holy', 'First Holy', 'Crusading'])} War`
+          : nameT < 0.82 && zeal > 0.7 ? `the ${pick(r, ['Holy', 'Great Holy', 'First Holy', 'Crusading'])} War`
           : `the ${pick(r, WAR_ADJ)} War`;
-        const cause = familyOf(a) !== familyOf(b) && r() < 0.4 ? 'a holy war between faiths'
+        const cause = zeal > 0 && r() < 0.28 * zeal ? 'a holy war between faiths'
           : pick(r, ['a disputed border', 'a disputed succession', 'raids across the border', 'the murder of an envoy', 'trade rights', 'a broken marriage pact', 'an insult at court', 'rich border lands']);
         const peace = `the ${pick(r, ['Peace', 'Treaty', 'Peace', 'Truce'])} of ${pick(r, [wname, lname, wname])}`;
         const war: War = { id: wars.length, name, attackers: atk, defenders: def, start, end, cause, winner: out > 0.8 ? -1 : (atk[0] === w ? 0 : 1), prize: out > 0.8 ? undefined : prize, peace };
@@ -384,7 +387,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
       }
       let s = (r() + r() + r() - 1.5) * 0.9;
       const fa = faiths.sectOf(ua.culture, ua.lon, ua.lat), fb = faiths.sectOf(ub.culture, ub.lon, ub.lat);
-      s += fa.faith.id === fb.faith.id ? (fa.sect.id === fb.sect.id ? 0.55 : -0.1) : -0.45;
+      s += fa.faith.id === fb.faith.id ? (fa.sect.id === fb.sect.id ? 0.55 : -0.05 - 0.1 * fa.faith.zeal) : -0.15 - 0.3 * enmity(fa.faith, fb.faith);
       if (ua.culture === ub.culture) s += 0.25;
       const past = recentWars(a, b).filter((w) => year - (w.end ?? year) < 120);
       s -= 0.3 * past.length;
@@ -442,7 +445,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
       const claim = claimA ?? claimB;
       const ud = units[def];
       const cause = claim ? `to recover ${units[claim.on].name}, ${claim.text}`
-        : familyOf(a) !== familyOf(b) ? `a holy war against the ${faiths.faiths[faithOf(def)]?.adherents.replace(/^the /, '') ?? 'unbelievers'}`
+        : enmityOf(a, b) > 0 && r() < 0.45 * enmityOf(a, b) ? `a holy war against the ${faiths.faiths[faithOf(def)]?.adherents.replace(/^the /, '') ?? 'unbelievers'}`
         : pick(r, [`to seize the border lands of ${ud.name}`, 'a disputed succession', 'revenge for border raids', `to break the trade of ${ud.seatName}`, 'an insult to the crown']);
       const start = year - Math.floor(r() * 6);
       const bb = borderBaronies(def, atk);

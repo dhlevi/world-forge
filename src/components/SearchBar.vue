@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { flyTarget, openCulture, openRealm, search, searchState, store } from '../store';
+import { flyTarget, openCulture, openFaith, openRealm, search, searchState, store } from '../store';
 import { CAT_LABEL, type SearchCat, type SearchHit, bearing } from '../search/index';
 
 const q = ref('');
@@ -49,6 +49,7 @@ function choose(h: SearchHit | undefined): void {
   // A realm also opens its details.
   if (/^pol\d+$/.test(h.e.id)) openRealm.value = Number(h.e.id.slice(3));
   if (/^cul\d+$/.test(h.e.id)) openCulture.value = Number(h.e.id.slice(3));
+  if (/^fai\d+$/.test(h.e.id)) openFaith.value = Number(h.e.id.slice(3));
   open.value = false;
   input.value?.blur();
   if (window.matchMedia('(max-width: 768px)').matches) expanded.value = false;

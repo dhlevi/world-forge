@@ -5,8 +5,8 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { flyTarget, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
-import { blockEntry, planEntries, worldEntries } from '../search/index';
+import { faithLegend, flyTarget, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
+import { blockEntry, faithEntries, planEntries, worldEntries } from '../search/index';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
 import type { PlanFeature } from '../towns/plan';
 import { probeWorld } from '../world/probe';
@@ -21,8 +21,8 @@ import { armsImageData } from '../heraldry/draw';
 import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb, onLair } from '../lairs/view';
 import type { DungeonSite } from '../dungeons/core';
 import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
-import { PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces, textField } from './label-style';
-import { preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
+import { ITALIC, PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces, textField } from './label-style';
+import { prepareFaithMap, preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
 import { relationsForMap } from '../lore/realm';
 import { currentLore } from './realm-lore';
 
@@ -82,6 +82,8 @@ function syncWorld(): void {
   bigArmsGen = -1;
   setVisibility('political', store.showPolitical);
   updateRelations();
+  faithGen = -1;
+  updateFaithMap();
   if (store.labelMode !== 'native') applyLabelMode();
   setVisibility('rivers', store.showRivers);
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
@@ -104,6 +106,16 @@ function syncWorld(): void {
     hideLair();
     search.clear();
     search.add(worldEntries(world.value));
+    // Faiths come from the world's lore: built when the page is idle, then searchable.
+    const w0 = world.value;
+    const idle = (cb: () => void) => ('requestIdleCallback' in window ? window.requestIdleCallback(cb, { timeout: 4000 }) : setTimeout(cb, 1500));
+    idle(() => {
+      if (world.value !== w0) return;
+      const c = currentLore();
+      if (!c) return;
+      search.add(faithEntries(c.L.faiths.faiths));
+      searchState.version++;
+    });
     searchState.done = 0;
     searchState.total = 0;
     searchState.version++;
@@ -115,6 +127,69 @@ function syncWorld(): void {
  * While a realm's details are open, tint its allies, rivals and enemies on the map
  * (`relations://` tiles, see world/political.ts) and draw its trade routes.
  */
+let faithGen = -1;
+/**
+ * The faith map: built from the world's lore when first shown (and again for each new world),
+ * with its holy places as marked points and a key (`faithLegend`).
+ */
+function updateFaithMap(): void {
+  if (!map || !ready || !world.value) return;
+  const show = store.showFaiths;
+  for (const id of ['faithmap', 'holy-dot', 'holy-lbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', show ? 'visible' : 'none');
+  if (!show) return;
+  const w = world.value;
+  if (faithGen === w.gen && map.getLayer('faithmap')) return;
+  const c = currentLore();
+  if (!c) return;
+  faithGen = w.gen;
+  const units = w.politics.units;
+  const cols = prepareFaithMap(w.gen, (b) => {
+    const u = units[b];
+    if (!u) return null;
+    const s = c.L.faiths.sectOf(u.culture, u.lon, u.lat);
+    return [s.faith.id, s.sect.id];
+  });
+  faithLegend.value = [...cols].map(([id, rgb]) => ({ id, name: c.L.faiths.faiths[id].name, rgb }));
+  const url = `faiths://${w.gen}/{z}/{x}/{y}`;
+  const src = map.getSource('faithmap') as RasterTileSource | undefined;
+  if (!src) {
+    map.addSource('faithmap', { type: 'raster', tiles: [url], tileSize: 256, maxzoom: 9 });
+    map.addLayer(
+      {
+        id: 'faithmap', type: 'raster', source: 'faithmap',
+        paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear', 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.85, 4, 0.8, 6.5, 0.55, 9, 0.25, 11.5, 0] },
+      },
+      PLAN_GROUND_LAYERS[0].id,
+    );
+  } else src.setTiles([url]);
+  // Holy places: the first of each faith (its holiest) larger.
+  const holy = c.L.faiths.faiths.filter((f) => cols.has(f.id) || f.cultures.length).flatMap((f) => f.holySites.map((h, k) => ({
+    type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [h.lon, h.lat] },
+    properties: { name: h.name, faith: f.id, major: k === 0 ? 1 : 0, rgb: `rgb(${(cols.get(f.id) ?? [120, 90, 60]).join(',')})` },
+  })));
+  const data = { type: 'FeatureCollection' as const, features: holy };
+  const hs = map.getSource('holy') as GeoJSONSource | undefined;
+  if (!hs) {
+    map.addSource('holy', { type: 'geojson', data });
+    map.addLayer({
+      id: 'holy-dot', type: 'circle', source: 'holy', minzoom: 1.5,
+      paint: { 'circle-color': ['get', 'rgb'], 'circle-stroke-color': '#2b2420', 'circle-stroke-width': 1.2, 'circle-radius': ['interpolate', ['linear'], ['zoom'], 2, ['case', ['==', ['get', 'major'], 1], 4, 2.5], 8, ['case', ['==', ['get', 'major'], 1], 7, 5]] },
+    });
+    map.addLayer({
+      id: 'holy-lbl', type: 'symbol', source: 'holy', minzoom: 3.5,
+      filter: ['any', ['==', ['get', 'major'], 1], ['>=', ['zoom'], 5.5]],
+      layout: { 'text-field': ['get', 'name'], 'text-font': [ITALIC], 'text-size': 12, 'text-offset': [0, 0.9], 'text-anchor': 'top', 'text-optional': true },
+      paint: { 'text-color': '#2b2420', 'text-halo-color': 'rgba(243,234,211,0.85)', 'text-halo-width': 1.4 },
+    });
+    map.on('click', 'holy-dot', (e) => {
+      const f = e.features?.[0];
+      if (f) openFaith.value = Number(f.properties?.faith);
+    });
+    map.on('mouseenter', 'holy-dot', () => map && (map.getCanvas().style.cursor = 'pointer'));
+    map.on('mouseleave', 'holy-dot', () => map && (map.getCanvas().style.cursor = ''));
+  } else hs.setData(data);
+}
+
 function updateRelations(): void {
   if (!map || !ready || !world.value) return;
   const w = world.value;
@@ -276,7 +351,7 @@ function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): voi
       else if (id.startsWith('lbl-river')) vis = show && store.showRivers;
       else if (id === 'lbl-road' || SETTLEMENT_LABEL_LAYERS.some((l) => l.id === id) || PLAN_LABEL_LAYERS.some((l) => l.id === id)) vis = show && store.showSettlements;
     }
-    map.setLayoutProperty(id, 'visibility', vis ? 'visible' : 'none');
+    if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', vis ? 'visible' : 'none');
   }
 }
 
@@ -700,7 +775,12 @@ watch(() => store.showWind, (show) => setVisibility('wind', show));
 watch(() => store.showCurrents, (show) => setVisibility('currents', show));
 watch(() => store.showLabels, (show) => setVisibility('labels', show));
 watch(() => store.showBorders, (show) => setVisibility('borders', show));
+watch(() => store.showFaiths, (show) => {
+  if (show) store.showPolitical = false;
+  updateFaithMap();
+});
 watch(() => store.showPolitical, (show) => {
+  if (show) store.showFaiths = false;
   setVisibility('political', show);
   setVisibility('labels', store.showLabels);
 });

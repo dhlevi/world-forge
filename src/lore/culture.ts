@@ -18,6 +18,9 @@ export interface CultureInfo {
   vassals: number;
   faith: Faith | null;
   sect: Sect | null;
+  /** The faith they kept before converting, and the year. */
+  oldFaith: Faith | null;
+  converted: number | null;
   /** The other peoples of its language family. */
   kin: number[];
   family: LangFamily | null;
@@ -53,6 +56,7 @@ export function cultureInfo(c: Ctx, ci: number): CultureInfo {
   const fs = c.L.faiths.ofCulture[ci] >= 0 ? c.L.faiths.sectOf(ci, culture.hearth[0], culture.hearth[1]) : null;
   return {
     culture, people: peopleByCulture(c)[ci] ?? 0, realms: tops, vassals, faith: fs?.faith ?? null, sect: fs?.sect ?? null,
+    oldFaith: c.L.faiths.faiths[c.L.faiths.formerOf.get(ci) ?? -1] ?? null, converted: c.L.faiths.converted.get(ci) ?? null,
     kin: FAMILIES[culture.family]?.members.filter((k) => k !== ci) ?? [],
     family: FAMILIES[culture.family] ?? null, substrate: FAMILIES[culture.substrate] ?? null,
     templateName: TEMPLATES[culture.template]?.id ?? '', after: LANG_TEMPLATES[culture.id]?.after ?? '',
