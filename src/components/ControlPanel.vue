@@ -99,6 +99,14 @@ function randomize(): void {
           <input v-model="store.showLabels" type="checkbox" />
           Place names
         </label>
+        <label class="field names-in">
+          <span>Names in</span>
+          <select v-model="store.labelMode" title="Letter places in their own languages, in English (their meanings), or both">
+            <option value="native">Local languages</option>
+            <option value="english">English</option>
+            <option value="both">Both</option>
+          </select>
+        </label>
         <label class="check">
           <input v-model="store.showBorders" type="checkbox" />
           Borders

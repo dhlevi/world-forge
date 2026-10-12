@@ -18,6 +18,8 @@ export interface Settlement {
   id: string;
   /** Generated name (set once cultures are known). */
   name?: string;
+  /** The name in English, where it means something ("Black Ford"). */
+  nameEn?: string;
   tier: Tier;
   /** Villages only. */
   kind?: VillageKind;
@@ -48,7 +50,7 @@ export interface RoadFeature {
   type: 'Feature';
   geometry: { type: 'LineString'; coordinates: number[][] };
   /** a/b: settlement ids at the start/end ('' where a track joins another road). */
-  properties: { cls: RoadClass; a: string; b: string; ppm20: number; name?: string };
+  properties: { cls: RoadClass; a: string; b: string; ppm20: number; name?: string; en?: string };
 }
 
 export interface RoadCollection {

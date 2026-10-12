@@ -1,8 +1,9 @@
 import { Biome } from '../gen/biomes';
-import { LEVEL_NAME, NB_CULTURE, type Politics, type PolUnit, chainOf } from '../gen/politics';
+import { LEVEL_NAME, STYLE_WORDS, NB_CULTURE, type Politics, type PolUnit, chainOf } from '../gen/politics';
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import type { Settlement } from '../gen/settlements';
 import { CULTURES } from '../names/cultures';
+import { nameCase, translate } from '../lang/translate';
 import { goodName, production, tradeOf } from './economy';
 import type { Faith, Sect } from './faiths';
 import { COURT, cultureFolk, cultureId, cultureLabel, epithet, givenName, type House, houseName, personName, roman, traits } from './names';
@@ -147,6 +148,9 @@ export interface RealmDetails {
   military: { levy: number; standing: number; horse: number; ships: number; style: string; order?: string; fortresses: number };
   faith: { faith: Faith; sect: Sect; tolerance: string };
   overview: string;
+  /** The realm's name and its ruler's title in its rulers' language. */
+  nativeName: string;
+  nativeRuler: string;
 }
 
 export interface Ctx {
@@ -575,7 +579,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   const lands = tn.length ? `a land of ${tn.join(' and ')}${land.coastKm > 250 ? ' with a long coast' : land.coastKm > 40 ? ' by the sea' : ''}${land.highKm2 / area > 0.2 && !tn.includes('mountains') ? ', hemmed by mountains' : ''}` : '';
   const sents: string[] = [];
   sents.push(`${cap(u.name)} is a ${word} ${govWord} of about ${fmtPeople(u.people)} people${lands ? `, ${lands}` : ''}.`);
-  if (ruler && !ruler.heldBy && !ruler.council && now) sents.push(`${cap(ELECTED.has(u.gov) ? 'It has been led' : 'It has been ruled')} since ${now.from} by ${now.styled}${ruler.house && !SURNAME_FIRST.has(cul) ? ` of ${ruler.house.name}` : ''}, ${listAnd(ruler.traits.map((x) => x.toLowerCase()))}.`);
+  if (ruler && !ruler.heldBy && !ruler.council && now) sents.push(`${cap(ELECTED.has(u.gov) ? 'It has been led' : 'It has been ruled')} since ${now.from} by the ${listAnd(ruler.traits.map((x) => x.toLowerCase()))} ${now.styled}${ruler.house && !SURNAME_FIRST.has(cul) ? ` of ${ruler.house.name}` : ''}.`);
   else if (ruler?.heldBy !== undefined) sents.push(`It is held in person by the ${liege!.ruler} of ${liege!.name}.`);
   if (cultures.length) sents.push(`Its people are mostly ${cultures[0].name}${cultures[1] && cultures[1].pct > 12 ? `, with many ${cultures[1].name}` : ''}, and keep ${state.sect.id === 0 || state.sect.name === 'the orthodox faith' ? state.faith.name : state.sect.name}.`);
   if (wars.length && isTop) sents.push(`It is at war with ${listAnd(wars.flatMap((w) => w.enemies).slice(0, 3).map((x) => units[x].name))}.`);
@@ -599,9 +603,16 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
     military: { levy, standing, horse, ships, style: ARMY[cul] ?? 'levies of foot and horse', order, fortresses },
     faith: { faith: state.faith, sect: state.sect, tolerance },
     overview: sents.join(' '),
+    ...nativeTitles(u),
   };
   c.details.set(id, d);
   return d;
+}
+
+function nativeTitles(u: PolUnit): { nativeName: string; nativeRuler: string } {
+  const L = CULTURES[u.culture]?.language;
+  if (!L) return { nativeName: '', nativeRuler: '' };
+  return { nativeName: nameCase(translate(L, u.name, { capitalsProper: true, known: STYLE_WORDS })), nativeRuler: nameCase(translate(L, u.ruler.toLowerCase())) };
 }
 
 function governmentText(u: PolUnit, liege: PolUnit | null, cul: string): string {
@@ -609,11 +620,11 @@ function governmentText(u: PolUnit, liege: PolUnit | null, cul: string): string 
   switch (u.gov) {
     case 'republic': return `A republic of merchant families, led by a ${u.ruler}.${v}`;
     case 'city-state': return `A free city ruling itself and its hinterland, led by a ${u.ruler}.${v}`;
-    case 'theocracy': return `Ruled by the faith: its ${u.ruler} is lord and priest at once.${v}`;
+    case 'theocracy': return `Ruled by the faith: its ${u.ruler} is both lord and priest at once.${v}`;
     case 'thalassocracy': return `A sea power whose strength is its fleets and island ports, ruled by a ${u.ruler}.${v}`;
     case 'league': return `A loose union of independent realms for trade and defence, governed by a ${u.ruler}.`;
     case 'tribal': return `${cul === 'woodland' ? 'A union of clans' : 'A chiefdom of kin and lineages'} under a ${u.ruler}.${v}`;
-    case 'colony': return `A colony across the sea, governed by a ${u.ruler} for its masters.${v}`;
+    case 'colony': return `A colony established across the sea or land, governed by a ${u.ruler} for its masters.${v}`;
     default: return u.level === 4 ? `An empire of many realms under a ${u.ruler}.` : liege ? `A fief held from ${liege.name} by its ${u.ruler}.` : `An independent ${LEVEL_NAME[u.level].toLowerCase()} under a ${u.ruler}.`;
   }
 }
@@ -693,11 +704,72 @@ function buildChronicle(c: Ctx, id: number, reigns: Reign[], wars: WarView[], r:
   const fam = st.faith.family;
   const temple = fam === 'church' ? 'cathedral' : fam === 'crescent' ? 'great mosque' : fam === 'serpent' ? 'great pyramid' : fam === 'kami' ? 'great shrine' : 'great temple';
   const pool: [string, ChronEntry['kind']][] = [
-    [`The ${temple} of ${u.seatName} was consecrated`, 'building'], [`The walls of ${u.seatName} were raised in stone`, 'building'], [`A great fire burned half of ${u.seatName}`, 'disaster'],
-    ['The harvest failed for three years running, and many starved', 'disaster'], [`A school of learning was founded at ${u.seatName}`, 'building'], ['A great flood drowned the lowlands', 'disaster'],
-    [`A dragon laid waste the country around ${u.seatName} until it was slain`, 'wonder'], ['The peasants rose in revolt and were put down', 'disaster'], ['An earthquake threw down towers and temples', 'disaster'],
-    [`A wizard raised a tower in the hills near ${u.seatName}`, 'wonder'], ['The dead walked in the far marches, until the priests laid them to rest', 'wonder'], ['Giants came down from the mountains and burned the upland villages', 'wonder'],
-    ['New laws were written down and proclaimed in every town', 'building'], [`The great bridge at ${u.seatName} was finished`, 'building'],
+    // --- Original Entries ---
+    [`The ${temple} of ${u.seatName} was consecrated`, 'building'],
+    [`The walls of ${u.seatName} were raised in stone`, 'building'],
+    [`A great fire burned half of ${u.seatName}`, 'disaster'],
+    ['The harvest failed for three years running, and many starved', 'disaster'],
+    [`A school of learning was founded at ${u.seatName}`, 'building'],
+    ['A great flood drowned the lowlands', 'disaster'],
+    [`A dragon laid waste the country around ${u.seatName} until it was slain`, 'wonder'],
+    ['The peasants rose in revolt and were put down', 'disaster'],
+    ['An earthquake threw down towers and temples', 'disaster'],
+    [`A wizard raised a tower in the hills near ${u.seatName}`, 'wonder'],
+    ['The dead walked in the far marches, until the priests laid them to rest', 'wonder'],
+    ['Giants came down from the mountains and burned the upland villages', 'wonder'],
+    ['New laws were written down and proclaimed in every town', 'building'],
+    [`The great bridge at ${u.seatName} was finished`, 'building'],
+
+    // --- Disasters & Hardships ---
+    ['A bitter frost locked the realm in winter for ten straight months', 'disaster'],
+    ['The Red Ague swept through the realm, emptying half the villages', 'disaster'],
+    ['A cloud of locusts stripped the fields bare before the autumn reaping', 'disaster'],
+    [`A murrain killed the cattle and horses throughout the province of ${u.seatName}`, 'disaster'],
+    ['A sinkhole opened in the market square, swallowing ancient stone foundations', 'disaster'],
+    [`Looting mercenaries put the countryside around ${u.seatName} to the sword`, 'disaster'],
+    ['Drought turned the royal river to a trickle of foul, stagnant mud', 'disaster'],
+    [`An explosion of black powder destroyed the royal armory at ${u.seatName}`, 'disaster'],
+    ['A wave of mad dancing sickness afflicted the common folk for weeks', 'disaster'],
+    ['The mines collapsed, entombing a generation of local miners below ground', 'disaster'],
+    [`A swarm of bloated corpse-flies infected the wells of ${u.seatName}`, 'disaster'],
+    ['A night-long hail of burning cinders rained down from the northern sky', 'disaster'],
+    ['Rogue inquisitors burned suspected hedge-witches and herbalists on the commons', 'disaster'],
+
+    // --- Buildings, Works & Reforms ---
+    [`The royal mint was established at ${u.seatName}, striking the first silver crowns`, 'building'],
+    ['A great stone canal was dug to link the inland trade routes', 'building'],
+    [`An ancient library was restored in the shadow of ${u.seatName}`, 'building'],
+    [`The high granaries of ${u.seatName} were constructed against lean years`, 'building'],
+    ['A treaty of trade was signed, bringing foreign merchants to every port', 'building'],
+    [`A paved king’s highway was laid through the dark forests around ${u.seatName}`, 'building'],
+    ['The gild of stonemasons was chartered by royal decree', 'building'],
+    [`The iron gates of ${u.seatName} were cast and hung in the gatehouse`, 'building'],
+    ['A vast lighthouse was erected upon the jagged sea-cliffs', 'building'],
+    [`An order of warrior-monks established their chapter house near ${u.seatName}`, 'building'],
+    ['The old wooden palisades were replaced with heavy mortared bastions', 'building'],
+    [`A royal observatory was built atop the high ridge above ${u.seatName}`, 'building'],
+    ['A subterranean aqueduct was carved to bring mountain water to the populace', 'building'],
+
+    // --- Wonders, Curses & Folklore ---
+    ['A spectral army fought in the clouds above the hills for three suns', 'wonder'],
+    [`A curse fell upon the house of a noble family from ${u.seatName}, turning their bloodline mad`, 'wonder'],
+    ['A great comet with a blood-red tail hung in the night sky for forty days', 'wonder'],
+    ['The forest grew ten leagues in a single night, swallowing three border forts', 'wonder'],
+    [`A striga tormented the court of ${u.seatName} until an itinerant witcher laid it low`, 'wonder'],
+    ['An ancient monolith uncovered in the peat bogs began to hum a low drone', 'wonder'],
+    ['The sun turned pitch-black at midday, and the livestock refused to graze for a year', 'wonder'],
+    ['A beast of shadow roamed the countryside, leaving only empty armor behind', 'wonder'],
+    ['A spring of sweet silver oil bubbled out of the ground, curing all rot', 'wonder'],
+    [`A coven of hags bound the weather of ${u.seatName} until their idol was shattered`, 'wonder'],
+    ['An elder leshy awoke, driving every woodsman from the deep forest', 'wonder'],
+    ['A wandering prophet spoke three true doom-omens before turning to salt', 'wonder'],
+    ['A sea-monster was washed ashore, its stomach filled with ancient gold coins', 'wonder'],
+    ['A ring of towering menhirs burst up through the soil during a lightning storm', 'wonder'],
+    [`The bell of ${temple} rang forty times on its own, foretelling a king’s fall`, 'wonder'],
+    ['A plague of ghastly wailing ghosts rose from the sunken battlefield at dusk', 'wonder'],
+    ['A fallen star crushed the high chapel, leaving behind a stone that never cools', 'wonder'],
+    ['Unnatural fog enveloped the valley, causing all who entered to lose their memories', 'wonder'],
+    [`A dark idol was unearthed in the cellars beneath ${u.seatName} and cast into the sea`, 'wonder'],
   ];
   if (L.land(id).coastKm > 40) pool.push([`The great harbour of ${u.seatName} was built`, 'building'], ['Raiders from the sea burned the coastal towns', 'disaster']);
   const n = Math.min(pool.length, u.level >= 3 || isTop ? 4 : 2);

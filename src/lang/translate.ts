@@ -48,14 +48,61 @@ function nounOf(w: string): { n: string; plural: boolean } {
   return { n: w, plural: false };
 }
 
-export function translate(L: Language, text: string): Token[] {
-  const words = text.toLowerCase().replace(/n't\b/g, ' not').replace(/[^a-z' ]/g, ' ').split(/\s+/).filter(Boolean);
+/** Proper names in a phrase are marked ‹like this› and kept as they are. */
+export const PROPER = (s: string) => `\u2039${s}\u203A`;
+export const unmark = (s: string) => s.replace(/[\u2039\u203A]/g, '');
+
+/** Words that stay lowercase in a name ("Lac de Belle", "al-Medina"). */
+const FUNCTION_GLOSS = new Set(['the', 'a', 'of', 'GEN', 'DEF', 'NEG', 'PST', 'FUT', 'and']);
+
+/** A translated name, capitalized like one: content words capitalized, particles and articles not. */
+export function nameCase(tokens: Token[]): string {
+  return tokens
+    .map((t, k) => {
+      if (k > 0 && (FUNCTION_GLOSS.has(t.gloss) || /^(in|on|at|to|from|by|with|near|under|over|for)$/.test(t.gloss))) return t.form;
+      // "al-medina" → "al-Medina"; "medina" → "Medina".
+      return t.form.replace(/(^|-)(\p{L})/gu, (m, a: string, c: string) => (a && /^DEF/.test(t.gloss) ? a + c.toUpperCase() : a ? m : c.toUpperCase()));
+    })
+    .join(' ')
+    .replace(/^./, (c) => c.toUpperCase());
+}
+
+export function translate(L: Language, text: string, o: { capitalsProper?: boolean; known?: Set<string> } = {}): Token[] {
+  // Proper names become placeholders, so they pass through untouched.
+  const propers: string[] = [];
+  let src = text.replace(/\u2039([^\u203A]+)\u203A/g, (_, p: string) => ` zzp${propers.push(p) - 1}zz `);
+  if (o.capitalsProper) {
+    src = src.replace(/(^|[^\p{L}'])(\p{Lu}[\p{L}']*)/gu, (m, pre: string, w: string, off: number) => {
+      const first = src.slice(0, off).trim() === '' || /[.!?]\s*$/.test(src.slice(0, off));
+      const lw = w.toLowerCase();
+      if (o.known?.has(lw) || LEX.has(lw) || PRONOUN[lw] !== undefined || DETS.has(lw) || PREPS.has(lw) || verbOf(lw) || (nounOf(lw).plural && LEX.has(nounOf(lw).n))) return m;
+      if (first && lw.length < 3) return m;
+      return `${pre} zzp${propers.push(w) - 1}zz `;
+    });
+  }
+  const isProper = (w: string) => /^zzp\d+zz$/.test(w);
+  const properTok = (w: string): Token => {
+    const p = propers[+w.slice(3, -2)];
+    return { form: p, gloss: p };
+  };
+  const words = src.toLowerCase().replace(/n't\b/g, ' not').replace(/[^a-z0-9' ]/g, ' ').split(/\s+/).filter(Boolean);
   let i = 0;
   const parts: Part[] = [];
 
   const parseNP = (): NP | null => {
     if (i >= words.length) return null;
     const w = words[i];
+    // A proper name, alone or naming the noun after it ("Varsk Caves").
+    if (isProper(w)) {
+      i++;
+      const p = properTok(w);
+      const nx = words[i];
+      if (nx && !PREPS.has(nx) && nx !== 'of' && !DETS.has(nx) && !isProper(nx) && PRONOUN[nx] === undefined && !verbOf(nx)) {
+        const head = parseNP();
+        if (head) return { tokens: L.appose(head.tokens, p), person: head.person };
+      }
+      return { tokens: [p], person: 2 };
+    }
     if (PRONOUN[w] !== undefined) {
       i++;
       const p = PRONOUN[w];
@@ -74,6 +121,16 @@ export function translate(L: Language, text: string): Token[] {
       const last = adjs.pop()!;
       return { tokens: L.nounPhrase(last, { adjs, def, indef }), person: 2 };
     }
+    // Adjectives before a proper name ("New ‹Ashford›"), perhaps naming a noun after it ("the Old ‹Ashford› Road").
+    let pre: Token | null = null;
+    if (isProper(words[i])) {
+      pre = properTok(words[i++]);
+      const nx = words[i];
+      if (!nx || PREPS.has(nx) || nx === 'of' || DETS.has(nx) || isProper(nx) || verbOf(nx)) {
+        const adjToks = adjs.map((a) => ({ form: L.word(a).spell, gloss: a }));
+        return { tokens: L.grammar.adj === 'before' ? [...adjToks, pre] : [pre, ...adjToks], person: 2 };
+      }
+    }
     let raw = words[i++];
     let possessive = false;
     if (raw.endsWith("'s")) {
@@ -82,6 +139,9 @@ export function translate(L: Language, text: string): Token[] {
     }
     const { n, plural } = nounOf(raw.replace(/'$/, ''));
     let np: NP = { tokens: L.nounPhrase(n, { adjs, def, indef, plural }), person: plural ? 7 : 2 };
+    if (pre) np = { tokens: L.appose(np.tokens, pre), person: np.person };
+    // A noun naming the proper name after it ("Castle Varsk", "Lake Kethvik").
+    if (words[i] && isProper(words[i])) np = { tokens: L.appose(np.tokens, properTok(words[i++])), person: np.person };
     if (possessive) {
       const thing = parseNP();
       if (thing) np = { tokens: L.possess(thing.tokens, np.tokens), person: thing.person };

@@ -121,7 +121,7 @@ watch(stage, (el, old) => {
   <div v-if="site && d" class="dungeon" role="dialog" aria-modal="true" :aria-label="d.title">
     <header>
       <div class="title">
-        <h2>{{ d.title }}</h2>
+        <h2>{{ d.title }}<span v-if="site?.en && site.en !== site.name" class="en">{{ site.en }}</span></h2>
         <p>{{ subtitle }}</p>
       </div>
       <div class="actions">
@@ -179,6 +179,12 @@ h2 {
   font-size: 22px;
   font-weight: normal;
   font-style: italic;
+}
+h2 .en {
+  margin-left: 10px;
+  font-size: 15px;
+  font-style: normal;
+  opacity: 0.7;
 }
 h2::first-letter {
   text-transform: uppercase;

@@ -160,7 +160,7 @@ watch(stage, (el, old) => {
   <div v-if="site" class="lair" role="dialog" aria-modal="true" :aria-label="site.name">
     <header>
       <div class="title">
-        <h2>{{ site.name }}</h2>
+        <h2>{{ site.name }}<span v-if="site.en && site.en !== site.name" class="en">{{ site.en }}</span></h2>
         <p>{{ subtitle }}</p>
       </div>
       <div class="actions">
@@ -191,6 +191,12 @@ watch(stage, (el, old) => {
 </template>
 
 <style scoped>
+h2 .en {
+  margin-left: 10px;
+  font-size: 15px;
+  font-style: normal;
+  opacity: 0.7;
+}
 .lair {
   position: absolute;
   inset: 0;

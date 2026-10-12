@@ -31,6 +31,8 @@ export const store = reactive({
   showRivers: true,
   showSettlements: true,
   showLabels: true,
+  /** Place names in the local languages, in English, or both. */
+  labelMode: 'native' as 'native' | 'english' | 'both',
   /** Political borders (empires, kingdoms, duchies, counties). */
   showBorders: true,
   /** Political map: realms washed in colour, with large titles and arms. */
@@ -48,7 +50,7 @@ export const store = reactive({
   /** Map zoom (updated when the map settles). */
   zoom: 1.6,
   /** The village under the map centre at close zoom, if any (from the towns worker's data). */
-  here: null as { name: string; kind: string; population: number } | null,
+  here: null as { name: string; en?: string; kind: string; population: number } | null,
 });
 
 export const world = shallowRef<ClientWorld | null>(null);

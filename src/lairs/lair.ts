@@ -19,6 +19,8 @@ export interface LairSite {
   id: string;
   kind: LairKind;
   name: string;
+  /** The name in English. */
+  en?: string;
   seed: number;
   /** Size (small, medium, large) and character tags, e.g. ['large', 'sealed', 'wet']. */
   tags: string[];

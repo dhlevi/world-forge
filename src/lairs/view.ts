@@ -6,7 +6,7 @@ import { type Ctx2D, drawLair, lairThumbnail } from './render';
 export function lairFromFeature(p: Record<string, unknown>, coords: number[]): LairSite | null {
   if (p.tier !== 'lair' || typeof p.id !== 'string' || (p.kind !== 'cave' && p.kind !== 'glade')) return null;
   return {
-    id: p.id, kind: p.kind as LairKind, name: String(p.name ?? ''), seed: Number(p.seed), lon: coords[0], lat: coords[1],
+    id: p.id, kind: p.kind as LairKind, name: String(p.name ?? ''), ...(p.en ? { en: String(p.en) } : {}), seed: Number(p.seed), lon: coords[0], lat: coords[1],
     tags: String(p.tags ?? '').split(',').filter(Boolean),
   };
 }

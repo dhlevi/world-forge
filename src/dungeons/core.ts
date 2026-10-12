@@ -17,6 +17,8 @@ export interface DungeonSite {
   id: string;
   kind: DungeonKind;
   name: string;
+  /** The name in English. */
+  en?: string;
   seed: number;
   tags: string[];
   lon: number;
@@ -287,20 +289,24 @@ export function packLines(lines: number[][][]): string {
  * half the towns. The plan then places the entrances (a grate on a main street; a stair in the
  * graveyard, by the temple, or in the market).
  */
-export function townUnderground(s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string }): { dkind: 'sewer' | 'catacomb'; did: string; name: string; tags: string[] }[] {
+export function townUnderground(
+  s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string },
+  /** Names from an English pattern ({0} the town), in the local language and in English. */
+  named: (tpl: string) => { name: string; en: string } = (tpl) => ({ name: tpl.replace('{0}', s.name ?? ''), en: tpl.replace('{0}', s.name ?? '') }),
+): { dkind: 'sewer' | 'catacomb'; did: string; name: string; en: string; tags: string[] }[] {
   if ((s.tier !== 'city' && s.tier !== 'town') || s.kind === 'tribal') return [];
-  const out: { dkind: 'sewer' | 'catacomb'; did: string; name: string; tags: string[] }[] = [];
+  const out: { dkind: 'sewer' | 'catacomb'; did: string; name: string; en: string; tags: string[] }[] = [];
   const u = (k: number) => hash(s.seed ^ k) / 4294967296;
   const size = s.tier === 'city' ? 'large' : 'medium';
   if (s.tier === 'city' || s.population >= 4000) {
     const levels = s.tier === 'city' && u(0x5e1) < 0.6 ? 2 : 1;
-    out.push({ dkind: 'sewer', did: `${s.id}/sewer`, name: `the Sewers of ${s.name ?? ''}`, tags: [size, ...(levels > 1 ? ['2 levels'] : [])] });
+    out.push({ dkind: 'sewer', did: `${s.id}/sewer`, ...named('the Sewers of {0}'), tags: [size, ...(levels > 1 ? ['2 levels'] : [])] });
   }
   if (s.tier === 'city' || u(0xca7a) < 0.55) {
     const r = u(0xca7b);
     const levels = s.tier === 'city' ? (r < 0.4 ? 2 : r < 0.8 ? 3 : 1) : r < 0.6 ? 1 : 2;
-    const name = u(0xca7c) < 0.6 ? `the Catacombs of ${s.name ?? ''}` : `the Undercroft of ${s.name ?? ''}`;
-    out.push({ dkind: 'catacomb', did: `${s.id}/catacomb`, name, tags: [size, ...(levels > 1 ? [`${levels} levels`] : [])] });
+    const nm = named(u(0xca7c) < 0.6 ? 'the Catacombs of {0}' : 'the Undercroft of {0}');
+    out.push({ dkind: 'catacomb', did: `${s.id}/catacomb`, ...nm, tags: [size, ...(levels > 1 ? [`${levels} levels`] : [])] });
   }
   return out;
 }

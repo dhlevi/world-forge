@@ -44,6 +44,23 @@ interface Spec {
   maxWidth?: number;
 }
 
+export type LabelMode = 'native' | 'english' | 'both';
+
+/**
+ * Lettering for a label in a mode: the local name (`name`), its English (`en`, where a feature
+ * has one), or both (the English smaller beneath, or after it in brackets along a line).
+ */
+export function textField(mode: LabelMode, upper: boolean, line: boolean): ExpressionSpecification {
+  const up = (x: unknown) => (upper ? ['upcase', x] : x);
+  const nm = up(['get', 'name']);
+  const en = up(['coalesce', ['get', 'en'], ['get', 'name']]);
+  if (mode === 'native') return e(nm);
+  if (mode === 'english') return e(en);
+  return e(['case', ['all', ['has', 'en'], ['!=', ['get', 'en'], ['get', 'name']]],
+    ['format', nm, {}, line ? '  (' : '\n', {}, en, { 'font-scale': 0.8 }, line ? ')' : '', {}],
+    nm]);
+}
+
 const kindIs = (...k: string[]) => ['in', ['get', 'kind'], ['literal', k]];
 const rankIn = (...r: number[]) => ['in', ['get', 'rank'], ['literal', r]];
 const isLine = ['==', ['geometry-type'], 'LineString'];
@@ -66,7 +83,7 @@ function layer(s: Spec): LayerSpecification {
     maxzoom: z1,
     filter: e(['all', ...s.filter]) as unknown as FilterSpecification,
     layout: {
-      'text-field': s.upper ? e(['upcase', ['get', 'name']]) : e(['get', 'name']),
+      'text-field': textField('native', !!s.upper, !!s.line),
       'text-font': [s.font],
       'text-size': e(['interpolate', ['linear'], ['zoom'], z0, s.size[0] * k, z1, s.size[1] * k]),
       'text-letter-spacing': s.spacing ?? 0.05,

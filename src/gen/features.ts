@@ -7,7 +7,7 @@ import type { DetailSampler } from './detail';
 import type { RoadCollection, Settlement } from './settlements';
 import { CULTURES, type FeatureKind } from '../names/cultures';
 import { chooseLayout } from '../towns/layout';
-import type { NameBank } from '../names/names';
+import type { NameBank, Named } from '../names/names';
 
 /**
  * Geographic features found on the world grid and given names in the local culture:
@@ -28,7 +28,7 @@ export interface LabelFeature {
    * zlo/zhi (water only): whole-zoom band this anchor belongs to. A water body keeps one label
    * until it fills the screen, then is lettered from a lattice of anchors (see `waterAnchors`).
    */
-  properties: { kind: LabelKind; name: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number; arms?: number; top?: number };
+  properties: { kind: LabelKind; name: string; en?: string; rank: number; minz: number; maxz: number; zlo?: number; zhi?: number; unit?: number; arms?: number; top?: number };
 }
 
 export interface LabelCollection {
@@ -59,15 +59,22 @@ export function nameWorld(
   const isLand = (c: number) => f.height[c] > 0;
   const isSea = (c: number) => f.height[c] <= 0;
   const point = (c: number): number[] => [lon(c), lat(c)];
-  const push = (kind: LabelKind, name: string, geom: LabelFeature['geometry'], rank: number, minz: number, maxz: number) =>
-    labels.push({ type: 'Feature', geometry: geom, properties: { kind, name, rank, minz, maxz } }) - 1;
+  /** A label: its name in the local language, and in English where that differs. */
+  const push = (kind: LabelKind, n: Named, geom: LabelFeature['geometry'], rank: number, minz: number, maxz: number) =>
+    labels.push({ type: 'Feature', geometry: geom, properties: { kind, name: n.name, ...(n.en !== n.name ? { en: n.en } : {}), rank, minz, maxz } }) - 1;
   /** Water bodies to letter at close zoom: a set of cells (lakes, enclosed seas) or a seed with a reach on the open sea. */
   const waters: WaterBody[] = [];
 
   // ---- Settlements -------------------------------------------------------------------------
   for (const s of settlements) {
     const c = cellOf(g, s.lon, s.lat);
-    s.name = bank.place(s.culture ?? f.culture[c], s.id);
+    const bi = f.biome[c] as Biome;
+    const nm = bank.placeNamed(s.culture ?? f.culture[c], s.id, {
+      coastal: s.coastal, river: s.river, high: f.height[c] > 800, forest: FOREST.has(bi), grass: bi === Biome.Grassland || bi === Biome.Savanna || bi === Biome.ColdDesert,
+      marsh: bi === Biome.Wetland || bi === Biome.Mangrove, walls: s.walls, city: s.tier === 'city', kind: s.kind,
+    });
+    s.name = nm.name;
+    s.nameEn = nm.en;
     if (s.tier === 'city' || s.tier === 'town') {
       // Local relief: the largest height step to a neighbouring cell.
       const i = c % W, j = (c / W) | 0;
@@ -89,10 +96,19 @@ export function nameWorld(
     const r = bank.rng(`colony:${s.id}`);
     const home = homeTowns(s.culture ?? 0);
     const x = r();
-    if (s.colony === 'fort') s.name = `Fort ${s.name}`;
-    else if (s.colony === 'post') s.name = x < 0.5 ? `${s.name} Landing` : `${s.name} Post`;
-    else if (home.length && x < 0.55) s.name = `New ${home[Math.floor(r() * home.length)].name}`;
-    else if (x < 0.75) s.name = `Port ${s.name}`;
+    const ci = s.culture ?? 0;
+    const self: Named = { name: s.name, en: s.nameEn ?? s.name };
+    let nm: Named | null = null;
+    if (s.colony === 'fort') nm = bank.named(ci, 'Fort {0}', [self]);
+    else if (s.colony === 'post') nm = bank.named(ci, x < 0.5 ? '{0} Landing' : '{0} Post', [self]);
+    else if (home.length && x < 0.55) {
+      const h = home[Math.floor(r() * home.length)];
+      nm = bank.named(ci, 'New {0}', [{ name: h.name ?? '', en: h.nameEn ?? h.name ?? '' }]);
+    } else if (x < 0.75) nm = bank.named(ci, 'Port {0}', [self]);
+    if (nm) {
+      s.name = nm.name;
+      s.nameEn = nm.en;
+    }
   }
   const named = (lo: number, la: number, km: number) => {
     let best: Settlement | null = null, bd = km;
@@ -107,10 +123,11 @@ export function nameWorld(
     return best;
   };
   /** Sometimes a feature takes the name of a nearby town ("Bay of Hollyford"). */
-  const baseFrom = (c: number, km: number, chance: number, key: string) => {
+  const baseFrom = (c: number, km: number, chance: number, key: string): Named | undefined => {
     const r = bank.rng(`base:${key}`)();
     if (r > chance) return undefined;
-    return named(lon(c), lat(c), km)?.name;
+    const t = named(lon(c), lat(c), km);
+    return t?.name ? { name: t.name, en: t.nameEn ?? t.name } : undefined;
   };
 
   // ---- Components --------------------------------------------------------------------------
@@ -219,9 +236,9 @@ export function nameWorld(
     const a = areaOf(cells);
     const at = pole(cells);
     if (a > 1.5e6) {
-      push('continent', bank.feature('continent', f.culture[at], `cont${id}`), shape(cells, at, 5000), a > 2e7 ? 0 : 1, 0.6, 3.2);
+      push('continent', bank.featureNamed('continent', f.culture[at], `cont${id}`), shape(cells, at, 5000), a > 2e7 ? 0 : 1, 0.6, 3.2);
     } else if (a > 15000) {
-      push('island', bank.feature('island', f.culture[at], `isl${id}`), { type: 'Point', coordinates: point(at) }, a > 3e5 ? 0 : a > 6e4 ? 1 : 2, a > 3e5 ? 2.5 : a > 6e4 ? 3.5 : 4.5, 10);
+      push('island', bank.featureNamed('island', f.culture[at], `isl${id}`), { type: 'Point', coordinates: point(at) }, a > 3e5 ? 0 : a > 6e4 ? 1 : 2, a > 3e5 ? 2.5 : a > 6e4 ? 3.5 : 4.5, 10);
     } else smallIslands.push({ c: at, cells });
   });
   // Archipelagos: clusters of three or more small islands within ~300 km of each other.
@@ -247,11 +264,11 @@ export function nameWorld(
         x += Math.cos(la) * Math.cos(lo); y += Math.cos(la) * Math.sin(lo); z += Math.sin(la);
       }
       const cLon = (Math.atan2(y, x) * 180) / Math.PI, cLat = (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI;
-      push('isles', bank.feature('isles', f.culture[smallIslands[members[0]].c], `isles${r}`), { type: 'Point', coordinates: [cLon, cLat] }, 1, 4, 9);
+      push('isles', bank.featureNamed('isles', f.culture[smallIslands[members[0]].c], `isles${r}`), { type: 'Point', coordinates: [cLon, cLat] }, 1, 4, 9);
     } else if (areaOf(all) > 3000) {
       for (const k of members) {
         const c = smallIslands[k].c;
-        push('island', bank.feature('island', f.culture[c], `isl-s${k}`), { type: 'Point', coordinates: point(c) }, 3, 6, 11);
+        push('island', bank.featureNamed('island', f.culture[c], `isl-s${k}`), { type: 'Point', coordinates: point(c) }, 3, 6, 11);
       }
     }
   }
@@ -304,11 +321,11 @@ export function nameWorld(
     const at = pole(cells);
     if (a < 25000) {
       // A small landlocked body of salt water reads as a lake.
-      const li = push('lake', bank.feature('lake', f.culture[at], `slake${id}`), { type: 'Point', coordinates: point(at) }, a > 1e4 ? 2 : 3, 5, 11);
+      const li = push('lake', bank.featureNamed('lake', f.culture[at], `slake${id}`), { type: 'Point', coordinates: point(at) }, a > 1e4 ? 2 : 3, 5, 11);
       waters.push({ label: li, at, cells, field: 'sea' });
       return;
     }
-    const si = push(a > 4e5 ? 'sea' : 'inlandSea', bank.feature(a > 4e5 ? 'sea' : 'inlandSea', f.culture[at], `esea${id}`), shape(cells, at, 1500), a > 4e5 ? 1 : 2, a > 4e5 ? 2.5 : 3.5, 8);
+    const si = push(a > 4e5 ? 'sea' : 'inlandSea', bank.featureNamed(a > 4e5 ? 'sea' : 'inlandSea', f.culture[at], `esea${id}`), shape(cells, at, 1500), a > 4e5 ? 1 : 2, a > 4e5 ? 2.5 : 3.5, 8);
     waters.push({ label: si, at, cells, field: 'sea' });
     claim(at, 600);
   });
@@ -321,7 +338,7 @@ export function nameWorld(
   for (const c of byDepth) {
     if (nOcean >= maxOceans) break;
     if (!clear(c, 4500)) continue;
-    waters.push({ label: push('ocean', bank.feature('ocean', f.culture[c], `ocean${nOcean}`), { type: 'Point', coordinates: point(c) }, 0, 1, 5.5), at: c, reach: REACH.ocean, field: 'sea' });
+    waters.push({ label: push('ocean', bank.featureNamed('ocean', f.culture[c], `ocean${nOcean}`), { type: 'Point', coordinates: point(c) }, 0, 1, 5.5), at: c, reach: REACH.ocean, field: 'sea' });
     claim(c, 4500);
     nOcean++;
   }
@@ -333,7 +350,7 @@ export function nameWorld(
   for (const c of seaCand) {
     if (nSea >= 40) break;
     if (!clear(c, 1900)) continue;
-    const si = push('sea', bank.feature('sea', f.culture[c], `sea${nSea}`, baseFrom(c, 900, 0.25, `sea${nSea}`)), { type: 'Point', coordinates: point(c) }, 1, 2.5, 7);
+    const si = push('sea', bank.featureNamed('sea', f.culture[c], `sea${nSea}`, baseFrom(c, 900, 0.25, `sea${nSea}`)), { type: 'Point', coordinates: point(c) }, 1, 2.5, 7);
     waters.push({ label: si, at: c, reach: REACH.sea, field: 'sea' });
     claim(c, 1900);
     nSea++;
@@ -409,7 +426,7 @@ export function nameWorld(
     const k = kindCount.get(cd.kind) ?? 0;
     if (k >= 80) continue;
     kindCount.set(cd.kind, k + 1);
-    const name = bank.feature(cd.kind, f.culture[cd.c], `${cd.kind}${k}`, baseFrom(cd.c, 350, 0.4, `${cd.kind}${k}`));
+    const name = bank.featureNamed(cd.kind, f.culture[cd.c], `${cd.kind}${k}`, baseFrom(cd.c, 350, 0.4, `${cd.kind}${k}`));
     const ci = push(cd.kind, name, cd.geom ?? { type: 'Point', coordinates: point(cd.c) }, cd.rank, cd.minz, 10);
     waters.push({ label: ci, at: cd.c, reach: REACH[cd.kind] ?? 300, field: 'sea' });
     claim(cd.c, cd.spacing * 0.6);
@@ -422,22 +439,25 @@ export function nameWorld(
     if (a < 300) return;
     const at = pole(cells);
     const kind: FeatureKind = a > 6e4 ? 'inlandSea' : 'lake';
-    const li = push(kind, bank.feature(kind, f.culture[at], `lake${id}`), shape(cells, at, 800), a > 6e4 ? 1 : a > 1e4 ? 2 : 3, a > 6e4 ? 3.5 : a > 1e4 ? 5 : 6.5, 11);
+    const li = push(kind, bank.featureNamed(kind, f.culture[at], `lake${id}`), shape(cells, at, 800), a > 6e4 ? 1 : a > 1e4 ? 2 : 3, a > 6e4 ? 3.5 : a > 1e4 ? 5 : 6.5, 11);
     waters.push({ label: li, at, cells, field: 'lake' });
   });
   labels.push(...waterAnchors(g, labels, waters, { sea: isSea, lake: (c) => f.lakeDepth[c] > 0 }, distLand, sampler));
 
   // ---- Rivers ------------------------------------------------------------------------------
-  const riverName = new Map<number, string>();
+  const riverName = new Map<number, Named>();
   for (const sys of rivers.systems ?? []) {
     // Name rivers that are long or large enough to matter on the map.
     if (sys.order < 2 && sys.cells < 6) continue;
     const c = sys.mouth;
-    riverName.set(sys.rid, bank.feature('river', f.culture[c], `river${sys.rid}`));
+    riverName.set(sys.rid, bank.featureNamed('river', f.culture[c], `river${sys.rid}`));
   }
   for (const rf of rivers.features) {
     const n = riverName.get(rf.properties.rid);
-    if (n) rf.properties.name = n;
+    if (n) {
+      rf.properties.name = n.name;
+      if (n.en !== n.name) rf.properties.en = n.en;
+    }
   }
 
   // ---- Terrain regions ---------------------------------------------------------------------
@@ -467,7 +487,7 @@ export function nameWorld(
       if (a < minArea) return;
       const at = pole(cells);
       const big = a > minArea * 8;
-      const li = push(kind, bank.feature(kind, f.culture[at], `${key}${id}`), shape(cells, at), big ? 0 : 1, big ? minz - 0.8 : minz, maxz);
+      const li = push(kind, bank.featureNamed(kind, f.culture[at], `${key}${id}`), shape(cells, at), big ? 0 : 1, big ? minz - 0.8 : minz, maxz);
       // Smaller, more specific regions (forests, marshes) win over the broad ones drawn first.
       if (regionOf) for (const c of cells) regionOf[c] = li;
       out.push({ cells, at });
@@ -484,7 +504,11 @@ export function nameWorld(
       if (chosen.length >= Math.min(4, Math.ceil(areaOf(cells) / 3e5))) break;
       if (chosen.every((p) => distKm(lon(p), lat(p), lon(c), lat(c)) > 350)) chosen.push(c);
     }
-    chosen.forEach((c, k) => push('peak', `${bank.feature('peak', f.culture[c], `peak${r}_${k}`)} (${Math.round(f.height[c])} m)`, { type: 'Point', coordinates: point(c) }, 2, 6, 12));
+    chosen.forEach((c, k) => {
+      const n = bank.featureNamed('peak', f.culture[c], `peak${r}_${k}`);
+      const h = ` (${Math.round(f.height[c])} m)`;
+      push('peak', { name: n.name + h, en: n.en + h }, { type: 'Point', coordinates: point(c) }, 2, 6, 12);
+    });
   });
   region('hills', (c) => f.height[c] > 550 && f.height[c] <= 1300, 50000, 5.2, 10, 'hill');
   region('forest', (c) => FOREST.has(f.biome[c] as Biome), 70000, 4.8, 10, 'forest');
@@ -502,7 +526,10 @@ export function nameWorld(
     const to = b ?? a;
     if (!to?.name) return;
     const r = bank.rng(`road${k}`)();
-    rf.properties.name = r < 0.12 ? "the King's Road" : r < 0.3 ? `the Old ${to.name} Road` : `the ${to.name} Road`;
+    const ci = to.culture ?? f.culture[cellOf(g, to.lon, to.lat)];
+    const nm = bank.named(ci, r < 0.12 ? "the King's Road" : r < 0.3 ? 'the Old {0} Road' : 'the {0} Road', [{ name: to.name, en: to.nameEn ?? to.name }]);
+    rf.properties.name = nm.name;
+    if (nm.en !== nm.name) rf.properties.en = nm.en;
   });
 
   void H;
@@ -709,7 +736,7 @@ function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], mask
             }
             if (!wet) continue;
           }
-          band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [Math.round(lonW * 1e4) / 1e4, Math.round(lat * 1e4) / 1e4] }, properties: { kind: p.kind, name: p.name, rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
+          band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [Math.round(lonW * 1e4) / 1e4, Math.round(lat * 1e4) / 1e4] }, properties: { kind: p.kind, name: p.name, ...(p.en ? { en: p.en } : {}), rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
         }
       }
       if (band.length > MAX_PER_BAND) break;
@@ -718,9 +745,9 @@ function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], mask
       if (!band.length) {
         const top = spare.reduce((m, q) => Math.max(m, q[2]), 0);
         for (const [x, y, dep] of spare) {
-          if (dep >= top * 0.7) band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4] }, properties: { kind: p.kind, name: p.name, rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
+          if (dep >= top * 0.7) band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [Math.round(x * 1e4) / 1e4, Math.round(y * 1e4) / 1e4] }, properties: { kind: p.kind, name: p.name, ...(p.en ? { en: p.en } : {}), rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
         }
-        if (!band.length) band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lonOf(w.at), latOf(w.at)] }, properties: { kind: p.kind, name: p.name, rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
+        if (!band.length) band.push({ type: 'Feature', geometry: { type: 'Point', coordinates: [lonOf(w.at), latOf(w.at)] }, properties: { kind: p.kind, name: p.name, ...(p.en ? { en: p.en } : {}), rank: p.rank, zlo: z, zhi: z + 1 } as LabelFeature['properties'] });
       }
       out.push(...band);
       zEnd = z + 1;

@@ -133,7 +133,7 @@ const ICON: Record<SearchCat, string> = {
         >
           <svg class="ico" viewBox="0 0 20 20" width="20" height="20"><path :d="ICON[h.e.cat]" /></svg>
           <div class="text">
-            <div class="name">{{ h.e.name }}</div>
+            <div class="name">{{ h.e.name }}<span v-if="h.e.alt" class="alt">{{ h.e.alt }}</span></div>
             <div class="sub">{{ detail(h) }}</div>
           </div>
         </li>
@@ -146,6 +146,12 @@ const ICON: Record<SearchCat, string> = {
 </template>
 
 <style scoped>
+.alt {
+  margin-left: 7px;
+  font-style: italic;
+  font-size: 0.88em;
+  opacity: 0.7;
+}
 .search {
   position: absolute;
   top: 10px;

@@ -900,3 +900,21 @@ function simplify(line: number[][], tol: number): number[][] {
   }
   return line.filter((_, k) => keep[k]);
 }
+
+/**
+ * Every word the realm styles and ruler titles use ("Grand", "Duchy", "Sultanate", "Herad"), so
+ * a translator can tell them from the proper names in a realm's name.
+ */
+export const STYLE_WORDS: Set<string> = (() => {
+  const out = new Set<string>(['grand', 'free', 'city', 'of', 'the', 'band', 'clan', 'village', 'valley', 'hamlet', 'colony', 'garrison', 'trading', 'post', 'fort', 'port', 'new']);
+  const add = (s: string) => {
+    for (const w of s.replace(/\{[A-Z]\}/g, ' ').toLowerCase().split(/[^a-z'-]+/)) if (w) out.add(w);
+  };
+  const walk = (x: unknown): void => {
+    if (typeof x === 'string') add(x);
+    else if (Array.isArray(x)) x.forEach(walk);
+    else if (x && typeof x === 'object') Object.values(x).forEach(walk);
+  };
+  walk([RULERS, BARONY_STYLE, COUNTY_STYLE, DUCHY_STYLE, EMPIRE_STYLE, CITY_RULER, REPUBLIC_RULER, CITY_STATE_STYLE, REPUBLIC_STYLE, THEOCRACY_SMALL, THEOCRACY_BIG, THALASSO_STYLE, LEAGUE_STYLE, LEAGUE_RULER, TRIBAL_STYLE, COLONY_STYLE, ADJ, CULTURES.map((c) => c.realm)]);
+  return out;
+})();

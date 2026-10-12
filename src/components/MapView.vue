@@ -21,7 +21,7 @@ import { armsImageData } from '../heraldry/draw';
 import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb, onLair } from '../lairs/view';
 import type { DungeonSite } from '../dungeons/core';
 import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
-import { PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces } from './label-style';
+import { PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces, textField } from './label-style';
 import { preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
 import { relationsForMap } from '../lore/realm';
 import { currentLore } from './realm-lore';
@@ -82,6 +82,7 @@ function syncWorld(): void {
   bigArmsGen = -1;
   setVisibility('political', store.showPolitical);
   updateRelations();
+  if (store.labelMode !== 'native') applyLabelMode();
   setVisibility('rivers', store.showRivers);
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
   (map.getSource('wind') as GeoJSONSource).setData(world.value.wind);
@@ -150,6 +151,19 @@ function updateRelations(): void {
     }
   }
   links.setData({ type: 'FeatureCollection', features });
+}
+
+/** Letters every name layer in the chosen language mode (local names, English, or both). */
+function applyLabelMode(): void {
+  if (!map || !ready) return;
+  for (const l of map.getStyle().layers ?? []) {
+    if (l.type !== 'symbol') continue;
+    const field = map.getLayoutProperty(l.id, 'text-field');
+    if (!field) continue;
+    const upper = JSON.stringify(field).includes('upcase');
+    const line = (map.getLayoutProperty(l.id, 'symbol-placement') ?? 'point') !== 'point';
+    map.setLayoutProperty(l.id, 'text-field', textField(store.labelMode, upper, line));
+  }
 }
 
 /** The realm whose label or arms is under a screen point. */
@@ -420,7 +434,7 @@ function villageHere(): typeof store.here {
     const d = Math.hypot((lon - c.lng) * 111.32 * Math.cos((c.lat * Math.PI) / 180), (lat - c.lat) * 110.57);
     if (d < bd) {
       bd = d;
-      best = { name: String(f.properties.name ?? ''), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0) };
+      best = { name: String(f.properties.name ?? ''), ...(f.properties.en ? { en: String(f.properties.en) } : {}), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0) };
     }
   }
   return best;
@@ -677,6 +691,7 @@ onBeforeUnmount(() => {
 
 watch([world, () => store.layer], syncWorld);
 watch(openRealm, updateRelations);
+watch(() => store.labelMode, applyLabelMode);
 watch(() => store.showRivers, () => {
   syncWorld();
   setVisibility('labels', store.showLabels);

@@ -25,6 +25,14 @@ interface Line {
   chain: PolUnit[];
   /** The realm named, if any (clicking opens its details). */
   unit?: number;
+  /** The name in the other language (English, or the local name when names are shown in English). */
+  alt?: string;
+}
+
+/** A name and its other form, by the chosen lettering (local names, English, or both). */
+function pair(native: string, en?: string): { name: string; alt?: string } {
+  if (!en || en === native) return { name: native };
+  return store.labelMode === 'english' ? { name: en, alt: native } : { name: native, alt: en };
 }
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
@@ -58,21 +66,23 @@ const info = computed<Line | null>(() => {
   const cu = w.politics.baronyOf[at(w.politics.W, w.politics.H)];
   // Barony up to the independent realm, then its league if any.
   const chain: PolUnit[] = chainOf(units, cu);
-  const region = w.regionOf[c] >= 0 ? w.labels.features[w.regionOf[c]]?.properties.name : undefined;
+  const regionP = w.regionOf[c] >= 0 ? w.labels.features[w.regionOf[c]]?.properties : undefined;
+  const region = regionP ? pair(regionP.name, regionP.en).name : undefined;
 
   if (height[c] <= 0 && cu < 0) {
     // At sea: the nearest named water (within reach).
-    let best: { name: string; d: number; kind: string } | null = null;
+    let best: { name: string; en?: string; d: number; kind: string } | null = null;
     for (const f of w.labels.features) {
       const p = f.properties;
       if (!WATER.has(p.kind) || p.zlo || f.geometry.type !== 'Point') continue;
       const [x, y] = f.geometry.coordinates;
       const d = km(lon, lat, x, y);
       const reach = p.kind === 'ocean' ? 3500 : p.kind === 'sea' ? 1300 : 500;
-      if (d < reach && (!best || d < best.d)) best = { name: p.name, d, kind: p.kind };
+      if (d < reach && (!best || d < best.d)) best = { name: p.name, en: p.en, d, kind: p.kind };
     }
     if (!best) return null;
-    return { name: cap(best.name), sub: '', arms: null, armsKey: '', crumbs: [], chain: [] };
+    const nm = pair(cap(best.name), best.en ? cap(best.en) : undefined);
+    return { name: nm.name, alt: nm.alt, sub: '', arms: null, armsKey: '', crumbs: [], chain: [] };
   }
   if (!chain.length) {
     // In the New World, land beyond the towns is the tribes' own.
@@ -96,7 +106,7 @@ const info = computed<Line | null>(() => {
       const kind = s.tier === 'city' ? 'City' : 'Town';
       const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
-        name: s.name ?? '',
+        ...pair(s.name ?? '', s.nameEn),
         sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' ? LAYOUT_LABEL[s.layout] : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
       };
@@ -106,7 +116,7 @@ const info = computed<Line | null>(() => {
       const h = store.here;
       const tie = h.kind === 'keep' ? `a holding of the ${barony.name}` : h.kind === 'monastery' ? `abbey lands in the ${barony.name}` : '';
       return {
-        name: h.name, sub: [`${VILLAGE[h.kind] ?? 'Village'} of ${h.population.toLocaleString('en')}`, tie].filter(Boolean).join(' · '),
+        ...pair(h.name, h.en), sub: [`${VILLAGE[h.kind] ?? 'Village'} of ${h.population.toLocaleString('en')}`, tie].filter(Boolean).join(' · '),
         arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
       };
     }
@@ -170,7 +180,7 @@ function onMain(): void {
             <img :src="armsImage(c.arms, 14, c.key)" alt="" />{{ c.name }}<span v-if="k < info.crumbs.length - 1" class="sep">›</span>
           </span>
         </div>
-        <div class="name">{{ info.name }}</div>
+        <div class="name">{{ info.name }}<span v-if="info.alt" class="alt">{{ info.alt }}</span></div>
         <div v-if="info.sub" class="sub">{{ info.sub }}</div>
       </div>
       <button v-if="detail.length" class="more" :title="open ? 'Hide the hierarchy' : 'Show the hierarchy'" @click.stop="open = !open">{{ open ? '▴' : '▾' }}</button>
@@ -263,6 +273,12 @@ function onMain(): void {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+}
+.alt {
+  margin-left: 8px;
+  font-size: 14px;
+  font-style: normal;
+  opacity: 0.7;
 }
 .sub {
   font-size: 12.5px;

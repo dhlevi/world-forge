@@ -131,6 +131,7 @@ const sub = computed(() => {
         </div>
         <h2>{{ cap(d.unit.name) }}</h2>
         <p>{{ sub }}</p>
+        <p v-if="d.nativeName" class="native" title="In the rulers' own language">{{ d.nativeName }}<template v-if="d.nativeRuler"> · its {{ d.unit.ruler.toLowerCase() }} is the {{ d.nativeRuler }}</template></p>
       </div>
       <div class="actions">
         <button v-if="back.length" title="Back" @click="goBack">‹ Back</button>
@@ -398,6 +399,10 @@ h2 {
   font-weight: normal;
   font-style: italic;
   line-height: 1.15;
+}
+.title p.native {
+  font-style: italic;
+  opacity: 0.85;
 }
 .title p {
   margin: 3px 0 0;

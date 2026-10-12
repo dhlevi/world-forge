@@ -60,7 +60,7 @@ const dict = computed(() => {
   if (/^[a-z]+$/.test(q) && !rows.some((x) => x.en === q)) hit.unshift({ en: q, pos: 'n', cat: '', w: lang.word(q), g: '' });
   return hit;
 });
-const translated = computed(() => (L.value && phrase.value.trim() ? translate(L.value, phrase.value) : []));
+const translated = computed(() => (L.value && phrase.value.trim() ? translate(L.value, phrase.value, { capitalsProper: true }) : []));
 
 const description = computed(() => {
   const x = c.value, i = info.value;

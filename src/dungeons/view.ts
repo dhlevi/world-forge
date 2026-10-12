@@ -18,7 +18,7 @@ export function dungeonFromFeature(p: Record<string, unknown>, coords: number[])
   const id = p.kind === 'dentry' ? p.did : p.id;
   if (typeof id !== 'string') return null;
   const site: DungeonSite = {
-    id, kind, name: String(p.name ?? ''), seed: Number(p.seed), lon: coords[0], lat: coords[1],
+    id, kind, name: String(p.name ?? ''), ...(p.en ? { en: String(p.en) } : {}), seed: Number(p.seed), lon: coords[0], lat: coords[1],
     tags: String(p.tags ?? '').split(',').filter(Boolean), culture: Number(p.culture ?? 0),
   };
   if (typeof p.sid === 'string') site.town = p.sid;

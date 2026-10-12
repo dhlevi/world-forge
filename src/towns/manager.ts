@@ -15,7 +15,7 @@ import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
 import { buildVillage } from './village';
 import { Ground } from './ground';
-import { NameBank, dungeonName, lairName } from '../names/names';
+import { NameBank, type Named, dungeonName, lairName } from '../names/names';
 import { type DungeonSite, packLines, townUnderground } from '../dungeons/core';
 import type { LairSite } from '../lairs/lair';
 
@@ -96,6 +96,8 @@ export interface IndexEntry {
   lon: number;
   lat: number;
   info?: string;
+  /** The name in English, where it differs. */
+  en?: string;
 }
 
 /** Spacing (km) of cave and glade candidates; only suitable ground keeps one (about one per 30–40 km there). */
@@ -128,7 +130,7 @@ export function siteFeatures(settlements: Settlement[]): FC<PlanFeature> {
     features: settlements.map((s) => ({
       type: 'Feature',
       geometry: { type: 'Point', coordinates: [s.lon, s.lat] },
-      properties: { id: s.id, tier: s.tier, population: s.population, name: s.name ?? '' },
+      properties: { id: s.id, tier: s.tier, population: s.population, name: s.name ?? '', ...(s.nameEn && s.nameEn !== s.name ? { en: s.nameEn } : {}) },
     })),
   };
 }
@@ -146,6 +148,8 @@ export class TownManager {
   private exits = new Map<string, { ll: number[]; cls: RoadClass }[]>();
   private blocks = new Map<number, Block>();
   private plans = new Map<string, PlanFeature[]>();
+  /** Villages' names before they were dressed ("Ashby" of "Ashby Mine"). */
+  private baseNames = new Map<string, Named>();
 
   constructor(private world: TownWorld) {
     this.sampler = new DetailSampler(world.raster, new RiverIndex(world.rivers, world.raster.seed));
@@ -168,7 +172,7 @@ export class TownManager {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [l.lon, l.lat] },
-          properties: { id: l.id, tier: 'lair', kind: l.kind, name: l.name, seed: l.seed, tags: l.tags.join(',') },
+          properties: { id: l.id, tier: 'lair', kind: l.kind, name: l.name, ...(l.en && l.en !== l.name ? { en: l.en } : {}), seed: l.seed, tags: l.tags.join(',') },
         });
       }
       for (const d of b.dungeons) {
@@ -177,14 +181,14 @@ export class TownManager {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [d.lon, d.lat] },
-          properties: { id: d.id, tier: 'lair', kind: d.kind, name: d.name, seed: d.seed, tags: d.tags.join(','), culture: d.culture },
+          properties: { id: d.id, tier: 'lair', kind: d.kind, name: d.name, ...(d.en && d.en !== d.name ? { en: d.en } : {}), seed: d.seed, tags: d.tags.join(','), culture: d.culture },
         });
       }
       for (const v of b.villages) {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
-          properties: { id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '' },
+          properties: { id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '', ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) },
         });
       }
     }
@@ -285,10 +289,10 @@ export class TownManager {
       const key = this.blockKey(bx + 180, by + 90);
       const blk = this.blocks.get(key) ?? this.generateBlock(wrapLon(bx + 0.5) - 0.5, by, key, false);
       for (const v of blk.villages) {
-        entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info: `${v.population.toLocaleString('en')} people` });
+        entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info: `${v.population.toLocaleString('en')} people`, ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) });
       }
-      for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · ') });
-      for (const d of blk.dungeons) entries.push({ id: d.id, name: d.name, tier: 'lair', kind: d.kind, lon: d.lon, lat: d.lat, info: d.tags.join(' · ') });
+      for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · '), ...(l.en && l.en !== l.name ? { en: l.en } : {}) });
+      for (const d of blk.dungeons) entries.push({ id: d.id, name: d.name, tier: 'lair', kind: d.kind, lon: d.lon, lat: d.lat, info: d.tags.join(' · '), ...(d.en && d.en !== d.name ? { en: d.en } : {}) });
     }
     return { entries, done: this.indexTotal - q.length, total: this.indexTotal };
   }
@@ -457,7 +461,9 @@ export class TownManager {
         const v = makeSettlement(
           'village', `v${key}_${villages.length}`, pos[0], pos[1], score, hash32(h0 ^ 7), kind === 'fishing', (river?.d ?? 99) < 1.5, kind,
         );
-        v.name = this.villageName(v, cellOf(lon, lat), used);
+        const vn = this.villageName(v, cellOf(lon, lat), used);
+        v.name = vn.name;
+        v.nameEn = vn.en;
         villages.push(v);
         const track = withTracks ? this.track(v, road, villages, rr(4)) : null;
         if (track) tracks.push(track);
@@ -477,14 +483,14 @@ export class TownManager {
   ): DungeonSite[] {
     const { raster } = this.world;
     const out: DungeonSite[] = [];
-    const add = (kind: DungeonSite['kind'], lon: number, lat: number, h0: number, tags: string[], near?: string) => {
+    const add = (kind: DungeonSite['kind'], lon: number, lat: number, h0: number, tags: string[], near?: Named) => {
       const c = cellOf(lon, lat);
       const culture = raster.culture[c] ?? 0;
       const id = `d${key}_${out.length}`;
-      let name = '';
-      for (let t = 0; t < 6 && (!name || used.has(name)); t++) name = dungeonName(this.names, kind, culture, t ? `${id}#${t}` : id, t ? undefined : near);
-      used.add(name);
-      out.push({ id, kind, name, seed: hash32(h0 ^ 0xd0d0), tags, lon, lat, culture });
+      let nm: Named = { name: '', en: '' };
+      for (let t = 0; t < 6 && (!nm.name || used.has(nm.name)); t++) nm = dungeonName(this.names, kind, culture, t ? `${id}#${t}` : id, t ? undefined : near);
+      used.add(nm.name);
+      out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0xd0d0), tags, lon, lat, culture });
     };
     for (const v of villages) {
       if (v.kind !== 'mining') continue;
@@ -493,8 +499,8 @@ export class TownManager {
       // The mine opens at the camp itself: its plan draws the adit, and the entrance is marked there.
       const r = rr(3);
       const levels = r < 0.25 ? 1 : r < 0.6 ? 2 : r < 0.88 ? 3 : 4;
-      const base = (v.name ?? '').replace(/ (Mine|Diggings)$/, '');
-      add('mine', v.lon, v.lat, h0, [rr(4) < 0.3 ? 'abandoned' : 'worked', ...(rr(5) < 0.3 ? ['wet'] : []), ...(levels > 1 ? [`${levels} levels`] : [])], base || undefined);
+      const base = this.baseNames.get(v.id);
+      add('mine', v.lon, v.lat, h0, [rr(4) < 0.3 ? 'abandoned' : 'worked', ...(rr(5) < 0.3 ? ['wet'] : []), ...(levels > 1 ? [`${levels} levels`] : [])], base);
       out[out.length - 1].town = v.id;
     }
     const nLat = Math.max(1, Math.round(111.2 / DUNGEON_SPACING_KM));
@@ -617,10 +623,10 @@ export class TownManager {
           if (dry) tags.push('dry');
         }
         const id = `l${key}_${out.length}`;
-        let name = '';
-        for (let t = 0; t < 6 && (!name || used.has(name)); t++) name = lairName(this.names, kind, raster.culture[c] ?? 0, t ? `${id}#${t}` : id, tags);
-        used.add(name);
-        out.push({ id, kind, name, seed: hash32(h0 ^ 0x1a17), tags, lon, lat });
+        let nm: Named = { name: '', en: '' };
+        for (let t = 0; t < 6 && (!nm.name || used.has(nm.name)); t++) nm = lairName(this.names, kind, raster.culture[c] ?? 0, t ? `${id}#${t}` : id, tags);
+        used.add(nm.name);
+        out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0x1a17), tags, lon, lat });
       }
     }
     return out;
@@ -637,7 +643,7 @@ export class TownManager {
    * (cities and larger towns), and a catacomb stair in the graveyard or beside the temple.
    */
   private underground(s: Settlement, out: PlanOut, frame: LocalFrame, water: (p: Pt) => boolean, culture: number): void {
-    const under = townUnderground(s);
+    const under = townUnderground(s, (tpl) => this.names.named(culture, tpl, [{ name: s.name ?? '', en: s.nameEn ?? s.name ?? '' }]));
     if (!under.length) return;
     const rnd = mulberry32(s.seed ^ 0x5e3e);
     const local = (f: PlanFeature) => (f.geometry.type === 'LineString' ? f.geometry.coordinates : f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : [f.geometry.coordinates])
@@ -645,7 +651,7 @@ export class TownManager {
     const streets = out.features.filter((f) => f.properties.kind === 'street').map(local);
     const centroid = (p: Pt[]): Pt => [p.reduce((a, q) => a + q[0], 0) / p.length, p.reduce((a, q) => a + q[1], 0) / p.length];
     for (const u of under) {
-      const props = { did: u.did, dkind: u.dkind, name: u.name, seed: hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 : 0xca7)), tags: u.tags.join(','), culture, sid: s.id };
+      const props = { did: u.did, dkind: u.dkind, name: u.name, ...(u.en !== u.name ? { en: u.en } : {}), seed: hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 : 0xca7)), tags: u.tags.join(','), culture, sid: s.id };
       if (u.dkind === 'sewer') {
         // The grate: a street vertex 25 to 45 m from the centre, on dry ground.
         let g: Pt = [0, 0], bd = Infinity;
@@ -720,16 +726,25 @@ export class TownManager {
   }
 
   /** A village name in the local culture, dressed for its kind ("Ashby Keep", "Thorn Abbey"). */
-  private villageName(v: Settlement, cell: number, used: Set<string>): string {
-    let n = '';
-    for (let t = 0; t < 6 && (!n || used.has(n)); t++) n = this.names.place(this.world.raster.culture[cell] ?? 0, t ? `${v.id}#${t}` : v.id);
-    used.add(n);
+  private villageName(v: Settlement, cell: number, used: Set<string>): Named {
+    const { raster } = this.world;
+    const ci = raster.culture[cell] ?? 0;
+    const bi = raster.biome[cell] as Biome;
+    const site = {
+      coastal: v.coastal, river: v.river, high: raster.height[cell] > 800, forest: FOREST_BIOMES.has(bi), grass: bi === Biome.Grassland || bi === Biome.Savanna || bi === Biome.ColdDesert,
+      marsh: bi === Biome.Wetland || bi === Biome.Mangrove, walls: false, city: false, kind: v.kind,
+    };
+    let n: Named = { name: '', en: '' };
+    for (let t = 0; t < 6 && (!n.name || used.has(n.name)); t++) n = this.names.placeNamed(ci, t ? `${v.id}#${t}` : v.id, site);
+    used.add(n.name);
+    this.baseNames.set(v.id, n);
     const r = this.names.rng(`vk:${v.id}`)();
+    const dress = (tpl: string) => this.names.named(ci, tpl, [n]);
     switch (v.kind) {
-      case 'keep': return r < 0.5 ? `${n} Keep` : r < 0.8 ? `Castle ${n}` : `${n} Tower`;
-      case 'monastery': return r < 0.5 ? `${n} Abbey` : r < 0.8 ? `${n} Priory` : `Monastery of ${n}`;
-      case 'mining': return r < 0.55 ? `${n} Mine` : r < 0.75 ? `${n} Diggings` : n;
-      case 'logging': return r < 0.45 ? `${n} Camp` : n;
+      case 'keep': return dress(r < 0.5 ? '{0} Keep' : r < 0.8 ? 'Castle {0}' : '{0} Tower');
+      case 'monastery': return dress(r < 0.5 ? '{0} Abbey' : r < 0.8 ? '{0} Priory' : 'the Monastery of {0}');
+      case 'mining': return r < 0.55 ? dress('{0} Mine') : r < 0.75 ? dress('{0} Diggings') : n;
+      case 'logging': return r < 0.45 ? dress('{0} Camp') : n;
       default: return n;
     }
   }

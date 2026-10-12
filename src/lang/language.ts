@@ -117,6 +117,8 @@ export class Language {
   readonly harmony: boolean;
   readonly tones: number;
   readonly stress: LangTemplate['stress'];
+  /** How names are built (see `LangTemplate.compound`). */
+  readonly compound: LangTemplate['compound'];
   private readonly spec: LangSpec;
   private readonly cache = new Map<string, Word>();
 
@@ -133,6 +135,8 @@ export class Language {
     this.harmony = !!t.harmony && r() > d * 0.5;
     this.tones = t.tones ?? 0;
     this.stress = r() < d * 0.3 ? pick(r, ['initial', 'penultimate', 'final'] as const) : t.stress;
+    const rc = mulberry32(hashString(`${spec.key}#compound`));
+    this.compound = rc() < d * 0.35 ? pick(rc, ['final', 'initial', false] as const) : t.compound;
 
     // Sounds: the template's, with some dropped, some gained and all reweighted by drift.
     const jig = () => Math.exp((r() - 0.5) * 2 * d);
@@ -522,6 +526,16 @@ export class Language {
       return [...seq.slice(0, vi), ...extra, ...seq.slice(vi)];
     }
     return [...seq, ...extra];
+  }
+
+  /** Whether a proper name comes before the noun it names ("Varsk Lake") or after it ("Lake Varsk"). */
+  get properFirst(): boolean {
+    return this.compound === 'final' || (this.compound === false && this.grammar.adj === 'before');
+  }
+
+  /** A noun phrase standing beside a proper name: "Lake Varsk", "Varsk Hills". */
+  appose(head: Token[], proper: Token): Token[] {
+    return this.properFirst ? [proper, ...head] : [...head, proper];
   }
 
   /** An adposition ("by", "in", "to") with its phrase. */
