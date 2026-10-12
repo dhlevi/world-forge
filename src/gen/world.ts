@@ -14,6 +14,7 @@ import { RiverIndex } from './river-index';
 import { type LabelCollection, nameWorld } from './features';
 import { type Politics, buildPolitics } from './politics';
 import { cultureMap } from '../names/culture-map';
+import { type CultureSet, setWorldCultures } from '../names/world-cultures';
 import { newWorldMask } from './oldworld';
 import { chooseColonies } from './colonies';
 import { NameBank } from '../names/names';
@@ -30,6 +31,8 @@ export interface WorldParams {
   resolution: number;
   /** Share of the land that is the settled Old World (0.2..1; 1 = all of it); the rest is the sparse, tribal New World. */
   settled?: number;
+  /** How far each culture's language strays from its template (0..1; default 0.3). */
+  drift?: number;
   /** Optional elevation (m, W×H row-major from the north-west) replacing tectonics and erosion, e.g. real Earth. */
   heightmap?: Float32Array;
 }
@@ -66,6 +69,8 @@ export interface RasterWorld {
   koppen: Uint8Array;
   /** Index into CULTURES (names/cultures.ts): whose names the land and nearby sea bear. */
   culture: Uint8Array;
+  /** The world's cultures, from which every thread rebuilds `CULTURES` (names/world-cultures.ts). */
+  cultures: CultureSet;
   /** 1 on New World land (sparse, tribal), 0 elsewhere (gen/oldworld.ts). */
   newWorld: Uint8Array;
 }
@@ -192,7 +197,10 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   }, seedHash, sampler);
 
   progress('Names', 0.99);
-  const culture = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome, newWorld }, params.seed);
+  const cm = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome, newWorld }, params.seed);
+  const culture = cm.culture;
+  const cultures: CultureSet = { seed: params.seed, drift: Math.max(0, Math.min(1, params.drift ?? 0.3)), list: cm.specs };
+  setWorldCultures(cultures);
   chooseColonies(g, settlements, culture, seedHash);
   const bank = new NameBank(params.seed);
   const regionOf = new Int32Array(W * H).fill(-1);
@@ -255,6 +263,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       precipWinter: climate.precipWinter,
       koppen,
       culture,
+      cultures,
       newWorld,
     },
     rivers,

@@ -1,32 +1,8 @@
 import { hash32, hashString, mulberry32, type Rng } from '../gen/rng';
-import { ADJECTIVES, CULTURES, type Culture, DEFAULT_TERMS, type FeatureKind, MOTIFS } from './cultures';
+import { awkward, join, tidy } from '../lang/text';
+import { ADJECTIVES, CULTURES, type Culture, DEFAULT_TERMS, type FeatureKind, MOTIFS, type WorldCulture } from './cultures';
 
 const pick = <T>(rnd: Rng, a: T[]): T => a[Math.floor(rnd() * a.length)];
-const VOWEL = /[aeiouy]/i;
-
-/** Joins name parts, softening awkward vowel seams. */
-function join(a: string, b: string): string {
-  if (!a) return b;
-  const last = a[a.length - 1].toLowerCase(), first = b[0].toLowerCase();
-  // Doubled vowels across the seam, or three vowels in a row, read badly ("Liaost"); drop from the second part.
-  const tailV = (a.match(/[aeiouy]+$/i)?.[0].length ?? 0);
-  if (VOWEL.test(last) && last === first) b = b.slice(1);
-  while (tailV > 0 && b.length > 2 && VOWEL.test(b[0]) && tailV + (b.match(/^[aeiouy]+/i)?.[0].length ?? 0) > 2) b = b.slice(1);
-  return a + b;
-}
-
-/** Seams that read badly: four consonants in a row ("Chtlan"), or a chunk said twice ("Drumaonaindrum"). */
-function awkward(s: string): boolean {
-  const w = s.toLowerCase().replace(/[^a-z]/g, '');
-  if (/[^aeiouy]{4,}/.test(w)) return true;
-  for (let i = 0; i + 4 <= w.length; i++) if (w.indexOf(w.slice(i, i + 4), i + 1) >= 0) return true;
-  return false;
-}
-
-function tidy(s: string): string {
-  return s.replace(/([a-z])\1\1+/gi, '$1$1').replace(/^./, (c) => c.toUpperCase());
-}
-
 /**
  * Remembers the names given out in one world so features don't repeat each other, and makes
  * every name deterministic from the world seed and a per-feature key.
@@ -52,8 +28,16 @@ export class NameBank {
    * settlement names only; elsewhere they would read oddly ("Pons Vitacano Bay").
    */
   proper(cul: Culture, rnd: Rng, settlement = false): string {
+    const lang = (cul as Partial<WorldCulture>).language;
     for (let t = 0; t < 16; t++) {
       let s: string;
+      // A world culture names things in its own language.
+      if (lang) {
+        s = lang.properName(rnd, settlement);
+        if (this.unique && this.used.has(s) && t < 15) continue;
+        if (this.unique) this.used.add(s);
+        return s;
+      }
       const r = rnd();
       const cc = cul.compoundChance ?? 0;
       if (cul.roots && cul.suffixes && r < cc) {

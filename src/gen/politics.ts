@@ -5,6 +5,7 @@ import type { RiverCollection } from './rivers';
 import type { Settlement } from './settlements';
 import type { LabelFeature } from './features';
 import { CULTURES } from '../names/cultures';
+import type { CultureMods } from '../names/traits';
 import { Biome } from './biomes';
 import type { NameBank } from '../names/names';
 import { type Arms, type Charge, cadetArms, newArms, vassalArms } from '../heraldry/arms';
@@ -347,6 +348,8 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   const baronies = units.slice();
   const cid = (u: PolUnit) => CULTURES[u.culture]?.id ?? 'anglo';
   const pref = (t: Record<string, number>, u: PolUnit, d = 0.05) => t[cid(u)] ?? d;
+  /** A culture's trait multiplier (names/traits.ts). */
+  const mod = (u: PolUnit, k: keyof CultureMods) => CULTURES[u.culture]?.mods?.[k] ?? 1;
 
   /** Units of `members` grouped under new lieges of `level` headed by `heads` (members themselves); groups smaller than `minVassals` stay independent. */
   const group = (level: PolLevel, members: PolUnit[], heads: PolUnit[], o: { maxCost: number; seaKm: number; cultureCost: number; minVassals: number }) => {
@@ -382,7 +385,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
 
   // City-states: some cities (most in the south) stand apart, alone or with the towns close around them.
   for (const b of baronies) {
-    if (b.nw || !b.city || b.pop < 6000 || rnd() >= pref(CITY_STATE_P, b)) continue;
+    if (b.nw || !b.city || b.pop < 6000 || rnd() >= pref(CITY_STATE_P, b) * mod(b, 'cityState')) continue;
     b.gov = 'city-state';
   }
   for (const b of baronies) {
@@ -407,14 +410,14 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   group(1, bFree, spaced(bFree, 95, (u) => u.pop * (u.city ? 2 : 1)), { maxCost: 380, seaKm: 60, cultureCost: 0, minVassals: 1 });
   // Some counties are held by the church: prince-bishoprics, abbacies, imamates.
   const counties = units.filter((u) => u.level === 1 && u.gov === 'feudal');
-  for (const c of counties) if (rnd() < (cid(c) === 'desert' ? 0.012 : 0.006)) c.gov = 'theocracy';
+  for (const c of counties) if (rnd() < (cid(c) === 'desert' ? 0.012 : 0.006) * mod(c, 'theocracy')) c.gov = 'theocracy';
 
   // ---- Duchies: counties around the strongest seats; a duchy needs two counties at least ---------
   const cFree = units.filter((u) => u.level <= 1 && free(u));
   group(2, cFree, spaced(cFree.filter((u) => u.level === 1), 300, (u) => u.pop), { maxCost: 800, seaKm: 220, cultureCost: 0, minVassals: 2 });
   // Some duchies keep out of any kingdom (grand duchies, and republics later), by culture.
   const dIndep = new Set<PolUnit>();
-  for (const d of units.filter((u) => u.level === 2)) if (rnd() < pref(INDEP_DUCHY_P, d)) dIndep.add(d);
+  for (const d of units.filter((u) => u.level === 2)) if (rnd() < pref(INDEP_DUCHY_P, d) * mod(d, 'indepDuchy')) dIndep.add(d);
 
   // ---- Kingdoms: duchies and the counties and baronies left between them -------------------------
   const kMembers = units.filter((u) => u.level <= 2 && free(u) && !dIndep.has(u));
@@ -422,7 +425,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
 
   // ---- Empires: two or three of the greatest kingdoms, with the realms around them ---------------
   const eMembers = units.filter((u) => u.level <= 3 && free(u) && !dIndep.has(u));
-  const eScore = (u: PolUnit) => u.people * pref(EMPIRE_W, u, 1);
+  const eScore = (u: PolUnit) => u.people * pref(EMPIRE_W, u, 1) * mod(u, 'empire');
   const chosen: PolUnit[] = [];
   // Two or three empires in the Old World (of different peoples where possible), and perhaps one in the New.
   for (const nw of [false, true]) {
@@ -521,9 +524,9 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   for (const u of tops) {
     if (u.gov !== 'feudal' || u.level === 4 || u.nw) continue;
     if (u.level >= 2 && islandRealm(u) && rnd() < 0.7) u.gov = 'thalassocracy';
-    else if (u.level >= 2 && rnd() < pref(REPUBLIC_P, u)) u.gov = 'republic';
-    else if (u.level >= 2 && rnd() < (cid(u) === 'desert' ? 0.08 : 0.04)) u.gov = 'theocracy';
-    else if (u.level <= 1 && u.city && rnd() < pref(CITY_STATE_P, u) * 0.6) u.gov = 'city-state';
+    else if (u.level >= 2 && rnd() < pref(REPUBLIC_P, u) * mod(u, 'republic')) u.gov = 'republic';
+    else if (u.level >= 2 && rnd() < (cid(u) === 'desert' ? 0.08 : 0.04) * mod(u, 'theocracy')) u.gov = 'theocracy';
+    else if (u.level <= 1 && u.city && rnd() < pref(CITY_STATE_P, u) * 0.6 * mod(u, 'cityState')) u.gov = 'city-state';
   }
 
   // ---- Leagues: small independent neighbours band together -------------------------------------
@@ -532,7 +535,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
   for (const u of [...small].sort((a, b) => b.pop - a.pop)) {
     if (inLeague.has(u)) continue;
     const band = small.filter((v) => !inLeague.has(v) && v.nw === u.nw && distKm(u.lon, u.lat, v.lon, v.lat) < (u.nw ? 900 : 650));
-    if (band.length < 3 || rnd() >= pref(LEAGUE_P, u, 0.3)) continue;
+    if (band.length < 3 || rnd() >= pref(LEAGUE_P, u, 0.3) * mod(u, 'league')) continue;
     const lg = blank({
       level: Math.min(3, Math.max(...band.map((v) => v.level)) + 1) as PolLevel, gov: 'league', seat: u.seat, seatName: u.seatName, lon: u.lon, lat: u.lat,
       culture: u.culture, city: u.city, pop: band.reduce((a, v) => a + v.pop, 0), areaKm2: band.reduce((a, v) => a + v.areaKm2, 0), vassals: band.length,

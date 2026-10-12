@@ -8,6 +8,7 @@ import DungeonView from './components/DungeonView.vue';
 import SearchBar from './components/SearchBar.vue';
 import LocationTitle from './components/LocationTitle.vue';
 import RealmView from './components/RealmView.vue';
+import CultureView from './components/CultureView.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -19,6 +20,7 @@ onMounted(regenerate);
   <SearchBar />
   <LocationTitle />
   <RealmView />
+  <CultureView />
   <DwellingView />
   <LairView />
   <DungeonView />

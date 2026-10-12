@@ -77,7 +77,7 @@ const info = computed<Line | null>(() => {
   if (!chain.length) {
     // In the New World, land beyond the towns is the tribes' own.
     if (w.raster.newWorld?.[c]) {
-      const people = PEOPLES[CULTURES[w.raster.culture[c]]?.id ?? ''] ?? 'scattered peoples';
+      const people = CULTURES[w.raster.culture[c]]?.name ? `${CULTURES[w.raster.culture[c]].name} peoples` : PEOPLES[CULTURES[w.raster.culture[c]]?.id ?? ''] ?? 'scattered peoples';
       return { name: region ? cap(region) : 'Tribal lands', sub: `Lands of the ${people} · no settled realm`, arms: null, armsKey: '', crumbs: [], chain: [] };
     }
     return { name: region ? cap(region) : 'Unclaimed wilds', sub: region ? 'Unclaimed land' : 'No realm holds this land', arms: null, armsKey: '', crumbs: [], chain: [] };

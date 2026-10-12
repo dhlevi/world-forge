@@ -2,6 +2,7 @@ import type { LabelCollection } from '../gen/features';
 import type { RiverCollection } from '../gen/rivers';
 import type { RoadCollection, Settlement } from '../gen/settlements';
 import type { Politics } from '../gen/politics';
+import { CULTURES } from '../names/cultures';
 import { LAYOUT_LABEL } from '../towns/layout';
 import { townUnderground } from '../dungeons/core';
 
@@ -105,6 +106,11 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
       id: `pol${u.id}`, name: cap(u.name), type: u.title, cat: 'region', lon: u.lon, lat: u.lat,
       zoom: u.gov === 'league' ? 4.6 : [10.4, 9, 7, 5, 3.6][u.level], rank: 0.35 + 0.12 * u.level + (u.parent < 0 ? 0.1 : 0), info: `${u.ruler} at ${u.seatName}${u.people ? ` · about ${u.people >= 1e6 ? `${(u.people / 1e6).toFixed(1)} million` : (Math.round(u.people / 1000) * 1000).toLocaleString('en')} people` : ''}`,
     });
+  }
+  // Cultures, at their hearth.
+  for (const c of CULTURES) {
+    if (!c.language) continue;
+    out.push({ id: `cul${c.index}`, name: c.name, type: 'Culture', cat: 'region', lon: c.hearth[0], lat: c.hearth[1], zoom: 4, rank: 0.6, info: `their own name: ${c.endonym}` });
   }
   // Rivers: one entry per name, at the middle of its largest stretch.
   const rivers = new Map<string, { c: number[]; order: number }>();

@@ -22,7 +22,9 @@ export function chooseColonies(g: Grid, settlements: Settlement[], culture: Uint
     return Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H))) * W + i;
   };
   // Old World coastal towns of seafaring cultures: the ports colonists sail from.
-  const ports = settlements.filter((s) => !s.newWorld && s.coastal && (SEAFARING[CULTURES[culture[cellOf(s.lon, s.lat)]]?.id ?? ''] ?? 0) > 0);
+  // How readily a culture sails: its template's habit, times its traits (Seafarers, Raiders).
+  const sea = (ci: number) => (SEAFARING[CULTURES[ci]?.id ?? ''] ?? (CULTURES[ci]?.mods.seafaring > 1.2 ? 0.3 : 0)) * (CULTURES[ci]?.mods.seafaring ?? 1);
+  const ports = settlements.filter((s) => !s.newWorld && s.coastal && sea(culture[cellOf(s.lon, s.lat)]) > 0);
   const shore = settlements.filter((s) => s.newWorld && s.coastal);
   if (!ports.length || !shore.length) return;
   const nNew = settlements.filter((s) => s.newWorld).length;
@@ -35,7 +37,7 @@ export function chooseColonies(g: Grid, settlements: Settlement[], culture: Uint
     let best = ports[0], bd = Infinity;
     for (const p of ports) {
       if (capped(p)) continue;
-      const d = distKm(s.lon, s.lat, p.lon, p.lat) / (0.6 + 0.4 * (SEAFARING[CULTURES[culture[cellOf(p.lon, p.lat)]]?.id ?? ''] ?? 0));
+      const d = distKm(s.lon, s.lat, p.lon, p.lat) / (0.6 + 0.4 * Math.min(2, sea(culture[cellOf(p.lon, p.lat)])));
       if (d < bd) {
         bd = d;
         best = p;

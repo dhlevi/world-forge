@@ -154,6 +154,8 @@ export interface EconInput {
   cul: string;
   people: number;
   townPop: number;
+  /** Trait multiplier for crafts (Master Craftsmen, Inventive). */
+  crafts?: number;
   seatName: string;
 }
 
@@ -171,7 +173,7 @@ export function production(seed: string, x: EconInput): { out: Record<string, nu
   out.tools = x.townPop * 0.3 + out.iron * 0.2;
   const crafts = CRAFTS[x.cul] ?? ['fine cloth'];
   const special = [`${x.seatName} ${pick(rnd, crafts)}`];
-  if (x.townPop > 60000 && rnd() < 0.6) {
+  if ((x.townPop > 60000 || (x.crafts ?? 1) > 1.3) && rnd() < 0.6 * (x.crafts ?? 1)) {
     const c2 = pick(rnd, crafts);
     if (!special[0].endsWith(c2)) special.push(c2);
   }

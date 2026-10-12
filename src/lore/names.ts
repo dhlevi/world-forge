@@ -1,6 +1,7 @@
 import type { Rng } from '../gen/rng';
 import { CULTURES } from '../names/cultures';
 import type { NameBank } from '../names/names';
+import { GIVEN, JAPONIC_A, JAPONIC_B, KOREANIC_FAMILY, SINIC_FAMILY } from '../lang/given';
 
 /**
  * People's names for the realms' rulers, heirs, courts and houses: given names by culture and
@@ -9,266 +10,13 @@ import type { NameBank } from '../names/names';
 
 const pick = <T>(rnd: Rng, a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
 
-/** What each culture's people and tongue are called, and the folk they are (humans unless elves or dwarves). */
-export const CULTURE_LABEL: Record<string, { name: string; folk: string }> = {
-  anglo: { name: 'Anglish', folk: 'Humans' }, norse: { name: 'Nordic', folk: 'Humans' }, latin: { name: 'Latin', folk: 'Humans' },
-  celtic: { name: 'Celtic', folk: 'Humans' }, elvish: { name: 'Elvish', folk: 'Elves' }, desert: { name: 'Desert', folk: 'Humans' },
-  slavic: { name: 'Slavic', folk: 'Humans' }, dwarven: { name: 'Dwarvish', folk: 'Dwarves' }, southern: { name: 'Southron', folk: 'Humans' },
-  steppe: { name: 'Steppe', folk: 'Humans' }, jungle: { name: 'Jungle', folk: 'Humans' }, sinic: { name: 'Sinic', folk: 'Humans' },
-  japonic: { name: 'Japonic', folk: 'Humans' }, koreanic: { name: 'Koreanic', folk: 'Humans' }, woodland: { name: 'Woodland', folk: 'Humans' },
-  highland: { name: 'Highland', folk: 'Humans' },
-};
+/** The folk a template's people are (humans unless elves or dwarves). */
+const FOLK: Record<string, string> = { elvish: 'Elves', dwarven: 'Dwarves' };
 export const cultureId = (c: number) => CULTURES[c]?.id ?? 'anglo';
-export const cultureLabel = (c: number) => CULTURE_LABEL[cultureId(c)]?.name ?? 'Unknown';
-
-const GIVEN: Record<string, [string[], string[]]> = {
-  anglo: [
-    [
-      'Edric', 'Aldous', 'Godwin', 'Osric', 'Wulfstan', 'Edmund', 'Harold', 'Leofric', 'Aelfred', 'Cuthbert', 
-      'Oswin', 'Wilfred', 'Edgar', 'Raynald', 'Gilbert', 'Roger', 'Walter', 'Hugh', 'Stephen', 'Geoffrey', 
-      'Henry', 'Richard', 'Simon', 'Robert', 'Thomas', 'Alaric', 'Aethelred', 'Hereward', 'Eadwig', 'Aethelstan', 
-      'Bardolf', 'Kenelm', 'Everard', 'Giles', 'Fulke', 'Rannulf', 'Godric', 'Wymond', 'Osbert', 'Waltheof', 
-      'Peverel', 'Hamund', 'Bertram', 'Dunstan', 'Jocelyn', 'Anketil', 'Hamon', 'Warnebald', 'Eustace', 'Marmaduke'
-    ],
-    [
-      'Aethelflaed', 'Edith', 'Godiva', 'Mildred', 'Hilda', 'Matilda', 'Eleanor', 'Margery', 'Rowena', 'Isabel', 
-      'Alys', 'Joan', 'Agnes', 'Cecily', 'Maud', 'Elfrida', 'Winifred', 'Ermengarde', 'Beatrice', 'Rosamund', 
-      'Eadgyth', 'Aethelthryth', 'Sybil', 'Hawise', 'Idonea', 'Clarice', 'Avice', 'Millicent', 'Gillian', 'Rohesia', 
-      'Basilia', 'Helewise', 'Lecelina', 'Gunnora', 'Philippa', 'Avis', 'Eothend', 'Aelgifu', 'Richenda', 'Lettice'
-    ],
-  ],
-  norse: [
-    [
-      'Ragnar', 'Harald', 'Sigurd', 'Bjorn', 'Eirik', 'Olaf', 'Halfdan', 'Ivar', 'Thorvald', 'Gunnar', 
-      'Ulf', 'Sven', 'Knut', 'Hakon', 'Sverre', 'Arnulf', 'Ketil', 'Thorgrim', 'Vemund', 'Asmund', 
-      'Orm', 'Hrolf', 'Torstein', 'Egil', 'Leif', 'Styrkar', 'Gorm', 'Brand', 'Erling', 'Skarde', 
-      'Thorbjorn', 'Hallfred', 'Bersi', 'Ottar', 'Geir', 'Ingolf', 'Kari', 'Snorri', 'Vestar', 'Tryggvi', 
-      'Valgard', 'Sighvat', 'Hraenar', 'Runolf', 'Thrain', 'Einar', 'Arne', 'Bard', 'Gudmund', 'Jorund'
-    ],
-    [
-      'Astrid', 'Sigrid', 'Ingrid', 'Gunnhild', 'Thyra', 'Ragnhild', 'Freydis', 'Helga', 'Ylva', 'Aslaug', 
-      'Thora', 'Gudrun', 'Signy', 'Hallveig', 'Ingeborg', 'Solveig', 'Brynja', 'Ragna', 'Torhild', 'Thordis', 
-      'Gudrid', 'Osk', 'Aud', 'Hildur', 'Dalla', 'Finna', 'Svanhild', 'Jorunn', 'Aesa', 'Kora', 
-      'Vigdris', 'Eldrid', 'Rannveig', 'Herdis', 'Bera', 'Ingibjorg', 'Valgerd', 'Greta', 'Lif', 'Asta'
-    ],
-  ],
-  latin: [
-    [
-      'Aurelian', 'Marcellus', 'Lucan', 'Cassian', 'Valerian', 'Octavian', 'Severin', 'Lucius', 'Florian', 'Corvin', 
-      'Tiberio', 'Matteo', 'Lorenzo', 'Alessandro', 'Federico', 'Cosimo', 'Ottavio', 'Gaius', 'Decimus', 'Sabinus', 
-      'Ambrose', 'Vitale', 'Fabrizio', 'Rinaldo', 'Aetius', 'Flavius', 'Titus', 'Tacitus', 'Valerius', 'Claudian', 
-      'Magnus', 'Vespasius', 'Silvanus', 'Maximian', 'Sergius', 'Caius', 'Hadrian', 'Aemilius', 'Julian', 'Cornelius', 
-      'Constantine', 'Belisarius', 'Domitian', 'Narses', 'Gennaro', 'Niccolo', 'Bartolomeo', 'Jacopo', 'Valerio', 'Uberto'
-    ],
-    [
-      'Aurelia', 'Livia', 'Julia', 'Octavia', 'Valeria', 'Flavia', 'Lucrezia', 'Isotta', 'Beatrice', 'Caterina', 
-      'Bianca', 'Costanza', 'Giulia', 'Serafina', 'Claudia', 'Drusilla', 'Lavinia', 'Ottavia', 'Cornelia', 'Lucilla', 
-      'Sabina', 'Marcella', 'Faustina', 'Domitia', 'Antonia', 'Camilla', 'Gaienne', 'Agripina', 'Violante', 'Ginevra', 
-      'Simonetta', 'Alessandra', 'Eleonora', 'Maddalena', 'Francesca', 'Fiammetta', 'Zenobia', 'Porcia', 'Tullia', 'Flaminia'
-    ],
-  ],
-  celtic: [
-    [
-      'Brannoc', 'Cormac', 'Fergus', 'Conall', 'Niall', 'Domnall', 'Aedan', 'Cathal', 'Ruadh', 'Owain', 
-      'Gruffydd', 'Rhodri', 'Cadwal', 'Brennus', 'Eochaid', 'Lugaid', 'Tadhg', 'Dyfnwal', 'Maelgwn', 'Ciaran', 
-      'Uisdean', 'Morcant', 'Oisin', 'Diarmuid', 'Lorcán', 'Cynan', 'Iorwerth', 'Caradog', 'Maelcoluim', 'Fiachra', 
-      'Artur', 'Murchad', 'Donnchad', 'Finlay', 'Bhaltair', 'Cináed', 'Padrig', 'Bedwyr', 'Gwilym', 'Gareth', 
-      'Diarmaid', 'Llewellyn', 'Mabon', 'Macsen', 'Gideon', 'Bran', 'Breasal', 'Eachann', 'Dónal', 'Sweeney'
-    ],
-    [
-      'Brigid', 'Aoife', 'Niamh', 'Deirdre', 'Gwenllian', 'Rhiannon', 'Morrigan', 'Eithne', 'Sorcha', 'Una', 
-      'Nest', 'Angharad', 'Medb', 'Grainne', 'Cerys', 'Fionnuala', 'Branwen', 'Ailbhe', 'Sadhbh', 'Róisín', 
-      'Dearbhla', 'Mairead', 'Elen', 'Blodeuwedd', 'Sian', 'Heledd', 'Caitlín', 'Finnguala', 'Muirenn', 'Fedelma', 
-      'Caitriona', 'Eilidh', 'Gormlaith', 'Emer', 'Catrin', 'Olwen', 'Eira', 'Elora', 'Siobhán', 'Sinead'
-    ],
-  ],
-  elvish: [
-    [
-      'Aelindor', 'Thalion', 'Caladrel', 'Faelar', 'Ithilmar', 'Elrion', 'Saelith', 'Arandil', 'Galathir', 'Lorimel', 
-      'Merethil', 'Silvaran', 'Taurendil', 'Ylvarin', 'Caelborn', 'Erevan', 'Aerandir', 'Vaelis', 'Finrael', 'Oreluin', 
-      'Celegorm', 'Eärendil', 'Fëanor', 'Voronwë', 'Amras', 'Haldir', 'Legolas', 'Aegnor', 'Gildor', 'Ingwë', 
-      'Maedhros', 'Lindir', 'Rilvan', 'Oropher', 'Elros', 'Círdan', 'Valandil', 'Celebrimbor', 'Galdor', 'Theron'
-    ],
-    [
-      'Aelinwe', 'Ithilsa', 'Lirael', 'Nimriel', 'Sylvara', 'Taelis', 'Elanwe', 'Aerwyn', 'Caelith', 'Mirael', 
-      'Galadis', 'Nerys', 'Faelith', 'Ilmara', 'Vaelra', 'Eirwen', 'Lusiel', 'Amaris', 'Galadriel', 'Arwen', 
-      'Idril', 'Lúthien', 'Celebrían', 'Aredhel', 'Míriel', 'Finduilas', 'Nellas', 'Melian', 'Anárion', 'Nimloth', 
-      'Elenna', 'Vána', 'Silmariel', 'Laurelin', 'Eirien', 'Nariel', 'Elora', 'Rilwen', 'Tariel', 'Yavanna'
-    ],
-  ],
-  desert: [
-    [
-      'Harun', 'Yusuf', 'Rashid', 'Tariq', 'Faisal', 'Khalid', 'Mansur', 'Nasir', 'Salah', 'Zahir', 
-      'Hamid', 'Idris', 'Jafar', 'Malik', 'Qasim', 'Rafiq', 'Suleiman', 'Walid', 'Yazid', 'Murad', 
-      'Kamal', 'Bahram', 'Selim', 'Hakim', 'Faruq', 'Bilal', 'Imran', 'Mustafa', 'Nabil', 'Osman', 
-      'Hamza', 'Habib', 'Abbas', 'Ziyad', 'Sami', 'Hassan', 'Hussein', 'Asad', 'Danish', 'Faris', 
-      'Latif', 'Suhail', 'Ma\'mun', 'Barakat', 'Nizar', 'Taimur', 'Rida', 'Jalal', 'Shakir', 'Ghiyas'
-    ],
-    [
-      'Zubaida', 'Fatima', 'Layla', 'Yasmin', 'Shirin', 'Amira', 'Nadira', 'Samira', 'Zahra', 'Khadija', 
-      'Aisha', 'Rania', 'Soraya', 'Parisa', 'Jamila', 'Mahsa', 'Dunya', 'Safiya', 'Halima', 'Roxana', 
-      'Aziza', 'Amina', 'Nour', 'Laila', 'Shadia', 'Habiba', 'Zulaykha', 'Inas', 'Badria', 'Sahar', 
-      'Mariam', 'Hind', 'Asma', 'Dalia', 'Farida', 'Najwa', 'Reem', 'Tahira', 'Huda', 'Wafa'
-    ],
-  ],
-  slavic: [
-    [
-      'Mstislav', 'Yaroslav', 'Vladimir', 'Sviatoslav', 'Boleslav', 'Vsevolod', 'Rostislav', 'Izyaslav', 'Dobrynya', 'Bogdan', 
-      'Casimir', 'Vratislav', 'Zbigniew', 'Radomir', 'Stanimir', 'Borislav', 'Miroslav', 'Lyubomir', 'Svetopolk', 'Dragomir', 
-      'Vyacheslav', 'Gleb', 'Igor', 'Oleg', 'Premysl', 'Wladyslaw', 'Kazimierz', 'Jaromir', 'Leszek', 'Mezadir', 
-      'Branislav', 'Sudislav', 'Radoslav', 'Velimir', 'Vojtech', 'Ratibor', 'Miloslav', 'Dushi', 'Stanislav', 'Blagoy', 
-      'Tichomir', 'Vecheslav', 'Boledar', 'Cestmir', 'Kresimir', 'Svetozar', 'Zdenek', 'Zlatko', 'Vladislav', 'Goran'
-    ],
-    [
-      'Olga', 'Lyudmila', 'Dobrava', 'Rogneda', 'Zoria', 'Milena', 'Vesna', 'Dragomira', 'Svetlana', 'Bozena', 
-      'Radmila', 'Zlata', 'Miroslava', 'Yaroslava', 'Desislava', 'Kseniya', 'Libusa', 'Wanda', 'Svetlana', 'Danica', 
-      'Svyatoslava', 'Bogdana', 'Stanislava', 'Milica', 'Zdenka', 'Radoslava', 'Daria', 'Vlada', 'Jadwiga', 'Kinga', 
-      'Kazimiera', 'Boleslawa', 'Miloslava', 'Premyslava', 'Vjera', 'Slavica', 'Branislava', 'Svetozara', 'Marzena', 'Mira'
-    ],
-  ],
-  dwarven: [
-    [
-      'Thrand', 'Borin', 'Durgan', 'Baldrek', 'Gromli', 'Hargrim', 'Korin', 'Murdin', 'Nordri', 'Orsik', 
-      'Rurik', 'Thordak', 'Ulfgar', 'Vondal', 'Brundar', 'Dagnal', 'Frar', 'Gimlur', 'Harbek', 'Kildrak', 
-      'Morgran', 'Torvek', 'Thorin', 'Balin', 'Dwalin', 'Gloin', 'Oin', 'Bifur', 'Bofur', 'Bombur', 
-      'Dain', 'Thror', 'Fundin', 'Kili', 'Fili', 'Nali', 'Narvi', 'Garmur', 'Durnir', 'Brimir', 
-      'Brokk', 'Eitri', 'Sindri', 'Dvalin', 'Thorgrun', 'Kazadur', 'Kragur', 'Strakeln', 'Barundar', 'Balthor'
-    ],
-    [
-      'Dagny', 'Helja', 'Kathra', 'Mardred', 'Riswynn', 'Torbera', 'Vistra', 'Amber', 'Bardryn', 'Dis', 
-      'Eldeth', 'Gunnloda', 'Hlin', 'Liftrasa', 'Sannl', 'Torgga', 'Gurdis', 'Ilde', 'Kristryd', 'Kila', 
-      'Nalred', 'Tamok', 'Kragra', 'Tordis', 'Dwanil', 'Finellen', 'Vondra', 'Brakka', 'Gimra', 'Throra', 
-      'Kora', 'Runnal', 'Tasma', 'Audhild', 'Freyde', 'Brida', 'Hulda', 'Loda', 'Skadi', 'Thora'
-    ],
-  ],
-  southern: [
-    [
-      'Andronikos', 'Basil', 'Nikephoros', 'Alexios', 'Theodoros', 'Manuel', 'Konstantinos', 'Leon', 'Demetrios', 'Isaakios', 
-      'Michael', 'Stephanos', 'Kallias', 'Lysander', 'Perikles', 'Timon', 'Kleon', 'Philon', 'Xenon', 'Agathon', 
-      'Nikandros', 'Ioannes', 'Komnenos', 'Doukas', 'Laskaris', 'Palaiologos', 'Georgios', 'Stavros', 'Constantinos', 'Anastasios', 
-      'Eustathios', 'Bartholomaios', 'Niketas', 'Christopher', 'Gennadios', 'Spyridon', 'Christodoulos', 'Polykarpos', 'Ignatios', 'Pantoleon', 
-      'Symeon', 'Cosmas', 'Damian', 'Philotheos', 'Tarchaneiotes', 'Phokas', 'Romanos', 'Skleros', 'Taronites', 'Votaneiates'
-    ],
-    [
-      'Theodora', 'Irene', 'Zoe', 'Anna', 'Eudokia', 'Helena', 'Sophia', 'Thekla', 'Kassia', 'Theophano', 
-      'Maria', 'Kallisto', 'Phaedra', 'Xanthe', 'Aspasia', 'Damaris', 'Lysandra', 'Eirene', 'Ariadne', 'Euphrosyne', 
-      'Pulcheria', 'Marina', 'Catherine', 'Melania', 'Agatha', 'Pelagia', 'Barbara', 'Christina', 'Paraskevi', 'Styliani', 
-      'Despoina', 'Evdokia', 'Glykeria', 'Kallirhoe', 'Polyxeni', 'Kassandra', 'Evgenia', 'Thalia', 'Athenais', 'Sebasteia'
-    ],
-  ],
-  steppe: [
-    [
-      'Temur', 'Batu', 'Ogedai', 'Toghrul', 'Arslan', 'Kaidu', 'Mongke', 'Jochi', 'Berke', 'Subutai', 
-      'Tolui', 'Khubil', 'Esen', 'Altan', 'Bayan', 'Chagan', 'Nogai', 'Orda', 'Tarkhan', 'Yesugei', 
-      'Khutula', 'Qutlugh', 'Chagatai', 'Hulagu', 'Arik', 'Burchi', 'Kassar', 'Jalair', 'Abaqa', 'Tekuder', 
-      'Tokhtamysh', 'Mamai', 'Tamerlane', 'Inalchuk', 'Sartaq', 'Qara', 'Kormichi', 'Dayir', 'Guchu', 'Muqali', 
-      'Jebe', 'Koke', 'Korumshi', 'Saban', 'Ulagchi', 'Tode', 'Chormaqan', 'Baiju', 'Boroldai', 'Eljigidey'
-    ],
-    [
-      'Borte', 'Sorghaghtani', 'Khutulun', 'Oghul', 'Toregene', 'Alaqai', 'Mandukhai', 'Chabi', 'Hoelun', 'Ebegei', 
-      'Altani', 'Checheyigen', 'Yesui', 'Kokochin', 'Saran', 'Tuyaa', 'Erdene', 'Naran', 'Yesugen', 'Ibaka', 
-      'Arughan', 'Tegulen', 'Qutui', 'Doquz', 'Bayan', 'Bulugan', 'Nogai', 'Altai', 'Tsetseg', 'Enkhtuyaa', 
-      'Bolormaa', 'Goyot', 'Oyuun', 'Solongo', 'Bayarmaa', 'Khulan', 'Monguljin', 'Aytana', 'Tengri', 'Narantuyaa'
-    ],
-  ],
-  jungle: [
-    [
-      'Itzcoatl', 'Kinich', 'Yaxun', 'Chak', 'Balam', 'Tepeu', 'Xocoyotl', 'Ahuitzotl', 'Kukul', 'Yuknoom', 
-      'Pakal', 'Huemac', 'Cuauhtli', 'Tizoc', 'Xiuhtecatl', 'Ixtli', 'Kan', 'Ozomatli', 'Uxmal', 'Tlaloc', 
-      'Cuitlahuac', 'Moctezuma', 'Maxtla', 'Nezahualcoyotl', 'Nezahualpilli', 'Totoquihuaztli', 'Chimalpopoca', 'Acamapichtli', 'Huitzilihuitl', 'Axayacatl', 
-      'Kak Tiliw', 'Siyaj K\'ak', 'Bird Jaguar', 'Shield Jaguar', 'Hasaw Chan', 'Yax Ehb', 'Spearthrower Owl', 'Smoke Imix', 'Fire Is Born', 'Sun K\'inich'
-    ],
-    [
-      'Ixchel', 'Xochitl', 'Ixtab', 'Citlali', 'Itzel', 'Yaretzi', 'Nicte', 'Sac', 'Zazil', 'Atziri', 
-      'Tonantzin', 'Xiadani', 'Ameyali', 'Coatl', 'Malinalli', 'Necahual', 'Quetzalli', 'Yolotli', 'Lady Six Sky', 'Lady Xoc', 
-      'Lady K\'abel', 'Lady Mutal', 'Lady B\'alaj', 'Lady Wak', 'Lady Yohl', 'Lady Chak', 'Lady Zutuil', 'Atotoztli', 'Tecuichpo', 'Cihuacoatl', 
-      'Coatlicue', 'Chalmecacihuatl', 'Chantico', 'Mayahuel', 'Tlazolteotl', 'Huihtaca', 'Iztaccihuatl', 'Matlalcueye', 'Chalchiuhtlicue', 'Xilonen'
-    ],
-  ],
-  sinic: [
-    [
-      'Wen', 'Jian', 'Zhen', 'Hong', 'Rui', 'Xuan', 'Yong', 'Tai', 'Shen', 'Long', 
-      'Ming', 'Kang', 'Heng', 'Jun', 'Qian', 'Zhao', 'Wei', 'Cheng', 'Shao', 'Yuan', 
-      'Feng', 'Huai', 'Bo', 'Chao', 'Guang', 'Hao', 'Jing', 'Lei', 'Peng', 'Song', 
-      'Tao', 'Xiang', 'Yang', 'Yi', 'Zhi', 'Zhong', 'Bao', 'De', 'Dong', 'Guo', 
-      'Han', 'Lian', 'Liang', 'Sheng', 'Shu', 'Tian', 'Xian', 'Zhe', 'Zhi', 'Zhuo'
-    ],
-    [
-      'Lian', 'Mei', 'Hua', 'Yu', 'Xiu', 'Lan', 'Zhu', 'Jing', 'Ying', 'Qiao', 
-      'Rong', 'Shu', 'Xia', 'Yan', 'Ling', 'Fen', 'Hui', 'Zhen', 'An', 'Bao', 
-      'Chun', 'Fang', 'Gui', 'Hong', 'Jia', 'Ju', 'Liling', 'Min', 'Ning', 'Ping', 
-      'Qing', 'Ru', 'Shuang', 'Ting', 'Xiang', 'Xue', 'Ya', 'Yue', 'Yun', 'Zhi', 
-      'Zhen', 'Fei', 'Jiao', 'Lu', 'Niu', 'Pei', 'Shan', 'Ting', 'Wan', 'Xian'
-    ],
-  ],
-  japonic: [
-    [
-      'Harunobu', 'Kagetora', 'Masamune', 'Nobuhide', 'Takauji', 'Yoshitsune', 'Kiyomori', 'Ujimasa', 'Terumoto', 'Motonari', 
-      'Hidetada', 'Ietsuna', 'Katsuyori', 'Mitsuhide', 'Nagamasa', 'Sadamori', 'Tadakatsu', 'Yorimasa', 'Kanetsugu', 'Toshiie', 
-      'Nobunaga', 'Ieyasu', 'Hideyoshi', 'Shingen', 'Kenshin', 'Masayuki', 'Yukimura', 'Yoshitsugu', 'Ujiyasu', 'Muneshige', 
-      'Miyamoto', 'Sakon', 'Ranmaru', 'Naomasa', 'Yasumasa', 'Kagekatsu', 'Katsuie', 'Nagahide', 'Kazumasu', 'Mitsunari', 
-      'Ujisato', 'Hideaki', 'Kiyomasa', 'Masanori', 'Yoshitaka', 'Tadamasa', 'Tadatsugu', 'Mochitora', 'Norisada', 'Tameyoshi'
-    ],
-    [
-      'Tomoe', 'Nene', 'Oichi', 'Kasuga', 'Masako', 'Hisako', 'Chiyo', 'Ginchiyo', 'Kiyohime', 'Murasaki', 
-      'Sakura', 'Akiko', 'Haru', 'Yodo', 'Teruko', 'Fusako', 'Sen', 'Komatsu', 'Nohime', 'Aya', 
-      'Naotora', 'Gotoku', 'Tachibana', 'Sena', 'Kasa', 'Yuki', 'Tshedo', 'Izumi', 'Katsuko', 'Sayo', 
-      'Tama', 'Matsu', 'Kaede', 'Kiku', 'Ume', 'Ina', 'Gou', 'Daimyo', 'Suwo', 'Ren'
-    ],
-  ],
-  koreanic: [
-    [
-      'Seon', 'Jun', 'Hwan', 'Taejo', 'Wang', 'Myeong', 'Gyeong', 'Hyeon', 'Seok', 'Yong', 
-      'Jeong', 'Cheol', 'Ho', 'Min', 'Sung', 'Jin', 'Hyeok', 'Taek', 'Kwang', 'Il', 
-      'Gwanggaeto', 'Sejong', 'Eulji', 'Gim', 'Yi', 'Chae', 'Gang', 'Ryu', 'Jang', 'Song', 
-      'Yun', 'Choe', 'Suh', 'Bae', 'Goo', 'Gyu', 'Beom', 'Sang', 'Won', 'Woo', 
-      'Dae', 'Dong', 'Do', 'Chan', 'Geon', 'Ha', 'Hyun', 'Jae', 'Seung', 'Kyung'
-    ],
-    [
-      'Seonhwa', 'Myeongseong', 'Deokman', 'Jindeok', 'Hyeon', 'Sunjeong', 'Yeong', 'Mi', 'Jiwon', 'Haeun', 
-      'Soyeon', 'Eunbi', 'Hwaseon', 'Nari', 'Sora', 'Yuna', 'Bora', 'Ara', 'Inhyeon', 'Janghui', 
-      'Sindo', 'Wongyeong', 'Insu', 'Ansun', 'Jeonghyun', 'Munjeong', 'Insun', 'Inwon', 'Jeongsun', 'Sunwon', 
-      'Inryeong', 'Hyegyeong', 'Danui', 'Seonui', 'Myeongui', 'Geum', 'Chae', 'Aeri', 'Eun', 'Min'
-    ],
-  ],
-  woodland: [
-    [
-      'Grey Owl', 'Black Hawk', 'Red Cloud', 'Running Elk', 'Two Rivers', 'Tall Pine', 'Swift Otter', 'Stands-in-Fire', 
-      'White Bear', 'Thunder Voice', 'Lone Wolf', 'Many Horses', 'Quiet Fox', 'Iron Shell', 'Broken Bow', 'Far Walker', 
-      'Sitting Bull', 'Crazy Horse', 'Tecumseh', 'Geronimo', 'Cochise', 'Pontiac', 'Osceola', 'Red Jacket', 'Little Turtle', 
-      'Ten Bears', 'Gall', 'Spotted Tail', 'Rain-in-the-Face', 'Crow Dog', 'Kicking Bear', 'American Horse', 'Two Strike', 
-      'Chief Joseph', 'White Antelope', 'Left Hand', 'Black Kettle', 'Roman Nose', 'Duluth', 'Brave Bear'
-    ],
-    [
-      'Morning Star', 'Bright Water', 'White Doe', 'Singing Wind', 'Blue Heron', 'Little Dove', 'Falling Leaf', 'Moon Rising', 
-      'Sweet Grass', 'Red Willow', 'Spotted Fawn', 'Snow Bird', 'Laughing Brook', 'Wild Rose', 'Dawn Light', 'Corn Tassel', 
-      'Sacagawea', 'Pocahontas', 'Lozen', 'Dahteste', 'Pine Leaf', 'Buffalo Calf Road', 'Pretty Nose', 'Running Eagle', 
-      'Moving Robe', 'Minnehaha', 'Golden Rod', 'Silver Willow', 'Sun Flower', 'Cloud Dancer', 'Whispering Pines', 'Star Flower', 
-      'Winter Moon', 'Summer Rain', 'Spring Blossom', 'Autumn Sky', 'Quiet Lake', 'Dancing Feather', 'Soft Breeze', 'Gentle Rain'
-    ],
-  ],
-  highland: [
-    [
-      'Huaman', 'Inti', 'Pachac', 'Tupac', 'Yupanqui', 'Atoc', 'Cusi', 'Mayta', 'Sinchi', 'Capac', 
-      'Amaru', 'Huascar', 'Rumi', 'Wiraq', 'Achachi', 'Paullu', 'Sayri', 'Titu', 'Urco', 'Waman', 
-      'Pachacuti', 'Viracocha', 'Lloque', 'Manco', 'Apu', 'Chalcuchima', 'Quizquiz', 'Rumiñahui', 'Vilca', 'Huayna', 
-      'Auqui', 'Tito', 'Illapa', 'Mallku', 'Kuntur', 'Anka', 'Catari', 'Puma', 'Uturuncu', 'Yawar'
-    ],
-    [
-      'Ocllo', 'Quilla', 'Chaska', 'Coya', 'Sisa', 'Mama', 'Rawa', 'Killa', 'Tika', 'Yupay', 
-      'Cusi', 'Ima', 'Pacha', 'Sumaq', 'Waylla', 'Kantu', 'Nina', 'Uchu', 'Chimpu', 'Rawa', 
-      'Micay', 'Anahuarque', 'Chungui', 'Curi', 'Pillku', 'Kori', 'Urpi', 'Tamya', 'Sonqo', 'Aklla', 
-      'Iskra', 'Tiyana', 'Kushi', 'Illari', 'Allpa', 'Asiriy', 'Kukuli', 'Hawka', 'Mallki', 'Nizam'
-    ],
-  ],
-};
-
-/** Family-name-first cultures, and their surnames (generated where none are listed). */
+/** A culture's name ("Varskish"). */
+export const cultureLabel = (c: number) => CULTURES[c]?.name ?? 'Unknown';
+export const cultureFolk = (c: number) => FOLK[cultureId(c)] ?? 'Humans';
 const SURNAME_FIRST = new Set(['sinic', 'japonic', 'koreanic']);
-const SINIC_FAMILY = ['Li', 'Zhao', 'Wang', 'Liu', 'Chen', 'Yang', 'Huang', 'Zhou', 'Wu', 'Xu', 'Sun', 'Ma', 'Zhu', 'Hu', 'Guo', 'He', 'Lin', 'Gao', 'Luo', 'Song', 'Han', 'Tang', 'Feng', 'Cao', 'Xiao', 'Deng'];
-const KOREANIC_FAMILY = ['Kim', 'Yi', 'Pak', 'Choe', 'Jeong', 'Kang', 'Jo', 'Yun', 'Jang', 'Im', 'Han', 'Shin', 'Seo', 'Gwon', 'Hwang', 'Ahn', 'Song', 'Yu', 'Hong', 'Jeon'];
-const JAPONIC_A = ['Taka', 'Masa', 'Naga', 'Hosa', 'Ota', 'Mina', 'Hata', 'Asa', 'Kuro', 'Shima', 'Mori', 'Kita', 'Ima', 'Oda', 'Toku', 'Uesu', 'Sana', 'Hoji', 'Kiyo', 'Fuji'];
-const JAPONIC_B = ['da', 'kawa', 'moto', 'mura', 'gawa', 'zu', 'yama', 'hara', 'sugi', 'no', 'ta', 'saki', 'hashi', 'mori', 'naga', 'jo'];
 
 export interface PersonName {
   given: string;
@@ -278,9 +26,11 @@ export interface PersonName {
   full: string;
 }
 
-/** A given name for someone of this culture. */
-export function givenName(cul: string, female: boolean, rnd: Rng): string {
-  const g = GIVEN[cul] ?? GIVEN.anglo;
+/** A given name for someone of this culture (index into CULTURES), in its language. */
+export function givenName(ci: number, female: boolean, rnd: Rng): string {
+  const c = CULTURES[ci] ?? CULTURES[0];
+  if (c.language) return c.language.givenName(rnd, female);
+  const g = GIVEN[c.id] ?? GIVEN.anglo;
   return pick(rnd, female ? g[1] : g[0]);
 }
 
@@ -288,19 +38,23 @@ export function givenName(cul: string, female: boolean, rnd: Rng): string {
  * A person's name: given name, then the culture's surname form (a patronymic, a clan name, or
  * the house name in the family-name-first cultures).
  */
-export function personName(cul: string, female: boolean, rnd: Rng, house?: House, father?: string): PersonName {
-  const given = givenName(cul, female, rnd);
-  const fa = father ?? givenName(cul, false, rnd);
+export function personName(ci: number, female: boolean, rnd: Rng, house?: House, father?: string): PersonName {
+  const cul = cultureId(ci);
+  const L = CULTURES[ci]?.language;
+  // Patronymic words, as the language now says them.
+  const w = (s: string) => (L ? L.respell(s) : s);
+  const given = givenName(ci, female, rnd);
+  const fa = father ?? givenName(ci, false, rnd);
   if (SURNAME_FIRST.has(cul) && house) return { given, family: house.short, full: `${house.short} ${given}` };
   switch (cul) {
     case 'norse': {
       const stem = fa.replace(/r$/, '').replace(/ ?$/, '');
-      return { given, full: `${given} ${stem}${female ? 'sdottir' : 'sson'}` };
+      return { given, full: `${given} ${stem}${w(female ? 'sdottir' : 'sson')}` };
     }
     case 'desert':
-      return { given, full: `${given} ${female ? 'bint' : 'ibn'} ${fa}` };
+      return { given, full: `${given} ${w(female ? 'bint' : 'ibn')} ${fa}` };
     case 'celtic':
-      return { given, full: `${given} ${female ? 'ferch' : rnd() < 0.5 ? 'mac' : 'ap'} ${fa}` };
+      return { given, full: `${given} ${w(female ? 'ferch' : rnd() < 0.5 ? 'mac' : 'ap')} ${fa}` };
     case 'dwarven':
       return { given, full: `${given} ${female ? 'daughter' : 'son'} of ${fa}` };
     case 'slavic':
@@ -333,21 +87,27 @@ const MOTTO = [
   'The Stars Guide Us', 'Hold Fast', 'Blood Will Tell', 'Without Fear', 'Sword and Plough', 'Wisdom Before Wrath', 'The Old Ways', 'Watch and Wait',
 ];
 
+/** A family name in the cultures that put it first. */
+function family(c: (typeof CULTURES)[number], rnd: Rng): string {
+  if (c.language) return c.language.familyName(rnd);
+  return c.id === 'sinic' ? pick(rnd, SINIC_FAMILY) : c.id === 'koreanic' ? pick(rnd, KOREANIC_FAMILY) : pick(rnd, JAPONIC_A) + pick(rnd, JAPONIC_B);
+}
+
 /** A house name in the manner of a culture, from a root in its phonology. */
 export function houseName(cul: string, culture: number, rnd: Rng, bank: NameBank, seatName: string): { name: string; short: string } {
   const c = CULTURES[culture] ?? CULTURES[0];
   const root = rnd() < 0.35 && seatName ? seatName : bank.proper(c, rnd);
   switch (cul) {
     case 'sinic': {
-      const f = pick(rnd, SINIC_FAMILY);
+      const f = family(c, rnd);
       return { name: `the ${f} clan`, short: f };
     }
     case 'koreanic': {
-      const f = pick(rnd, KOREANIC_FAMILY);
+      const f = family(c, rnd);
       return { name: `the ${f} clan of ${seatName || root}`, short: f };
     }
     case 'japonic': {
-      const f = pick(rnd, JAPONIC_A) + pick(rnd, JAPONIC_B);
+      const f = family(c, rnd);
       return { name: `the ${f} clan`, short: f };
     }
     case 'norse': {

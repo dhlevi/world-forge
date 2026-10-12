@@ -478,7 +478,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
     const foes = [...(relations.get(t) ?? [])].filter(([, v]) => v.kind === 'rival' || v.kind === 'war').map(([b]) => b);
     const host = foes.length ? pick(r, foes) : -1;
     const female = r() < 0.2;
-    const nm = personName(cultureId(u.culture), female, r, prev.house);
+    const nm = personName(u.culture, female, r, prev.house);
     const tail = SURNAME_FIRST_LORE.has(cultureId(u.culture)) ? '' : ` of ${prev.house.name}`;
     claims.push({
       by: host >= 0 ? host : t, on: t, kind: 'throne', since: cur.from,
@@ -495,7 +495,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
   let worldPeople = 0;
   for (const t of tops) {
     const u = units[t];
-    const pr = production(seed, { key: `${t}`, land: land(t), cul: cultureId(u.culture), people: u.people, townPop: u.pop, seatName: u.seatName });
+    const pr = production(seed, { key: `${t}`, land: land(t), cul: cultureId(u.culture), people: u.people, townPop: u.pop, seatName: u.seatName, crafts: CULTURES[u.culture]?.mods.crafts });
     raw.set(t, pr);
     for (const g of GOOD_IDS) worldOut[g] += pr.out[g] ?? 0;
     worldPeople += u.people;
@@ -510,7 +510,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
     const tr = tradeOf(pr.out, u.people, worldOut, worldPeople, rich);
     const cul = cultureId(u.culture);
     const tax = u.gov === 'tribal' ? 0.05 : u.gov === 'republic' || u.gov === 'city-state' || u.gov === 'thalassocracy' ? 0.5 : 0.3;
-    const revenue = Math.round(((u.people - u.pop) * 0.12 + u.pop * 1.4) * tax / 10) * 10;
+    const revenue = Math.round((((u.people - u.pop) * 0.12 + u.pop * 1.4) * tax * (CULTURES[u.culture]?.mods.revenue ?? 1)) / 10) * 10;
     econ.set(t, { out: pr.out, exports: [...new Set([...tr.exports, ...pr.metals.filter((m) => !tr.exports.includes(m)).slice(0, 1)])].slice(0, 6), imports: tr.imports, special: pr.special, metals: pr.metals, revenue, coin: coinOf(cul), wealth: perHead(u) });
   }
   const rankOf = new Map<number, number>();

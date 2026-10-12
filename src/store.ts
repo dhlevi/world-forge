@@ -7,6 +7,7 @@ import type { BuildingView } from './interiors/building';
 import type { LairSite } from './lairs/lair';
 import type { DungeonSite } from './dungeons/core';
 import { SearchIndex } from './search/index';
+import { setWorldCultures } from './names/world-cultures';
 import { registerPoliticalProtocol, registerRelationsProtocol } from './world/political';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
@@ -21,10 +22,11 @@ export const store = reactive({
     seed: randomSeed(),
     landFraction: 0.35,
     settled: 0.6,
+    drift: 0.3,
     plates: 14,
     erosion: 0.5,
     resolution: 1024,
-  } as WorldParams & { settled: number },
+  } as WorldParams & { settled: number; drift: number },
   layer: 'fantasy' as LayerId,
   showRivers: true,
   showSettlements: true,
@@ -64,6 +66,8 @@ export const openLair = shallowRef<LairSite | null>(null);
 export const openDungeon = shallowRef<DungeonSite | null>(null);
 /** The realm (political unit id) open in the realm details window, if any. */
 export const openRealm = shallowRef<number | null>(null);
+/** The culture (index into CULTURES) open in the culture window, if any. */
+export const openCulture = shallowRef<number | null>(null);
 export const client = new WorldClient();
 client.registerProtocol();
 registerPoliticalProtocol();
@@ -79,6 +83,8 @@ export async function regenerate(): Promise<void> {
       store.progress = pct;
     });
     if (result.gen !== client.latestGen) return;
+    // The world's cultures and languages, rebuilt on this thread for names and lore.
+    setWorldCultures(result.raster.cultures);
     world.value = result;
     store.summary = result.summary;
     store.generating = false;

@@ -2,9 +2,10 @@ import { Biome } from '../gen/biomes';
 import { LEVEL_NAME, NB_CULTURE, type Politics, type PolUnit, chainOf } from '../gen/politics';
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import type { Settlement } from '../gen/settlements';
+import { CULTURES } from '../names/cultures';
 import { goodName, production, tradeOf } from './economy';
 import type { Faith, Sect } from './faiths';
-import { COURT, CULTURE_LABEL, cultureId, epithet, givenName, type House, houseName, personName, roman, traits } from './names';
+import { COURT, cultureFolk, cultureId, cultureLabel, epithet, givenName, type House, houseName, personName, roman, traits } from './names';
 import { buildWorldLore, type Claim, type Relation, type War, type WorldLore } from './world';
 
 /**
@@ -122,7 +123,8 @@ export interface RealmDetails {
     urban: number;
     density: number;
     area: number;
-    cultures: { name: string; pct: number }[];
+    /** idx: index into CULTURES, or -1 for native peoples. */
+    cultures: { name: string; pct: number; idx: number }[];
     folk: { name: string; pct: number }[];
     faiths: { name: string; pct: number }[];
     settlements: { name: string; pop: number; tier: string; walls: boolean; coastal: boolean; seat: boolean; lon: number; lat: number }[];
@@ -147,7 +149,7 @@ export interface RealmDetails {
   overview: string;
 }
 
-interface Ctx {
+export interface Ctx {
   L: WorldLore;
   p: Politics;
   units: PolUnit[];
@@ -205,7 +207,7 @@ function reignsOf(c: Ctx, id: number): Reign[] {
   const f = L.founded(id);
   const plagues = L.events.filter((e) => e.oldWorld && /Death|Plague|Pox|Fever|Sickness|Wasting|Cough/.test(e.name));
   const mk = (house: House | null, female: boolean, born: number, father?: string, regnalName?: string): Person => {
-    const nm = personName(cul, female, r, house ?? undefined, father);
+    const nm = personName(u.culture, female, r, house ?? undefined, father);
     const given = regnalName ?? nm.given;
     const tr = traits(r);
     return { given, full: regnalName ? `${given} (born ${nm.full})` : nm.full, female, born, house, traits: tr, epithet: epithet(cul, r, tr), numeral: '' };
@@ -226,7 +228,7 @@ function reignsOf(c: Ctx, id: number): Reign[] {
       const female = r() < (FEMALE_P[cul] ?? 0.1) * (u.gov === 'theocracy' ? 0.5 : 1);
       const age = 38 + Math.floor(r() * 30);
       // Priests take a holy name; others keep their own.
-      const holy = u.gov === 'theocracy' ? givenName(cul, female, r) : undefined;
+      const holy = u.gov === 'theocracy' ? givenName(u.culture, female, r) : undefined;
       const person = mk(fam(Math.floor(r() * 5)), female, t - age, undefined, holy);
       const how = u.gov === 'colony' ? 'appointed from overseas' : u.gov === 'theocracy' ? 'elected by the high clergy' : 'elected by the council';
       const endT = end >= Y ? undefined : life ? pick(r, ['died in office', 'died in office', 'abdicated', 'deposed']) : pick(r, ['served the term', 'served the term', 'served the term', 'removed from office', 'died in office']);
@@ -368,7 +370,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
       const sf = !p.female;
       const other = married && isTop ? units[married[0]] : null;
       const sh = other ? L.houseOf(other.id) : null;
-      const scul = other ? cultureId(other.culture) : cul;
+      const scul = other ? other.culture : u.culture;
       const sn = personName(scul, sf, r, sh ?? undefined);
       const living = r() < 0.85 ? '' : ' (died)';
       spouse = other && sh ? `${sn.full} of ${sh.name}, of ${other.name}${living}` : `${sn.full}${r() < 0.5 ? `, of a noble house of ${u.seatName}` : ''}${living}`;
@@ -379,17 +381,17 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
       if (children > 0) {
         const hf = cul === 'elvish' ? r() < 0.5 : r() < 0.15;
         const ha = Math.max(0, age - 18 - Math.floor(r() * 18));
-        heir = `${personName(cul, hf, r, p.house ?? undefined, p.female ? undefined : p.given).full}, ${hf ? 'daughter' : 'son'}, aged ${ha}`;
+        heir = `${personName(u.culture, hf, r, p.house ?? undefined, p.female ? undefined : p.given).full}, ${hf ? 'daughter' : 'son'}, aged ${ha}`;
       } else {
         const hf = r() < 0.2;
-        heir = `${personName(cul, hf, r, p.house ?? undefined).full}, ${pick(r, hf ? ['sister', 'niece', 'cousin'] : ['brother', 'nephew', 'cousin', 'uncle'])} (heir presumptive)`;
+        heir = `${personName(u.culture, hf, r, p.house ?? undefined).full}, ${pick(r, hf ? ['sister', 'niece', 'cousin'] : ['brother', 'nephew', 'cousin', 'uncle'])} (heir presumptive)`;
       }
     }
-    const regent = age < 16 ? `${personName(cul, r() < 0.6, r).full}, ${pick(r, ['the ruler\'s mother', 'an uncle', 'the chancellor', 'a council of lords'])}` : undefined;
+    const regent = age < 16 ? `${personName(u.culture, r() < 0.6, r).full}, ${pick(r, ['the ruler\'s mother', 'an uncle', 'the chancellor', 'a council of lords'])}` : undefined;
     const offices = COURT[cul] ?? COURT.anglo;
     const court = (u.level >= 2 || isTop ? [0, 1, 2, 3, 4] : [1, 2]).map((k) => {
       const tr = traits(r);
-      return { office: offices[k], name: personName(cul, r() < (FEMALE_P[cul] ?? 0.1) * 1.5, r).full, note: tr.slice(0, 2).join(', ').toLowerCase() };
+      return { office: offices[k], name: personName(u.culture, r() < (FEMALE_P[cul] ?? 0.1) * 1.5, r).full, note: tr.slice(0, 2).join(', ').toLowerCase() };
     });
     ruler = {
       styled: now.styled, full: p.full, title: now.title, house: p.house, age, since: now.from, traits: p.traits, female: p.female, spouse, heir, regent, children,
@@ -458,7 +460,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
     const j = L.joined(k);
     const vr = v.seat === u.seat ? null : reignsOf(c, k).at(-1);
     let unrest: string | undefined;
-    if (v.culture !== u.culture && u.gov !== 'league') unrest = `its ${CULTURE_LABEL[cultureId(v.culture)]?.name ?? ''} people chafe under ${CULTURE_LABEL[cul]?.name ?? ''} rule`;
+    if (v.culture !== u.culture && u.gov !== 'league') unrest = `its ${cultureLabel(v.culture)} people chafe under ${cultureLabel(u.culture)} rule`;
     if (L.claims.some((cl) => cl.on === k)) unrest = 'claimed by a foreign power';
     return {
       id: k, name: v.name, title: v.title || LEVEL_NAME[v.level], ruler: v.seat === u.seat && u.gov !== 'league' ? `held in person by the ${u.ruler}` : vr?.styled ?? v.ruler,
@@ -472,7 +474,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   const area = land.areaKm2 || u.areaKm2;
   const totalC = land.culture.reduce((a, b) => a + b, 0) || 1;
   const cultures: { name: string; pct: number; idx: number }[] = [];
-  for (let k = 0; k < NB_CULTURE; k++) if (land.culture[k] / totalC > 0.01) cultures.push({ idx: k, name: CULTURE_LABEL[cultureId(k)]?.name ?? 'Other', pct: (100 * land.culture[k]) / totalC });
+  for (let k = 0; k < NB_CULTURE; k++) if (land.culture[k] / totalC > 0.01) cultures.push({ idx: k, name: cultureLabel(k), pct: (100 * land.culture[k]) / totalC });
   cultures.sort((a, b) => b.pct - a.pct);
   // Colonies are of their founders' people, with the native peoples around them.
   if (u.gov === 'colony' || (cultures.length && cultures[0].idx !== u.culture && u.gov !== 'league' && units[u.id].level === 0)) {
@@ -480,7 +482,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
     const share = u.gov === 'colony' ? 60 + r() * 25 : 50;
     for (const x of cultures) x.pct *= (100 - share) / 100;
     if (own) own.pct += share;
-    else cultures.unshift({ idx: u.culture, name: CULTURE_LABEL[cul]?.name ?? '', pct: share });
+    else cultures.unshift({ idx: u.culture, name: cultureLabel(u.culture), pct: share });
     cultures.sort((a, b) => b.pct - a.pct);
   }
   if (u.gov === 'colony' && cultures.length === 1) {
@@ -489,7 +491,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   }
   const folkMap = new Map<string, number>();
   for (const x of cultures) {
-    const fk = x.idx < 0 ? 'Humans' : CULTURE_LABEL[cultureId(x.idx)]?.folk ?? 'Humans';
+    const fk = x.idx < 0 ? 'Humans' : cultureFolk(x.idx);
     folkMap.set(fk, (folkMap.get(fk) ?? 0) + x.pct);
   }
   const minor = MINOR_FOLK[cul] ?? [];
@@ -550,10 +552,11 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
 
   // ---- Armies ----------------------------------------------------------------------------------
   const levyRate = u.gov === 'tribal' ? 0.04 : u.gov === 'republic' || u.gov === 'city-state' ? 0.006 : 0.012;
-  const levy = Math.round((u.people * levyRate) / 100) * 100;
+  const cm = CULTURES[u.culture]?.mods;
+  const levy = Math.round((u.people * levyRate * (cm?.levy ?? 1)) / 100) * 100;
   const standing = Math.round((u.pop * (u.level === 4 ? 0.025 : u.gov === 'republic' || u.gov === 'city-state' ? 0.02 : 0.01)) / 50) * 50;
-  const horse = Math.round(levy * (cul === 'steppe' ? 0.8 : cul === 'desert' || cul === 'japonic' ? 0.3 : u.nw ? 0 : 0.12) / 50) * 50;
-  const ships = Math.round(Math.min(600, land.coastKm / (u.gov === 'thalassocracy' ? 8 : 35) * Math.min(1, u.pop / 20000 + 0.2)));
+  const horse = Math.round(Math.min(levy * 0.9, levy * (cul === 'steppe' ? 0.8 : cul === 'desert' || cul === 'japonic' ? 0.3 : u.nw ? 0 : 0.12) * (u.nw ? 1 : cm?.cavalry ?? 1)) / 50) * 50;
+  const ships = Math.round(Math.min(600, (land.coastKm / (u.gov === 'thalassocracy' ? 8 : 35)) * Math.min(1, u.pop / 20000 + 0.2) * (cm?.fleet ?? 1)));
   const charge: string | undefined = u.arms?.charge?.kind;
   const order = (u.level >= 3 || isTop) && u.gov !== 'tribal' && r() < 0.7 && charge
     ? `${pick(r, ['the Order of the', 'the Knights of the', 'the Brotherhood of the', 'the Company of the'])} ${cap(charge === 'mullet' ? 'Star' : charge === 'estoile' ? 'Star' : charge === 'roundel' ? 'Golden Disc' : charge === 'fleur' ? 'Lily' : charge === 'lozenge' ? 'Diamond' : charge === 'tomoe' ? 'Three Commas' : charge)}`
@@ -587,7 +590,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
     allies, friends, rivals, truces, wars, pastWars, claims, claimsOn, members: u.gov === 'league' ? kidsIds : [], vassals,
     people: {
       total: u.people, towns: u.pop, urban: (100 * u.pop) / Math.max(1, u.people), density: u.people / Math.max(1, area), area,
-      cultures: cultures.map(({ name, pct }) => ({ name, pct })), folk, faiths: faithsMix,
+      cultures: cultures.map(({ name, pct, idx }) => ({ name, pct, idx })), folk, faiths: faithsMix,
       settlements: towns.slice(0, 12).map((s) => ({ name: s.name ?? '', pop: s.population, tier: s.colony ? (s.colony === 'post' ? 'trading post' : s.colony) : s.kind === 'tribal' ? 'tribal town' : s.tier, walls: s.walls, coastal: s.coastal, seat: seatIds.has(s.id), lon: s.lon, lat: s.lat })),
       nCities: towns.filter((s) => s.tier === 'city').length, nTowns: towns.filter((s) => s.tier === 'town').length, nVillages: Math.round((u.people - u.pop) / (u.nw ? 120 : 280)),
     },

@@ -3,7 +3,7 @@ import type { PolUnit } from '../gen/politics';
 import { CULTURES } from '../names/cultures';
 import type { NameBank } from '../names/names';
 import type { Charge } from '../heraldry/arms';
-import { CULTURE_LABEL } from './names';
+
 
 /**
  * The world's faiths. Each culture keeps a faith of its own kind (a church, an old pantheon, a
@@ -224,7 +224,7 @@ export function buildFaiths(seed: string, year: number, bank: NameBank, units: P
   const famOf = new Map<FaithFamily, Faith>();
   const ofCulture: number[] = CULTURES.map(() => -1);
   const converted = new Map<number, number>();
-  const uniqueName = (n: string, ci: number) => (faiths.some((f) => f.name === n) ? `${n} of the ${CULTURE_LABEL[CULTURES[ci].id]?.name ?? ''} peoples` : n);
+  const uniqueName = (n: string, ci: number) => (faiths.some((f) => f.name === n) ? `${n} of the ${CULTURES[ci]?.name ?? ''}` : n);
   // Cultures' cities, from the realm seats of each culture (the settlement's culture is set for colonies only).
   const seatsOf = new Map<number, { name: string; lon: number; lat: number; pop: number }[]>();
   for (const u of units) {

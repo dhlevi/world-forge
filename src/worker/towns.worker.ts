@@ -1,4 +1,5 @@
 import { TownManager, type Bounds } from '../towns/manager';
+import { setWorldCultures } from '../names/world-cultures';
 import type { TownsRequest, TownsResponse } from './protocol';
 import type { IndexEntry } from '../towns/manager';
 
@@ -66,6 +67,8 @@ function schedule(): void {
 self.onmessage = (e: MessageEvent<TownsRequest>) => {
   const msg = e.data;
   if (msg.type === 'init') {
+    // The world's cultures and languages, rebuilt here for naming villages, plans and lairs.
+    if (msg.world.raster.cultures) setWorldCultures(msg.world.raster.cultures);
     towns = new TownManager(msg.world);
     gen = msg.gen;
     view = null;

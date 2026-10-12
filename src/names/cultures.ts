@@ -1,3 +1,6 @@
+import type { Language } from '../lang/language';
+import type { CultureEnv, CultureMods, Customs } from './traits';
+
 /**
  * Naming cultures. Each has its own phonology (curated start, middle and end syllables, plus
  * compound words for the cultures that build names that way) and its own habits for naming
@@ -31,6 +34,33 @@ export interface Culture {
   realm: string[];
 }
 
+/**
+ * A culture of this world: one per culture hearth, grown from a template (several cultures may
+ * share one). It keeps the template's fields (so `id` is the template's id, and code that keys
+ * tables by it still works) and adds its own name, language and traits. `CULTURES` holds the
+ * current world's cultures (set by `setWorldCultures` in names/world-cultures.ts); until a world
+ * is made it holds one plain culture per template.
+ */
+export interface WorldCulture extends Culture {
+  index: number;
+  template: number;
+  /** English name ("Varskish"), also the language's name. */
+  name: string;
+  /** The people ("the Varskish"). */
+  people: string;
+  /** Their own name for themselves, and its sound. */
+  endonym: string;
+  endonymIpa: string;
+  language: Language | null;
+  ethos: string;
+  traditions: string[];
+  customs: Customs | null;
+  mods: CultureMods;
+  nw: boolean;
+  hearth: [number, number];
+  env: CultureEnv | null;
+}
+
 export interface SiteClimate {
   temp: number;
   tempCold: number;
@@ -44,7 +74,8 @@ export interface SiteClimate {
 const near = (v: number, lo: number, hi: number, soft = 6) =>
   v < lo ? Math.max(0, 1 - (lo - v) / soft) : v > hi ? Math.max(0, 1 - (v - hi) / soft) : 1;
 
-export const CULTURES: Culture[] = [
+/** The templates every world's cultures grow from (see `WorldCulture`). */
+export const TEMPLATES: Culture[] = [
   {
     id: 'anglo',
     likes: (c) => near(c.temp, 6, 13) * near(c.precip, 500, 1400, 400),
@@ -703,7 +734,7 @@ const EXTRA: Record<string, Partial<Pick<Culture, 'starts' | 'mids' | 'ends' | '
 };
 /** A middle syllable more often in the cultures with the smaller sets. */
 const MID_CHANCE: Record<string, number> = { norse: 0.3, slavic: 0.5, dwarven: 0.35, steppe: 0.45, desert: 0.5, southern: 0.5, celtic: 0.4 };
-for (const c of CULTURES) {
+for (const c of TEMPLATES) {
   if (MID_CHANCE[c.id] !== undefined) c.midChance = Math.max(c.midChance, MID_CHANCE[c.id]);
   const x = EXTRA[c.id];
   if (!x) continue;
@@ -752,3 +783,21 @@ export const MOTIFS = [
   'Mists', 'Storms', 'Sorrows', 'Silence', 'Ash', 'Whispers', 'Shadows', 'Tears', 'Stars', 'Bones', 'Dreams', 'Thorns',
   'Embers', 'Kings', 'Ghosts', 'Lanterns', 'Wolves', 'Crows', 'Ravens', 'Eagles', 'Salt', 'Glass', 'Flames', 'Ice'
 ];
+
+/** Template names shown before a world gives its cultures their own. */
+export const TEMPLATE_LABEL: Record<string, string> = {
+  anglo: 'Anglic', norse: 'Nordic', latin: 'Latinate', celtic: 'Celtic', elvish: 'Elvish', desert: 'Desert', slavic: 'Slavic', dwarven: 'Dwarvish', southern: 'Southron',
+  steppe: 'Steppe', jungle: 'Jungle', sinic: 'Sinic', japonic: 'Japonic', koreanic: 'Koreanic', woodland: 'Woodland', highland: 'Highland',
+};
+const NO_MODS_C = { cityState: 1, republic: 1, theocracy: 1, empire: 1, league: 1, indepDuchy: 1, seafaring: 1, colonies: 1, levy: 1, cavalry: 1, fleet: 1, revenue: 1, crafts: 1 };
+
+/** A plain culture for a template (no language yet). */
+export function plainCulture(t: Culture, index: number, template: number): WorldCulture {
+  const name = TEMPLATE_LABEL[t.id] ?? t.id;
+  return {
+    ...t, index, template, name, people: `the ${name}`, endonym: name, endonymIpa: '', language: null, ethos: '', traditions: [], customs: null, mods: { ...NO_MODS_C }, nw: false, hearth: [0, 0], env: null,
+  };
+}
+
+/** The current world's cultures (see `WorldCulture`). */
+export const CULTURES: WorldCulture[] = TEMPLATES.map((t, k) => plainCulture(t, k, k));

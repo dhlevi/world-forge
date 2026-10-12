@@ -54,6 +54,10 @@ function randomize(): void {
           v-model="store.params.settled" label="Settled world" :min="0.2" :max="1" :step="0.05"
           :format="pct" hint="Share of the land that is the settled Old World; the rest is a sparse, tribal New World with a few colonies" @commit="regenerate"
         />
+        <RangeField
+          v-model="store.params.drift" label="Language drift" :min="0" :max="1" :step="0.05"
+          :format="pct" hint="How far each culture's language strays from its familiar template: low keeps names familiar, high makes them strange" @commit="regenerate"
+        />
         <label class="field">
           <span>Detail</span>
           <select v-model.number="store.params.resolution" @change="regenerate">

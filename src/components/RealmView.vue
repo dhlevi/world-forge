@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue';
-import { flyTarget, openRealm, world } from '../store';
+import { flyTarget, openCulture, openRealm, world } from '../store';
+import { CULTURES } from '../names/cultures';
 import { LEVEL_NAME, type PolUnit } from '../gen/politics';
 import { blazon } from '../heraldry/arms';
 import { armsImage } from '../heraldry/draw';
@@ -53,6 +54,9 @@ function go(id: number): void {
   if (openRealm.value === id) return;
   if (openRealm.value !== null) back.value.push(openRealm.value);
   openRealm.value = id;
+}
+function goCulture(k: number): void {
+  openCulture.value = k;
 }
 function goBack(): void {
   const id = back.value.pop();
@@ -149,6 +153,7 @@ const sub = computed(() => {
           <div><dt>Founded</dt><dd>{{ d.founded }} ({{ d.year - d.founded }} years ago)</dd></div>
           <div><dt>Area</dt><dd>{{ n(d.people.area) }} km²</dd></div>
           <div><dt>People</dt><dd>about {{ fmtPeople(d.people.total) }}</dd></div>
+          <div><dt>Culture</dt><dd><a href="#" title="Open the culture" @click.prevent="goCulture(d.unit.culture)">{{ CULTURES[d.unit.culture]?.name }}</a></dd></div>
           <div><dt>Settlements</dt><dd>{{ d.people.nCities }} cities, {{ d.people.nTowns }} towns, {{ n(d.people.nVillages) }} villages</dd></div>
           <div><dt>Wealth</dt><dd>{{ cap(d.economy.word) }} ({{ d.economy.rank }} of {{ d.economy.of }} realms)</dd></div>
           <div><dt>Revenue</dt><dd>{{ n(d.economy.revenue) }} {{ d.economy.coin }} a year</dd></div>
@@ -268,7 +273,7 @@ const sub = computed(() => {
           <div><dt>Settlements</dt><dd>{{ d.people.nCities }} cities, {{ d.people.nTowns }} towns, {{ n(d.people.nVillages) }} villages</dd></div>
         </dl>
         <h3>Peoples</h3>
-        <div v-for="t in d.people.cultures" :key="t.name" class="bar"><span class="lbl">{{ t.name }}</span><span class="track"><span :style="{ width: `${t.pct}%` }" /></span><span class="v">{{ pct(t.pct) }}</span></div>
+        <div v-for="t in d.people.cultures" :key="t.name" class="bar"><span class="lbl"><a v-if="t.idx >= 0" href="#" title="Open the culture" @click.prevent="goCulture(t.idx)">{{ t.name }}</a><template v-else>{{ t.name }}</template></span><span class="track"><span :style="{ width: `${t.pct}%` }" /></span><span class="v">{{ pct(t.pct) }}</span></div>
         <h3>Folk</h3>
         <div v-for="t in d.people.folk" :key="t.name" class="bar"><span class="lbl">{{ t.name }}</span><span class="track"><span :style="{ width: `${t.pct}%` }" /></span><span class="v">{{ pct(t.pct) }}</span></div>
         <h3>Faiths</h3>
