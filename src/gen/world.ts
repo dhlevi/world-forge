@@ -15,7 +15,7 @@ import { type LabelCollection, nameWorld } from './features';
 import { type Politics, type PolUnit, buildPolitics } from './politics';
 import { cultureMap } from '../names/culture-map';
 import { type CultureSet, setWorldCultures } from '../names/world-cultures';
-import { newWorldMask } from './oldworld';
+import { newWorldMask, type SpreadTrace } from './oldworld';
 import { chooseColonies } from './colonies';
 import { NameBank } from '../names/names';
 import { CLIMATE, HYDROLOGY } from './config';
@@ -75,6 +75,8 @@ export interface RasterWorld {
   cultures: CultureSet;
   /** 1 on New World land (sparse, tribal), 0 elsewhere (gen/oldworld.ts). */
   newWorld: Uint8Array;
+  /** How the Old World spread from its heartland (for the Old & New World layer; see `SpreadTrace`). */
+  spread: SpreadTrace;
 }
 
 export interface WorldSummary {
@@ -193,7 +195,8 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
 
   progress('Settlements & roads', 0.97);
   const sampler = new DetailSampler({ seed: params.seed, W, H, height, lakeDepth, waterLevel }, new RiverIndex(rivers, params.seed));
-  const newWorld = newWorldMask(g, { height, lakeDepth, temp: climate.temp, precip: climate.precip }, Math.max(0.2, Math.min(1, params.settled ?? 0.6)), params.seed);
+  const spread: SpreadTrace = { reach: new Uint8Array(W * H), heartland: -1 };
+  const newWorld = newWorldMask(g, { height, lakeDepth, temp: climate.temp, precip: climate.precip }, Math.max(0.2, Math.min(1, params.settled ?? 0.6)), params.seed, spread);
   const { settlements, roads } = buildSettlements(g, {
     height, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, biome, lakeDepth, acc, flow, newWorld,
   }, seedHash, sampler);
@@ -268,6 +271,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       culture,
       cultures,
       newWorld,
+      spread,
     },
     rivers,
     wind,

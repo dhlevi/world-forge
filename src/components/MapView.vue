@@ -805,6 +805,7 @@ watch(() => store.showSettlements, (show) => {
       <div class="probe-title">{{ store.probe.terrain }}</div>
       <div v-if="store.probe.place" class="probe-place">{{ store.probe.place }}</div>
       <div v-if="store.probe.climate">{{ store.probe.climate }}</div>
+      <div v-if="store.layer === 'oldworld' && store.probe.settledWorld">{{ store.probe.settledWorld }}</div>
       <div>{{ store.probe.lat.toFixed(2) }}°, {{ store.probe.lon.toFixed(2) }}°</div>
       <div>Elevation {{ Math.round(store.probe.elevation) }} m</div>
       <div>Temperature {{ store.probe.temperature.toFixed(1) }} °C</div>

@@ -10,14 +10,14 @@ import { RIVER_REACH_M } from '../gen/detail';
 import { MEANDER_MAX_M, RiverIndex, carveRiver, valleyM } from '../gen/river-index';
 import {
   ELEVATION_RAMP, LAKE_RGB, OCEAN_RAMP, PRECIP_RAMP, ROCK_RGB, SEA_ICE_RGB, SNOW_RGB,
-  TEMPERATURE_RAMP, hexToRgb, plateColor, sampleRamp,
+  TEMPERATURE_RAMP, hexToRgb, makeRamp, plateColor, sampleRamp,
 } from './palette';
 import {
   CONTOUR, FANTASY, FANTASY_BIOME_RGB, FANTASY_ICE, FANTASY_SNOW, INK, RIPPLE, RIVER_FILL, RIVER_INK, RIVER_THIN,
   SEPIA, WATER, WATER_DEEP, contourInterval, drawIcons, grain, maskDistance, riverMinWidthPx, riverVisibility, type IconContext,
 } from './fantasy';
 
-export type LayerId = 'fantasy' | 'terrain' | 'biomes' | 'climate' | 'elevation' | 'temperature' | 'precipitation' | 'plates';
+export type LayerId = 'fantasy' | 'terrain' | 'biomes' | 'climate' | 'elevation' | 'temperature' | 'precipitation' | 'plates' | 'oldworld';
 
 export const LAYERS: { id: LayerId; label: string }[] = [
   { id: 'fantasy', label: 'Fantasy map' },
@@ -28,7 +28,19 @@ export const LAYERS: { id: LayerId; label: string }[] = [
   { id: 'temperature', label: 'Temperature' },
   { id: 'precipitation', label: 'Precipitation' },
   { id: 'plates', label: 'Tectonic plates' },
+  { id: 'oldworld', label: 'Old & New World' },
 ];
+
+/**
+ * Old & New World layer: Old World land shaded by when the spread from the heartland reached it
+ * (dark early, pale late), New World land in teal, and the land that went the other way under the
+ * whole-landmass rule in lighter tints (see gen/oldworld.ts).
+ */
+export const OLD_WORLD_RAMP = makeRamp([[1, '#6e2f10'], [90, '#b8591f'], [180, '#e3a04a'], [254, '#f7e2a6']]);
+export const OLD_UNREACHED_RGB = hexToRgb('#d9c9a3');
+export const NEW_WORLD_RGB = hexToRgb('#3d8a7c');
+export const NEW_REACHED_RGB = hexToRgb('#93c9b9');
+const HEARTLAND_RGB = hexToRgb('#1d1a17');
 
 const BIOME_RGB = new Float32Array(Object.values(BIOME_COLORS).flatMap((c) => hexToRgb(c)));
 const KOPPEN_RGB = new Float32Array(KOPPEN_CLASSES.flatMap((k) => hexToRgb(k.color)));
@@ -136,9 +148,12 @@ export class TileRenderer {
     w: number, h: number, layer: LayerId, B: number, icons: IconContext | null,
     proj: (lon: number, lat: number) => [number, number], zEff: number, opts: RenderOptions,
   ) {
-    const { W, H, height, tempSea, precip, biome, plate, lakeDepth, waterLevel, koppen } = this.world;
+    const { W, H, height, tempSea, precip, biome, plate, lakeDepth, waterLevel, koppen, newWorld } = this.world;
     const SW = w + 2 * B, SH = h + 2 * B;
     const fantasy = layer === 'fantasy';
+    const reach = this.world.spread.reach;
+    const hc = this.world.spread.heartland;
+    const heart = layer === 'oldworld' && hc >= 0 ? [((hc % W) + 0.5) / W * 360 - 180, 90 - (Math.floor(hc / W) + 0.5) / H * 180] : null;
 
     const ci0 = new Int32Array(SW), ci1 = new Int32Array(SW), ctx = new Float64Array(SW);
     const cols4 = new Int32Array(SW * 4), colW = new Float64Array(SW * 4);
@@ -186,7 +201,7 @@ export class TileRenderer {
 
     // Pass 1: heights with sub-grid detail, including a 1px border for shading.
     const hs = new Float32Array(SW * SH);
-    const nearest = layer === 'plates' || layer === 'biomes' || layer === 'climate' ? new Int32Array(SW * SH) : null;
+    const nearest = layer === 'plates' || layer === 'biomes' || layer === 'climate' || layer === 'oldworld' ? new Int32Array(SW * SH) : null;
     const noise = this.noise;
     for (let r = 0; r < SH; r++) {
       const cosLat = Math.cos(lats[r] * DEG), sinLat = Math.sin(lats[r] * DEG);
@@ -388,6 +403,39 @@ export class TileRenderer {
           case 'precipitation': {
             sampleRamp(PRECIP_RAMP, bilerp(precip, o0, o1, a, b, tx, ty), col);
             light = isLand ? Math.min(1.25, Math.max(0.6, 1 + 0.4 * (rel - 1))) : 0.65;
+            break;
+          }
+          case 'oldworld': {
+            let n = nearest![s];
+            // Land drawn over a sea cell at the coast takes the colour of the land beside it.
+            if (isLand && height[n] <= 0) for (const k of [n + 1, n - 1, n + W, n - W]) if (k >= 0 && k < W * H && height[k] > 0) { n = k; break; }
+            if (!isLand) {
+              sampleRamp(OCEAN_RAMP, -2500, col);
+              light = 0.85;
+            } else {
+              const rc = reach[n], nw = newWorld[n] === 1;
+              if (!nw && rc > 0) sampleRamp(OLD_WORLD_RAMP, rc, col);
+              else {
+                const rgb = nw ? (rc > 0 ? NEW_REACHED_RGB : NEW_WORLD_RGB) : OLD_UNREACHED_RGB;
+                col[0] = rgb[0]; col[1] = rgb[1]; col[2] = rgb[2];
+              }
+              light = Math.min(1.2, Math.max(0.7, 1 + 0.3 * (rel - 1)));
+              // Contours every tenth of the spread, and the line between Old and New.
+              const band = (k: number) => (height[k] > 0 && reach[k] > 0 && newWorld[k] === 0 ? Math.floor((reach[k] - 1) / 25.4) : -1);
+              const b0 = band(n), nr = nearest![s + 1], nd = nearest![s + SW];
+              if ((newWorld[nr] !== newWorld[n] && height[nr] > 0) || (newWorld[nd] !== newWorld[n] && height[nd] > 0)) light *= 0.35;
+              else if (b0 >= 0 && ((band(nr) >= 0 && band(nr) !== b0) || (band(nd) >= 0 && band(nd) !== b0))) light *= 0.72;
+            }
+            if (heart) {
+              // The heartland: a ringed dot.
+              const dx = (((lons[c] - heart[0] + 540) % 360) - 180) * Math.cos(lats[r] * DEG) * 111.32 / pxX[r];
+              const dy = (lats[r] - heart[1]) * 111.32 / pxY[r];
+              const d = Math.hypot(dx, dy);
+              if (d < 3.5 || Math.abs(d - 7) < 1.2) {
+                col[0] = HEARTLAND_RGB[0]; col[1] = HEARTLAND_RGB[1]; col[2] = HEARTLAND_RGB[2];
+                light = 1;
+              } else if (d < 9) light = Math.max(light, 1.05);
+            }
             break;
           }
           case 'plates': {

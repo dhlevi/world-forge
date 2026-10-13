@@ -43,6 +43,8 @@ export const store = reactive({
   showWind: false,
   showCurrents: false,
   generating: false,
+  /** The settings the current world was made with (JSON of `params`), to tell when they have changed. */
+  madeWith: '',
   stage: '',
   progress: 0,
   error: '',
@@ -83,7 +85,11 @@ registerPoliticalProtocol();
 registerRelationsProtocol();
 registerFaithProtocol();
 
+/** The world settings have changed since the current world was made (Generate applies them). */
+export const settingsChanged = (): boolean => !!store.madeWith && JSON.stringify(store.params) !== store.madeWith;
+
 export async function regenerate(): Promise<void> {
+  store.madeWith = JSON.stringify(store.params);
   store.generating = true;
   store.error = '';
   store.progress = 0;

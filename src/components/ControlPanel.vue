@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { LAYERS } from '../render/tiles';
-import { randomSeed, regenerate, store } from '../store';
+import { randomSeed, regenerate, settingsChanged, store } from '../store';
 import RangeField from './RangeField.vue';
 
 const collapsed = ref(false);
@@ -34,43 +34,44 @@ function randomize(): void {
         <label class="field">
           <span>Seed</span>
           <div class="row">
-            <input v-model.trim="store.params.seed" type="text" spellcheck="false" @change="regenerate" />
-            <button @click="randomize">Random</button>
+            <input v-model.trim="store.params.seed" type="text" spellcheck="false" @keydown.enter="regenerate" />
+            <button title="A new seed, and a new world" @click="randomize">Random</button>
           </div>
         </label>
         <RangeField
           v-model="store.params.landFraction" label="Land mass" :min="0.1" :max="0.8" :step="0.01"
-          :format="pct" hint="Share of the surface above sea level" @commit="regenerate"
+          :format="pct" hint="Share of the surface above sea level"
         />
         <RangeField
           v-model="store.params.plates" label="Tectonic plates" :min="3" :max="40" :step="1"
-          hint="More plates = more, smaller continents and more mountain belts" @commit="regenerate"
+          hint="More plates = more, smaller continents and more mountain belts"
         />
         <RangeField
           v-model="store.params.erosion" label="Erosion" :min="0" :max="1" :step="0.05"
-          :format="pct" hint="Strength of river erosion carving valleys" @commit="regenerate"
+          :format="pct" hint="Strength of river erosion carving valleys"
         />
         <RangeField
           v-model="store.params.settled" label="Settled world" :min="0.2" :max="1" :step="0.05"
-          :format="pct" hint="Share of the land that is the settled Old World; the rest is a sparse, tribal New World with a few colonies" @commit="regenerate"
+          :format="pct" hint="Share of the land that is the settled Old World; the rest is a sparse, tribal New World with a few colonies"
         />
         <RangeField
           v-model="store.params.drift" label="Language drift" :min="0" :max="1" :step="0.05"
-          :format="pct" hint="How far each culture's language strays from its familiar template: low keeps names familiar, high makes them strange" @commit="regenerate"
+          :format="pct" hint="How far each culture's language strays from its familiar template: low keeps names familiar, high makes them strange"
         />
         <label class="check" title="Elves, dwarves, halflings, orcs and lizardfolk besides humans; off, every people is human">
-          <input v-model="store.params.races" type="checkbox" @change="regenerate" />
+          <input v-model="store.params.races" type="checkbox" />
           Fantasy races
         </label>
         <label class="field">
           <span>Detail</span>
-          <select v-model.number="store.params.resolution" @change="regenerate">
+          <select v-model.number="store.params.resolution">
             <option v-for="r in RESOLUTIONS" :key="r.value" :value="r.value">{{ r.label }}</option>
           </select>
         </label>
-        <button class="primary" :disabled="store.generating" @click="regenerate">
+        <button class="primary" :class="{ pending: settingsChanged() }" :disabled="store.generating" @click="regenerate">
           {{ store.generating ? 'Generating…' : 'Generate' }}
         </button>
+        <p v-if="!store.generating && settingsChanged()" class="pending-note">Settings changed: press Generate to make the world anew.</p>
         <div v-if="store.generating" class="progress">
           <div class="bar" :style="{ width: `${Math.round(store.progress * 100)}%` }" />
           <span>{{ store.stage }}</span>
@@ -251,6 +252,14 @@ button.icon {
   padding-left: 8px;
   line-height: 20px;
   font-size: 11px;
+}
+.pending-note {
+  margin: 0;
+  color: #e9c37a;
+  font-size: 11px;
+}
+button.primary.pending {
+  box-shadow: 0 0 0 2px rgba(233, 195, 122, 0.55);
 }
 .summary {
   margin: 0;

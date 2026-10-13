@@ -12,6 +12,7 @@ import CultureView from './components/CultureView.vue';
 import FaithView from './components/FaithView.vue';
 import FaithLegend from './components/FaithLegend.vue';
 import RelationsLegend from './components/RelationsLegend.vue';
+import OldWorldLegend from './components/OldWorldLegend.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -24,6 +25,7 @@ onMounted(regenerate);
   <LocationTitle />
   <FaithLegend />
   <RelationsLegend />
+  <OldWorldLegend />
   <RealmView />
   <CultureView />
   <FaithView />

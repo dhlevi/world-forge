@@ -9,6 +9,17 @@ export interface OldWorldFields {
   precip: Float32Array;
 }
 
+/** How the Old World spread, for the Old & New World map layer (filled by `newWorldMask`). */
+export interface SpreadTrace {
+  /**
+   * When each cell was reached by the spread: 1 at the heartland up to 254 when the settled share
+   * was reached, scaled by the share of the target land settled so far; 0 if never reached.
+   */
+  reach: Uint8Array;
+  /** The heartland cell the spread began from (-1 if none). */
+  heartland: number;
+}
+
 /**
  * Which land is the settled **Old World** and which the sparse **New World** (1 in the result).
  * Settlement spreads from a heartland (the most welcoming land of the largest landmass) by travel
@@ -16,9 +27,10 @@ export interface OldWorldFields {
  * fills before the next is reached. The first `settled` share of the world's land to be reached
  * is the Old World. Other landmasses then go wholly one way or the other (by which side holds
  * most of them); only the heartland's own landmass may be split, along a frontier that tends to
- * follow its ranges. `settled` of 1 makes the whole world Old.
+ * follow its ranges. `settled` of 1 makes the whole world Old. With `trace`, it records how the
+ * spread went (see `SpreadTrace`); that changes nothing in the result.
  */
-export function newWorldMask(g: Grid, f: OldWorldFields, settled: number, seed: string): Uint8Array {
+export function newWorldMask(g: Grid, f: OldWorldFields, settled: number, seed: string, trace?: SpreadTrace): Uint8Array {
   const { W, H, N } = g;
   const out = new Uint8Array(N);
   if (settled >= 0.999) return out;
@@ -63,6 +75,7 @@ export function newWorldMask(g: Grid, f: OldWorldFields, settled: number, seed: 
     }
   }
   if (origin < 0) return out;
+  if (trace) trace.heartland = origin;
   // Spread by travel cost until the settled share of land is reached.
   const cost = new Float64Array(N).fill(Infinity);
   const old = new Uint8Array(N);
@@ -75,6 +88,7 @@ export function newWorldMask(g: Grid, f: OldWorldFields, settled: number, seed: 
     const c = heap.pop(), dc = heap.lastKey;
     if (dc > cost[c] || old[c]) continue;
     old[c] = 1;
+    if (trace) trace.reach[c] = 1 + Math.min(253, Math.floor((253 * got) / target));
     const j = (c / W) | 0, i = c % W;
     if (land(c)) got += g.areaKm2[j];
     for (let d = 0; d < 8; d++) {

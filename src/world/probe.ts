@@ -22,6 +22,8 @@ export interface ProbeInfo {
   tempCold: number;
   /** Share of annual precipitation falling in the local summer half-year, 0..1. */
   summerRainShare: number;
+  /** Land only: Old or New World, and when the Old World's spread reached it (shown with the Old & New World layer). */
+  settledWorld: string;
 }
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -44,6 +46,14 @@ function describeCurrent(u: number, v: number, anomaly: number): string {
   const to = (Math.atan2(u, v) * 180) / Math.PI;
   const dir = COMPASS[Math.round((((to % 360) + 360) % 360) / 45) % 8];
   return `${temp}, flowing ${dir} (${sign}${anomaly.toFixed(1)} °C)`;
+}
+
+function settledWorld(w: RasterWorld, c: number): string {
+  const r = w.spread.reach[c];
+  const at = r > 0 ? `reached at ${Math.round(((r - 1) / 253) * 100)}% of the spread` : '';
+  if (w.newWorld[c]) return r > 0 ? `New World (${at}, but its landmass went New)` : 'New World';
+  if (w.spread.heartland < 0) return 'Old World';
+  return r > 0 ? `Old World, ${at}` : 'Old World (not reached; its landmass went Old)';
 }
 
 export function probeWorld(w: RasterWorld, lon: number, lat: number): ProbeInfo | null {
@@ -71,5 +81,6 @@ export function probeWorld(w: RasterWorld, lon: number, lat: number): ProbeInfo 
     tempWarm: w.tempWarm[c],
     tempCold: w.tempCold[c],
     summerRainShare: w.precipSummer[c] / Math.max(1e-6, w.precipSummer[c] + w.precipWinter[c]),
+    settledWorld: h > 0 ? settledWorld(w, c) : '',
   };
 }
