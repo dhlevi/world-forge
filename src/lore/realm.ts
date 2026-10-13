@@ -1,4 +1,6 @@
 import { Biome } from '../gen/biomes';
+import { BUNDLE, fillFrom } from '../names/bundles';
+import { fantasyRaces } from '../names/world-cultures';
 import { LEVEL_NAME, STYLE_WORDS, NB_CULTURE, type Politics, type PolUnit, chainOf } from '../gen/politics';
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import type { Settlement } from '../gen/settlements';
@@ -177,6 +179,7 @@ const FEMALE_P: Record<string, number> = {
   anglo: 0.14, norse: 0.1, latin: 0.1, celtic: 0.18, elvish: 0.45, desert: 0.03, slavic: 0.1, dwarven: 0.15, southern: 0.12, steppe: 0.08, jungle: 0.12,
   sinic: 0.04, japonic: 0.05, koreanic: 0.07, woodland: 0.3, highland: 0.06,
 };
+fillFrom(FEMALE_P, (b) => b.femaleP);
 const FEM: Record<string, string> = {
   King: 'Queen', Emperor: 'Empress', Duke: 'Duchess', Count: 'Countess', Earl: 'Countess', Baron: 'Baroness', Prince: 'Princess', Tsar: 'Tsarina', Khan: 'Khatun',
   Khagan: 'Khatun', Sultan: 'Sultana', Emir: 'Emira', Lord: 'Lady', 'Grand Duke': 'Grand Duchess', Margrave: 'Margravine', 'High King': 'High Queen', 'Sea King': 'Sea Queen',
@@ -321,7 +324,7 @@ function succession(u: PolUnit, cul: string, home?: PolUnit): string {
     highland: 'The ablest son of the ruler\'s principal wife', jungle: 'Father to son, confirmed by the priests', southern: 'Hereditary; heirs are crowned co-rulers in the ruler\'s lifetime',
   };
   if (u.level === 4 && cul === 'latin') return 'Elective: the greatest vassals choose the emperor';
-  return table[cul] ?? 'The eldest son inherits, then the eldest daughter';
+  return table[cul] ?? BUNDLE.get(cul)?.succession ?? 'The eldest son inherits, then the eldest daughter';
 }
 
 
@@ -334,12 +337,14 @@ const MINOR_FOLK: Record<string, string[]> = {
   anglo: ['Halflings', 'Half-elves'], latin: ['Halflings'], celtic: ['Half-elves', 'Halflings'], dwarven: ['Gnomes'], slavic: ['Gnomes', 'Half-orcs'], steppe: ['Half-orcs'],
   norse: ['Half-orcs', 'Half-giants'], elvish: ['Half-elves'], jungle: ['Lizardfolk'], desert: ['Gnolls'], southern: ['Halflings'],
 };
+fillFrom(MINOR_FOLK, (b) => b.minorFolk);
 const ARMY: Record<string, string> = {
   anglo: 'longbowmen and armoured men-at-arms', latin: 'heavy knights and crossbowmen', norse: 'huscarls and raiders in longships', celtic: 'warbands of spearmen and light horse',
   elvish: 'archers and wardens of the woods', desert: 'mailed horsemen, archers and slave-soldiers', slavic: 'boyar cavalry and town militias', dwarven: 'shield-walls of axemen and crossbowmen',
   southern: 'armoured cataphracts and hoplite infantry', steppe: 'horse archers in great numbers', jungle: 'jaguar and eagle warriors with obsidian clubs', sinic: 'crossbowmen and drilled infantry with banners',
   japonic: 'mounted samurai and spear-armed foot', koreanic: 'archers and fortress garrisons', woodland: 'woodland warriors and canoe parties', highland: 'slingers, clubmen and road garrisons',
 };
+fillFrom(ARMY, (b) => b.army);
 
 /** Details for one unit. */
 export function realmDetails(c: Ctx, id: number): RealmDetails {
@@ -500,10 +505,17 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
     const fk = x.idx < 0 ? 'Humans' : cultureFolk(x.idx);
     folkMap.set(fk, (folkMap.get(fk) ?? 0) + x.pct);
   }
-  const minor = MINOR_FOLK[cul] ?? [];
-  for (const m of minor) {
-    if (r() < 0.55) {
-      const pct = 0.5 + r() * 4;
+  // Other folk living among them: a few of the usual minorities, many more (and from all over
+  // the world) among open peoples, hardly any among insular ones; none in a world of humans only.
+  const div = CULTURES[u.culture]?.mods?.diversity ?? 1;
+  if (fantasyRaces() && div >= 0.5) {
+    const own = cultureFolk(u.culture);
+    const pool = [...(MINOR_FOLK[cul] ?? [])];
+    if (div > 1.5) for (const f of new Set(CULTURES.map((x) => cultureFolk(x.index)))) if (f !== own && !pool.includes(f)) pool.push(f);
+    const chance = div > 1.5 ? 0.7 : 0.55;
+    for (const m of pool) {
+      if (r() >= chance || folkMap.has(m)) continue;
+      const pct = div > 1.5 ? 2 + r() * 9 : 0.5 + r() * 4;
       for (const k of folkMap.keys()) folkMap.set(k, folkMap.get(k)! * (1 - pct / 100));
       folkMap.set(m, pct);
     }

@@ -25,16 +25,22 @@ export interface CultureSpec {
 export interface CultureSet {
   seed: string;
   drift: number;
+  /** Fantasy races (elves, dwarves, halflings, orcs, lizardfolk) besides humans (default true). */
+  races?: boolean;
   list: CultureSpec[];
 }
 
 let current = '';
+let races = true;
+/** Whether this world has fantasy races besides humans. */
+export const fantasyRaces = () => races;
 
 /** Builds the world's cultures into `CULTURES` (cheap; languages fill their dictionaries on demand). */
 export function setWorldCultures(set: CultureSet): void {
-  const key = `${set.seed}|${set.drift}|${set.list.map((s) => `${s.template},${s.lon.toFixed(2)},${s.lat.toFixed(2)}`).join(';')}`;
+  const key = `${set.seed}|${set.drift}|${set.races !== false}|${set.list.map((s) => `${s.template},${s.lon.toFixed(2)},${s.lat.toFixed(2)}`).join(';')}`;
   if (key === current) return;
   current = key;
+  races = set.races !== false;
   const out: WorldCulture[] = [];
   const names = new Set<string>();
   const tplOf = (k: number) => TEMPLATES[set.list[k].template] ?? TEMPLATES[0];

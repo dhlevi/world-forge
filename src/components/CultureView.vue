@@ -2,6 +2,7 @@
 import { computed, ref, watch } from 'vue';
 import { flyTarget, openCulture, openFaith, openRealm, world } from '../store';
 import { CULTURES, TEMPLATE_LABEL } from '../names/cultures';
+import { templateFolk } from '../names/bundles';
 import { ETHOS, TRADITIONS } from '../names/traits';
 import { LEXICON } from '../lang/lexicon';
 import { cognates, consonantChart, examples, grammarNotes, pronounTable, soundChangeNotes, spellingNotes, vowelChart } from '../lang/describe';
@@ -111,7 +112,7 @@ function showHome(): void {
     <header>
       <div class="title">
         <h2>{{ c.name }}</h2>
-        <p>{{ c.endonym }} <span v-if="c.endonymIpa" class="ipa">/{{ c.endonymIpa }}/</span> · {{ ETHOS[c.ethos]?.name }} · {{ info ? `about ${fmtPeople(info.people)} people` : '' }}</p>
+        <p>{{ c.endonym }} <span v-if="c.endonymIpa" class="ipa">/{{ c.endonymIpa }}/</span><template v-if="templateFolk(c.id) !== 'Humans'"> · {{ templateFolk(c.id) }}</template> · {{ ETHOS[c.ethos]?.name }} · {{ info ? `about ${fmtPeople(info.people)} people` : '' }}</p>
       </div>
       <div class="actions">
         <button title="Fly to their homeland" @click="showHome">Homeland</button>

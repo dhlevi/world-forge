@@ -1,5 +1,6 @@
 import type { Language } from '../lang/language';
 import type { CultureEnv, CultureMods, Customs } from './traits';
+import { BUNDLES } from './bundles';
 
 /**
  * Naming cultures. Each has its own phonology (curated start, middle and end syllables, plus
@@ -766,6 +767,9 @@ for (const c of TEMPLATES) {
   if (x.prefixes && !c.prefixChance) c.prefixChance = 0.1;
 }
 
+// Templates added as bundles (names/bundles/) follow the original sixteen.
+for (const b of BUNDLES) TEMPLATES.push(b.culture);
+
 /** Generic templates, used when a culture has none of its own for a kind. */
 export const DEFAULT_TERMS: Record<FeatureKind, string[]> = {
   settlement: ['{N}'],
@@ -810,7 +814,8 @@ export const TEMPLATE_LABEL: Record<string, string> = {
   anglo: 'Anglic', norse: 'Nordic', latin: 'Latinate', celtic: 'Celtic', elvish: 'Elvish', desert: 'Desert', slavic: 'Slavic', dwarven: 'Dwarvish', southern: 'Southron',
   steppe: 'Steppe', jungle: 'Jungle', sinic: 'Sinic', japonic: 'Japonic', koreanic: 'Koreanic', woodland: 'Woodland', highland: 'Highland',
 };
-const NO_MODS_C = { cityState: 1, republic: 1, theocracy: 1, empire: 1, league: 1, indepDuchy: 1, seafaring: 1, colonies: 1, levy: 1, cavalry: 1, fleet: 1, revenue: 1, crafts: 1 };
+for (const b of BUNDLES) TEMPLATE_LABEL[b.culture.id] = b.label;
+const NO_MODS_C = { cityState: 1, republic: 1, theocracy: 1, empire: 1, league: 1, indepDuchy: 1, seafaring: 1, colonies: 1, levy: 1, cavalry: 1, fleet: 1, revenue: 1, crafts: 1, diversity: 1 };
 
 /** A plain culture for a template (no language yet). */
 export function plainCulture(t: Culture, index: number, template: number): WorldCulture {

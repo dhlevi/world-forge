@@ -58,6 +58,10 @@ function randomize(): void {
           v-model="store.params.drift" label="Language drift" :min="0" :max="1" :step="0.05"
           :format="pct" hint="How far each culture's language strays from its familiar template: low keeps names familiar, high makes them strange" @commit="regenerate"
         />
+        <label class="check" title="Elves, dwarves, halflings, orcs and lizardfolk besides humans; off, every people is human">
+          <input v-model="store.params.races" type="checkbox" @change="regenerate" />
+          Fantasy races
+        </label>
         <label class="field">
           <span>Detail</span>
           <select v-model.number="store.params.resolution" @change="regenerate">

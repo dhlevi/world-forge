@@ -1,3 +1,4 @@
+import { fillFrom } from '../names/bundles';
 import type { Rng } from '../gen/rng';
 
 /**
@@ -51,6 +52,7 @@ export interface Arms {
 export const STYLE_BY_CULTURE: Record<string, EmblemStyle> = {
   woodland: 'hide', highland: 'chakana', jungle: 'glyph', japonic: 'mon', sinic: 'seal', koreanic: 'banner', desert: 'blazon', steppe: 'tamga',
 };
+fillFrom(STYLE_BY_CULTURE, (b) => b.emblem);
 /** Divisions each emblem form can show (a mon or a seal is one colour on another). */
 const STYLE_DIVISIONS: Record<EmblemStyle, Division[]> = {
   shield: [], hide: ['plain', 'plain', 'pale', 'fess', 'quarterly'], chakana: ['plain'], glyph: ['plain', 'plain', 'fess'],
@@ -80,6 +82,7 @@ const SHIELD_BY_CULTURE: Record<string, Shield> = {
   dwarven: 'kite', southern: 'spanish', steppe: 'round', jungle: 'french',
   sinic: 'round', japonic: 'round', koreanic: 'round', woodland: 'round', highland: 'french',
 };
+fillFrom(SHIELD_BY_CULTURE, (b) => b.shield);
 /** Favourite charges by culture (a light touch). */
 const CULTURE_CHARGES: Record<string, Charge[]> = {
   anglo: ['tower', 'crown', 'fleur', 'mullet', 'horn', 'acorn'], latin: ['key', 'crown', 'sun', 'tower', 'eagle', 'wheel'],
@@ -91,6 +94,7 @@ const CULTURE_CHARGES: Record<string, Charge[]> = {
   sinic: ['cloud', 'sun', 'blossom', 'crescent', 'serpent', 'lozenge'], japonic: ['blossom', 'tomoe', 'crescent', 'wheel', 'feather', 'cloud'],
   koreanic: ['blossom', 'sun', 'wheel', 'mullet', 'cloud', 'tomoe'], woodland: ['feather', 'bird', 'sun', 'crescent', 'tree', 'serpent'], highland: ['sun', 'estoile', 'bird', 'lozenge', 'serpent'],
 };
+fillFrom(CULTURE_CHARGES, (b) => b.charges);
 const ALL_CHARGES: Charge[] = [
   'mullet', 'crescent', 'roundel', 'lozenge', 'tower', 'crown', 'fleur', 'key', 'tree', 'sun', 'cross',
   'anchor', 'ship', 'sword', 'hammer', 'axe', 'eagle', 'wheel', 'bell', 'horn', 'estoile', 'heart', 'acorn', 'blossom',

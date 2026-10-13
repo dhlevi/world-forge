@@ -1,3 +1,5 @@
+import { BUNDLES } from '../names/bundles';
+
 /** Given names and family names by template, for languages that keep their template's names (respelled by their sound changes). */
 
 export const GIVEN: Record<string, [string[], string[]]> = {
@@ -241,6 +243,7 @@ export const GIVEN: Record<string, [string[], string[]]> = {
     ],
   ],
 };
+for (const b of BUNDLES) GIVEN[b.culture.id] = b.given;
 
 
 export const SINIC_FAMILY = ['Li', 'Zhao', 'Wang', 'Liu', 'Chen', 'Yang', 'Huang', 'Zhou', 'Wu', 'Xu', 'Sun', 'Ma', 'Zhu', 'Hu', 'Guo', 'He', 'Lin', 'Gao', 'Luo', 'Song', 'Han', 'Tang', 'Feng', 'Cao', 'Xiao', 'Deng'];

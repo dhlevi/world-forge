@@ -4,6 +4,7 @@ import { hashString, mulberry32 } from '../gen/rng';
 import { Biome } from '../gen/biomes';
 import { TEMPLATES, type SiteClimate } from './cultures';
 import type { CultureSpec } from './world-cultures';
+import { BUNDLE, templateFolk } from './bundles';
 
 export interface CultureFields {
   height: Float32Array;
@@ -17,6 +18,35 @@ export interface CultureFields {
 
 /** Cultures of the New World (tribal lands); the rest belong to the Old World. */
 export const NEW_WORLD_CULTURES = new Set(['jungle', 'woodland', 'highland']);
+/** Where a template's homelands may lie (bundles say; islanders and lizardfolk may live in either world). */
+export const worldOf = (id: string): 'old' | 'new' | 'both' => (NEW_WORLD_CULTURES.has(id) ? 'new' : BUNDLE.get(id)?.world ?? 'old');
+const fits = (id: string, nw: boolean) => {
+  const w = worldOf(id);
+  return w === 'both' || (w === 'new') === nw;
+};
+
+const WET = new Set<Biome>([Biome.Wetland, Biome.Mangrove, Biome.TropicalRainforest, Biome.Riparian]);
+/**
+ * How hard a people spreads over a cell (a multiplier on the distance): dwarves keep to the
+ * mountains, lizardfolk to hot wetlands and jungle, halflings to the lowlands and hills, orcs
+ * shun the deep forests, and islanders cross the sea as easily as others cross land.
+ */
+function habitat(id: string, height: number, biome: Biome, sea: boolean): number {
+  switch (id) {
+    case 'dwarven':
+      return sea ? 1 : height < 700 ? 8 : height < 1100 ? 2.2 : 0.8;
+    case 'lizardfolk':
+      return sea ? 1 : WET.has(biome) ? 0.7 : height > 500 ? 6 : 2.5;
+    case 'halfling':
+      return sea ? 1.3 : height > 1400 ? 4 : 1;
+    case 'orcish':
+      return FOREST.has(biome) ? 1.6 : 1;
+    case 'islander':
+      return sea ? 0.3 : 3;
+    default:
+      return 1;
+  }
+}
 
 const FOREST = new Set<Biome>([
   Biome.BorealForest, Biome.TemperateForest, Biome.TemperateRainforest, Biome.TropicalRainforest, Biome.TropicalDryForest, Biome.MontaneForest,
@@ -29,7 +59,11 @@ const DRY = new Set<Biome>([Biome.HotDesert, Biome.ColdDesert, Biome.Shrubland, 
  * variety), then spreads outward. Mountains and sea crossings are slow to spread over, so
  * borders tend to follow ranges and coasts. Sea cells take the culture of the nearest shore.
  */
-export function cultureMap(g: Grid, f: CultureFields, seed: string): { culture: Uint8Array; specs: CultureSpec[] } {
+/**
+ * With `races` off, only human peoples are chosen (no elves, dwarves, halflings, orcs or
+ * lizardfolk).
+ */
+export function cultureMap(g: Grid, f: CultureFields, seed: string, races = true): { culture: Uint8Array; specs: CultureSpec[] } {
   const { N, W } = g;
   const rnd = mulberry32(hashString(seed + '#cultures'));
   let landArea = 0;
@@ -67,8 +101,11 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string): { culture: 
     let best = 0, bestS = -Infinity;
     const nw = f.newWorld ? f.newWorld[c] === 1 : false;
     TEMPLATES.forEach((cu, k) => {
-      if (f.newWorld && NEW_WORLD_CULTURES.has(cu.id) !== nw) return;
-      const s = cu.likes(site) + 0.35 * rnd() - 0.5 * uses[k];
+      if (f.newWorld && !fits(cu.id, nw)) return;
+      if (!races && templateFolk(cu.id) !== 'Humans') return;
+      // Peoples of either world settle only where they truly belong (islanders on warm shores).
+      if (worldOf(cu.id) === 'both' && cu.likes(site) < 0.3) return;
+      const s = cu.likes(site) * (BUNDLE.get(cu.id)?.rarity ?? 1) + 0.35 * rnd() - 0.5 * uses[k];
       if (s > bestS) {
         bestS = s;
         best = k;
@@ -96,9 +133,10 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string): { culture: 
       if (n < 0) continue;
       const d = g.nbDist[j * 8 + k];
       const sea = f.height[n] <= 0;
-      let cost = d * (sea ? 4 : 1 + (f.height[n] > 1500 ? 2.5 : f.height[n] > 800 ? 0.8 : 0));
+      const tid = TEMPLATES[seedCulture[out[c]]]?.id ?? '';
+      let cost = d * (sea ? 4 : 1 + (f.height[n] > 1500 ? 2.5 : f.height[n] > 800 ? 0.8 : 0)) * habitat(tid, f.height[n], f.biome[n] as Biome, sea);
       // Old World cultures hardly reach New World land, and the other way about. Except for colonies if age of sail flag is set.
-      if (!sea && f.newWorld && NEW_WORLD_CULTURES.has(TEMPLATES[seedCulture[out[c]]]?.id ?? '') !== (f.newWorld[n] === 1)) cost += 4000;
+      if (!sea && f.newWorld && !fits(tid, f.newWorld[n] === 1)) cost += 4000;
       if (dc + cost < dist[n]) {
         dist[n] = dc + cost;
         out[n] = out[c];

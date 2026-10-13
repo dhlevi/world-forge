@@ -1,4 +1,5 @@
 import type { Rng } from '../gen/rng';
+import { BUNDLE, fillFrom, templateFolk } from '../names/bundles';
 import { CULTURES } from '../names/cultures';
 import type { NameBank } from '../names/names';
 import { GIVEN, JAPONIC_A, JAPONIC_B, KOREANIC_FAMILY, SINIC_FAMILY } from '../lang/given';
@@ -10,12 +11,11 @@ import { GIVEN, JAPONIC_A, JAPONIC_B, KOREANIC_FAMILY, SINIC_FAMILY } from '../l
 
 const pick = <T>(rnd: Rng, a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
 
-/** The folk a template's people are (humans unless elves or dwarves). */
-const FOLK: Record<string, string> = { elvish: 'Elves', dwarven: 'Dwarves' };
+/** The folk a culture's people are (by its template; see names/bundles). */
 export const cultureId = (c: number) => CULTURES[c]?.id ?? 'anglo';
 /** A culture's name ("Varskish"). */
 export const cultureLabel = (c: number) => CULTURES[c]?.name ?? 'Unknown';
-export const cultureFolk = (c: number) => FOLK[cultureId(c)] ?? 'Humans';
+export const cultureFolk = (c: number) => templateFolk(cultureId(c));
 const SURNAME_FIRST = new Set(['sinic', 'japonic', 'koreanic']);
 
 export interface PersonName {
@@ -148,8 +148,10 @@ export function houseName(cul: string, culture: number, rnd: Rng, bank: NameBank
       const totem = pick(rnd, ['Bear', 'Wolf', 'Turtle', 'Hawk', 'Deer', 'Heron', 'Beaver', 'Snipe', 'Eel', 'Crane', 'Otter', 'Eagle']);
       return { name: `the ${totem} Clan`, short: totem };
     }
-    default:
-      return { name: `House ${root}`, short: root };
+    default: {
+      const pat = BUNDLE.get(cul)?.house;
+      return pat ? { name: pat.replace('{R}', root), short: root } : { name: `House ${root}`, short: root };
+    }
   }
 }
 
@@ -179,6 +181,7 @@ const EPITHET_CUL: Record<string, string[]> = {
   woodland: [], highland: ['Earth-Shaker', 'the Reformer', 'Son of the Sun'],
   jungle: ['the Smoking Shield', 'Jaguar Paw', 'Flint Sky', 'the Obsidian Serpent'],
 };
+fillFrom(EPITHET_CUL, (b) => b.epithets);
 const TRAIT_EPITHET: Record<string, string[]> = {
   Brave: ['the Bold', 'the Lion', 'the Brave'], Cruel: ['the Cruel', 'the Terrible', 'the Black'], Pious: ['the Pious', 'the Saint', 'the Confessor'],
   Just: ['the Just', 'the Lawgiver', 'the Good'], Scholarly: ['the Learned', 'the Wise', 'the Philosopher'], Generous: ['the Generous', 'the Magnificent'],
@@ -240,3 +243,4 @@ export const COURT: Record<string, string[]> = {
   woodland: ['Speaker', 'War Chief', 'Keeper of the Stores', 'Scout', 'Medicine Keeper'],
   highland: ['Council Elder', 'Apu of the Armies', 'Keeper of the Quipu', 'Runner Chief', 'High Priest'],
 };
+fillFrom(COURT, (b) => b.court);

@@ -1,4 +1,5 @@
 import { Biome } from '../gen/biomes';
+import { fillFrom } from '../names/bundles';
 import { NB_BIOME, NB_CULTURE, type RealmStats } from '../gen/politics';
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 
@@ -112,6 +113,7 @@ const CRAFTS: Record<string, string[]> = {
   japonic: ['swords', 'lacquerware', 'woodblock prints', 'sake'], koreanic: ['celadon ware', 'ginseng', 'mulberry paper', 'printed books'], woodland: ['furs', 'wampum', 'maple sugar', 'birchbark canoes'],
   highland: ['alpaca wool', 'silverwork', 'woven tapestries', 'freeze-dried potatoes'],
 };
+fillFrom(CRAFTS, (b) => b.crafts);
 
 export interface Economy {
   /** Output of each good (arbitrary units, comparable across realms). */
@@ -132,6 +134,7 @@ const COIN: Record<string, string> = {
   anglo: 'crowns', latin: 'florins', norse: 'marks', celtic: 'crowns', elvish: 'leaves', desert: 'dinars', slavic: 'grivnas', dwarven: 'ingots', southern: 'nomismata',
   steppe: 'silver sukhe', jungle: 'cacao beans', sinic: 'taels', japonic: 'ryo', koreanic: 'mun', woodland: 'strings of wampum', highland: 'bales of cloth',
 };
+fillFrom(COIN, (b) => b.coin);
 
 const pick = <T>(rnd: Rng, a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
 

@@ -8,6 +8,7 @@ import { CULTURES } from '../names/cultures';
 import type { CultureMods } from '../names/traits';
 import { Biome } from './biomes';
 import type { NameBank } from '../names/names';
+import { fillFrom } from '../names/bundles';
 import { type FaithFamily, faithOfCulture } from '../lore/faiths';
 import { type Arms, type Charge, cadetArms, newArms, vassalArms } from '../heraldry/arms';
 
@@ -214,6 +215,16 @@ const REPUBLIC_P: Record<string, number> = { sinic: 0.01, japonic: 0.01, koreani
 const INDEP_DUCHY_P: Record<string, number> = { japonic: 0.12, sinic: 0.03, koreanic: 0.04, southern: 0.16, latin: 0.08, elvish: 0.08, dwarven: 0.08, jungle: 0.08, steppe: 0.1, anglo: 0.05, desert: 0.05, norse: 0.015, slavic: 0.015, celtic: 0.015 };
 const EMPIRE_W: Record<string, number> = { latin: 3, desert: 3, sinic: 3, steppe: 1.4, anglo: 1, jungle: 1.5, highland: 3, japonic: 0.8, koreanic: 0.6, slavic: 0.6, southern: 0.5, elvish: 0.7, dwarven: 0.6, norse: 0.4, celtic: 0.4, woodland: 0.3 };
 const LEAGUE_P: Record<string, number> = { southern: 0.55, norse: 0.4, steppe: 0.4, celtic: 0.35, anglo: 0.3, latin: 0.3, woodland: 0.85, jungle: 0.45, highland: 0.2, sinic: 0.1, japonic: 0.15 };
+// Templates added as bundles (names/bundles/) bring their own titles, styles and leanings.
+fillFrom(RULERS, (b) => b.rulers);
+fillFrom(BARONY_STYLE, (b) => b.barony);
+fillFrom(COUNTY_STYLE, (b) => b.county);
+fillFrom(DUCHY_STYLE, (b) => b.duchy);
+fillFrom(EMPIRE_STYLE, (b) => b.empire);
+fillFrom(CITY_RULER, (b) => b.cityRuler);
+fillFrom(EMPIRE_W, (b) => b.empireW);
+fillFrom(LEAGUE_P, (b) => b.leagueP);
+fillFrom(REPUBLIC_P, (b) => b.republicP);
 
 const STYLE_RULER: [RegExp, string][] = [
   [/Sultanate/i, 'Sultan'], [/Emirate/i, 'Emir'], [/Caliphate/i, 'Caliph'], [/Principality/i, 'Prince'], [/Grand Duchy/i, 'Grand Duke'],

@@ -1,4 +1,5 @@
 import { type Rng } from '../gen/rng';
+import { BUNDLE, BUNDLES, fillFrom } from './bundles';
 
 /**
  * Cultural traits, in the manner of Crusader Kings: an **ethos** (the culture's outlook), three
@@ -37,8 +38,10 @@ export interface CultureMods {
   fleet: number;
   revenue: number;
   crafts: number;
+  /** How many other peoples and folk live among them (minorities in their realms). */
+  diversity: number;
 }
-export const NO_MODS: CultureMods = { cityState: 1, republic: 1, theocracy: 1, empire: 1, league: 1, indepDuchy: 1, seafaring: 1, colonies: 1, levy: 1, cavalry: 1, fleet: 1, revenue: 1, crafts: 1 };
+export const NO_MODS: CultureMods = { cityState: 1, republic: 1, theocracy: 1, empire: 1, league: 1, indepDuchy: 1, seafaring: 1, colonies: 1, levy: 1, cavalry: 1, fleet: 1, revenue: 1, crafts: 1, diversity: 1 };
 
 interface TraitDef {
   name: string;
@@ -80,6 +83,16 @@ export const TRADITIONS: Record<string, TraitDef & { score: (e: CultureEnv, t: s
   stargazers: { name: 'Stargazers', text: 'They read the heavens for omens and keep careful calendars.', effect: 'Flavour.', mods: {}, score: (_e, t) => (['elvish', 'jungle', 'sinic', 'highland', 'desert'].includes(t) ? 0.8 : 0.15) },
   deepDelvers: { name: 'Deep Delvers', text: 'Their halls go down into the roots of the mountains.', effect: 'More metals from their mountains.', mods: { crafts: 1.2 }, score: (e, t) => (t === 'dwarven' ? 2.5 : e.high * 1.5) },
   pastoralists: { name: 'Pastoralists', text: 'Herds of cattle and sheep are the measure of a family.', effect: 'Flavour.', mods: {}, score: (e) => e.grass * 1.2 },
+  xenophile: {
+    name: 'Cosmopolitan', text: 'Strangers are welcome; foreign peoples, faiths and goods fill their towns.', effect: 'Many other peoples and folk live among them; warmer relations with other peoples; better trade.',
+    mods: { diversity: 3, revenue: 1.05 },
+    score: (e, t, eth) => e.coast * 1.2 + e.river * 2 + (eth === 'egalitarian' || eth === 'inventive' || eth === 'courtly' ? 0.5 : 0) + (BUNDLE.get(t)?.traditions?.xenophile ?? 0) + (['southern', 'latin', 'desert', 'halfling'].includes(t) ? 0.3 : 0),
+  },
+  xenophobe: {
+    name: 'Insular', text: 'Outsiders are distrusted; foreigners may trade at the borders but not settle.', effect: 'Few other peoples live among them; cooler relations with other peoples.',
+    mods: { diversity: 0.15 },
+    score: (e, t, eth) => (e.high + e.cold + e.desert + e.jungle) * 0.9 + (eth === 'bellicose' || eth === 'stoic' || eth === 'spiritual' ? 0.4 : 0) + (BUNDLE.get(t)?.traditions?.xenophobe ?? 0) + (['dwarven', 'elvish', 'japonic', 'koreanic'].includes(t) ? 0.4 : 0),
+  },
   raiders: { name: 'Raiders', text: 'Young men win their fortune raiding the neighbours, by land or sea.', effect: 'Larger levies.', mods: { levy: 1.15, seafaring: 1.2 }, score: (e, t, eth) => (eth === 'bellicose' ? 0.9 : 0) + (['norse', 'steppe'].includes(t) ? 0.8 : 0) + e.coast * 0.5 },
 };
 
@@ -91,6 +104,7 @@ const ETHOS_W: Record<string, Partial<Record<keyof typeof ETHOS, number>>> = {
   japonic: { courtly: 2, stoic: 2, bellicose: 2 }, koreanic: { bureaucratic: 3, inventive: 2, stoic: 1 }, woodland: { communal: 3, egalitarian: 2, spiritual: 1 },
   highland: { bureaucratic: 3, spiritual: 2 },
 };
+fillFrom(ETHOS_W, (b) => b.ethos as Partial<Record<keyof typeof ETHOS, number>>);
 
 export interface Customs {
   martial: string;
@@ -109,12 +123,14 @@ const ARCH: Record<string, string> = {
   japonic: 'wooden halls with deep eaves, castles on stone bases and shrine gates', koreanic: 'tiled hanok houses with heated floors and mountain fortresses', woodland: 'bark longhouses inside palisades',
   highland: 'fitted stone walls without mortar, terraces and roads with rope bridges',
 };
+fillFrom(ARCH, (b) => b.architecture);
 const DRESS: Record<string, string> = {
   anglo: 'wool tunics and hooded cloaks', norse: 'wool and fur, with brooches and arm-rings', latin: 'linen and draped wool, dyed bright for the rich', celtic: 'checked wool plaids and gold torcs',
   elvish: 'fine flowing silks in leaf and moon colours', desert: 'loose robes, turbans and veils against the sun', slavic: 'embroidered linen shirts and fur hats', dwarven: 'leather aprons, heavy boots and braided beards',
   southern: 'draped chitons and sandals', steppe: 'felt coats, boots and fur-lined hats', jungle: 'cotton mantles, feathered headdresses and jade', sinic: 'long silk robes with wide sleeves',
   japonic: 'layered robes tied with sashes', koreanic: 'flowing robes and tall horsehair hats', woodland: 'buckskin, beadwork and feathers', highland: 'woven tunics and alpaca cloaks in bright stripes',
 };
+fillFrom(DRESS, (b) => b.dress);
 const FESTIVALS: { en: string; words: string[]; when: (e: CultureEnv, traditions: string[]) => number }[] = [
   { en: 'the Feast of First Snow', words: ['snow', 'feast'], when: (e) => e.cold * 3 },
   { en: 'Midsummer Fires', words: ['summer', 'fire'], when: () => 0.6 },
@@ -151,22 +167,27 @@ export function cultureTraits(t: string, env: CultureEnv, rnd: Rng, drift: numbe
   // A drifting world strays further from the template's outlook.
   const all = Object.keys(ETHOS).map((k) => [k, (ew.find((x) => x[0] === k)?.[1] ?? 0) + 0.25 + drift * 1.5] as [string, number]);
   const ethos = weighted(rnd, all);
-  const scored = Object.entries(TRADITIONS).map(([k, d]) => [k, d.score(env, t, ethos) * (0.6 + 0.8 * rnd())] as [string, number]).sort((a, b) => b[1] - a[1]);
+  const bonus = BUNDLE.get(t)?.traditions ?? {};
+  const scored = Object.entries(TRADITIONS).map(([k, d]) => [k, (d.score(env, t, ethos) + (k === 'xenophile' || k === 'xenophobe' ? 0 : bonus[k] ?? 0)) * (0.6 + 0.8 * rnd())] as [string, number]).sort((a, b) => b[1] - a[1]);
   const n = 3 + (rnd() < 0.45 ? 1 : 0);
-  const traditions = scored.slice(0, n).filter(([, s]) => s > 0.25).map(([k]) => k);
+  // A people is open to strangers or wary of them, not both.
+  const top = scored.slice(0, n + 1).filter(([, s]) => s > 0.25).map(([k]) => k);
+  const xeno = top.filter((k) => k === 'xenophile' || k === 'xenophobe');
+  const traditions = top.filter((k) => !(xeno.length > 1 && k === xeno[1])).slice(0, n);
   const mods: CultureMods = { ...NO_MODS };
   for (const k of [ethos, ...traditions]) {
     const m = (ETHOS[k] ?? TRADITIONS[k]).mods;
     for (const [key, v] of Object.entries(m)) mods[key as keyof CultureMods] *= v as number;
   }
-  const equal = { elvish: 0.7, dwarven: 0.4, woodland: 0.5, steppe: 0.25, celtic: 0.3, norse: 0.2 }[t] ?? 0.08;
+  const equal = { elvish: 0.7, dwarven: 0.4, woodland: 0.5, steppe: 0.25, celtic: 0.3, norse: 0.2 }[t] ?? BUNDLE.get(t)?.equalArms ?? 0.08;
   const martial = rnd() < equal ? 'Men and women alike may bear arms and lead' : rnd() < 0.04 ? 'Only women bear arms; men keep the hearth' : 'Only men bear arms and lead armies';
-  const marriage = ['desert', 'steppe', 'jungle', 'highland', 'sinic'].includes(t) && rnd() < 0.6 ? 'Rulers may take several wives' : rnd() < 0.15 ? 'Marriages are arranged by the clan elders' : 'One spouse, for life';
+  const marriage = (['desert', 'steppe', 'jungle', 'highland', 'sinic'].includes(t) || BUNDLE.get(t)?.polygamy) && rnd() < 0.6 ? 'Rulers may take several wives' : rnd() < 0.15 ? 'Marriages are arranged by the clan elders' : 'One spouse, for life';
   const FOOD: Record<string, string> = {
     desert: 'flatbread, lamb, rice, dates and spiced coffee', steppe: "mutton, mare's milk, curds and tea", sinic: 'rice, noodles, pork, greens and tea', japonic: 'rice, fish, pickles, miso and tea',
     koreanic: 'rice, pickled cabbage, fish and barley tea', jungle: 'maize, beans, squash, chillies and cacao', highland: 'potatoes, maize, quinoa and llama meat', woodland: 'maize, beans, squash, venison and fish',
     southern: 'bread, olives, fish, wine and cheese', latin: 'bread, olives, wine, cheese and pork', elvish: 'fruit, nuts, honeyed bread and wine', dwarven: 'roast meat, dark bread, mushrooms and ale',
   };
+  for (const b of BUNDLES) FOOD[b.culture.id] ??= b.food;
   const food = FOOD[t] ? FOOD[t] : env.desert > 0.3 ? 'dates, flatbread, goat and spiced lamb' : env.jungle > 0.3 ? 'maize, beans, chillies and cacao' : env.cold > 0.4 ? 'smoked fish, rye, dried meat and berries'
     : env.grass > 0.4 && t === 'steppe' ? 'mutton, mare\'s milk and curds' : ['sinic', 'japonic', 'koreanic'].includes(t) ? 'rice, fish, pickled vegetables and tea'
     : env.coast > 0.3 ? 'fish, bread, onions and ale' : env.hot > 0.3 ? 'bread, olives, wine and cheese' : 'bread, porridge, pork and ale';

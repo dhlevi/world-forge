@@ -1,3 +1,5 @@
+import { BUNDLES } from '../names/bundles';
+
 /**
  * Language templates: the familiar starting points that every generated language grows from.
  * Each gives a sound inventory (IPA, weighted by how common each sound is), syllable shapes,
@@ -334,3 +336,6 @@ export const LANG_TEMPLATES: Record<string, LangTemplate> = {
     seeds: {},
   },
 };
+
+// Templates added as bundles (names/bundles/).
+for (const b of BUNDLES) LANG_TEMPLATES[b.lang.id] = b.lang;

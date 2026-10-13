@@ -389,6 +389,14 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
       const fa = faiths.sectOf(ua.culture, ua.lon, ua.lat), fb = faiths.sectOf(ub.culture, ub.lon, ub.lat);
       s += fa.faith.id === fb.faith.id ? (fa.sect.id === fb.sect.id ? 0.55 : -0.05 - 0.1 * fa.faith.zeal) : -0.15 - 0.3 * enmity(fa.faith, fb.faith);
       if (ua.culture === ub.culture) s += 0.25;
+      else {
+        // Insular peoples keep strangers at arm's length; cosmopolitan ones welcome them.
+        for (const cu of [ua.culture, ub.culture]) {
+          const t = CULTURES[cu]?.traditions ?? [];
+          if (t.includes('xenophobe')) s -= 0.3;
+          if (t.includes('xenophile')) s += 0.15;
+        }
+      }
       const past = recentWars(a, b).filter((w) => year - (w.end ?? year) < 120);
       s -= 0.3 * past.length;
       if (claims.some((c) => (c.by === a && topOf[c.on] === b) || (c.by === b && topOf[c.on] === a))) s -= 0.7;

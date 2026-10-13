@@ -33,6 +33,8 @@ export interface WorldParams {
   settled?: number;
   /** How far each culture's language strays from its template (0..1; default 0.3). */
   drift?: number;
+  /** Fantasy races (elves, dwarves, halflings, orcs, lizardfolk) besides humans (default true). */
+  races?: boolean;
   /** Optional elevation (m, W×H row-major from the north-west) replacing tectonics and erosion, e.g. real Earth. */
   heightmap?: Float32Array;
 }
@@ -197,9 +199,9 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   }, seedHash, sampler);
 
   progress('Names', 0.99);
-  const cm = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome, newWorld }, params.seed);
+  const cm = cultureMap(g, { height, temp: climate.temp, tempCold: climate.tempCold, precip: climate.precip, biome, newWorld }, params.seed, params.races !== false);
   const culture = cm.culture;
-  const cultures: CultureSet = { seed: params.seed, drift: Math.max(0, Math.min(1, params.drift ?? 0.3)), list: cm.specs };
+  const cultures: CultureSet = { seed: params.seed, drift: Math.max(0, Math.min(1, params.drift ?? 0.3)), races: params.races !== false, list: cm.specs };
   setWorldCultures(cultures);
   chooseColonies(g, settlements, culture, seedHash);
   const bank = new NameBank(params.seed);
