@@ -16,7 +16,7 @@ import type { Culture } from './cultures';
  * Most fields are optional: a template without one takes the shared default, noted on each.
  */
 
-/** The peoples of the world. Without fantasy races, every people is human. */
+/** The peoples of the world. Without fantasy races, every people is human. Folk may have multiple cultures */
 export type Folk = 'Humans' | 'Elves' | 'Dwarves' | 'Halflings' | 'Orcs' | 'Lizardfolk';
 
 /** A house or lineage name made from a root (a proper name in the culture's tongue). */

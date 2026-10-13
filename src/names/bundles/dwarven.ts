@@ -9,7 +9,7 @@ export const DWARVEN: TemplateBundle = {
   folk: 'Dwarves',
   world: 'old',
   stock: 'north',
-  spread: (height, _biome, sea) => (sea ? 1 : height < 700 ? 8 : height < 1100 ? 2.2 : 0.8),
+  spread: (height, _biome, sea) => (sea ? 1 : height < 700 ? 12 : height < 1100 ? 0.8 : 0.2),
   culture: {
     id: 'dwarven',
     likes: (c) => (c.heightM > 900 ? 1.4 : 0.15) * near(c.temp, -6, 16, 6),
