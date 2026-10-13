@@ -16,7 +16,7 @@ import { buildCity } from './city';
 import { buildVillage } from './village';
 import { Ground } from './ground';
 import { NameBank, type Named, dungeonName, lairName } from '../names/names';
-import { type DungeonSite, packLines, townUnderground } from '../dungeons/core';
+import { type DungeonSite, packLines, sewerScale, townUnderground } from '../dungeons/core';
 import type { LairSite } from '../lairs/lair';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
@@ -665,8 +665,36 @@ export class TownManager {
             }
           }
         }
-        // Streets around it (relative to the grate, clipped to the sewer map: 96 x 72 m).
-        const box = (p: Pt) => Math.abs(p[0] - g[0]) < 50 && Math.abs(p[1] - g[1]) < 38;
+        // Streets around it (relative to the grate, clipped to the sewer map: 96 x 72 m for a small
+        // town, up to two and a half times that under a great city).
+        const sc = sewerScale(s.tier, s.population);
+        const box = (p: Pt) => Math.abs(p[0] - g[0]) < 50 * sc && Math.abs(p[1] - g[1]) < 38 * sc;
+        // More grates down from the streets under larger towns, spread over the map.
+        const nGrates = s.tier === 'city' ? 2 + Math.floor(sc * 1.5) : s.population >= 6000 ? 1 : 0;
+        const grates: Pt[] = [];
+        const cand: Pt[] = [];
+        for (const l of streets) {
+          for (let q = 0; q + 1 < l.length; q++) {
+            const a = l[q], b = l[q + 1];
+            const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8));
+            for (let t = 0; t <= n; t++) {
+              const p: Pt = [a[0] + ((b[0] - a[0]) * t) / n, a[1] + ((b[1] - a[1]) * t) / n];
+              if (Math.abs(p[0] - g[0]) < 42 * sc && Math.abs(p[1] - g[1]) < 30 * sc && !water(p)) cand.push(p);
+            }
+          }
+        }
+        for (let t = 0; t < nGrates; t++) {
+          let best: Pt | null = null, bd = 22 * sc;
+          for (const p of cand) {
+            const d = Math.min(Math.hypot(p[0] - g[0], p[1] - g[1]), ...grates.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1])));
+            if (d > bd) {
+              bd = d;
+              best = p;
+            }
+          }
+          if (!best) break;
+          grates.push(best);
+        }
         const near: number[][][] = [];
         for (const l of streets) {
           let run: number[][] = [];
@@ -685,9 +713,9 @@ export class TownManager {
           }
           if (run.length > 1) near.push(run);
         }
-        // The outfall: the nearest water within 150 m.
+        // The outfall: the nearest water within 150 m (further under large towns).
         let outfall = '';
-        for (let r = 10; r <= 150 && !outfall; r += 10) {
+        for (let r = 10; r <= 150 * sc && !outfall; r += 10) {
           for (let k = 0; k < 16; k++) {
             const a = (k / 16) * Math.PI * 2;
             if (water([g[0] + Math.cos(a) * r, g[1] + Math.sin(a) * r])) {
@@ -696,7 +724,10 @@ export class TownManager {
             }
           }
         }
-        out.point('dentry', g, { ...props, streets: packLines(near), outfall });
+        const more = { streets: packLines(near), outfall, scale: Math.round(sc * 100) / 100, grates: grates.map((p) => `${Math.round(p[0] - g[0])},${Math.round(p[1] - g[1])}`).join(';') };
+        out.point('dentry', g, { ...props, ...more });
+        // Every grate opens the same sewers.
+        for (const p of grates) out.point('dentry', p, { ...props, ...more });
       } else {
         // Catacombs: under the graveyard, else beside the temple, else in the market.
         const yard = out.features.find((f) => f.properties.kind === 'graveyard');

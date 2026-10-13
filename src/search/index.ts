@@ -85,7 +85,7 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
     out.push({
       id: s.id, name: s.name, ...(s.nameEn && s.nameEn !== s.name ? { alt: s.nameEn } : {}), type: s.tier === 'city' ? 'City' : 'Town', cat: 'settlement', lon: s.lon, lat: s.lat,
       zoom: s.tier === 'city' ? 12.4 : 13, rank: 0.5 + 0.5 * Math.sqrt(s.population / maxPop),
-      info: `${s.population.toLocaleString('en')} people${s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : ''}${s.nameOld ? ' · an old name' : ''}`,
+      info: `${s.population.toLocaleString('en')} people${s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : ''}${s.university ? ' · university' : ''}${s.nameOld ? ' · an old name' : ''}`,
     });
     // Sewers and catacombs, at the town until its plan is drawn and gives the entrance's spot.
     const ci = s.culture ?? cultureAt(s.lon, s.lat);
@@ -169,9 +169,13 @@ const PLAN_TYPE: Record<string, string> = { qlabel: 'Quarter', dlabel: 'District
 /** Entries for the lettering of a drawn town or village plan. */
 export function planEntries(features: { geometry: { type: string; coordinates: unknown }; properties: Record<string, string | number> }[]): SearchEntry[] {
   const out: SearchEntry[] = [];
+  const seen = new Set<string>();
   for (const f of features) {
     const p = f.properties;
     if (p.kind === 'dentry' && f.geometry.type === 'Point') {
+      // A sewer has several grates; the first (the main one) stands for it.
+      if (seen.has(String(p.did))) continue;
+      seen.add(String(p.did));
       const [lon, lat] = f.geometry.coordinates as number[];
       out.push({
         id: String(p.did), name: cap(String(p.name)), ...(p.en ? { alt: cap(String(p.en)) } : {}), type: LAIR_TYPE[String(p.dkind)] ?? 'Dungeon', cat: 'lair', lon, lat, zoom: 16.4, rank: 0.3,

@@ -118,6 +118,16 @@ export const TENETS: Record<string, TenetDef> = {
   pacifism: { name: 'Pacifism', text: 'To shed blood is a sin; war is the last and darkest choice.', effect: 'Few holy wars.', zeal: -0.6 },
   craft: { name: 'Craft as Worship', text: 'Good work of hand is prayer; the masterwork is an offering.', effect: 'Fine crafts.' },
   dualism: { name: 'Dualism', text: 'The world is a war between light and darkness, and every soul must choose.', effect: 'Zealous.', zeal: 0.25 },
+  carnalism: { name: 'Carnalism', text: 'The pleasures of the flesh are sacred and must be indulged in moderation.', effect: 'Pleasure is holy.' },
+  communion: { name: 'Communion', text: 'The faithful partake in sacred meals to unite with the divine.', effect: 'Strengthens community bonds.' },
+  ecclesiarchy: { name: 'Ecclesiarchy', text: 'The church governs all aspects of life, and its leaders are divinely appointed.', effect: 'Clerical authority is supreme.' },
+  adorcism: { name: 'Adorcism', text: 'The faithful seek to embody the divine and the spirit world within themselves.', effect: '' },
+  witchcraft: { name: 'Witchcraft', text: 'Magic and the manipulation of unseen forces are practiced by the faithful.', effect: '' },
+  hedonism: { name: 'Hedonism', text: 'The pursuit of pleasure is the highest good and a sacred duty.', effect: '' },
+  suicide: { name: 'Ritual Suicide', text: 'Taking one’s own life is considered a sacred act under certain circumstances.', effect: '' },
+  filialPiety: { name: 'Filial Piety', text: 'Respect and care for one’s parents and ancestors is a sacred duty.', effect: '' },
+  takamine: { name: 'Takamine', text: 'Reverence for the mountain spirits and the natural world.', effect: '' },
+  sacredLearning: { name: 'Sacred Learning', text: 'The pursuit of knowledge and wisdom is a sacred duty. Science and religion ties together', effect: 'Learning is revered.' }
 };
 const CLASH: [string, string][] = [['pacifism', 'holyWar'], ['pacifism', 'warriorCult'], ['pacifism', 'ritualSacrifice'], ['nature', 'holyWar']];
 
@@ -158,7 +168,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['One god, revealed through a prophet', 'Confession and penance', 'Saints intercede for the living', 'Tithes are owed to the church', 'The prophet will return at the end of days'],
     sect: ['the Reformed Church', 'the Old Rite', 'the Eastern Rite', 'the {N} Confession', 'the Church of {N}', 'the Free Church', 'the {N} Rite'],
     doctrines: { head: { pontiff: 6, none: 1 }, clergy: { celibate: 3, married: 1 }, conversion: { missionary: 5, sword: 1 }, others: { righteous: 3, fundamentalist: 1, pluralist: 1 }, death: { burial: 6 }, marriage: { monogamy: 6 } },
-    tenets: ['pilgrimage', 'charity', 'monasticism', 'holyWar', 'endTimes', 'mendicants', 'asceticism'], places: ['island', 'peak'],
+    tenets: ['pilgrimage', 'charity', 'monasticism', 'holyWar', 'endTimes', 'mendicants', 'asceticism', 'communion', 'ecclesiarchy', 'filialPiety'], places: ['island', 'peak'],
   },
   crescent: {
     kind: 'faith of the prophets', names: ['the Faith of the Prophet', 'the Way of {P}', 'the Submission', 'the Path of the Merciful'], adherents: ['the Believers', 'the Submitters'],
@@ -168,7 +178,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['One god and his last prophet', 'Prayer five times a day', 'A fast in the holy month', 'The prophet’s sayings guide daily life'],
     sect: ['the Followers of the Imams', 'the People of the Tradition', 'the {N} School', 'the Seceders', 'the Mystic Brotherhood of {N}'],
     doctrines: { head: { pontiff: 3, none: 2 }, clergy: { married: 5 }, conversion: { missionary: 3, sword: 2 }, others: { righteous: 3, pluralist: 1.5, fundamentalist: 0.7 }, death: { burial: 6 }, marriage: { polygamy: 3, concubines: 1 } },
-    tenets: ['pilgrimage', 'charity', 'sacredLaw', 'aniconism', 'holyWar', 'purity'], places: ['peak'],
+    tenets: ['pilgrimage', 'charity', 'sacredLaw', 'aniconism', 'holyWar', 'purity', 'communion', 'ecclesiarchy', 'filialPiety', 'sacredLearning'], places: ['peak'],
   },
   pantheon: {
     kind: 'pantheon of gods', names: ['the Gods of {H}', 'the Twelve', 'the Old Rites', 'the Mysteries of {P}', 'the Gods of the Mountain'], adherents: ['the Pious'],
@@ -179,7 +189,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Many gods, each with a temple and a feast', 'Oracles speak the gods’ will', 'The dead cross a river to the underworld'],
     sect: ['the Mysteries of {N}', 'the {N} Cult', 'the Philosophers of {N}'],
     doctrines: { head: { none: 3, pontiff: 1 }, clergy: { open: 3, priestesses: 1, hereditary: 1 }, conversion: { closed: 3, missionary: 0.5 }, others: { pluralist: 4, righteous: 0.6 }, death: { burning: 2, burial: 2 }, marriage: { monogamy: 2, concubines: 2 } },
-    tenets: ['ritualSacrifice', 'divination', 'feastDays', 'hospitality', 'astrology'], places: ['peak', 'island'],
+    tenets: ['ritualSacrifice', 'divination', 'feastDays', 'hospitality', 'astrology', 'carnalism', 'ecclesiarchy', 'hedonism'], places: ['peak', 'island'],
   },
   oldgods: {
     kind: 'the old gods', names: ['the Old Gods', 'the Old Custom', 'the Faith of the High One', 'the Gods of the Hall'], adherents: ['the Heathen', 'the Sworn'],
@@ -190,7 +200,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Oaths are sacred', 'Seers read the runes', 'The world will end in fire and ice'],
     sect: ['the Cult of {N}', 'the Old Way'],
     doctrines: { head: { none: 3, ruler: 1 }, clergy: { hereditary: 2, open: 2 }, conversion: { closed: 2, sword: 1 }, others: { pluralist: 2, righteous: 1 }, death: { burning: 3, barrows: 3, sea: 1 }, marriage: { concubines: 2, monogamy: 1, polygamy: 1 } },
-    tenets: ['warriorCult', 'ritualSacrifice', 'divination', 'feastDays', 'sacredGroves'], places: ['forest', 'peak', 'island'],
+    tenets: ['warriorCult', 'ritualSacrifice', 'divination', 'feastDays', 'sacredGroves', 'carnalism', 'adorcism', 'witchcraft', 'suicide'], places: ['forest', 'peak', 'island'],
   },
   druid: {
     kind: 'druidic nature faith', names: ['the Old Faith', 'the Way of the Grove', 'the Oak and the Stone', 'the Mysteries of {P}'], adherents: ['the Children of the Oak'],
@@ -201,7 +211,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Druids alone may judge', 'Feasts at the turning of the year', 'Heads of foes are kept as trophies'],
     sect: ['the {N} Brotherhood', 'the Grove of {N}'],
     doctrines: { head: { pontiff: 2, none: 1 }, clergy: { open: 2, hereditary: 1 }, conversion: { closed: 3 }, others: { pluralist: 2, righteous: 0.5 }, death: { barrows: 2, burning: 1 }, marriage: { monogamy: 1, concubines: 1 } },
-    tenets: ['sacredGroves', 'rebirth', 'sacredWaters', 'divination', 'nature'], places: ['forest', 'lake', 'island'],
+    tenets: ['sacredGroves', 'rebirth', 'sacredWaters', 'divination', 'nature', 'witchcraft'], places: ['forest', 'lake', 'island'],
   },
   stars: {
     kind: 'worship of the stars', names: ['the Song of the Stars', 'the Starlit Way', 'the Light of {P}'], adherents: ['the Starborn'],
@@ -212,7 +222,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['The stars are the first light and the elves its children', 'Every forest has its guardian', 'Song is prayer'],
     sect: ['the Moon-sworn of {N}', 'the {N} Choir'],
     doctrines: { head: { pontiff: 1, none: 1 }, clergy: { priestesses: 3, open: 1 }, conversion: { closed: 3 }, others: { pluralist: 3, righteous: 0.5 }, death: { sea: 3, burial: 1 }, marriage: { monogamy: 4 } },
-    tenets: ['astrology', 'nature', 'pacifism', 'rebirth', 'sacredGroves'], places: ['forest', 'island', 'lake'],
+    tenets: ['astrology', 'nature', 'pacifism', 'rebirth', 'sacredGroves', 'witchcraft'], places: ['forest', 'island', 'lake'],
   },
   ancestors: {
     kind: 'worship of the ancestors', names: ['the Forge and the Fathers', 'the Way of the Ancestors', 'the Hall of the Fathers'], adherents: ['the Children of the Forge'],
@@ -223,7 +233,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['The first folk were carved from stone', 'Grudges are written and never forgotten', 'The ancestors watch from the deep halls'],
     sect: ['the {N} Rune-lodge', 'the Deep Fathers'],
     doctrines: { head: { pontiff: 1, ruler: 1 }, clergy: { hereditary: 3, married: 1 }, conversion: { closed: 4 }, others: { righteous: 2, pluralist: 1 }, death: { tombs: 4 }, marriage: { monogamy: 3 } },
-    tenets: ['ancestors', 'craft', 'sacredLaw', 'asceticism'], places: ['peak'],
+    tenets: ['ancestors', 'craft', 'sacredLaw', 'asceticism', 'adorcism', 'suicide', 'filialPiety'], places: ['peak'],
   },
   sky: {
     kind: 'cult of the eternal sky', names: ['the Eternal Sky', 'the Sky and the Earth', 'the Blue Heaven', 'the Way of {P}'], adherents: ['the Children of the Sky'],
@@ -233,7 +243,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['The Sky gives a ruler fortune to rule', 'Spirits dwell in fire, water and stone', 'Shamans walk between the worlds'],
     sect: ['the Black Shamans', 'the White Shamans'],
     doctrines: { head: { none: 2, ruler: 2 }, clergy: { open: 3 }, conversion: { closed: 2, sword: 1 }, others: { pluralist: 4 }, death: { sky: 4, barrows: 1 }, marriage: { polygamy: 2, concubines: 2 } },
-    tenets: ['nature', 'sacredWaters', 'divination', 'warriorCult'], places: ['peak', 'lake'],
+    tenets: ['nature', 'sacredWaters', 'divination', 'warriorCult', 'adorcism', 'suicide', 'takamine'], places: ['peak', 'lake'],
   },
   heaven: {
     kind: 'way of heaven', names: ['the Way of Heaven', 'the Teachings of the Sages', 'the Way of {P}', 'the Middle Way'], adherents: ['the Followers of the Way'],
@@ -244,7 +254,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Filial duty', 'Harmony between Heaven, Earth and Man', 'Learning opens the road to office'],
     sect: ['the School of {N}', 'the Pure Land', 'the Sudden Way', 'the {N} Teaching', 'the Way of Rites'],
     doctrines: { head: { ruler: 3, pontiff: 1 }, clergy: { celibate: 2, married: 2 }, conversion: { missionary: 2, closed: 1 }, others: { pluralist: 4 }, death: { burial: 4, burning: 1 }, marriage: { concubines: 3, monogamy: 1 } },
-    tenets: ['ancestors', 'monasticism', 'asceticism', 'kingship', 'pacifism', 'rebirth'], places: ['peak', 'lake'],
+    tenets: ['ancestors', 'monasticism', 'asceticism', 'kingship', 'pacifism', 'rebirth', 'filialPiety'], places: ['peak', 'lake'],
   },
   kami: {
     kind: 'way of the spirits', names: ['the Way of the Spirits', 'the Eight Thousand Spirits', 'the Way of {P}'], adherents: ['the Faithful'],
@@ -254,7 +264,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Spirits dwell in mountains, trees and rivers', 'The emperor descends from the sun', 'Festivals for each season'],
     sect: ['the {N} Sect', 'the Mountain Ascetics', 'the Pure Land'],
     doctrines: { head: { ruler: 3, none: 1 }, clergy: { hereditary: 2, open: 1 }, conversion: { closed: 3 }, others: { pluralist: 4 }, death: { burning: 2, burial: 2 }, marriage: { concubines: 2, monogamy: 2 } },
-    tenets: ['purity', 'kingship', 'nature', 'feastDays'], places: ['peak', 'forest', 'island'],
+    tenets: ['purity', 'kingship', 'nature', 'feastDays', 'adorcism', 'takamine'], places: ['peak', 'forest', 'island'],
   },
   spirits: {
     kind: 'faith of the great spirit', names: ['the Great Spirit', 'the Way of the Grandfathers', 'the Sacred Circle'], adherents: ['the People'],
@@ -264,7 +274,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Visions guide the young', 'Land belongs to no one', 'Decisions consider seven generations'],
     sect: ['the {N} Dance', 'the {N} Society'],
     doctrines: { head: { none: 4 }, clergy: { open: 3 }, conversion: { closed: 3 }, others: { pluralist: 4 }, death: { burial: 2, sky: 1, burning: 1 }, marriage: { monogamy: 2, polygamy: 1 } },
-    tenets: ['nature', 'divination', 'ancestors', 'rebirth', 'hospitality'], places: ['lake', 'peak', 'forest'],
+    tenets: ['nature', 'divination', 'ancestors', 'rebirth', 'hospitality', 'carnalism', 'adorcism', 'witchcraft', 'takamine'], places: ['lake', 'peak', 'forest'],
   },
   sun: {
     kind: 'cult of the sun', names: ['the Children of the Sun', 'the Sun and the Mountains', 'the Cult of the Sun'], adherents: ['the Children of the Sun'],
@@ -275,7 +285,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Mountains and springs are holy', 'Labour is owed to the Sun and the state'],
     sect: ['the Lake Cult', 'the Mountain Cult of {N}'],
     doctrines: { head: { ruler: 4 }, clergy: { hereditary: 2, open: 1 }, conversion: { sword: 2, closed: 1 }, others: { righteous: 2, pluralist: 1 }, death: { tombs: 4 }, marriage: { polygamy: 2, concubines: 2 } },
-    tenets: ['kingship', 'ancestors', 'ritualSacrifice', 'astrology', 'sacredWaters'], places: ['peak', 'lake'],
+    tenets: ['kingship', 'ancestors', 'ritualSacrifice', 'astrology', 'sacredWaters', 'hedonism', 'suicide'], places: ['peak', 'lake'],
   },
   serpent: {
     kind: 'cult of the feathered serpent', names: ['the Feathered Serpent', 'the Count of Days', 'the Gods of {H}'], adherents: ['the Faithful'],
@@ -286,7 +296,7 @@ const A: Record<FaithFamily, Archetype> = {
     beliefs: ['Time turns in great cycles', 'The ball-game re-enacts the struggle of the gods', 'Kings bleed to speak to their ancestors'],
     sect: ['the Cult of {N}', 'the Jaguar Brotherhood'],
     doctrines: { head: { pontiff: 2, ruler: 2 }, clergy: { hereditary: 2, open: 1 }, conversion: { sword: 2, closed: 1 }, others: { righteous: 2, pluralist: 1 }, death: { tombs: 2, burial: 2 }, marriage: { polygamy: 2, monogamy: 1 } },
-    tenets: ['ritualSacrifice', 'astrology', 'kingship', 'feastDays', 'dualism'], places: ['peak', 'lake'],
+    tenets: ['ritualSacrifice', 'astrology', 'kingship', 'feastDays', 'dualism', 'carnalism', 'witchcraft', 'suicide'], places: ['peak', 'lake'],
   },
 };
 export const ARCHETYPE_LABEL: Record<FaithFamily, string> = {

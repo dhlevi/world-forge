@@ -567,6 +567,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   labelCity({
     names, culture, key: s.id, town, population: s.population, wards: wardInfo, inner: inner.filter((i) => patches[i].inside),
     outer: suburb, gates: gates.map((g) => wall[g.k]), streets: streetRefs, roads: roadRefs, buildings: buildingRefs, out, rnd,
+    place: s.nameEn ?? s.name, university: !!s.university, noGuilds: s.kind === 'tribal',
   });
 }
 

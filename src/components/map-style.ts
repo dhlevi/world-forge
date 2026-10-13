@@ -164,7 +164,7 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     paint: {
       // Notable buildings are washed a little warmer so they stand out from the terraces.
       'fill-color': e(['case', ['has', 'role'],
-        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', ['townhall', 'guildhall', 'library'], '#b8a689', 'barracks', '#b3a38f', '#c6b08e'],
+        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians'], '#b8a689', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', '#c6b08e'],
         ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', '#cdbd9c']]),
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),

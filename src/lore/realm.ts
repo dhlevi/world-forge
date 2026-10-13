@@ -724,6 +724,12 @@ function buildChronicle(c: Ctx, id: number, reigns: Reign[], wars: WarView[], r:
   }
   // Building, ruin and wonders.
   const span = Math.max(1, L.year - f - 2);
+  // Universities in the realm's lands (the richest realms' great cities).
+  for (const b of L.baronies(id)) {
+    for (const t of L.townsOf[b] ?? []) {
+      if (t.university && t.name) out.push({ year: f + 1 + Math.floor(r() * span), text: `The University of ${t.nameEn ?? t.name} was founded, and scholars came from far lands to study there`, kind: 'building' });
+    }
+  }
   const at = () => f + 1 + Math.floor(r() * span);
   const fam = st.faith.family;
   const temple = fam === 'church' ? 'cathedral' : fam === 'crescent' ? 'great mosque' : fam === 'serpent' ? 'great pyramid' : fam === 'kami' ? 'great shrine' : 'great temple';

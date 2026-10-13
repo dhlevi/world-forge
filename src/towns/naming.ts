@@ -47,7 +47,30 @@ export interface CityNaming {
   buildings: BuildingRef[];
   out: PlanOut;
   rnd: Rng;
+  /** The town's name in English (for "the University of ..."). */
+  place?: string;
+  /** A university city (in the richest Old World realms). */
+  university?: boolean;
+  /** No guilds (tribal towns). */
+  noGuilds?: boolean;
 }
+
+/**
+ * Guilds a city may house, with how common each is and where its hall stands: by the market, by a
+ * gate, in a rich ward, by the harbour or by the garrison. The thieves keep no hall: their guild
+ * hides in the sewers (dungeons/kinds.ts).
+ */
+const GUILDS: { id: string; label: string[]; w: number; at: 'plaza' | 'gate' | 'rich' | 'harbour' | 'garrison'; minPop: number }[] = [
+  { id: 'adventurers', label: ['Adventurers\' Guild', 'Adventurers\' Hall', 'the Free Companies\' Hall'], w: 3, at: 'gate', minPop: 4000 },
+  { id: 'warriors', label: ['Warriors\' Guild', 'Fighters\' Guild', 'Hall of Arms'], w: 2, at: 'garrison', minPop: 6000 },
+  { id: 'cartographers', label: ['Cartographers\' Guild', 'Guild of Map-makers', 'Chart House'], w: 1.5, at: 'harbour', minPop: 8000 },
+  { id: 'alchemists', label: ['Alchemists\' Guild', 'Guild of Alchemists', 'Hall of the Philosophers\' Stone'], w: 1.5, at: 'plaza', minPop: 8000 },
+  { id: 'mages', label: ['Mages\' Guild', 'Arcane Collegium', 'Tower of the Magi'], w: 1.2, at: 'rich', minPop: 15000 },
+  { id: 'masons', label: ['Masons\' Guild', 'Masons\' Lodge'], w: 1.5, at: 'plaza', minPop: 6000 },
+  { id: 'smiths', label: ['Smiths\' Guild', 'Guild of Smiths'], w: 1.2, at: 'gate', minPop: 6000 },
+  { id: 'weavers', label: ['Weavers\' Guild', 'Cloth Hall'], w: 1.2, at: 'plaza', minPop: 6000 },
+  { id: 'physicians', label: ['Guild of Physicians', 'Barber-Surgeons\' Hall'], w: 1, at: 'plaza', minPop: 10000 },
+];
 
 const DIRS = ['East', 'North-east', 'North', 'North-west', 'West', 'South-west', 'South', 'South-east'];
 export function compass(p: Pt): string {
@@ -218,6 +241,14 @@ export function labelCity(n: CityNaming): void {
   // ---- Notable buildings -------------------------------------------------------------------
   const P = n.population;
   const taken = new Set<BuildingRef>();
+  // Halls want a building of some size: the larger half of the town's.
+  const sizeOf = (b: BuildingRef) => {
+    const g = b.f.geometry;
+    return g.type === 'Polygon' ? Math.abs(area(g.coordinates[0] as Pt[])) : 0;
+  };
+  const sizes = n.buildings.map(sizeOf).sort((a, b) => a - b);
+  const bigMin = sizes[Math.floor(sizes.length * 0.55)] ?? 0;
+  const big = (b: BuildingRef) => sizeOf(b) >= bigMin;
   const nearestTo = (pts: Pt[], filter: (b: BuildingRef) => boolean, count: number, maxD = Infinity) => {
     const cands = n.buildings.filter((b) => !taken.has(b) && filter(b))
       .map((b) => ({ b, d: Math.min(...pts.map((p) => Math.hypot(b.c[0] - p[0], b.c[1] - p[1]))) + rnd() * 25 }))
@@ -252,9 +283,43 @@ export function labelCity(n: CityNaming): void {
   if (plaza >= 0) {
     const hall = nearestTo([plazaC], ordinary, 1, 140);
     if (hall[0]) assign(hall[0], 'townhall', n.town ? 'Moot Hall' : 'Town Hall');
-    if (!n.town) {
-      const guild = nearestTo([plazaC], ordinary, 1, 180);
-      if (guild[0]) assign(guild[0], 'guildhall', pick(['Guildhall', 'Merchants\' Hall', 'Exchange']));
+    if (!n.town && !n.noGuilds) {
+      const guild = nearestTo([plazaC], (b) => ordinary(b) && big(b), 1, 220);
+      if (guild[0]) assign(guild[0], 'guildhall', pick(['Merchants\' Guildhall', 'Merchants\' Hall', 'the Exchange']));
+    }
+  }
+  // A university: its great hall near the temple or market, and colleges around it.
+  if (n.university && !n.town) {
+    const at = temple >= 0 ? wards[temple].c : plazaC;
+    const main = nearestTo([at], (b) => ordinary(b) && big(b), 1, 400);
+    if (main[0]) {
+      assign(main[0], 'university', `the University${n.place ? ` of ${n.place}` : ''}`);
+      const nCol = 2 + Math.floor(rnd() * 3);
+      for (const b of nearestTo([main[0].c], (x) => ordinary(x) && big(x), nCol, 260)) assign(b, 'college', unique(() => `${pick(['St', 'King\'s', 'Queen\'s', 'Old', 'New', 'High', proper(`col${b.f.properties.bid}`)])} ${pick(['College', 'Hall', 'House'])}`.replace(/^St /, `St ${proper(`saint${b.f.properties.bid}`)}'s `)));
+    }
+  }
+  // Guilds: more of them the larger the city (a town has at most one).
+  if (!n.noGuilds && P >= 4000) {
+    const count = n.town ? (rnd() < 0.5 ? 1 : 0) : P < 10000 ? 2 : P < 20000 ? 3 + Math.floor(rnd() * 2) : 4 + Math.floor(rnd() * 3);
+    const pool = GUILDS.filter((g) => P >= g.minPop || (g.id === 'mages' && n.university));
+    const chosen: (typeof GUILDS)[number][] = [];
+    for (let t = 0; t < 30 && chosen.length < count && pool.length; t++) {
+      const tot = pool.reduce((a, g) => a + g.w, 0);
+      let x = rnd() * tot;
+      const g = pool.find((q) => (x -= q.w) < 0) ?? pool[0];
+      pool.splice(pool.indexOf(g), 1);
+      chosen.push(g);
+    }
+    const rich = wards.map((w, i) => (w.kind === 'rich' ? i : -1)).filter((i) => i >= 0);
+    const garrisonW = wards.findIndex((w) => w.kind === 'garrison' || w.kind === 'citadel');
+    for (const g of chosen) {
+      const anchor: Pt[] = g.at === 'gate' && n.gates.length ? n.gates
+        : g.at === 'rich' && rich.length ? rich.map((i) => wards[i].c)
+          : g.at === 'harbour' && harbour.length ? harbour.map((i) => wards[i].c)
+            : g.at === 'garrison' && garrisonW >= 0 ? [wards[garrisonW].c]
+              : [plazaC];
+      const b = nearestTo(anchor, (x) => ordinary(x) && big(x), 1, 500)[0];
+      if (b) assign(b, `guild:${g.id}`, pick(g.label));
     }
   }
   if (!n.town && (temple >= 0 || plaza >= 0)) {

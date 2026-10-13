@@ -105,7 +105,7 @@ export function nameWorld(
     else if (home.length && x < 0.55) {
       const h = home[Math.floor(r() * home.length)];
       nm = bank.named(ci, 'New {0}', [{ name: h.name ?? '', en: h.nameEn ?? h.name ?? '' }]);
-    } else if (x < 0.75) nm = bank.named(ci, 'Port {0}', [self]);
+    } else if (x < 0.75 && s.coastal) nm = bank.named(ci, 'Port {0}', [self]);
     if (nm) {
       s.name = nm.name;
       s.nameEn = nm.en;

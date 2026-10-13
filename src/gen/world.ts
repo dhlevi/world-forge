@@ -12,7 +12,7 @@ import { buildSettlements, type RoadCollection, type Settlement } from './settle
 import { DetailSampler } from './detail';
 import { RiverIndex } from './river-index';
 import { type LabelCollection, nameWorld } from './features';
-import { type Politics, buildPolitics } from './politics';
+import { type Politics, type PolUnit, buildPolitics } from './politics';
 import { cultureMap } from '../names/culture-map';
 import { type CultureSet, setWorldCultures } from '../names/world-cultures';
 import { newWorldMask } from './oldworld';
@@ -228,6 +228,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   }
   const { politics, labels: realmLabels } = buildPolitics(pg, pf, settlements, rivers, bank, params.seed);
   labels.features.push(...realmLabels);
+  markUniversities(politics.units, settlements);
 
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;
   for (let j = 0, c = 0; j < H; j++) {
@@ -286,4 +287,33 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       genMs: performance.now() - t0,
     },
   };
+}
+
+/**
+ * Universities: in the richest Old World realms (by the people of their cities), the largest
+ * city has one, and a second great city in the very richest. A realm's wealth in the lore follows
+ * trade and land as well, but city people are the heart of it, and this is known in the worker.
+ */
+function markUniversities(units: PolUnit[], settlements: Settlement[]): void {
+  const byId = new Map(settlements.map((s) => [s.id, s]));
+  const topOf = (u: PolUnit) => {
+    while (u.parent >= 0) u = units[u.parent];
+    return u;
+  };
+  const cities = new Map<number, Settlement[]>();
+  for (const u of units) {
+    if (u.level !== 0) continue;
+    const s = byId.get(u.seat);
+    if (!s || s.tier !== 'city' || s.newWorld || s.colony) continue;
+    const t = topOf(u);
+    if (t.gov === 'tribal' || t.gov === 'colony' || t.nw) continue;
+    (cities.get(t.id) ?? cities.set(t.id, []).get(t.id)!).push(s);
+  }
+  const ranked = [...cities.values()].map((list) => ({ list: list.sort((a, b) => b.population - a.population), pop: list.reduce((a, s) => a + s.population, 0) }))
+    .filter((r) => r.pop >= 30000).sort((a, b) => b.pop - a.pop);
+  const n = Math.max(1, Math.min(10, Math.round(ranked.length * 0.06)));
+  ranked.slice(0, n).forEach((r, k) => {
+    r.list[0].university = true;
+    if (k < Math.ceil(n / 3) && r.list[1] && r.list[1].population >= 20000) r.list[1].university = true;
+  });
 }

@@ -22,6 +22,8 @@ export interface Settlement {
   nameEn?: string;
   /** For an old name: where it came from. */
   nameOld?: string;
+  /** A university city (the largest cities of the richest Old World realms). */
+  university?: boolean;
   tier: Tier;
   /** Villages only. */
   kind?: VillageKind;
@@ -154,6 +156,20 @@ export function nudgeOntoLand(sampler: DetailSampler, lon: number, lat: number):
     }
   }
   return [lon, lat];
+}
+
+/** The nearest open water (sea or lake, at full shoreline detail) within `maxKm`, or null. */
+export function nearestWater(sampler: DetailSampler, lon: number, lat: number, maxKm: number): [number, number] | null {
+  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+  for (let r = 0.25; r <= maxKm; r += r < 3 ? 0.25 : 0.75) {
+    const n = r < 3 ? 10 : 14;
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * 2 * Math.PI;
+      const x = lon + Math.cos(a) * r * kmLon, y = lat + Math.sin(a) * r * kmLat;
+      if (sampler.height(x, y, 0.8, false) <= 0) return [x, y];
+    }
+  }
+  return null;
 }
 
 /** Cuts a polyline where it first leaves a circle of `rKm` around its first point; null if it never does. */
@@ -293,6 +309,23 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
       s = makeSettlement(tier, id, lon, lat, score[c], sseed, coastal[c] === 1, false);
     }
     [s.lon, s.lat] = nudgeOntoLand(sampler, s.lon, s.lat);
+    // A grid cell by the sea may still lie kilometres from the true shore: a coastal town moves to
+    // the water's edge (up to 25 km, so its plan has a harbour), or is not coastal after all.
+    if (s.coastal) {
+      const w = nearestWater(sampler, s.lon, s.lat, s.river ? (s.coreM * 1.4) / 1000 : 25);
+      if (!w) s.coastal = false;
+      else if (!s.river) {
+        const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((s.lat * Math.PI) / 180));
+        const dx = (s.lon - w[0]) / kmLon, dy = (s.lat - w[1]) / kmLat;
+        const d = Math.hypot(dx, dy);
+        const want = (s.coreM * 0.55) / 1000;
+        if (d > want) {
+          const t = want / d;
+          const p = nudgeOntoLand(sampler, w[0] + dx * t * kmLon, w[1] + dy * t * kmLat);
+          [s.lon, s.lat] = p;
+        }
+      }
+    }
     if (f.newWorld[c]) {
       // New World towns are tribal towns (smaller), until some are chosen as colonies.
       s.newWorld = true;

@@ -35,7 +35,7 @@ function build(site: DungeonSite): Dungeon {
     case 'tower': levels = tower(site, rnd, n); break;
     case 'mine': levels = stack(n, rnd, (k, anchors) => mineLevel(site, rnd, k, anchors), 'shaft'); break;
     case 'catacomb': levels = stack(n, rnd, (k, anchors) => catacombLevel(site, rnd, k, anchors), 'stairs'); break;
-    case 'sewer': levels = stack(n, rnd, (k, anchors) => k === 0 ? sewerLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cistern level', 64, 48), 'ladder'); break;
+    case 'sewer': levels = stack(n, rnd, (k, anchors) => k === 0 ? sewerLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cistern level', Math.round(64 * Math.max(1, Math.min(3, site.scale ?? 1))), Math.round(48 * Math.max(1, Math.min(3, site.scale ?? 1)))), 'ladder'); break;
     case 'ruin': levels = stack(n, rnd, (k, anchors) => k === 0 ? ruinLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cellars', 40, 30), 'stairs'); break;
     default: levels = stack(n, rnd, (k, anchors) => cryptLevel(site, rnd, k, anchors), 'stairs'); break;
   }
@@ -585,7 +585,9 @@ function simplifyCells(pts: [number, number][], tol: number): [number, number][]
 // ---- Sewers --------------------------------------------------------------------------------------
 
 function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
-  const W = 64, H = 48;
+  // Larger under larger towns: a great city's sewers run on for hundreds of metres.
+  const k = Math.max(1, Math.min(3, site.scale ?? 1));
+  const W = Math.round(64 * k), H = Math.round(48 * k);
   const L = newLevel('Main sewer', W, H);
   const toCell = (p: number[]): [number, number] => [Math.round(W / 2 + p[0] / CELL_M), Math.round(H / 2 - p[1] / CELL_M)];
   // Tunnels under the streets: a water channel with a walkway either side. Each street is
@@ -636,13 +638,13 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
     lay(runs([[Math.floor(W / 2), 2], [Math.floor(W / 2), H - 3]]));
   }
   // Branches under the lanes: straight drains off the main tunnels, to the edge or the next tunnel.
-  const nb = 3 + Math.floor(rnd() * 4);
-  for (let t = 0; t < 60 && L.rails.length < lines.length + nb + 2; t++) {
+  const nb = Math.round((3 + Math.floor(rnd() * 4)) * k * k);
+  for (let t = 0; t < 60 * k * k && L.rails.length < lines.length + nb + 2; t++) {
     const [x, y] = pick(rnd, channel);
     const horiz = isCh.has(`${x - 1},${y}`) || isCh.has(`${x + 1},${y}`);
     const [dx, dy] = horiz ? [0, rnd() < 0.5 ? 1 : -1] : [rnd() < 0.5 ? 1 : -1, 0];
     if (isCh.has(`${x + dx * 2},${y + dy * 2}`) || channel.some(([a, b]) => Math.abs(a - x) + Math.abs(b - y) < 6 && (horiz ? a === x : b === y) && (a !== x || b !== y) && !isCh.has(`${a + dx},${b + dy}`) && false)) continue;
-    const len = 8 + Math.floor(rnd() * 16);
+    const len = Math.round((8 + Math.floor(rnd() * 16)) * Math.sqrt(k));
     const pts: [number, number][] = [];
     let cx = x, cy = y, joined = false;
     for (let k = 0; k < len; k++) {
@@ -695,6 +697,21 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
   L.props.push({ kind: 'grate', x: g[0] + 0.5, y: g[1] + 0.5 });
   L.entrances.push({ x: g[0], y: g[1], dir: 0 });
   L.links.push({ x: g[0], y: g[1], dir: 'up', to: -1, style: 'ladder' });
+  // The other grates from the streets, each with its ladder.
+  for (const p of site.grates ?? []) {
+    const q = toCell(p);
+    if (q[0] < 2 || q[1] < 2 || q[0] > W - 3 || q[1] > H - 3) continue;
+    for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (at(L, q[0] + i, q[1] + j) === VOID) set(L, q[0] + i, q[1] + j, FLOOR);
+    if (at(L, q[0], q[1]) === CHANNEL) {
+      for (const [i, j] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (at(L, q[0] + i, q[1] + j) === FLOOR) {
+        q[0] += i;
+        q[1] += j;
+        break;
+      }
+    }
+    L.props.push({ kind: 'grate', x: q[0] + 0.5, y: q[1] + 0.5 });
+    L.links.push({ x: q[0], y: q[1], dir: 'up', to: -1, style: 'ladder' });
+  }
   // Junction chambers where tunnels cross; side rooms off the walkways.
   const rects: Rect[] = [];
   const counts = new Map<string, number>();
@@ -709,8 +726,9 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
       L.rooms.push(roomOf(r, 1, ['junction']));
     }
   }
-  const side = 3 + Math.floor(rnd() * 4);
-  for (let t = 0; t < 200 && rects.length < side + 3; t++) {
+  const side = Math.round((3 + Math.floor(rnd() * 4)) * k * k);
+  const nJunction = rects.length;
+  for (let t = 0; t < 200 * k * k && rects.length < side + nJunction; t++) {
     const [x, y] = pick(rnd, channel);
     const dir = pick(rnd, [[1, 0], [-1, 0], [0, 1], [0, -1]]);
     const w = 3 + Math.floor(rnd() * 4), h = 3 + Math.floor(rnd() * 3);
@@ -730,6 +748,8 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
     L.rooms.push(roomOf(r, 1, [tag]));
   }
   doorsForRooms(L, rects.slice(L.rooms.filter((r) => r.tags[0] === 'junction').length), rnd, doorPick(rnd, [['door', 2], ['bars', 1.5], ['locked', 1], ['arch', 1]]));
+  // The thieves' guild: hidden rooms off a quiet tunnel, behind a secret door (under most cities).
+  if (rnd() < (k >= 1.5 ? 0.8 : k > 1 ? 0.35 : 0.1)) thievesDen(L, channel, g, rnd);
   // The outfall: bars where the main channel leaves the map toward the river or sea.
   if (outEnd) {
     L.rooms.push(roomOf({ x: outEnd[0] - 1, y: outEnd[1] - 1, w: 3, h: 3 }, 1, ['outfall']));
@@ -741,6 +761,56 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
   // Number the junctions too (they are landmarks), but after the rooms.
   L.rooms.sort((a, b) => (a.tags[0] === 'junction' ? 1 : 0) - (b.tags[0] === 'junction' ? 1 : 0));
   return L;
+}
+
+/**
+ * The thieves' guild's hideout: a hall, a vault and a dormitory in a row, set back from a tunnel
+ * far from the main grate and reached by a short passage that ends at a secret door.
+ */
+function thievesDen(L: DLevel, channel: [number, number][], grate: [number, number], rnd: Rng): void {
+  const far = channel.filter(([x, y]) => Math.hypot(x - grate[0], y - grate[1]) > 12);
+  const hall = { w: 7, h: 5 }, vault = { w: 4, h: 5 }, dorm = { w: 5, h: 5 };
+  const span = hall.w + 1 + vault.w + 1 + dorm.w;
+  for (let t = 0; t < 300 && far.length; t++) {
+    const [cx, cy] = pick(rnd, far);
+    const east = rnd() < 0.5;
+    // The hall nearest the tunnel; the passage runs 3 cells from the walkway.
+    const x0 = east ? cx + 5 : cx - 4 - span;
+    const y0 = cy - Math.floor(hall.h / 2);
+    if (x0 < 2 || y0 < 2 || x0 + span > L.W - 2 || y0 + hall.h > L.H - 2) continue;
+    let clear = true;
+    for (let j = y0 - 1; j <= y0 + hall.h && clear; j++) for (let i = x0 - 1; i <= x0 + span && clear; i++) if (at(L, i, j) !== VOID) clear = false;
+    if (!clear) continue;
+    const order = east ? [hall, vault, dorm] : [dorm, vault, hall];
+    const rects: Rect[] = [];
+    let x = x0;
+    for (const r of order) {
+      rects.push({ x, y: y0, w: r.w, h: r.h });
+      x += r.w + 1;
+    }
+    const [rh, rv, rd] = east ? rects : [rects[2], rects[1], rects[0]];
+    for (const r of rects) carveRect(L, r.x, r.y, r.w, r.h);
+    // Doors between the rooms (a lock on the vault).
+    const between = (a: Rect, b: Rect, kind: 'door' | 'locked') => {
+      const wx = Math.min(a.x + a.w, b.x + b.w) === a.x + a.w ? a.x + a.w : b.x + b.w;
+      const y = y0 + 2;
+      set(L, wx, y, FLOOR);
+      L.doors.push({ x: wx + 1, y, vertical: true, kind });
+    };
+    between(east ? rh : rv, east ? rv : rh, 'locked');
+    between(east ? rv : rd, east ? rd : rv, 'door');
+    // The passage from the walkway to the hall, ending at a secret door in the hall's wall.
+    const doorX = east ? rh.x : rh.x + rh.w;
+    const from = east ? cx + 2 : cx - 2;
+    carveCorridor(L, from, cy, east ? doorX - 1 : doorX, cy, true);
+    L.doors.push({ x: doorX, y: cy, vertical: true, kind: 'secret' });
+    furnish(L, rh, 'hall', rnd, () => true);
+    furnish(L, rv, 'store', rnd, () => true);
+    furnish(L, rd, 'bedchamber', rnd, () => true);
+    for (let q = 0; q < 3; q++) L.props.push({ kind: 'chest', x: rv.x + 0.6 + rnd() * (rv.w - 1.2), y: rv.y + 0.6 + rnd() * (rv.h - 1.2) });
+    L.rooms.push(roomOf(rh, 1, ['thieves-hall']), roomOf(rv, 1, ['thieves-vault']), roomOf(rd, 1, ['thieves-dorm']));
+    return;
+  }
 }
 
 export type { DRoom };

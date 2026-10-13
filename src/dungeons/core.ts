@@ -31,6 +31,19 @@ export interface DungeonSite {
   streets?: number[][][];
   /** Sewers: where the nearest river or shore lies (local metres), for the outfall. */
   outfall?: number[];
+  /** Sewers: the map's size against a small town's (1), larger under great cities. */
+  scale?: number;
+  /** Sewers: the other grates down from the streets (local metres from the main one). */
+  grates?: number[][];
+}
+
+/**
+ * How large a town's sewers are, against a small town's (96 x 72 m): larger towns 1.25, cities
+ * from 1.5 up to 2.6 for the greatest (up to 250 x 187 m).
+ */
+export function sewerScale(tier: string, population: number): number {
+  if (tier === 'city') return Math.min(2.6, 1.5 + Math.max(0, population - 6000) / 30000);
+  return population >= 8000 ? 1.25 : 1;
 }
 
 /** Battlemap squares (5 ft). */
