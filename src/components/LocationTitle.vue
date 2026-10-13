@@ -6,6 +6,7 @@ import { type Arms, blazon, vassalArms } from '../heraldry/arms';
 import { armsImage } from '../heraldry/draw';
 import { LAYOUT_LABEL } from '../towns/layout';
 import { CULTURES } from '../names/cultures';
+import { BUNDLE } from '../names/bundles';
 import { hashString, mulberry32 } from '../gen/rng';
 
 /**
@@ -40,7 +41,6 @@ function pair(native: string, en?: string): { name: string; alt?: string } {
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
 const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village' };
 const townArms = new Map<string, Arms>();
-const PEOPLES: Record<string, string> = { woodland: 'woodland peoples', highland: 'highland peoples', jungle: 'forest peoples' };
 
 /** "2.3 million", "34,000", "870". */
 function people(n: number): string {
@@ -89,7 +89,7 @@ const info = computed<Line | null>(() => {
   if (!chain.length) {
     // In the New World, land beyond the towns is the tribes' own.
     if (w.raster.newWorld?.[c]) {
-      const people = CULTURES[w.raster.culture[c]]?.name ? `${CULTURES[w.raster.culture[c]].name} peoples` : PEOPLES[CULTURES[w.raster.culture[c]]?.id ?? ''] ?? 'scattered peoples';
+      const people = CULTURES[w.raster.culture[c]]?.name ? `${CULTURES[w.raster.culture[c]].name} peoples` : BUNDLE.get(CULTURES[w.raster.culture[c]]?.id ?? '')?.peoples ?? 'scattered peoples';
       return { name: region ? cap(region) : 'Tribal lands', sub: `Lands of the ${people} · no settled realm`, arms: null, armsKey: '', crumbs: [], chain: [] };
     }
     return { name: region ? cap(region) : 'Unclaimed wilds', sub: region ? 'Unclaimed land' : 'No realm holds this land', arms: null, armsKey: '', crumbs: [], chain: [] };

@@ -1,4 +1,5 @@
 import type { Pt } from './geom';
+import { BUNDLE } from '../names/bundles';
 
 /**
  * Town plan layouts. Every walled town starts as Voronoi wards, but where the ward seeds lie and
@@ -184,8 +185,9 @@ export function makeLayout(style: CityLayout, site: LayoutSite): Layout {
 export function chooseLayout(o: { tier: string; population: number; river: boolean; coastal: boolean; relief: number; culture: string; r: number }): CityLayout {
   const town = o.tier !== 'city';
   const flat = o.relief < 120 ? 1 : o.relief < 300 ? 0.5 : 0.15;
-  const planned = o.culture === 'latin' ? 1.4 : o.culture === 'southern' ? 1 : o.culture === 'desert' ? 0.6 : o.culture === 'steppe' ? 0.4 : 0.15;
-  const hilly = o.culture === 'dwarven' || o.culture === 'celtic' || o.culture === 'elvish' || o.culture === 'slavic' ? 0.35 : 0;
+  const b = BUNDLE.get(o.culture);
+  const planned = b?.planned ?? 0.15;
+  const hilly = b?.hilly ? 0.35 : 0;
   const w: [CityLayout, number][] = [
     ['radial', 1],
     ['grid', (0.15 + planned) * flat * (town ? 0.8 : 1)],

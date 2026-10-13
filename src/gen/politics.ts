@@ -8,7 +8,7 @@ import { CULTURES } from '../names/cultures';
 import type { CultureMods } from '../names/traits';
 import { Biome } from './biomes';
 import type { NameBank } from '../names/names';
-import { fillFrom } from '../names/bundles';
+import { BUNDLE, table } from '../names/bundles';
 import { type FaithFamily, faithOfCulture } from '../lore/faiths';
 import { type Arms, type Charge, cadetArms, newArms, vassalArms } from '../heraldry/arms';
 
@@ -123,64 +123,18 @@ export function chainOf(units: PolUnit[], id: number): PolUnit[] {
 }
 
 /** Ruler titles by culture: [barony, county, duchy, kingdom, empire]. */
-const RULERS: Record<string, [string, string, string, string, string]> = {
-  anglo: ['Baron', 'Earl', 'Duke', 'King', 'Emperor'], norse: ['Hersir', 'Jarl', 'Duke', 'King', 'High King'],
-  latin: ['Baron', 'Count', 'Duke', 'King', 'Emperor'], celtic: ['Lord', 'Chieftain', 'Prince', 'King', 'High King'],
-  elvish: ['Warden', 'Lord', 'Prince', 'King', 'High King'], desert: ['Sipahi', 'Bey', 'Emir', 'Sultan', 'Caliph'],
-  slavic: ['Boyar', 'Zhupan', 'Voivode', 'Tsar', 'Emperor'], dwarven: ['Thane', 'Lord', 'Lord', 'King', 'High King'],
-  southern: ['Demarch', 'Archon', 'Despot', 'King', 'Autokrator'], steppe: ['Noyan', 'Bey', 'Khan', 'Khan', 'Khagan'],
-  jungle: ['Lord', 'Lord', 'Prince', 'King', 'Emperor'],
-  sinic: ['Magistrate', 'Prefect', 'Governor', 'King', 'Emperor'], japonic: ['Lord', 'Daimyo', 'Shugo', 'Shogun', 'Emperor'],
-  koreanic: ['Magistrate', 'Gunsu', 'Governor', 'King', 'Emperor'],
-};
-const BARONY_STYLE: Record<string, string[]> = {
-  anglo: ['Barony of {S}', 'Manor of {S}'], norse: ['Herad of {S}', 'Barony of {S}'], latin: ['Barony of {S}', 'Signory of {S}'],
-  celtic: ['Tuath of {S}', 'Lordship of {S}'], elvish: ['Demesne of {S}', 'Wardenry of {S}'], desert: ['Timar of {S}', 'Iqta of {S}'],
-  slavic: ['Volost of {S}', 'Barony of {S}'], dwarven: ['Thanedom of {S}', 'Hall of {S}'], southern: ['Deme of {S}', 'Barony of {S}'],
-  steppe: ['Ulus of {S}', 'Aul of {S}'], jungle: ['Lordship of {S}', 'Barony of {S}'],
-  sinic: ['County of {S}', 'Xian of {S}'], japonic: ['Fief of {S}', '{S} Fief'], koreanic: ['Hyeon of {S}', 'County of {S}'],
-};
-const COUNTY_STYLE: Record<string, string[]> = {
-  anglo: ['County of {S}', '{S}shire', 'Earldom of {S}'], norse: ['Jarldom of {S}', 'County of {S}'],
-  latin: ['County of {S}', 'March of {S}'], celtic: ['Cantref of {S}', 'Chiefdom of {S}'],
-  elvish: ['March of {S}', 'Lordship of {S}'], desert: ['Beylik of {S}', 'Sanjak of {S}'], slavic: ['Zhupa of {S}', 'County of {S}'],
-  dwarven: ['Hold of {S}', 'Delving of {S}'], southern: ['Archonate of {S}', 'Nome of {S}'], steppe: ['Beylik of {S}', 'Tumen of {S}'],
-  jungle: ['Lordship of {S}', 'County of {S}'],
-  sinic: ['Prefecture of {S}', '{S} Prefecture'], japonic: ['{S} Domain', 'Domain of {S}'], koreanic: ['Gun of {S}', 'Prefecture of {S}'],
-};
-const DUCHY_STYLE: Record<string, string[]> = {
-  anglo: ['Duchy of {N}', 'Dukedom of {N}'], norse: ['Duchy of {N}', '{N} Lands'], latin: ['Duchy of {N}', 'Principality of {N}'],
-  celtic: ['Principality of {N}', 'Province of {N}'], elvish: ['Principality of {N}', 'Duchy of {N}'], desert: ['Emirate of {N}'],
-  slavic: ['Voivodeship of {N}', 'Principality of {N}'], dwarven: ['Lordship of {N}', 'Deep of {N}'], southern: ['Despotate of {N}', 'Duchy of {N}'],
-  steppe: ['Khanate of {N}', 'Horde of {N}', 'the {A} Horde'], jungle: ['Principality of {N}', 'Duchy of {N}'],
-  sinic: ['Province of {N}', '{N} Province'], japonic: ['Province of {N}', '{N} Province'], koreanic: ['Province of {N}', '{N}-do'],
-};
-const EMPIRE_STYLE: Record<string, string[]> = {
-  anglo: ['United Kingdom of {N}', 'the {N} Empire', 'Empire of {N}'], norse: ['High Kingdom of {N}', 'the {N} Empire'], latin: ['Imperium of {N}', 'the {N} Empire'],
-  celtic: ['High Kingdom of {N}'], elvish: ['High Kingdom of {N}', 'the {N} Dominion'], desert: ['Caliphate of {N}', 'the {N} Caliphate'],
-  slavic: ['Empire of {N}', 'the {N} Tsardom'], dwarven: ['High Kingdom under {N}', 'the {N} Throne'], southern: ['Empire of {N}', 'the {N} Basileia'],
-  steppe: ['Khaganate of {N}', 'the Great {N} Horde'], jungle: ['Empire of {N}', 'the {N} Empire'],
-  sinic: ['the {N} Empire', 'the {N} Dynasty', 'Middle Kingdom of {N}'], japonic: ['Empire of {N}', 'the {N} Empire'], koreanic: ['Great {N} Empire', 'the {N} Empire'],
-};
+const RULERS = table((b) => b.rulers);
+const BARONY_STYLE = table((b) => b.barony);
+const COUNTY_STYLE = table((b) => b.county);
+const DUCHY_STYLE = table((b) => b.duchy);
+const EMPIRE_STYLE = table((b) => b.empire);
 /** Kingdom names come from each culture's `realm` list, less the styles that now belong to a government or another tier. */
 const NOT_KINGDOM = /republic|league|confedera|empire|imperium|county|duchy|earldom|caliphate|dominion|province/i;
 
-const CITY_RULER: Record<string, string> = {
-  anglo: 'Lord Mayor', latin: 'Podesta', norse: 'Burgomaster', slavic: 'Burgomaster', desert: 'Wali', southern: 'Archon',
-  celtic: 'Provost', elvish: 'Steward', dwarven: 'Steward', steppe: 'Governor', jungle: 'Governor', sinic: 'Magistrate', japonic: 'Machi-bugyo', koreanic: 'Magistrate',
-};
-const REPUBLIC_RULER: Record<string, string> = { sinic: 'Chancellor', japonic: 'Council Elder', koreanic: 'Chancellor',
-  anglo: 'Lord Protector', latin: 'Doge', norse: 'Lawspeaker', slavic: 'Posadnik', desert: 'Grand Vizier', southern: 'Archon',
-  celtic: 'Speaker', elvish: 'Speaker', dwarven: 'High Steward', steppe: 'Khan', jungle: 'Speaker',
-};
-const CITY_STATE_STYLE: Record<string, string[]> = {
-  southern: ['Polis of {S}', 'Republic of {S}', 'Free Polis of {S}'], latin: ['Most Serene Republic of {S}', 'Commune of {S}', 'Republic of {S}'],
-  slavic: ['Free City of {S}', 'Republic of {S}'], norse: ['Free City of {S}'], desert: ['City-state of {S}', 'Free City of {S}'],
-};
-const REPUBLIC_STYLE: Record<string, string[]> = {
-  southern: ['Republic of {N}', 'the {N} Republic', 'Koinon of {N}'], latin: ['Republic of {N}', 'the Serene Republic of {N}'],
-  anglo: ['Commonwealth of {N}', 'Republic of {N}', 'United Provinces of {N}'], dwarven: ['Commonwealth of the {N} Holds', 'Republic of {N}'],
-};
+const CITY_RULER = table((b) => b.cityRuler);
+const REPUBLIC_RULER = table((b) => b.republicRuler);
+const CITY_STATE_STYLE = table((b) => b.cityState);
+const REPUBLIC_STYLE = table((b) => b.republic);
 /** Theocracies by the faith they serve (small: a city and its lands; big: a duchy or more). */
 const FAITH_THEOCRACY: Partial<Record<FaithFamily, { small: [string, string][]; big: [string, string][]; charges: Charge[] }>> = {
   church: { small: [['Prince-Bishopric of {S}', 'Prince-Bishop'], ['Abbacy of {S}', 'Abbot'], ['Holy City of {S}', 'Patriarch']], big: [['Holy Realm of {N}', 'Patriarch'], ['Holy See of {S}', 'Pontiff'], ['Theocracy of {N}', 'Hierarch']], charges: ['cross', 'key', 'sun', 'bell'] },
@@ -197,34 +151,17 @@ const FAITH_THEOCRACY: Partial<Record<FaithFamily, { small: [string, string][]; 
   serpent: { small: [['Temple-city of {S}', 'High Priest']], big: [['Holy Realm of {N}', 'Speaker of the Calendar']], charges: ['serpent', 'sun'] },
   spirits: { small: [['Medicine-lands of {S}', 'Keeper of the Medicine']], big: [['Sacred Lands of {N}', 'Keeper of the Medicine']], charges: ['feather', 'bird'] },
 };
-const THALASSO_STYLE: Record<string, [string, string][]> = {
-  norse: [['Sea Kingdom of {N}', 'Sea King'], ['the {N} Isles', 'Sea King']], southern: [['Thalassocracy of {N}', 'Thalassarch']],
-  latin: [['Maritime Republic of {N}', 'Doge'], ['Thalassocracy of {N}', 'Thalassarch']],
-};
-const LEAGUE_STYLE: Record<string, string[]> = {
-  woodland: ['the {N} Confederacy', 'League of the {N} Nations'], jungle: ['the {N} League', 'Triple Alliance of {N}'], highland: ['the {N} Confederation'],
-  southern: ['the {N} League', 'Amphictyony of {N}'], norse: ['Hanse of {N}', 'the {N} League'], anglo: ['the {N} Confederation', 'League of {N}'],
-  steppe: ['Confederacy of {N}', 'the {N} Confederacy'], celtic: ['Confederacy of {N}'], latin: ['League of {N}', 'the {N} League'],
-};
-const LEAGUE_RULER: Record<string, string> = { woodland: 'Council of Chiefs', jungle: 'Council of Lords', highland: 'Council of Lords', norse: 'Allthing', steppe: 'Kurultai', anglo: 'Diet', southern: 'Synedrion', celtic: 'Council of Chiefs' };
+const THALASSO_STYLE = table((b) => b.thalasso);
+const LEAGUE_STYLE = table((b) => b.league);
+const LEAGUE_RULER = table((b) => b.leagueRuler);
 const ADJ = ['Golden', 'White', 'Blue', 'Black', 'Red', 'Great', 'Silver', 'Grey'];
 
 /** Culture leanings (0 to 1, or a weight). */
-const CITY_STATE_P: Record<string, number> = { sinic: 0.02, japonic: 0.03, koreanic: 0.02, southern: 0.6, latin: 0.14, anglo: 0.06, norse: 0.06, slavic: 0.06, desert: 0.08, jungle: 0.06, elvish: 0.05, dwarven: 0.05, celtic: 0.02, steppe: 0 };
-const REPUBLIC_P: Record<string, number> = { sinic: 0.01, japonic: 0.01, koreanic: 0.01, southern: 0.4, latin: 0.12, anglo: 0.1, dwarven: 0.12, elvish: 0.06, jungle: 0.05, desert: 0.03, slavic: 0.03, norse: 0.03, celtic: 0.02, steppe: 0 };
-const INDEP_DUCHY_P: Record<string, number> = { japonic: 0.12, sinic: 0.03, koreanic: 0.04, southern: 0.16, latin: 0.08, elvish: 0.08, dwarven: 0.08, jungle: 0.08, steppe: 0.1, anglo: 0.05, desert: 0.05, norse: 0.015, slavic: 0.015, celtic: 0.015 };
-const EMPIRE_W: Record<string, number> = { latin: 3, desert: 3, sinic: 3, steppe: 1.4, anglo: 1, jungle: 1.5, highland: 3, japonic: 0.8, koreanic: 0.6, slavic: 0.6, southern: 0.5, elvish: 0.7, dwarven: 0.6, norse: 0.4, celtic: 0.4, woodland: 0.3 };
-const LEAGUE_P: Record<string, number> = { southern: 0.55, norse: 0.4, steppe: 0.4, celtic: 0.35, anglo: 0.3, latin: 0.3, woodland: 0.85, jungle: 0.45, highland: 0.2, sinic: 0.1, japonic: 0.15 };
-// Templates added as bundles (names/bundles/) bring their own titles, styles and leanings.
-fillFrom(RULERS, (b) => b.rulers);
-fillFrom(BARONY_STYLE, (b) => b.barony);
-fillFrom(COUNTY_STYLE, (b) => b.county);
-fillFrom(DUCHY_STYLE, (b) => b.duchy);
-fillFrom(EMPIRE_STYLE, (b) => b.empire);
-fillFrom(CITY_RULER, (b) => b.cityRuler);
-fillFrom(EMPIRE_W, (b) => b.empireW);
-fillFrom(LEAGUE_P, (b) => b.leagueP);
-fillFrom(REPUBLIC_P, (b) => b.republicP);
+const CITY_STATE_P = table((b) => b.cityStateP);
+const REPUBLIC_P = table((b) => b.republicP);
+const INDEP_DUCHY_P = table((b) => b.indepDuchyP);
+const EMPIRE_W = table((b) => b.empireW);
+const LEAGUE_P = table((b) => b.leagueP);
 
 const STYLE_RULER: [RegExp, string][] = [
   [/Sultanate/i, 'Sultan'], [/Emirate/i, 'Emir'], [/Caliphate/i, 'Caliph'], [/Principality/i, 'Prince'], [/Grand Duchy/i, 'Grand Duke'],
@@ -259,11 +196,7 @@ const BIOME_HAB: Record<number, number> = {
 };
 
 /** New World (tribal) styles by culture: [band, chiefdom, tribe, nation, empire] with their rulers. */
-const TRIBAL_STYLE: Record<string, [string[], string][]> = {
-  woodland: [[['Village of {S}', '{S} Band'], 'Headman'], [['Chiefdom of {S}', '{S} Clan'], 'Chief'], [['the {N} Tribe', 'the {N} People'], 'Paramount Chief'], [['the {N} Nation'], 'Great Chief'], [['Empire of {N}'], 'Great Sun']],
-  highland: [[['Village of {S}', 'Valley of {S}'], 'Headman'], [['Lordship of {S}', 'Chiefdom of {S}'], 'Lord'], [['the {N} Realm', 'Kingdom of {N}'], 'High Lord'], [['Kingdom of {N}', 'the {N} Realm'], 'Sun King'], [['Empire of the {N} Sun', 'the Four Quarters of {N}'], 'Child of the Sun']],
-  jungle: [[['Village of {S}', 'Hamlet of {S}'], 'Headman'], [['City of {S}', 'Lordship of {S}'], 'Holy Lord'], [['Kingdom of {N}', 'the {N} Kingdom'], 'Holy Lord'], [['Kingdom of {N}', 'the {N} Overkingdom'], 'Overking'], [['Empire of {N}', 'the {N} Empire'], 'Great Speaker']],
-};
+const TRIBAL_STYLE = table((b) => b.tribal);
 const TRIBAL_DEFAULT: [string[], string][] = [[['Village of {S}', '{S} Band'], 'Headman'], [['Chiefdom of {S}'], 'Chief'], [['the {N} Tribe', 'the {N} People'], 'Paramount Chief'], [['the {N} Nation'], 'Great Chief'], [['Empire of {N}'], 'Great Sun']];
 const TRIBAL_TITLE = ['Band', 'Chiefdom', 'Tribe', 'Nation', 'Empire'];
 const COLONY_STYLE: Record<string, [string, string, string]> = {
@@ -620,7 +553,7 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
       u.name = fill(pickS(tpls), u.level <= 1 || r() < 0.5 ? u.seatName : own());
       ruler = rl;
       u.title = TRIBAL_TITLE[u.level];
-      favour = id === 'woodland' ? ['feather', 'bird', 'sun', 'serpent', 'tree'] : id === 'highland' ? ['sun', 'bird', 'estoile', 'serpent'] : ['serpent', 'bird', 'sun', 'estoile'];
+      favour = BUNDLE.get(id)?.tribalCharges ?? ['serpent', 'bird', 'sun', 'estoile'];
     } else if (u.gov === 'thalassocracy') {
       const [tpl, rl] = pickS(THALASSO_STYLE[id] ?? [['Thalassocracy of {N}', 'Thalassarch'], ['Sea Kingdom of {N}', 'Sea King'], ['Admiralty of {N}', 'Lord Admiral']]);
       u.name = fill(tpl, r() < 0.4 ? u.seatName : own());

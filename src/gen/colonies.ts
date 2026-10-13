@@ -2,12 +2,8 @@ import { type Grid, distKm } from './grid';
 import { hash32 } from './rng';
 import type { ColonyKind, Settlement } from './settlements';
 import { CULTURES } from '../names/cultures';
+import { BUNDLE } from '../names/bundles';
 import { SETTLEMENTS as S } from './config';
-
-/** Cultures that sail and settle overseas, and how readily (others found no colonies). */
-const SEAFARING: Record<string, number> = {
-  anglo: 1, latin: 1, southern: 0.9, norse: 0.8, desert: 0.6, sinic: 0.5, japonic: 0.5, koreanic: 0.3, celtic: 0.4, slavic: 0.3, elvish: 0.4, dwarven: 0.2,
-};
 
 /**
  * Old World colonies on New World coasts: a few coastal New World towns (about one in eleven,
@@ -23,7 +19,7 @@ export function chooseColonies(g: Grid, settlements: Settlement[], culture: Uint
   };
   // Old World coastal towns of seafaring cultures: the ports colonists sail from.
   // How readily a culture sails: its template's habit, times its traits (Seafarers, Raiders).
-  const sea = (ci: number) => (SEAFARING[CULTURES[ci]?.id ?? ''] ?? (CULTURES[ci]?.mods.seafaring > 1.2 ? 0.3 : 0)) * (CULTURES[ci]?.mods.seafaring ?? 1);
+  const sea = (ci: number) => (BUNDLE.get(CULTURES[ci]?.id ?? '')?.seafaring ?? (CULTURES[ci]?.mods.seafaring > 1.2 ? 0.3 : 0)) * (CULTURES[ci]?.mods.seafaring ?? 1);
   const ports = settlements.filter((s) => !s.newWorld && s.coastal && sea(culture[cellOf(s.lon, s.lat)]) > 0);
   const shore = settlements.filter((s) => s.newWorld && s.coastal);
   if (!ports.length || !shore.length) return;

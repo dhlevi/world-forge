@@ -1,4 +1,10 @@
+import { Biome } from '../../gen/biomes';
 import { near, type TemplateBundle } from '../bundle';
+
+/** Deep forests, which orcs are slow to spread through. */
+const FOREST = new Set<Biome>([
+  Biome.BorealForest, Biome.TemperateForest, Biome.TemperateRainforest, Biome.TropicalRainforest, Biome.TropicalDryForest, Biome.MontaneForest,
+]);
 
 /**
  * Orcs: hardy, proud warrior clans of the cold steppe, the badlands, the scrub and the mountain
@@ -10,6 +16,7 @@ export const ORCISH: TemplateBundle = {
   folk: 'Orcs',
   world: 'old',
   rarity: 0.8,
+  spread: (_height, biome) => (FOREST.has(biome) ? 1.6 : 1),
   culture: {
     id: 'orcish',
     likes: (c) => (c.dry ? 1.2 : 0.6) * near(c.temp, -4, 14, 8) * (c.forest ? 0.6 : 1.1),

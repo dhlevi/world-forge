@@ -6,9 +6,7 @@ import { NameBank } from '../names/names';
 import { type Economy, type Land, addLand, coinOf, emptyLand, finishLand, GOOD_IDS, production, tradeOf } from './economy';
 import { buildFaiths, enmity, type FaithWorld } from './faiths';
 import type { LabelFeature } from '../gen/features';
-import { cultureId, type House, houseMotto, houseName, personName } from './names';
-
-const SURNAME_FIRST_LORE = new Set(['sinic', 'japonic', 'koreanic']);
+import { cultureId, familyFirst, type House, houseMotto, houseName, personName } from './names';
 
 /**
  * The world's history and diplomacy, made once per world (on first use) from its political map:
@@ -490,7 +488,7 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
     const host = foes.length ? pick(r, foes) : -1;
     const female = r() < 0.2;
     const nm = personName(u.culture, female, r, prev.house);
-    const tail = SURNAME_FIRST_LORE.has(cultureId(u.culture)) ? '' : ` of ${prev.house.name}`;
+    const tail = familyFirst(cultureId(u.culture)) ? '' : ` of ${prev.house.name}`;
     claims.push({
       by: host >= 0 ? host : t, on: t, kind: 'throne', since: cur.from,
       text: host >= 0 ? `sheltered at the court of ${units[host].name}` : 'in hiding within the realm',

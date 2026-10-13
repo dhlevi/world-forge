@@ -10,6 +10,7 @@ export const HALFLING: TemplateBundle = {
   folk: 'Halflings',
   world: 'old',
   rarity: 0.7,
+  spread: (height, _biome, sea) => (sea ? 1.3 : height > 1400 ? 4 : 1),
   culture: {
     id: 'halfling',
     likes: (c) => near(c.temp, 7, 15) * near(c.precip, 600, 1300, 400) * (c.forest ? 0.9 : 1.2) * (c.heightM < 900 ? 1 : 0.3),
@@ -83,6 +84,7 @@ export const HALFLING: TemplateBundle = {
     ],
   ],
   ethos: { communal: 3, egalitarian: 3, inventive: 1, stoic: 0.5 },
+  affinity: { xenophile: 0.3 },
   traditions: { pastoralists: 1.5, hospitality: 2, storytellers: 1.5, riverFolk: 0.5 },
   architecture: 'round-doored burrows dug into the hillsides, thatched cottages and walled kitchen gardens',
   dress: 'bright waistcoats, knee-breeches and linen smocks; most go barefoot from spring to autumn',

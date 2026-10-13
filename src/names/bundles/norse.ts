@@ -1,0 +1,128 @@
+import { grammar, near, type TemplateBundle } from '../bundle';
+
+/**
+ * Nordic: seafarers and raiders of cold northern coasts, after the Norse. Their names are patronymics (Haraldsson,
+ * Sigurdsdottir), their lords are jarls and sea kings, and their old gods give way to a church.
+ */
+export const NORSE: TemplateBundle = {
+  label: 'Nordic',
+  folk: 'Humans',
+  world: 'old',
+  stock: 'north',
+  culture: {
+    id: 'norse',
+    likes: (c) => near(c.temp, -8, 5, 5) * (c.coastal ? 1.2 : 0.9),
+    starts: [
+      'Thor', 'Skar', 'Hrav', 'Jarn', 'Kald', 'Svart', 'Isa', 'Grim', 'Bjorn', 'Ask', 'Ulf', 'Ragn', 'Sig', 'Hal', 'Vik', 'Eir', 'Frey', 'Gud', 'Hel',
+      'Kol', 'Orm', 'Stein', 'Tor', 'Vald', 'Arn', 'Bal', 'Brand', 'Dag', 'Ein', 'Finn', 'Gunn', 'Hak', 'Hild', 'Ing', 'Jor', 'Knut', 'Leif', 'Mjol',
+      'Njal', 'Odd', 'Rol', 'Sten', 'Thrym', 'Ulv', 'Vest', 'Ygg', 'Ald', 'Bors', 'Ey', 'Gaut', 'Hjal', 'Lund', 'Nor', 'Os', 'Sol', 'Trond', 'Aur',
+      'Brei', 'Dyr', 'Fjall', 'Hrafn', 'Kvik', 'As', 'Einar', 'Freyr', 'Gim', 'Gorm', 'Hark', 'Ivar', 'Korm', 'Lok', 'Magn', 'Olaf', 'Sven', 'Trygg',
+      'Val', 'Vid', 'Vig', 'Alf', 'Bif', 'Draug', 'Eld', 'Gerd', 'Heim', 'Jarl', 'Lyr', 'Mimir', 'Njord', 'Rune', 'Skald', 'Skoll', 'Tyr', 'Vard',
+    ],
+    mids: ['a', 'e', 'ar', 'ing', 'en', 'u', 'ol', 'is', 'ed', 'o', 'il', 'ir', 'ur', 'al'],
+    ends: [
+      'vik', 'heim', 'by', 'dal', 'stad', 'holm', 'gard', 'nes', 'fjord', 'berg', 'havn', 'sund', 'vald', 'ey', 'strand', 'vin', 'land', 'skog',
+      'hus', 'tun', 'rud', 'set', 'voll', 'stein', 'hamn', 'vag', 'dalen', 'nesset', 'oy', 'fell', 'borg', 'lund', 'tveit', 'aker', 'bu', 'mo', 'sjo',
+      'eid', 'haug', 'ridge', 'kile', 'tind', 'breen', 'stod', 'varp', 'myr', 'os', 'bekk', 'vikin', 'sundet', 'skjær', 'holmen', 'berget', 'neset',
+      'vatn', 'foss', 'fjell', 'mar', 'hult',
+    ],
+    midChance: 0.3,
+    roots: [
+      'Frost', 'Ice', 'Storm', 'Wolf', 'Raven', 'Iron', 'Grim', 'Bear', 'Elk', 'Whale', 'Skull', 'Rime', 'Ash', 'Thunder', 'Salt', 'Seal', 'Gull',
+      'Pine', 'Birch', 'Elm', 'Boar', 'Hawk', 'Snow', 'Black', 'White', 'Red', 'Long', 'High', 'Old', 'Grey', 'Sea', 'Horn', 'Shield', 'Axe', 'Elder',
+      'Moss', 'Rock', 'Fish', 'Runes', 'Spear', 'Helm', 'Flame', 'Fjord', 'Glacier', 'Reef', 'Wyrm', 'Crow', 'Walrus', 'Prow', 'Ember', 'Gloom',
+      'Fang',
+    ],
+    suffixes: [
+      'fjord', 'heim', 'vik', 'holm', 'gard', 'fell', 'ness', 'havn', 'by', 'stad', 'nes', 'dal', 'berg', 'sund', 'strand', 'skog', 'tun', 'borg',
+      'lund', 'oy', 'hamn', 'set', 'haug', 'eid', 'land', 'ridge', 'tind', 'kile', 'breen', 'foss', 'vatn', 'bekk', 'os', 'myr', 'skjær', 'stod',
+      'varp', 'mar',
+    ],
+    compoundChance: 0.25,
+    terms: {
+      river: ['the {N}', '{N} Elv', 'the {N} Water'],
+      lake: ['{N} Vatn', 'Lake {N}', '{N} Water'],
+      hills: ['the {N} Fells', '{N} Fells', 'the {A} Fells'],
+      mountains: ['the {N} Fjells', '{N} Mountains', 'the {A} Peaks'],
+      peak: ['{N} Horn', '{N}tind', 'Mount {N}'],
+      bay: ['{N} Fjord', 'Bay of {N}', '{N} Vik'],
+      gulf: ['{N} Fjord', 'Gulf of {N}'],
+      strait: ['{N} Sund', 'the {N} Sound', '{N} Strait'],
+    },
+    realm: ['Jarldom of {N}', 'Kingdom of {N}', '{N} Hold'],
+  },
+  lang: {
+    id: 'norse', after: 'Old Norse',
+    C: { p: 1, b: 3, t: 4, d: 3, k: 4, g: 4, m: 3, n: 5, f: 3, v: 3, θ: 2, s: 5, h: 3, j: 2, r: 6, l: 5 },
+    V: { a: 5, e: 3, i: 3, o: 3, u: 3, y: 1, ø: 1, æ: 1, 'aː': 1, 'iː': 0.5, 'ɔ': 1 },
+    syl: { CV: 2, CVC: 5, CCVC: 1.6, CVCC: 1.4, VC: 0.8 },
+    onsets: ['s k', 's t', 's v', 's n', 'f j', 'k n', 'h r', 'h l', 't r', 'g r', 'b r', 'b j', 'f r', 's l', 'θ r'],
+    codas: ['r d', 'r n', 'l d', 'n d', 'n g', 'l l', 'n n', 's t', 'f t', 'l f', 'r k', 'r g', 'l m'],
+    compound: 'final', roots: [1, 2], stress: 'initial',
+    spell: { 'aː': 'aa', 'iː': 'ii', æ: 'ae', ø: 'ø', y: 'y', ɔ: 'å', j: 'j', θ: 'th' },
+    grammar: grammar({ order: 'SVO', adj: 'before', def: 'suffix', indef: 'word', poss: 'suffix', gender: 2, tense: 'suffix' }),
+    forms: { def: 'en', indef: 'en', poss: 's', past: 'de', plural: 'ar' },
+    masc: ['ar', 'ulf', 'mund', 'vald', 'stein', 'bjorn', 'geir', 'ir'], fem: ['a', 'hild', 'rid', 'dis', 'veig', 'run', 'borg'],
+    demonym: ['ic', 'ish', 'ian', 'sk'],
+    seeds: {
+      bay: 'vik', home: 'heim', farm: 'by', valley: 'dal', town: 'stad', islet: 'holm', enclosure: 'gard', headland: 'nes', fjord: 'fjord', mountain: 'berg',
+      harbour: 'havn', sound: 'sund', field: 'vald', island: 'ey', beach: 'strand', river: 'elv', lake: 'vatn', black: 'svart', wolf: 'ulf', bear: 'bjorn',
+      iron: 'jarn', cold: 'kald', ice: 'is', serpent: 'orm', stone: 'stein', raven: 'hrafn', thunder: 'thor', hall: 'hall', fell: 'fjell',
+    },
+  },
+  given: [
+    [
+      'Ragnar', 'Harald', 'Sigurd', 'Bjorn', 'Eirik', 'Olaf', 'Halfdan', 'Ivar', 'Thorvald', 'Gunnar',
+      'Ulf', 'Sven', 'Knut', 'Hakon', 'Sverre', 'Arnulf', 'Ketil', 'Thorgrim', 'Vemund', 'Asmund',
+      'Orm', 'Hrolf', 'Torstein', 'Egil', 'Leif', 'Styrkar', 'Gorm', 'Brand', 'Erling', 'Skarde',
+      'Thorbjorn', 'Hallfred', 'Bersi', 'Ottar', 'Geir', 'Ingolf', 'Kari', 'Snorri', 'Vestar', 'Tryggvi',
+      'Valgard', 'Sighvat', 'Hraenar', 'Runolf', 'Thrain', 'Einar', 'Arne', 'Bard', 'Gudmund', 'Jorund'
+    ],
+    [
+      'Astrid', 'Sigrid', 'Ingrid', 'Gunnhild', 'Thyra', 'Ragnhild', 'Freydis', 'Helga', 'Ylva', 'Aslaug',
+      'Thora', 'Gudrun', 'Signy', 'Hallveig', 'Ingeborg', 'Solveig', 'Brynja', 'Ragna', 'Torhild', 'Thordis',
+      'Gudrid', 'Osk', 'Aud', 'Hildur', 'Dalla', 'Finna', 'Svanhild', 'Jorunn', 'Aesa', 'Kora',
+      'Vigdris', 'Eldrid', 'Rannveig', 'Herdis', 'Bera', 'Ingibjorg', 'Valgerd', 'Greta', 'Lif', 'Asta'
+    ],
+  ],
+  personName: (given, father, female, _rnd, say) => `${given} ${father.replace(/r$/, '').replace(/ ?$/, '')}${say(female ? 'sdottir' : 'sson')}`,
+  house: (root, rnd) => {
+    const f = rnd() < 0.5 ? `${root.replace(/[aeiou]$/, '')}ing` : root;
+    return { name: rnd() < 0.5 ? `the ${f}s` : `House ${f}`, short: f };
+  },
+  epithets: [
+    'Bloodaxe', 'Ironside', 'Fairhair', 'Forkbeard', 'Snake-in-the-Eye', 'the Boneless', 'Bluetooth', 'Longship', 'Wolf-Coat', 'Skull-Splitter',
+  ],
+  ethos: { bellicose: 4, stoic: 2, communal: 1 },
+  affinity: { seafarers: 0.8, warriorCulture: 0.7, storytellers: 0.9, raiders: 0.8 },
+  architecture: 'turf-roofed longhouses and carved stave temples',
+  dress: 'wool and fur, with brooches and arm-rings',
+  equalArms: 0.2,
+  caveNouns: ['Hellir', 'Hole', 'Barrow'],
+  rulers: ['Hersir', 'Jarl', 'Duke', 'King', 'High King'],
+  barony: ['Herad of {S}', 'Barony of {S}'],
+  county: ['Jarldom of {S}', 'County of {S}'],
+  duchy: ['Duchy of {N}', '{N} Lands'],
+  empire: ['High Kingdom of {N}', 'the {N} Empire'],
+  cityRuler: 'Burgomaster',
+  republicRuler: 'Lawspeaker',
+  cityState: ['Free City of {S}'],
+  league: ['Hanse of {N}', 'the {N} League'],
+  leagueRuler: 'Allthing',
+  thalasso: [['Sea Kingdom of {N}', 'Sea King'], ['the {N} Isles', 'Sea King']],
+  cityStateP: 0.06,
+  republicP: 0.03,
+  indepDuchyP: 0.015,
+  empireW: 0.4,
+  leagueP: 0.4,
+  seafaring: 0.8,
+  femaleP: 0.1,
+  court: ['Lawspeaker', 'Marshal', 'Steward', 'Skald', 'Godi'],
+  army: 'huscarls and raiders in longships',
+  minorFolk: ['Half-orcs', 'Half-giants'],
+  crafts: ['walrus ivory', 'longships', 'amber jewellery', 'mead'],
+  coin: 'marks',
+  shield: 'round',
+  charges: ['axe', 'ship', 'crescent', 'tree', 'hammer'],
+  faith: { native: 'oldgods', missionary: 'church', prophetic: 0.6 },
+};

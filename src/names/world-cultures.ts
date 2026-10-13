@@ -1,10 +1,11 @@
 import { hashString, mulberry32 } from '../gen/rng';
-import { GIVEN, JAPONIC_A, JAPONIC_B, KOREANIC_FAMILY, SINIC_FAMILY } from '../lang/given';
+import { GIVEN } from '../lang/given';
 import { Language } from '../lang/language';
 import { LANG_TEMPLATES } from '../lang/templates';
 import { cap, join } from '../lang/text';
 import { CULTURES, FAMILIES, type LangFamily, TEMPLATES, type WorldCulture, plainCulture } from './cultures';
 import { type CultureEnv, cultureTraits } from './traits';
+import { BUNDLE, table } from './bundles';
 
 /**
  * The world's cultures, one per culture hearth: each grows from a template, with a language of
@@ -45,7 +46,10 @@ export function setWorldCultures(set: CultureSet): void {
   const names = new Set<string>();
   const tplOf = (k: number) => TEMPLATES[set.list[k].template] ?? TEMPLATES[0];
   const langTpl = (k: number) => LANG_TEMPLATES[tplOf(k).id] ?? LANG_TEMPLATES.anglo;
-  const familyNames = (id: string) => (id === 'sinic' ? SINIC_FAMILY : id === 'koreanic' ? KOREANIC_FAMILY : id === 'japonic' ? JAPONIC_A.flatMap((a) => JAPONIC_B.map((b) => a + b)) : undefined);
+  const familyNames = (id: string) => {
+    const b = BUNDLE.get(id);
+    return b?.familyNames ?? (b?.familyParts ? b.familyParts[0].flatMap((x) => b.familyParts![1].map((y) => x + y)) : undefined);
+  };
 
   // Language families: peoples of one template are kin wherever they live; peoples of related
   // templates (one "stock") are kin where their homelands lie near each other.
@@ -113,7 +117,7 @@ export function setWorldCultures(set: CultureSet): void {
 }
 
 /** Templates of one stock: their peoples' tongues are related where they live near each other. */
-const STOCK: Record<string, string> = { anglo: 'north', norse: 'north', dwarven: 'north', latin: 'classic', southern: 'classic', celtic: 'fair', elvish: 'fair' };
+const STOCK = table((b) => b.stock);
 const STOCK_KM = 3600;
 
 function km(lon1: number, lat1: number, lon2: number, lat2: number): number {

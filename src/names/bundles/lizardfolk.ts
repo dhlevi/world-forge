@@ -1,4 +1,8 @@
+import { Biome } from '../../gen/biomes';
 import { near, type TemplateBundle } from '../bundle';
+
+/** Where lizardfolk spread easily. */
+const WET = new Set<Biome>([Biome.Wetland, Biome.Mangrove, Biome.TropicalRainforest, Biome.Riparian]);
 
 /**
  * Lizardfolk: reptilian peoples of hot swamps, mangroves, river deltas and jungle marshes. Having
@@ -10,6 +14,7 @@ export const LIZARDFOLK: TemplateBundle = {
   folk: 'Lizardfolk',
   world: 'both',
   rarity: 0.7,
+  spread: (height, biome, sea) => (sea ? 1 : WET.has(biome) ? 0.7 : height > 500 ? 6 : 2.5),
   culture: {
     id: 'lizardfolk',
     likes: (c) => near(c.temp, 22, 32) * (c.precip > 1500 ? 1.4 : 0.3) * (c.heightM < 500 ? 1.2 : 0.3) * (c.coastal ? 1.1 : 1),

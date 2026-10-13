@@ -16,37 +16,12 @@ export interface CultureFields {
   newWorld?: Uint8Array;
 }
 
-/** Cultures of the New World (tribal lands); the rest belong to the Old World. */
-export const NEW_WORLD_CULTURES = new Set(['jungle', 'woodland', 'highland']);
-/** Where a template's homelands may lie (bundles say; islanders and lizardfolk may live in either world). */
-export const worldOf = (id: string): 'old' | 'new' | 'both' => (NEW_WORLD_CULTURES.has(id) ? 'new' : BUNDLE.get(id)?.world ?? 'old');
+/** Where a template's homelands may lie: the Old World, the New World or either (from its bundle). */
+export const worldOf = (id: string): 'old' | 'new' | 'both' => BUNDLE.get(id)?.world ?? 'old';
 const fits = (id: string, nw: boolean) => {
   const w = worldOf(id);
   return w === 'both' || (w === 'new') === nw;
 };
-
-const WET = new Set<Biome>([Biome.Wetland, Biome.Mangrove, Biome.TropicalRainforest, Biome.Riparian]);
-/**
- * How hard a people spreads over a cell (a multiplier on the distance): dwarves keep to the
- * mountains, lizardfolk to hot wetlands and jungle, halflings to the lowlands and hills, orcs
- * shun the deep forests, and islanders cross the sea as easily as others cross land.
- */
-function habitat(id: string, height: number, biome: Biome, sea: boolean): number {
-  switch (id) {
-    case 'dwarven':
-      return sea ? 1 : height < 700 ? 8 : height < 1100 ? 2.2 : 0.8;
-    case 'lizardfolk':
-      return sea ? 1 : WET.has(biome) ? 0.7 : height > 500 ? 6 : 2.5;
-    case 'halfling':
-      return sea ? 1.3 : height > 1400 ? 4 : 1;
-    case 'orcish':
-      return FOREST.has(biome) ? 1.6 : 1;
-    case 'islander':
-      return sea ? 0.3 : 3;
-    default:
-      return 1;
-  }
-}
 
 const FOREST = new Set<Biome>([
   Biome.BorealForest, Biome.TemperateForest, Biome.TemperateRainforest, Biome.TropicalRainforest, Biome.TropicalDryForest, Biome.MontaneForest,
@@ -115,6 +90,8 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string, races = true
     return best;
   });
 
+  // How hard each hearth's people spread over a cell (dwarves keep to the mountains; see `spread` in names/bundle.ts).
+  const spread = TEMPLATES.map((t) => BUNDLE.get(t.id)?.spread);
   const dist = new Float64Array(N).fill(Infinity);
   const heap = new MinHeap(4096);
   // Each hearth is a culture of its own (cells hold the hearth's index); several may share a template.
@@ -134,7 +111,7 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string, races = true
       const d = g.nbDist[j * 8 + k];
       const sea = f.height[n] <= 0;
       const tid = TEMPLATES[seedCulture[out[c]]]?.id ?? '';
-      let cost = d * (sea ? 4 : 1 + (f.height[n] > 1500 ? 2.5 : f.height[n] > 800 ? 0.8 : 0)) * habitat(tid, f.height[n], f.biome[n] as Biome, sea);
+      let cost = d * (sea ? 4 : 1 + (f.height[n] > 1500 ? 2.5 : f.height[n] > 800 ? 0.8 : 0)) * (spread[seedCulture[out[c]]]?.(f.height[n], f.biome[n] as Biome, sea) ?? 1);
       // Old World cultures hardly reach New World land, and the other way about. Except for colonies if age of sail flag is set.
       if (!sea && f.newWorld && !fits(tid, f.newWorld[n] === 1)) cost += 4000;
       if (dc + cost < dist[n]) {

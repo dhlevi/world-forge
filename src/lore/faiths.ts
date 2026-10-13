@@ -1,4 +1,4 @@
-import { fillFrom } from '../names/bundles';
+import { table } from '../names/bundles';
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import type { PolUnit } from '../gen/politics';
 import type { LabelFeature } from '../gen/features';
@@ -306,21 +306,12 @@ export const ARCHETYPE_LABEL: Record<FaithFamily, string> = {
 };
 
 /** Each template's native faith, and the faith its people found when they found a missionary one. */
-const NATIVE: Record<string, FaithFamily> = {
-  anglo: 'oldgods', norse: 'oldgods', slavic: 'oldgods', latin: 'pantheon', southern: 'pantheon', desert: 'pantheon', celtic: 'druid', elvish: 'stars', dwarven: 'ancestors',
-  steppe: 'sky', sinic: 'heaven', koreanic: 'heaven', japonic: 'kami', woodland: 'spirits', highland: 'sun', jungle: 'serpent',
-};
-fillFrom(NATIVE, (b) => b.faith.native);
-const MISSIONARY: Record<string, FaithFamily> = {
-  anglo: 'church', norse: 'church', slavic: 'church', latin: 'church', southern: 'church', celtic: 'church', desert: 'crescent', steppe: 'crescent', sinic: 'heaven', koreanic: 'heaven', japonic: 'heaven',
-};
-fillFrom(MISSIONARY, (b) => b.faith.missionary);
+const NATIVE: Record<string, FaithFamily> = table((b) => b.faith.native);
+const MISSIONARY: Record<string, FaithFamily> = table((b) => b.faith.missionary);
 /** How likely a template's people are to found a missionary faith. */
-const PROPHETIC: Record<string, number> = { latin: 2.2, southern: 2, desert: 2.4, anglo: 1.2, slavic: 1, celtic: 0.8, norse: 0.6, steppe: 0.8, sinic: 1.6, koreanic: 0.7, japonic: 0.6, elvish: 0.15, dwarven: 0.1 };
-fillFrom(PROPHETIC, (b) => b.faith.prophetic);
+const PROPHETIC = table((b) => b.faith.prophetic);
 /** How readily a template's people take up a foreign faith. */
-const OPEN: Record<string, number> = { elvish: 0.15, dwarven: 0.2, japonic: 0.6, steppe: 0.9 };
-fillFrom(OPEN, (b) => b.faith.open);
+const OPEN = table((b) => b.faith.open);
 
 // ---- The world's faiths --------------------------------------------------------------------------
 

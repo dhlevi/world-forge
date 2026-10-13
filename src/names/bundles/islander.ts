@@ -11,6 +11,7 @@ export const ISLANDER: TemplateBundle = {
   folk: 'Humans',
   world: 'both',
   rarity: 0.8,
+  spread: (_height, _biome, sea) => (sea ? 0.3 : 3),
   culture: {
     id: 'islander',
     likes: (c) => (c.coastal ? near(c.temp, 20, 29) * near(c.precip, 1000, 3500, 600) * 1.6 : 0.05),

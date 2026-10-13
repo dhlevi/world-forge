@@ -1,27 +1,47 @@
 import type { Folk, TemplateBundle } from '../bundle';
+import { ANGLO } from './anglo';
+import { CELTIC } from './celtic';
+import { DESERT } from './desert';
+import { DWARVEN } from './dwarven';
+import { ELVISH } from './elvish';
 import { HALFLING } from './halfling';
+import { HIGHLAND } from './highland';
 import { INDIC } from './indic';
 import { ISLANDER } from './islander';
+import { JAPONIC } from './japonic';
+import { JUNGLE } from './jungle';
+import { KOREANIC } from './koreanic';
+import { LATIN } from './latin';
 import { LIZARDFOLK } from './lizardfolk';
+import { NORSE } from './norse';
 import { ORCISH } from './orcish';
 import { SAHELIAN } from './sahelian';
+import { SINIC } from './sinic';
+import { SLAVIC } from './slavic';
+import { SOUTHERN } from './southern';
+import { STEPPE } from './steppe';
+import { WOODLAND } from './woodland';
 import { ZANJI } from './zanji';
 
-/** Templates added as bundles (see names/bundle.ts), after the original sixteen. */
-export const BUNDLES: TemplateBundle[] = [INDIC, SAHELIAN, ZANJI, ISLANDER, HALFLING, ORCISH, LIZARDFOLK];
+/**
+ * Every culture template (see names/bundle.ts), in a fixed order: a world's cultures refer to
+ * their template by its index here, so new templates go at the end and none is ever reordered.
+ */
+export const BUNDLES: TemplateBundle[] = [
+  ANGLO, NORSE, LATIN, CELTIC, ELVISH, DESERT, SLAVIC, DWARVEN, SOUTHERN, STEPPE, JUNGLE, SINIC, JAPONIC, KOREANIC, WOODLAND, HIGHLAND,
+  INDIC, SAHELIAN, ZANJI, ISLANDER, HALFLING, ORCISH, LIZARDFOLK,
+];
 export const BUNDLE = new Map(BUNDLES.map((b) => [b.culture.id, b]));
 
-/** Fills a table keyed by template id from the bundles, where it has no entry of its own. */
-export function fillFrom<T>(table: Record<string, T>, get: (b: TemplateBundle) => T | undefined): void {
+/** A table keyed by template id, with an entry for each template that has a value for it. */
+export function table<T>(get: (b: TemplateBundle) => T | undefined): Record<string, T> {
+  const out: Record<string, T> = {};
   for (const b of BUNDLES) {
     const v = get(b);
-    if (v !== undefined && table[b.culture.id] === undefined) table[b.culture.id] = v;
+    if (v !== undefined) out[b.culture.id] = v;
   }
+  return out;
 }
 
 /** The folk a template's people are. */
-export function templateFolk(id: string): Folk {
-  if (id === 'elvish') return 'Elves';
-  if (id === 'dwarven') return 'Dwarves';
-  return BUNDLE.get(id)?.folk ?? 'Humans';
-}
+export const templateFolk = (id: string): Folk => BUNDLE.get(id)?.folk ?? 'Humans';

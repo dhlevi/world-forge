@@ -1,5 +1,5 @@
 import { Biome } from '../gen/biomes';
-import { BUNDLE, fillFrom } from '../names/bundles';
+import { BUNDLE, table } from '../names/bundles';
 import { fantasyRaces } from '../names/world-cultures';
 import { LEVEL_NAME, STYLE_WORDS, NB_CULTURE, type Politics, type PolUnit, chainOf } from '../gen/politics';
 import { hashString, mulberry32, type Rng } from '../gen/rng';
@@ -9,7 +9,7 @@ import { nameCase, translate } from '../lang/translate';
 import { goodName, production, tradeOf } from './economy';
 import { type Faith, type Sect, toleranceOf } from './faiths';
 import type { LabelFeature } from '../gen/features';
-import { COURT, cultureFolk, cultureId, cultureLabel, epithet, givenName, type House, houseName, personName, roman, traits } from './names';
+import { COURT, cultureFolk, cultureId, cultureLabel, epithet, familyFirst, givenName, type House, houseName, personName, roman, traits } from './names';
 import { buildWorldLore, type Claim, type Relation, type War, type WorldLore } from './world';
 
 /**
@@ -175,23 +175,17 @@ export function loreFor(key: string, seed: string, p: Politics, settlements: Set
   return ctx;
 }
 
-const FEMALE_P: Record<string, number> = {
-  anglo: 0.14, norse: 0.1, latin: 0.1, celtic: 0.18, elvish: 0.45, desert: 0.03, slavic: 0.1, dwarven: 0.15, southern: 0.12, steppe: 0.08, jungle: 0.12,
-  sinic: 0.04, japonic: 0.05, koreanic: 0.07, woodland: 0.3, highland: 0.06,
-};
-fillFrom(FEMALE_P, (b) => b.femaleP);
+const FEMALE_P = table((b) => b.femaleP);
 const FEM: Record<string, string> = {
   King: 'Queen', Emperor: 'Empress', Duke: 'Duchess', Count: 'Countess', Earl: 'Countess', Baron: 'Baroness', Prince: 'Princess', Tsar: 'Tsarina', Khan: 'Khatun',
   Khagan: 'Khatun', Sultan: 'Sultana', Emir: 'Emira', Lord: 'Lady', 'Grand Duke': 'Grand Duchess', Margrave: 'Margravine', 'High King': 'High Queen', 'Sea King': 'Sea Queen',
   Voivode: 'Voivodess', Despot: 'Despotess', Autokrator: 'Autokratorissa', Caliph: 'Caliph', 'Prince-Bishop': 'Princess-Abbess', Abbot: 'Abbess', Patriarch: 'Matriarch',
   'High Godi': 'High Volva', Godi: 'Gydja', 'High Priest': 'High Priestess', Hierarch: 'Hierarch', 'Rune-priest': 'Rune-priestess', 'Shaman-Khan': 'Shaman-Khatun', 'Celestial Master': 'Celestial Mistress', Imam: 'Imam', Warden: 'Warden', Thane: 'Thane', Shogun: 'Shogun', Headman: 'Headwoman', Chief: 'Chief', 'Lord Mayor': 'Lady Mayor', Overking: 'Overqueen',
 };
-const NO_NUMERAL = new Set(['sinic', 'japonic', 'koreanic', 'woodland']);
-const SURNAME_FIRST = new Set(['sinic', 'japonic', 'koreanic']);
 
 function styledName(cul: string, title: string, p: Person): string {
   const t = p.female ? FEM[title] ?? title : title;
-  const name = SURNAME_FIRST.has(cul) ? p.full : p.given;
+  const name = familyFirst(cul) ? p.full : p.given;
   return `${t} ${name}${p.numeral ? ` ${p.numeral}` : ''}${p.epithet ? ` ${p.epithet}` : ''}`;
 }
 
@@ -294,7 +288,7 @@ function reignsOf(c: Ctx, id: number): Reign[] {
     }
   }
   // Regnal numbers: the second of a name is "II", and the first becomes "I".
-  if (!NO_NUMERAL.has(cul) && (!ELECTED.has(u.gov) || u.gov === 'theocracy') && u.gov !== 'colony') {
+  if (BUNDLE.get(cul)?.numerals !== false && (!ELECTED.has(u.gov) || u.gov === 'theocracy') && u.gov !== 'colony') {
     const seen = new Map<string, Reign[]>();
     for (const x of out) (seen.get(x.person.given) ?? seen.set(x.person.given, []).get(x.person.given)!).push(x);
     for (const list of seen.values()) if (list.length > 1) list.forEach((x, k) => (x.person.numeral = roman(k + 1)));
@@ -316,15 +310,10 @@ function succession(u: PolUnit, cul: string, home?: PolUnit): string {
   if (u.gov === 'theocracy') return 'Elected by a conclave of the high clergy';
   if (u.gov === 'league') return 'A council of the members\' envoys; the presidency passes in turn';
   if (u.gov === 'colony') return home ? `Appointed by ${home.ruler === 'King' ? 'the crown' : `the ${home.ruler}`} of ${home.name}` : 'Appointed from overseas';
-  if (u.gov === 'tribal') return cul === 'woodland' ? 'Chosen by the clan mothers from the ruling clan' : 'Chosen by the elders from the ruling lineage';
-  const table: Record<string, string> = {
-    celtic: 'Tanistry: the heir is chosen from the ruler\'s kin', slavic: 'Seniority: the eldest of the dynasty inherits', steppe: 'Elected by a kurultai from the khan\'s kin',
-    desert: 'The ruler names an heir from among his sons', elvish: 'The eldest child inherits, son or daughter', dwarven: 'The eldest of the line, by consent of the elders',
-    sinic: 'The eldest son inherits, under the Mandate of Heaven', japonic: 'Hereditary in the clan; the heir is adopted if need be', woodland: 'Chosen by the clan mothers',
-    highland: 'The ablest son of the ruler\'s principal wife', jungle: 'Father to son, confirmed by the priests', southern: 'Hereditary; heirs are crowned co-rulers in the ruler\'s lifetime',
-  };
-  if (u.level === 4 && cul === 'latin') return 'Elective: the greatest vassals choose the emperor';
-  return table[cul] ?? BUNDLE.get(cul)?.succession ?? 'The eldest son inherits, then the eldest daughter';
+  const b = BUNDLE.get(cul);
+  if (u.gov === 'tribal') return b?.tribalSuccession ?? 'Chosen by the elders from the ruling lineage';
+  if (u.level === 4 && b?.electiveEmpire) return 'Elective: the greatest vassals choose the emperor';
+  return b?.succession ?? 'The eldest son inherits, then the eldest daughter';
 }
 
 
@@ -333,18 +322,8 @@ const TERRAIN: [string, Biome[]][] = [
   ['steppe', [Biome.ColdDesert]], ['desert', [Biome.HotDesert, Biome.SaltFlat]], ['savanna', [Biome.Savanna]], ['jungle', [Biome.TropicalRainforest, Biome.TropicalDryForest, Biome.Mangrove]],
   ['marsh', [Biome.Wetland]], ['tundra and ice', [Biome.Tundra, Biome.IceSheet]], ['mountains', [Biome.Alpine]], ['scrubland', [Biome.Shrubland]],
 ];
-const MINOR_FOLK: Record<string, string[]> = {
-  anglo: ['Halflings', 'Half-elves'], latin: ['Halflings'], celtic: ['Half-elves', 'Halflings'], dwarven: ['Gnomes'], slavic: ['Gnomes', 'Half-orcs'], steppe: ['Half-orcs'],
-  norse: ['Half-orcs', 'Half-giants'], elvish: ['Half-elves'], jungle: ['Lizardfolk'], desert: ['Gnolls'], southern: ['Halflings'],
-};
-fillFrom(MINOR_FOLK, (b) => b.minorFolk);
-const ARMY: Record<string, string> = {
-  anglo: 'longbowmen and armoured men-at-arms', latin: 'heavy knights and crossbowmen', norse: 'huscarls and raiders in longships', celtic: 'warbands of spearmen and light horse',
-  elvish: 'archers and wardens of the woods', desert: 'mailed horsemen, archers and slave-soldiers', slavic: 'boyar cavalry and town militias', dwarven: 'shield-walls of axemen and crossbowmen',
-  southern: 'armoured cataphracts and hoplite infantry', steppe: 'horse archers in great numbers', jungle: 'jaguar and eagle warriors with obsidian clubs', sinic: 'crossbowmen and drilled infantry with banners',
-  japonic: 'mounted samurai and spear-armed foot', koreanic: 'archers and fortress garrisons', woodland: 'woodland warriors and canoe parties', highland: 'slingers, clubmen and road garrisons',
-};
-fillFrom(ARMY, (b) => b.army);
+const MINOR_FOLK = table((b) => b.minorFolk);
+const ARMY = table((b) => b.army);
 
 /** Details for one unit. */
 export function realmDetails(c: Ctx, id: number): RealmDetails {
@@ -390,7 +369,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
     let heir: string | undefined;
     if (!ELECTED.has(u.gov) && u.gov !== 'colony') {
       if (children > 0) {
-        const hf = cul === 'elvish' ? r() < 0.5 : r() < 0.15;
+        const hf = r() < (BUNDLE.get(cul)?.heirFemaleP ?? 0.15);
         const ha = Math.max(0, age - 18 - Math.floor(r() * 18));
         heir = `${personName(u.culture, hf, r, p.house ?? undefined, p.female ? undefined : p.given).full}, ${hf ? 'daughter' : 'son'}, aged ${ha}`;
       } else {
@@ -580,7 +559,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   const cm = CULTURES[u.culture]?.mods;
   const levy = Math.round((u.people * levyRate * (cm?.levy ?? 1)) / 100) * 100;
   const standing = Math.round((u.pop * (u.level === 4 ? 0.025 : u.gov === 'republic' || u.gov === 'city-state' ? 0.02 : 0.01)) / 50) * 50;
-  const horse = Math.round(Math.min(levy * 0.9, levy * (cul === 'steppe' ? 0.8 : cul === 'desert' || cul === 'japonic' ? 0.3 : u.nw ? 0 : 0.12) * (u.nw ? 1 : cm?.cavalry ?? 1)) / 50) * 50;
+  const horse = Math.round(Math.min(levy * 0.9, levy * (BUNDLE.get(cul)?.horseShare ?? (u.nw ? 0 : 0.12)) * (u.nw ? 1 : cm?.cavalry ?? 1)) / 50) * 50;
   const ships = Math.round(Math.min(600, (land.coastKm / (u.gov === 'thalassocracy' ? 8 : 35)) * Math.min(1, u.pop / 20000 + 0.2) * (cm?.fleet ?? 1)));
   const charge: string | undefined = u.arms?.charge?.kind;
   const order = (u.level >= 3 || isTop) && u.gov !== 'tribal' && r() < 0.7 && charge
@@ -600,7 +579,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   const lands = tn.length ? `a land of ${tn.join(' and ')}${land.coastKm > 250 ? ' with a long coast' : land.coastKm > 40 ? ' by the sea' : ''}${land.highKm2 / area > 0.2 && !tn.includes('mountains') ? ', hemmed by mountains' : ''}` : '';
   const sents: string[] = [];
   sents.push(`${cap(u.name)} is a ${word} ${govWord} of about ${fmtPeople(u.people)} people${lands ? `, ${lands}` : ''}.`);
-  if (ruler && !ruler.heldBy && !ruler.council && now) sents.push(`${cap(ELECTED.has(u.gov) ? 'It has been led' : 'It has been ruled')} since ${now.from} by the ${listAnd(ruler.traits.map((x) => x.toLowerCase()))} ${now.styled}${ruler.house && !SURNAME_FIRST.has(cul) ? ` of ${ruler.house.name}` : ''}.`);
+  if (ruler && !ruler.heldBy && !ruler.council && now) sents.push(`${cap(ELECTED.has(u.gov) ? 'It has been led' : 'It has been ruled')} since ${now.from} by the ${listAnd(ruler.traits.map((x) => x.toLowerCase()))} ${now.styled}${ruler.house && !familyFirst(cul) ? ` of ${ruler.house.name}` : ''}.`);
   else if (ruler?.heldBy !== undefined) sents.push(`It is held in person by the ${liege!.ruler} of ${liege!.name}.`);
   if (cultures.length) sents.push(`Its people are mostly ${cultures[0].name}${cultures[1] && cultures[1].pct > 12 ? `, with many ${cultures[1].name}` : ''}, and keep ${state.sect.name}.`);
   if (wars.length && isTop) sents.push(`It is at war with ${listAnd(wars.flatMap((w) => w.enemies).slice(0, 3).map((x) => units[x].name))}.`);
@@ -644,7 +623,7 @@ function governmentText(u: PolUnit, liege: PolUnit | null, cul: string): string 
     case 'theocracy': return `Ruled by the faith: its ${u.ruler} is both lord and priest at once.${v}`;
     case 'thalassocracy': return `A sea power whose strength is its fleets and island ports, ruled by a ${u.ruler}.${v}`;
     case 'league': return `A loose union of independent realms for trade and defence, governed by a ${u.ruler}.`;
-    case 'tribal': return `${cul === 'woodland' ? 'A union of clans' : 'A chiefdom of kin and lineages'} under a ${u.ruler}.${v}`;
+    case 'tribal': return `${BUNDLE.get(cul)?.tribalGov ?? 'A chiefdom of kin and lineages'} under a ${u.ruler}.${v}`;
     case 'colony': return `A colony established across the sea or land, governed by a ${u.ruler} for its masters.${v}`;
     default: return u.level === 4 ? `An empire of many realms under a ${u.ruler}.` : liege ? `A fief held from ${liege.name} by its ${u.ruler}.` : `An independent ${LEVEL_NAME[u.level].toLowerCase()} under a ${u.ruler}.`;
   }

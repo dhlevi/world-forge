@@ -2,6 +2,7 @@ import { hash32, hashString, mulberry32, type Rng } from '../gen/rng';
 import { awkward, cap, join, tidy } from '../lang/text';
 import { PROPER, nameCase, translate } from '../lang/translate';
 import { ADJECTIVES, CULTURES, type Culture, DEFAULT_TERMS, FAMILIES, type FeatureKind, MOTIFS, type WorldCulture } from './cultures';
+import { BUNDLE } from './bundles';
 
 const pick = <T>(rnd: Rng, a: T[]): T => a[Math.floor(rnd() * a.length)];
 /**
@@ -372,7 +373,7 @@ export function deityName(bank: NameBank, cultureIdx: number, key: string): stri
   const rnd = bank.rng(`deity:${key}`);
   const n = bank.proper(cul, rnd);
   const r = rnd();
-  return r < 0.4 ? `Temple of ${n}` : r < 0.7 ? `Shrine of ${n}` : cul.id === 'anglo' || cul.id === 'celtic' ? `St ${n}'s` : `House of ${n}`;
+  return r < 0.4 ? `Temple of ${n}` : r < 0.7 ? `Shrine of ${n}` : BUNDLE.get(cul.id)?.saints ? `St ${n}'s` : `House of ${n}`;
 }
 
 // ---- Caves and glades ----------------------------------------------------------------------
@@ -426,9 +427,6 @@ const EN_B = [
   'river', 'source', 'well', 'spring', 'pool', 'lake', 'hearth', 'home', 
   'pass', 'trail', 'path', 'road', 'walk'
 ];
-/** Culture flavour for the generic nouns. */
-const CULTURE_CAVE: Record<string, string[]> = { dwarven: ['Delve', 'Deeps', 'Halls', 'Hold'], norse: ['Hellir', 'Hole', 'Barrow'], latin: ['Catacombs', 'Specus', 'Grotto'], desert: ['Ghar', 'Caves'] };
-const CULTURE_GLADE: Record<string, string[]> = { elvish: ['Glen', 'Bower', 'Glade'], celtic: ['Glen', 'Nemeton', 'Dell'], slavic: ['Polana', 'Glade'] };
 
 /**
  * A name for a cave or glade: a proper name in the local culture (or now and then an English
@@ -441,10 +439,10 @@ export function lairName(bank: NameBank, kind: 'cave' | 'glade', cultureIdx: num
   const size = tags.find((t) => t === 'small' || t === 'medium' || t === 'large') ?? 'medium';
   let nouns: string[];
   if (kind === 'cave') {
-    nouns = [...CAVE_NOUNS[size], ...(tags.includes('wet') || tags.includes('flooded') ? CAVE_NOUNS.wet : []), ...(CULTURE_CAVE[cul.id] ?? [])];
+    nouns = [...CAVE_NOUNS[size], ...(tags.includes('wet') || tags.includes('flooded') ? CAVE_NOUNS.wet : []), ...(BUNDLE.get(cul.id)?.caveNouns ?? [])];
   } else {
     const feat = tags.find((t) => t in GLADE_NOUNS && t !== 'any');
-    nouns = [...GLADE_NOUNS.any, ...(feat ? GLADE_NOUNS[feat] : []), ...(CULTURE_GLADE[cul.id] ?? [])];
+    nouns = [...GLADE_NOUNS.any, ...(feat ? GLADE_NOUNS[feat] : []), ...(BUNDLE.get(cul.id)?.gladeNouns ?? [])];
   }
   const noun = pick(rnd, nouns);
   // An English compound ("Starbog") is said in the language too; a native name stays as it is.
