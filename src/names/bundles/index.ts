@@ -22,6 +22,7 @@ import { SOUTHERN } from './southern';
 import { STEPPE } from './steppe';
 import { WOODLAND } from './woodland';
 import { ZANJI } from './zanji';
+import { GERMAN } from './germanic';
 
 /**
  * Every culture template (see names/bundle.ts), in a fixed order: a world's cultures refer to
@@ -29,7 +30,7 @@ import { ZANJI } from './zanji';
  */
 export const BUNDLES: TemplateBundle[] = [
   ANGLO, NORSE, LATIN, CELTIC, ELVISH, DESERT, SLAVIC, DWARVEN, SOUTHERN, STEPPE, JUNGLE, SINIC, JAPONIC, KOREANIC, WOODLAND, HIGHLAND,
-  INDIC, SAHELIAN, ZANJI, ISLANDER, HALFLING, ORCISH, LIZARDFOLK,
+  INDIC, SAHELIAN, ZANJI, ISLANDER, HALFLING, ORCISH, LIZARDFOLK, GERMAN,
 ];
 export const BUNDLE = new Map(BUNDLES.map((b) => [b.culture.id, b]));
 
