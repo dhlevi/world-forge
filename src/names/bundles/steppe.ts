@@ -98,7 +98,7 @@ export const STEPPE: TemplateBundle = {
   coin: 'silver sukhe',
   goods: { horses: 3 },
   shield: 'round',
-  charges: ['sun', 'crescent', 'horn', 'sword', 'mullet'],
+  charges: ['horse', 'bow', 'sun', 'crescent', 'eagle', 'horn', 'sword', 'mullet'],
   emblem: 'tamga',
   faith: { native: 'sky', missionary: 'crescent', prophetic: 0.8, open: 0.9 },
 };

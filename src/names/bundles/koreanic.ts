@@ -98,7 +98,7 @@ export const KOREANIC: TemplateBundle = {
   coin: 'mun',
   goods: { riceAndTea: true, silk: true },
   shield: 'round',
-  charges: ['blossom', 'sun', 'wheel', 'mullet', 'cloud', 'tomoe'],
+  charges: ['taiji', 'blossom', 'lotus', 'bird', 'mullet', 'cloud'],
   emblem: 'banner',
   faith: { native: 'heaven', missionary: 'heaven', prophetic: 0.7 },
 };

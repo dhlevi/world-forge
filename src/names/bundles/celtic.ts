@@ -108,6 +108,6 @@ export const CELTIC: TemplateBundle = {
   crafts: ['whisky', 'gold torcs', 'illuminated books', 'tweed'],
   coin: 'crowns',
   shield: 'heater',
-  charges: ['tree', 'crescent', 'roundel', 'horn', 'heart'],
+  charges: ['triskele', 'triskele', 'hand', 'harp', 'tree', 'crescent', 'horn', 'heart', 'roundel'],
   faith: { native: 'druid', missionary: 'church', prophetic: 0.8 },
 };

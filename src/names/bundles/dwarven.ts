@@ -107,6 +107,6 @@ export const DWARVEN: TemplateBundle = {
   coin: 'ingots',
   goods: { delvers: true },
   shield: 'kite',
-  charges: ['hammer', 'axe', 'tower', 'key', 'crown', 'bell'],
+  charges: ['hammer', 'anvil', 'anvil', 'castle', 'axe', 'tower', 'key', 'crown', 'bell'],
   faith: { native: 'ancestors', prophetic: 0.1, open: 0.2 },
 };

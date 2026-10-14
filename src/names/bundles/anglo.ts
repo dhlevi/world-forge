@@ -122,6 +122,6 @@ export const ANGLO: TemplateBundle = {
   crafts: ['fine woollen cloth', 'longbows', 'pewter', 'ale'],
   coin: 'crowns',
   shield: 'heater',
-  charges: ['tower', 'crown', 'fleur', 'mullet', 'horn', 'acorn'],
+  charges: ['lion', 'lion', 'castle', 'anvil', 'tower', 'crown', 'fleur', 'mullet', 'horn', 'acorn'],
   faith: { native: 'oldgods', missionary: 'church', prophetic: 1.2 },
 };

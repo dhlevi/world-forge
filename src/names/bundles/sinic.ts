@@ -108,7 +108,7 @@ export const SINIC: TemplateBundle = {
   coin: 'taels',
   goods: { riceAndTea: true, silk: true },
   shield: 'round',
-  charges: ['cloud', 'sun', 'blossom', 'crescent', 'serpent', 'lozenge'],
+  charges: ['coin', 'lotus', 'taiji', 'cloud', 'serpent', 'sun'],
   emblem: 'seal',
   faith: { native: 'heaven', missionary: 'heaven', prophetic: 1.6 },
 };

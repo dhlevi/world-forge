@@ -18,7 +18,8 @@ export type Ordinary = 'fess' | 'pale' | 'bend' | 'chevron' | 'cross' | 'saltire
 export type Charge =
   | 'mullet' | 'crescent' | 'roundel' | 'lozenge' | 'tower' | 'crown' | 'fleur' | 'key' | 'tree' | 'sun' | 'cross'
   | 'anchor' | 'ship' | 'sword' | 'hammer' | 'axe' | 'eagle' | 'wheel' | 'bell' | 'horn' | 'estoile' | 'heart' | 'acorn' | 'blossom'
-  | 'tomoe' | 'feather' | 'bird' | 'serpent' | 'cloud';
+  | 'tomoe' | 'feather' | 'bird' | 'serpent' | 'cloud'
+  | 'lion' | 'castle' | 'anvil' | 'triskele' | 'hand' | 'harp' | 'fan' | 'leaves' | 'wave' | 'coin' | 'lotus' | 'taiji' | 'bow' | 'horse' | 'spears';
 
 /**
  * The form an emblem takes, by culture: the European **shield**; a painted round **hide** shield
@@ -79,7 +80,7 @@ const SHIELD_BY_CULTURE: Record<string, Shield> = table((b) => b.shield);
 const CULTURE_CHARGES: Record<string, Charge[]> = table((b) => b.charges);
 const ALL_CHARGES: Charge[] = [
   'mullet', 'crescent', 'roundel', 'lozenge', 'tower', 'crown', 'fleur', 'key', 'tree', 'sun', 'cross',
-  'anchor', 'ship', 'sword', 'hammer', 'axe', 'eagle', 'wheel', 'bell', 'horn', 'estoile', 'heart', 'acorn', 'blossom',
+  'anchor', 'ship', 'sword', 'hammer', 'axe', 'eagle', 'wheel', 'bell', 'horn', 'estoile', 'heart', 'acorn', 'blossom', 'lion', 'castle',
 ];
 const PATTERNS: Division[] = ['paly', 'barry', 'chequy', 'gyronny'];
 
@@ -223,6 +224,11 @@ const CHARGE_NAME: Record<Charge, [string, string]> = {
   eagle: ['an eagle displayed', 'eagles displayed'], wheel: ['a wheel', 'wheels'], bell: ['a bell', 'bells'], horn: ['a hunting horn', 'hunting horns'],
   estoile: ['an estoile', 'estoiles'], heart: ['a heart', 'hearts'], acorn: ['an acorn', 'acorns'], blossom: ['a blossom', 'blossoms'],
   tomoe: ['a tomoe', 'tomoe'], feather: ['a feather', 'feathers'], bird: ['a bird volant', 'birds volant'], serpent: ['a serpent', 'serpents'], cloud: ['a cloud', 'clouds'],
+  lion: ['a lion rampant', 'lions rampant'], castle: ['a castle triple-towered', 'castles triple-towered'], anvil: ['an anvil', 'anvils'],
+  triskele: ['a triskele', 'triskeles'], hand: ['a dexter hand appaumé', 'dexter hands appaumé'], harp: ['a harp', 'harps'],
+  fan: ['a folding fan', 'folding fans'], leaves: ['three hollyhock leaves in a ring', 'rings of hollyhock leaves'], wave: ['a wave', 'waves'],
+  coin: ['a cash coin', 'cash coins'], lotus: ['a lotus flower', 'lotus flowers'], taiji: ['a taiji', 'taiji'],
+  bow: ['a bow and arrow', 'bows and arrows'], horse: ["a horse's head couped", "horses' heads couped"], spears: ['a shield and two spears in saltire', 'shields and spears in saltire'],
 };
 const NUM = ['', '', 'two', 'three'];
 

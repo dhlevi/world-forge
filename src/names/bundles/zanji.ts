@@ -108,7 +108,7 @@ export const ZANJI: TemplateBundle = {
   crafts: ['ivory', 'carved wooden doors', 'cloves', 'coffee'],
   coin: 'dinari',
   shield: 'round',
-  charges: ['ship', 'crescent', 'cross', 'sun', 'estoile', 'tower'],
+  charges: ['ship', 'spears', 'lion', 'crescent', 'cross', 'tree', 'sun', 'tower'],
   emblem: 'banner',
   faith: { native: 'sky', missionary: 'church', prophetic: 1.0 },
 };

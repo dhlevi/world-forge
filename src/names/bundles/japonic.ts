@@ -108,7 +108,7 @@ export const JAPONIC: TemplateBundle = {
   coin: 'ryo',
   goods: { riceAndTea: true },
   shield: 'round',
-  charges: ['blossom', 'tomoe', 'crescent', 'wheel', 'feather', 'cloud'],
+  charges: ['tomoe', 'blossom', 'fan', 'leaves', 'wave', 'feather', 'wheel', 'lozenge'],
   emblem: 'mon',
   faith: { native: 'kami', missionary: 'heaven', prophetic: 0.6, open: 0.6 },
 };

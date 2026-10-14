@@ -110,7 +110,7 @@ export const INDIC: TemplateBundle = {
   crafts: ['printed cotton', 'pepper and spices', 'wootz steel', 'indigo dye'],
   coin: 'rupakas',
   shield: 'round',
-  charges: ['sun', 'blossom', 'wheel', 'serpent', 'crescent', 'estoile'],
+  charges: ['lotus', 'sun', 'blossom', 'wheel', 'serpent', 'crescent', 'estoile'],
   emblem: 'banner',
   faith: { native: 'pantheon', missionary: 'heaven', prophetic: 1.4 },
 };

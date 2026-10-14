@@ -94,7 +94,7 @@ export const GERMAN: TemplateBundle = {
   ],
   epithets: ['the Great', 'the Bold', 'the Lion', 'the Iron', 'the Pious', 'the Wise', 'the Red', 'the Fair', 'the Victorious'],
   ethos: { courtly: 2, bellicose: 3, stoic: 2, bureaucratic: 2 },
-  affinity: { seafarers: 0.4, monastic: 0.6 },
+  affinity: { seafarers: 0.2, monastic: 0.6, masterCraftsmen: 0.4 },
   architecture: 'half-timbered houses, towering stone castles, and grand Gothic cathedrals',
   dress: 'heavy wool doublets, embroidered gowns, and chaperons',
   saints: true,
@@ -121,6 +121,6 @@ export const GERMAN: TemplateBundle = {
   crafts: ['plate armour', 'fine beer', 'cut gemstones', 'printed books'],
   coin: 'thaliers',
   shield: 'heater',
-  charges: ['eagle', 'crown', 'cross', 'hammer', 'axe', 'tower', 'key', 'crown', 'bell'],
+  charges: ['eagle', 'crown', 'cross', 'hammer', 'axe', 'tower', 'key', 'bell', 'lion', 'castle', 'anvil'],
   faith: { native: 'oldgods', missionary: 'church', prophetic: 1.0 },
 };
