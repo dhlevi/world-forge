@@ -624,7 +624,7 @@ const GROVE_HOOKS = [
   'A cursed soldier who turned into a creature of the wood haunts the clearing, begging travelers for a mercy kill.',
   'The local ealdorman posted a bounty on the grove\'s lessee after three tax collectors were found hung by their ankles from the boughs.',
   'Poachers set iron snares near the sacred mound, only to find their own legs caught in crude bone traps the next dawn.',
-  'A traveling witcher\'s silver medallion spun wildly near the treeline before he vanished into the fog without his sword.',
+  'A traveling adventurer\'s silver medallion spun wildly near the treeline before he vanished into the fog without his sword.',
   'The village priest desecrated an old wooden idol in the glade, and now the wells in town run red with pig\'s blood.',
   'Rebels hiding from the king\'s cavalry took shelter in the grove, but their commander was found drained of blood in his tent.',
   'A gnarled leshy-mark was freshly carved into the boundary post, warning all who enter that human steel is forbidden.',

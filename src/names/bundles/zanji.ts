@@ -9,7 +9,6 @@ export const ZANJI: TemplateBundle = {
   label: 'Zanji',
   folk: 'Humans',
   world: 'old',
-  rarity: 1,
   culture: {
     id: 'zanji',
     likes: (c) => near(c.temp, 16, 28, 5) * near(c.precip, 500, 1500, 400) * (c.coastal ? 1.3 : c.heightM > 1500 ? 1.2 : 0.75),

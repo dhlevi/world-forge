@@ -776,7 +776,7 @@ function buildChronicle(c: Ctx, id: number, reigns: Reign[], wars: WarView[], r:
     [`A curse fell upon the house of a noble family from ${u.seatName}, turning their bloodline mad`, 'wonder'],
     ['A great comet with a blood-red tail hung in the night sky for forty days', 'wonder'],
     ['The forest grew ten leagues in a single night, swallowing three border forts', 'wonder'],
-    [`A striga tormented the court of ${u.seatName} until an itinerant witcher laid it low`, 'wonder'],
+    [`A striga tormented the court of ${u.seatName} until an itinerant monster hunter laid it low`, 'wonder'],
     ['An ancient monolith uncovered in the peat bogs began to hum a low drone', 'wonder'],
     ['The sun turned pitch-black at midday, and the livestock refused to graze for a year', 'wonder'],
     ['A beast of shadow roamed the countryside, leaving only empty armor behind', 'wonder'],

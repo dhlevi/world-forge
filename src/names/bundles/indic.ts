@@ -9,7 +9,6 @@ export const INDIC: TemplateBundle = {
   label: 'Indic',
   folk: 'Humans',
   world: 'old',
-  rarity: 1,
   culture: {
     id: 'indic',
     likes: (c) => near(c.temp, 20, 30, 6) * near(c.precip, 800, 2500, 500) * (c.heightM < 1800 ? 1.05 : 0.5) * (c.dry ? 0.5 : 1),

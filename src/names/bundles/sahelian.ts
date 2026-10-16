@@ -9,7 +9,6 @@ export const SAHELIAN: TemplateBundle = {
   label: 'Sahelian',
   folk: 'Humans',
   world: 'old',
-  rarity: 1,
   culture: {
     id: 'sahelian',
     likes: (c) => near(c.temp, 22, 32, 5) * near(c.precip, 300, 1400, 300) * (c.forest ? 0.7 : 1.1) * (c.heightM < 1500 ? 1 : 0.5),

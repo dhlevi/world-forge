@@ -276,32 +276,32 @@ function weightedPick(rnd: Rng, a: [string, number][]): string {
 }
 const HEAD_EN: Record<string, string> = { harbour: 'Harbour', bay: 'Bay', ford: 'Ford', bridge: 'Bridge', hill: 'Hill', field: 'Field', meadow: 'Meadow', wood: 'Wood', town: 'Town', farm: 'Farm', home: 'Stead', fort: 'Fort', city: 'City', valley: 'Vale', spring: 'Spring', well: 'Well', stone: 'Stone', mill: 'Mill', camp: 'Camp', mine: 'Mine', marsh: 'Marsh', island: 'Isle', cliff: 'Cliff', lake: 'Mere' };
 function siteHeads(s: SiteInfo): [string, number][] {
-  const h: [string, number][] = [['town', 3], ['farm', s.city ? 0.3 : 1.5], ['home', 1.2], ['valley', 0.8], ['spring', 0.5], ['well', 0.5], ['stone', 0.4]];
-  if (s.coastal || s.kind === 'fishing') h.push(['harbour', 3], ['bay', 2], ['cliff', 0.6]);
-  if (s.river) h.push(['ford', 3], ['bridge', 2], ['mill', 1]);
-  if (s.high) h.push(['hill', 3], ['cliff', 0.6]);
-  if (s.forest || s.kind === 'logging') h.push(['wood', 2.5], ['meadow', 0.6]);
-  if (s.grass) h.push(['field', 2], ['meadow', 1.5]);
-  if (s.marsh) h.push(['marsh', 1.5]);
-  if (s.walls) h.push(['fort', 1.5]);
-  if (s.city) h.push(['city', 1]);
-  if (s.kind === 'mining') h.push(['mine', 2], ['hill', 1]);
+  const h: [string, number][] = [['town', 3], ['farm', s.city ? 0.3 : 1.5], ['home', 1.2], ['valley', 0.8], ['spring', 0.5], ['well', 0.5], ['stone', 0.4], ['hill', 1], ['forest', 1], ['marsh', 0.8]];
+  if (s.coastal || s.kind === 'fishing') h.push(['harbour', 3], ['bay', 2], ['cliff', 0.6], ['beach', 1], ['lagoon', 0.5], ['cove', 0.4]);
+  if (s.river) h.push(['ford', 3], ['bridge', 2], ['mill', 1], ['weir', 0.5], ['dam', 0.4], ['canal', 0.3], ['lock', 0.3], ['sluice', 0.3]);
+  if (s.high) h.push(['hill', 3], ['cliff', 0.6], ['ridge', 0.8], ['mountain', 1.5], ['peak', 1], ['summit', 0.8], ['escarpment', 0.5], ['mesa', 0.4], ['plateau', 0.6], ['bluff', 0.4], ['crag', 0.4]);
+  if (s.forest || s.kind === 'logging') h.push(['wood', 2.5], ['meadow', 0.6], ['grove', 0.4], ['copse', 0.3], ['thicket', 0.3], ['glade', 0.3]);
+  if (s.grass) h.push(['field', 2], ['meadow', 1.5], ['pasture', 1], ['grazing', 0.8], ['lawn', 0.6], ['commons', 0.5], ['park', 0.4], ['garden', 0.3], ['orchard', 0.3], ['vineyard', 0.3], ['green', 0.3]);
+  if (s.marsh) h.push(['marsh', 1.5], ['bog', 1], ['fen', 0.8], ['swamp', 0.6], ['wetland', 0.5], ['quagmire', 0.4], ['mire', 0.3], ['lagoon', 0.3], ['marshland', 0.3], ['slough', 0.3], ['fenland', 0.3]);
+  if (s.walls) h.push(['fort', 1.5], ['castle', 1.2], ['keep', 1], ['tower', 0.8], ['bastion', 0.6], ['citadel', 0.5], ['redoubt', 0.4], ['palace', 0.7], ['wall', 0.5], ['gatehouse', 0.4], ['barracks', 0.3]);
+  if (s.city) h.push(['city', 1], ['borough', 0.8], ['metropolis', 0.5]);
+  if (s.kind === 'mining') h.push(['mine', 2], ['hill', 1], ['quarry', 1], ['pit', 0.8], ['shaft', 0.5], ['excavation', 0.2], ['dig', 0.3], ['tunnel', 0.4], ['cave', 0.4]);
   return h;
 }
 function siteAdjs(s: SiteInfo): [string, number][] {
   const a: [string, number][] = [['black', 2], ['white', 2], ['red', 1.5], ['green', 1.5], ['grey', 1.2], ['old', 2], ['new', 2], ['high', 1], ['great', 1], ['little', 1], ['long', 1], ['cold', 0.8], ['fair', 1.2], ['holy', 0.6], ['golden', 0.5], ['bright', 0.6], ['wild', 0.5], ['deep', 0.5], ['quiet', 0.5]];
-  if (s.coastal) a.push(['salt', 1.5], ['windy', 0.8]);
-  if (s.high) a.push(['high', 1.5], ['windy', 0.8], ['stone', 0.8]);
-  if (s.marsh) a.push(['misty', 1], ['still', 0.6]);
+  if (s.coastal) a.push(['salt', 1.5], ['windy', 0.8], ['stormy', 0.6], ['foggy', 0.5], ['briny', 0.4], ['rough', 0.4], ['breezy', 0.4], ['misty', 0.4], ['salty', 0.4], ['pleasant', 0.4]);
+  if (s.high) a.push(['high', 1.5], ['windy', 0.8], ['stone', 0.8], ['rocky', 0.6], ['craggy', 0.5], ['spectacle', 0.4], ['majestic', 0.4], ['towering', 0.4], ['lofty', 0.4], ['misty', 0.4]);
+  if (s.marsh) a.push(['misty', 1], ['still', 0.6], ['foggy', 0.5], ['wet', 0.4], ['boggy', 0.3], ['haunted', 0.3], ['dark', 0.3], ['eerie', 0.3]);
   return a;
 }
 function siteNouns(s: SiteInfo): [string, number][] {
   const n: [string, number][] = [['oak', 2], ['ash', 1.5], ['thorn', 1.2], ['stone', 1.2], ['wolf', 1], ['raven', 1], ['eagle', 0.6], ['bear', 0.6], ['king', 0.8], ['horse', 0.6], ['apple', 0.8], ['rose', 0.6], ['swan', 0.6], ['fox', 0.6], ['crow', 0.5], ['bee', 0.4], ['sun', 0.5], ['moon', 0.4], ['star', 0.4], ['god', 0.3], ['lady', 0.4], ['priest', 0.3], ['iron', 0.5], ['gold', 0.3]];
-  if (s.coastal) n.push(['fish', 1.2], ['wave', 0.8], ['whale', 0.4], ['ship', 0.8]);
-  if (s.river) n.push(['willow', 1.2], ['reed', 0.8], ['fish', 0.6]);
-  if (s.forest) n.push(['deer', 1], ['birch', 1], ['pine', 1], ['boar', 0.6], ['owl', 0.6]);
-  if (s.grass) n.push(['cow', 0.6], ['sheep', 0.8], ['horse', 0.8], ['hare', 0.6]);
-  if (s.kind === 'mining' || s.high) n.push(['iron', 1], ['silver', 0.6], ['copper', 0.6]);
+  if (s.coastal) n.push(['fish', 1.2], ['wave', 0.8], ['whale', 0.4], ['ship', 0.8], ['seagull', 0.3], ['crab', 0.3], ['lobster', 0.3], ['dolphin', 0.3], ['pelican', 0.3], ['seal', 0.3], ['pirate', 0.3], ['coral', 0.3], ['barnacle', 0.3], ['bucaneer', 0.3], ['shark', 0.3]);
+  if (s.river) n.push(['willow', 1.2], ['reed', 0.8], ['fish', 0.6], ['otter', 0.4], ['beaver', 0.3], ['duck', 0.3], ['heron', 0.3], ['kingfisher', 0.3], ['salmon', 0.4], ['trout', 0.4], ['crane', 0.3], ['frog', 0.3], ['alder', 0.3], ['poplar', 0.3], ['cattail', 0.3]);
+  if (s.forest) n.push(['deer', 1], ['birch', 1], ['pine', 1], ['boar', 0.6], ['owl', 0.6], ['fox', 0.5], ['mushroom', 0.4], ['bear', 0.4], ['lichen', 0.3], ['fir', 0.5], ['spruce', 0.5], ['acorn', 0.3], ['hazel', 0.3], ['elm', 0.3], ['maple', 0.3], ['sparrow', 0.3]);
+  if (s.grass) n.push(['cow', 0.6], ['sheep', 0.8], ['horse', 0.8], ['hare', 0.6], ['goat', 0.5], ['pig', 0.5], ['deer', 0.4], ['fox', 0.4], ['wolf', 0.3], ['mouse', 0.5]);
+  if (s.kind === 'mining' || s.high) n.push(['iron', 1], ['silver', 0.6], ['copper', 0.6], ['gold', 0.3], ['tin', 0.4], ['lead', 0.4], ['coal', 0.5], ['crystal', 0.2]);
   return n;
 }
 

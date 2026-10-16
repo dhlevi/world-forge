@@ -160,145 +160,1381 @@ interface Archetype {
 const LIGHT = ['Light', 'Flame', 'Dawn', 'Lamb', 'Burning Star', 'Morning Star', 'Holy Wheel', 'Seven Lamps', 'Eternal Fire', 'Open Hand', 'White Dove', 'Golden Key'];
 const A: Record<FaithFamily, Archetype> = {
   church: {
-    kind: 'monotheist church', names: ['the Church of the {L}', 'the Faith of the {L}', 'the {L} Church', 'the Church of {P}'], adherents: ['the Faithful', 'the Brethren'],
-    head: ['Pontiff', 'Patriarch', 'Hierophant', 'Exarch'], clergy: ['priests', 'bishops and priests', 'friars and priests'], temple: ['cathedrals and chapels', 'basilicas and churches'],
-    scripture: ['the Book of {P}', 'the Testament of {P}', 'the Holy Canon', 'the Gospels of {P}'],
-    symbols: [['a radiant sun', 'sun'], ['a cross', 'cross'], ['a wheel', 'wheel'], ['a key', 'key'], ['a lamb', 'cross'], ['a dove', 'bird']],
-    domains: ['the One God, creator of all', 'prophet and martyr', 'the first apostle', 'patron saint of sailors', 'patron saint of soldiers', 'patron saint of healers', 'patron saint of the poor', 'patron saint of scholars'],
-    gods: [4, 6], age: [500, 1100],
-    beliefs: ['One god, revealed through a prophet', 'Confession and penance', 'Saints intercede for the living', 'Tithes are owed to the church', 'The prophet will return at the end of days'],
-    sect: ['the Reformed Church', 'the Old Rite', 'the Eastern Rite', 'the {N} Confession', 'the Church of {N}', 'the Free Church', 'the {N} Rite'],
-    doctrines: { head: { pontiff: 6, none: 1 }, clergy: { celibate: 3, married: 1 }, conversion: { missionary: 5, sword: 1 }, others: { righteous: 3, fundamentalist: 1, pluralist: 1 }, death: { burial: 6 }, marriage: { monogamy: 6 } },
-    tenets: ['pilgrimage', 'charity', 'monasticism', 'holyWar', 'endTimes', 'mendicants', 'asceticism', 'communion', 'ecclesiarchy', 'filialPiety'], places: ['island', 'peak'],
+    kind: 'monotheist church',
+    names: [
+      'the Church of the {L}',
+      'the Faith of the {L}',
+      'the {L} Church',
+      'the Church of {P}',
+      'the Holy See of {H}',
+      'the Universal Church of the Covenant',
+      'the Faith of the Sacred Heart',
+      'the Assembly of the High Light'
+    ],
+    adherents: [
+      'the Faithful',
+      'the Brethren',
+      'the Flock of the Lord',
+      'the Children of the Covenant',
+      'the Servants of the Cross',
+      'the Penitents'
+    ],
+    head: [
+      'Pontiff',
+      'Patriarch',
+      'Hierophant',
+      'Exarch',
+      'High Inquisitor',
+      'Primate of the Holy Realm'
+    ],
+    clergy: [
+      'priests',
+      'bishops and priests',
+      'friars and priests',
+      'abbots and monastic brothers',
+      'canonesses and holy sisters',
+      'inquisitors and confessors'
+    ],
+    temple: [
+      'cathedrals and chapels',
+      'basilicas and churches',
+      'vaulted stone cathedrals with stained glass',
+      'fortified abbeys and secluded monasteries',
+      'wayside shrines and royal crypt-chapels'
+    ],
+    scripture: [
+      'the Book of {P}',
+      'the Testament of {P}',
+      'the Holy Canon',
+      'the Gospels of {P}',
+      'the Book of Martyrs and Saints',
+      'the High Liturgy of the Sacred Word'
+    ],
+    symbols: [
+      ['a radiant sun', 'sun'],
+      ['a cross', 'cross'],
+      ['a wheel', 'wheel'],
+      ['a key', 'key'],
+      ['a lamb', 'cross'],
+      ['a dove', 'bird'],
+      //['a chalice dripping blood', 'ring'],
+      ['a crown of thorns', 'roundel'],
+      ['a burning sword', 'sword'],
+      ['a reliquary box', 'tower']
+    ],
+    domains: [
+      'the One God, creator of all',
+      'prophet and martyr',
+      'the first apostle',
+      'patron saint of sailors',
+      'patron saint of soldiers',
+      'patron saint of healers',
+      'patron saint of the poor',
+      'patron saint of scholars',
+      'patron saint of lost causes',
+      'the archangel of judgment and wrath',
+      'the mother of the prophet',
+      'patron saint of stone-masons and builders'
+    ],
+    gods: [4, 6],
+    age: [500, 1100],
+    beliefs: [
+      'One god, revealed through a prophet',
+      'Confession and penance',
+      'Saints intercede for the living',
+      'Tithes are owed to the church',
+      'The prophet will return at the end of days',
+      'Sacred relics of martyrs hold divine power to heal and protect',
+      'Heresy is a plague upon the soul that must be cleansed with fire and prayer',
+      'The realm of the living is a trial before the final judgment of the righteous'
+    ],
+    sect: [
+      'the Reformed Church',
+      'the Old Rite',
+      'the Eastern Rite',
+      'the {N} Confession',
+      'the Church of {N}',
+      'the Free Church',
+      'the {N} Rite',
+      'the Order of the Sacred Flame',
+      'the Inquisitorial Chapter of {N}'
+    ],
+    doctrines: { 
+      head: { pontiff: 6, none: 1 }, 
+      clergy: { celibate: 3, married: 1 }, 
+      conversion: { missionary: 5, sword: 1 }, 
+      others: { righteous: 3, fundamentalist: 1, pluralist: 1 }, 
+      death: { burial: 6 }, 
+      marriage: { monogamy: 6 } 
+    },
+    tenets: ['pilgrimage', 'charity', 'monasticism', 'holyWar', 'endTimes', 'mendicants', 'asceticism', 'communion', 'ecclesiarchy', 'filialPiety'], 
+    places: ['island', 'peak'],
   },
   crescent: {
-    kind: 'faith of the prophets', names: ['the Faith of the Prophet', 'the Way of {P}', 'the Submission', 'the Path of the Merciful'], adherents: ['the Believers', 'the Submitters'],
-    head: ['Caliph', 'Grand Imam'], clergy: ['imams and scholars', 'imams and judges'], temple: ['mosques and schools', 'great mosques'],
-    scripture: ['the Recitation', 'the Book of {P}', 'the Revealed Word'], symbols: [['a crescent', 'crescent'], ['a star', 'mullet'], ['a lamp', 'estoile']],
-    domains: ['the one God, compassionate and just', 'the last prophet', 'the first caliph', 'the martyred imam', 'the hidden imam'], gods: [3, 5], age: [400, 900],
-    beliefs: ['One god and his last prophet', 'Prayer five times a day', 'A fast in the holy month', 'The prophet’s sayings guide daily life'],
-    sect: ['the Followers of the Imams', 'the People of the Tradition', 'the {N} School', 'the Seceders', 'the Mystic Brotherhood of {N}'],
-    doctrines: { head: { pontiff: 3, none: 2 }, clergy: { married: 5 }, conversion: { missionary: 3, sword: 2 }, others: { righteous: 3, pluralist: 1.5, fundamentalist: 0.7 }, death: { burial: 6 }, marriage: { polygamy: 3, concubines: 1 } },
-    tenets: ['pilgrimage', 'charity', 'sacredLaw', 'aniconism', 'holyWar', 'purity', 'communion', 'ecclesiarchy', 'filialPiety', 'sacredLearning'], places: ['peak'],
+    kind: 'faith of the prophets',
+    names: [
+      'the Faith of the Prophet',
+      'the Way of {P}',
+      'the Submission',
+      'the Path of the Merciful',
+      'the Covenant of the Light',
+      'the House of True Peace',
+      'the Law of the Revealed Book',
+      'the Community of the Faithful'
+    ],
+    adherents: [
+      'the Believers',
+      'the Submitters',
+      'the People of the Book',
+      'the Walkers of the Straight Path',
+      'the Servants of the One',
+      'the Flock of the Prophet'
+    ],
+    head: [
+      'Caliph',
+      'Grand Imam',
+      'Supreme Mufti',
+      'Custodian of the Holy Places',
+      'First Scholar of the Realm',
+      'Commander of the Faithful'
+    ],
+    clergy: [
+      'imams and scholars',
+      'imams and judges',
+      'mullahs and jurists',
+      'calligraphers and scripture-reciters',
+      'sufi masters and ascetics'
+    ],
+    temple: [
+      'mosques and schools',
+      'great mosques',
+      'domed sanctuaries with soaring minarets',
+      'courtyard madrasas and shrine-complexes',
+      'desert caravanserais and pilgrimage halls'
+    ],
+    scripture: [
+      'the Recitation',
+      'the Book of {P}',
+      'the Revealed Word',
+      'the Traditions of the Righteous',
+      'the Heavenly Decrees',
+      'the Book of Wisdom and Law'
+    ],
+    symbols: [
+      ['a crescent', 'crescent'],
+      ['a star', 'mullet'],
+      ['a lamp', 'estoile'],
+      ['a open book', 'cross'],
+      ['a geometric star-tile', 'roundel'],
+      ['a minaret spire', 'tower'],
+      ['a palm bough', 'tree'],
+      //['a water vessel', 'ring'],
+      ['a scimitar', 'sword'],
+      ['a calligraphic seal', 'sun']
+    ],
+    domains: [
+      'the one God, compassionate and just',
+      'the last prophet',
+      'the first caliph',
+      'the martyred imam',
+      'the hidden imam',
+      'the archangel of revelation',
+      'the patron of scholars and jurists',
+      'the guardian of travelers and pilgrims',
+      'the judge of the last day',
+      'the spirit of mercy and charity'
+    ],
+    gods: [3, 5],
+    age: [400, 900],
+    beliefs: [
+      'One god and his last prophet',
+      'Prayer five times a day',
+      'A fast in the holy month',
+      'The prophet’s sayings guide daily life',
+      'Alms given to the poor purify wealth and soul',
+      'Every believer should make the great pilgrimage at least once',
+      'Graven images of living things are forbidden in places of worship',
+      'Truth is revealed through scripture and reason, not magic or sorcery'
+    ],
+    sect: [
+      'the Followers of the Imams',
+      'the People of the Tradition',
+      'the {N} School',
+      'the Seceders',
+      'the Mystic Brotherhood of {N}',
+      'the Order of the Whirling Dervishes',
+      'the College of Jurists at {N}'
+    ],
+    doctrines: { 
+      head: { pontiff: 3, none: 2 }, 
+      clergy: { married: 5 }, 
+      conversion: { missionary: 3, sword: 2 }, 
+      others: { righteous: 3, pluralist: 1.5, fundamentalist: 0.7 }, 
+      death: { burial: 6 }, 
+      marriage: { polygamy: 3, concubines: 1 } 
+    },
+    tenets: ['pilgrimage', 'charity', 'sacredLaw', 'aniconism', 'holyWar', 'purity', 'communion', 'ecclesiarchy', 'filialPiety', 'sacredLearning'], 
+    places: ['peak'],
   },
   pantheon: {
-    kind: 'pantheon of gods', names: ['the Gods of {H}', 'the Twelve', 'the Old Rites', 'the Mysteries of {P}', 'the Gods of the Mountain'], adherents: ['the Pious'],
-    head: ['High Priest', 'Archpriestess', 'Oracle'], clergy: ['priests and oracles', 'priestesses'], temple: ['temples and sanctuaries', 'temples with colonnades'],
-    scripture: ['the Sacred Hymns', 'the Birth of the Gods', 'the Oracles'], symbols: [['an owl', 'bird'], ['a thunderbolt', 'estoile'], ['a trident', 'anchor'], ['a laurel', 'tree']],
-    domains: ['king of the gods and the sky', 'queen of the gods and marriage', 'god of the sea', 'goddess of wisdom and war', 'god of the sun and music', 'goddess of the hunt and the moon', 'god of the forge', 'goddess of the harvest', 'god of wine and revels', 'god of the dead'],
-    gods: [6, 9], age: [1200, 2000],
-    beliefs: ['Many gods, each with a temple and a feast', 'Oracles speak the gods’ will', 'The dead cross a river to the underworld'],
-    sect: ['the Mysteries of {N}', 'the {N} Cult', 'the Philosophers of {N}'],
-    doctrines: { head: { none: 3, pontiff: 1 }, clergy: { open: 3, priestesses: 1, hereditary: 1 }, conversion: { closed: 3, missionary: 0.5 }, others: { pluralist: 4, righteous: 0.6 }, death: { burning: 2, burial: 2 }, marriage: { monogamy: 2, concubines: 2 } },
-    tenets: ['ritualSacrifice', 'divination', 'feastDays', 'hospitality', 'astrology', 'carnalism', 'ecclesiarchy', 'hedonism'], places: ['peak', 'island'],
+    kind: 'pantheon of gods',
+    names: [
+      'the Gods of {H}',
+      'the Twelve',
+      'the Old Rites',
+      'the Mysteries of {P}',
+      'the Gods of the Mountain',
+      'the Sacred Pantheon of the High Peak',
+      'the Order of the Golden Laurel',
+      'the Rites of the Sacred Spring'
+    ],
+    adherents: [
+      'the Pious',
+      'the Children of the City',
+      'the Servants of the Olympus',
+      'the Keepers of the Sacred Flame',
+      'the Sworn of the Sanctuaries',
+      'the Seekers of the Oracle'
+    ],
+    head: [
+      'High Priest',
+      'Archpriestess',
+      'Oracle',
+      'Hierophant of the Mysteries',
+      'High Keeper of the Sacred Flame',
+      'Grand Sacrificer of the Realm'
+    ],
+    clergy: [
+      'priests and oracles',
+      'priestesses',
+      'hierophants and temple singers',
+      'oracle maidens and sacrificial priests',
+      'philosopher-priests and custodians of the sacred grounds'
+    ],
+    temple: [
+      'temples and sanctuaries',
+      'temples with colonnades',
+      'marble shrines atop high acropolises',
+      'oracular caverns and sacred springs',
+      'open-air altars and hero-graves'
+    ],
+    scripture: [
+      'the Sacred Hymns',
+      'the Birth of the Gods',
+      'the Oracles',
+      'the Epics of the Heroic Age',
+      'the Secret Tablets of the Mysteries'
+    ],
+    symbols: [
+      ['an owl', 'bird'],
+      ['a thunderbolt', 'estoile'],
+      ['a trident', 'anchor'],
+      ['a laurel', 'tree'],
+      ['a lyre', 'roundel'],
+      //['a golden cup', 'ring'],
+      ['a serpent staff', 'sword'],
+      ['a horned bull', 'horn'],
+      ['a crescent moon', 'crescent'],
+      ['a pomegranate', 'blossom']
+    ],
+    domains: [
+      'king of the gods and the sky',
+      'queen of the gods and marriage',
+      'god of the sea',
+      'goddess of wisdom and war',
+      'god of the sun and music',
+      'goddess of the hunt and the moon',
+      'god of the forge',
+      'goddess of the harvest',
+      'god of wine and revels',
+      'god of the dead',
+      'god of travelers, thieves, and merchants',
+      'goddess of love and beauty',
+      'god of bloodshed and savage war',
+      'goddess of the hearth and civic fire'
+    ],
+    gods: [6, 9],
+    age: [1200, 2000],
+    beliefs: [
+      'Many gods, each with a temple and a feast',
+      'Oracles speak the gods’ will',
+      'The dead cross a river to the underworld',
+      'Hubris against the gods brings swift and inescapable nemesis',
+      'Guests and strangers are protected under the sacred law of hospitality',
+      'Libations of wine and the aroma of burnt fat appease the immortals',
+      'Great mortals may be elevated to heroes in death through glorious deeds',
+      'Fate is spun by three sisters beyond the power of even the gods to alter'
+    ],
+    sect: [
+      'the Mysteries of {N}',
+      'the {N} Cult',
+      'the Philosophers of {N}',
+      'the Oracular Sisterhood',
+      'the Brotherhood of the Trident',
+      'the Cult of the Vine',
+      'the Keepers of the Eternal Flame'
+    ],
+    doctrines: { 
+      head: { none: 3, pontiff: 1 }, 
+      clergy: { open: 3, priestesses: 1, hereditary: 1 }, 
+      conversion: { closed: 3, missionary: 0.5 }, 
+      others: { pluralist: 4, righteous: 0.6 }, 
+      death: { burning: 2, burial: 2 }, 
+      marriage: { monogamy: 2, concubines: 2 } 
+    },
+    tenets: ['ritualSacrifice', 'divination', 'feastDays', 'hospitality', 'astrology', 'carnalism', 'ecclesiarchy', 'hedonism'], 
+    places: ['peak', 'island'],
   },
   oldgods: {
-    kind: 'the old gods', names: ['the Old Gods', 'the Old Custom', 'the Faith of the High One', 'the Gods of the Hall'], adherents: ['the Heathen', 'the Sworn'],
-    head: ['High Priest', 'High Seeress'], clergy: ['priests and seeresses', 'priests of the hall'], temple: ['halls of the gods and sacred groves', 'temples and stone circles'],
-    scripture: ['the Sayings of the High One', 'the Old Songs'], symbols: [['a hammer', 'hammer'], ['a raven', 'bird'], ['an axe', 'axe'], ['a serpent', 'serpent']],
-    domains: ['the All-father, god of wisdom and the slain', 'god of thunder', 'goddess of love and battle', 'god of the harvest', 'the trickster', 'goddess of the dead', 'god of the sea', 'god of the hunt'],
-    gods: [5, 8], age: [1500, 2500],
-    beliefs: ['Oaths are sacred', 'Seers read the runes', 'The world will end in fire and ice'],
-    sect: ['the Cult of {N}', 'the Old Way'],
-    doctrines: { head: { none: 3, ruler: 1 }, clergy: { hereditary: 2, open: 2 }, conversion: { closed: 2, sword: 1 }, others: { pluralist: 2, righteous: 1 }, death: { burning: 3, barrows: 3, sea: 1 }, marriage: { concubines: 2, monogamy: 1, polygamy: 1 } },
-    tenets: ['warriorCult', 'ritualSacrifice', 'divination', 'feastDays', 'sacredGroves', 'carnalism', 'adorcism', 'witchcraft', 'suicide'], places: ['forest', 'peak', 'island'],
+    kind: 'the old gods',
+    names: [
+      'the Old Gods',
+      'the Old Custom',
+      'the Faith of the High One',
+      'the Gods of the Hall',
+      'the Way of the Nine Worlds',
+      'the Law of Blood and Iron',
+      'the Path of the Raven Banner',
+      'the Circle of the Sacred Tree'
+    ],
+    adherents: [
+      'the Heathen',
+      'the Sworn',
+      'the Shield-Kin',
+      'the People of the Hall',
+      'the Oath-Bound',
+      'the Riders of the Wild Hunt'
+    ],
+    head: [
+      'High Priest',
+      'High Seeress',
+      'Keeper of the Sacred Ring',
+      'Godi of the Great Hall',
+      'Master of the Runes',
+      'First Speaker of the Thing'
+    ],
+    clergy: [
+      'priests and seeresses',
+      'priests of the hall',
+      'godar and völvas',
+      'rune-masters and skalds',
+      'blood-drawers and berserker-priests'
+    ],
+    temple: [
+      'halls of the gods and sacred groves',
+      'temples and stone circles',
+      'timber hof shrines with carved pillars',
+      'blood-stained groves near sacred wells',
+      'coastal ship-setting stone monuments'
+    ],
+    scripture: [
+      'the Sayings of the High One',
+      'the Old Songs',
+      'the Lay of the World-Tree',
+      'the Runic Staves of the Ancients',
+      'the Visions of the Seeress'
+    ],
+    symbols: [
+      ['a hammer', 'hammer'],
+      ['a raven', 'bird'],
+      ['an axe', 'axe'],
+      ['a serpent', 'serpent'],
+      //['a wolf head', 'skull'],
+      ['a horned helmet', 'horn'],
+      //['a knot-ring', 'ring'],
+      ['a longship', 'cross'],
+      ['a Valknut of three triangles', 'roundel'],
+      ['a spear bound with runes', 'sword']
+    ],
+    domains: [
+      'the All-father, god of wisdom and the slain',
+      'god of thunder',
+      'goddess of love and battle',
+      'god of the harvest',
+      'the trickster',
+      'goddess of the dead',
+      'god of the sea',
+      'god of the hunt',
+      'the guardian of the rainbow bridge',
+      'god of oaths and single combat',
+      'goddess of the hearth and winter night'
+    ],
+    gods: [5, 8],
+    age: [1500, 2500],
+    beliefs: [
+      'Oaths are sacred',
+      'Seers read the runes',
+      'The world will end in fire and ice',
+      'A warrior who dies sword in hand goes to the High Hall',
+      'Blood painted upon the temple posts binds the blessing of the gods',
+      'To die of old age or sickness in bed is a death of shame',
+      'Nine sacrifices hung from the sacred ash-tree appease the All-father',
+      'Fate is woven by three maidens at the roots of the world and cannot be escaped'
+    ],
+    sect: [
+      'the Cult of {N}',
+      'the Old Way',
+      'the Raven Brotherhood',
+      'the Order of the Iron Spear',
+      'the Wolf-Skins of {N}',
+      'the Keepers of the Rune-Ring',
+      'the Seeresses of the High Seat'
+    ],
+    doctrines: { 
+      head: { none: 3, ruler: 1 }, 
+      clergy: { hereditary: 2, open: 2 }, 
+      conversion: { closed: 2, sword: 1 }, 
+      others: { pluralist: 2, righteous: 1 }, 
+      death: { burning: 3, barrows: 3, sea: 1 }, 
+      marriage: { concubines: 2, monogamy: 1, polygamy: 1 } 
+    },
+    tenets: ['warriorCult', 'ritualSacrifice', 'divination', 'feastDays', 'sacredGroves', 'carnalism', 'adorcism', 'witchcraft', 'suicide'], 
+    places: ['forest', 'peak', 'island'],
   },
   druid: {
-    kind: 'druidic nature faith', names: ['the Old Faith', 'the Way of the Grove', 'the Oak and the Stone', 'the Mysteries of {P}'], adherents: ['the Children of the Oak'],
-    head: ['Archdruid'], clergy: ['druids, bards and seers'], temple: ['sacred groves and stone circles'], scripture: ['the unwritten lore of the druids', 'the Songs of the Grove'],
-    symbols: [['an oak', 'tree'], ['an acorn', 'acorn'], ['a crescent moon', 'crescent'], ['a stag', 'horn']],
-    domains: ['the Mother, goddess of the land', 'the Horned One, lord of beasts', 'god of the sun and craft', 'goddess of rivers and wells', 'the queen of battle and fate', 'god of the sea'],
-    gods: [4, 6], age: [1500, 2500],
-    beliefs: ['Druids alone may judge', 'Feasts at the turning of the year', 'Heads of foes are kept as trophies'],
-    sect: ['the {N} Brotherhood', 'the Grove of {N}'],
-    doctrines: { head: { pontiff: 2, none: 1 }, clergy: { open: 2, hereditary: 1 }, conversion: { closed: 3 }, others: { pluralist: 2, righteous: 0.5 }, death: { barrows: 2, burning: 1 }, marriage: { monogamy: 1, concubines: 1 } },
-    tenets: ['sacredGroves', 'rebirth', 'sacredWaters', 'divination', 'nature', 'witchcraft'], places: ['forest', 'lake', 'island'],
+    kind: 'druidic nature faith',
+    names: [
+      'the Old Faith',
+      'the Way of the Grove',
+      'the Oak and the Stone',
+      'the Mysteries of {P}',
+      'the Circle of the Sacred Mistletoe',
+      'the Lore of the Standing Stones',
+      'the Blood of the Heart-Oak',
+      'the Law of the Green Veil'
+    ],
+    adherents: [
+      'the Children of the Oak',
+      'the Keepers of the Grove',
+      'the Folk of the Standing Stones',
+      'the Servants of the Horned One',
+      'the Walkers of the Mist',
+      'the Kin of the Sacred Forest'
+    ],
+    head: [
+      'Archdruid',
+      'First Voice of the Grove',
+      'Grand Seer of the Oak',
+      'High Keeper of the Sacred Fire',
+      'Master of the Stone Circle'
+    ],
+    clergy: [
+      'druids, bards and seers',
+      'grove-keepers and mistletoe-cutters',
+      'tree-singers and augurs',
+      'sacrifice-masters and herbalists',
+      'bards and keepers of the cauldron'
+    ],
+    temple: [
+      'sacred groves and stone circles',
+      'ancient oak groves and island shrines',
+      'megalithic stone rings on high tors',
+      'peat bog altars and sacred springs',
+      'cauldron-halls carved into hillside barrows'
+    ],
+    scripture: [
+      'the unwritten lore of the druids',
+      'the Songs of the Grove',
+      'the Ogham runes carved in yew',
+      'the Canticles of the Four Feasts',
+      'the Whispers of the Old Oaks'
+    ],
+    symbols: [
+      ['an oak', 'tree'],
+      ['an acorn', 'acorn'],
+      ['a crescent moon', 'crescent'],
+      ['a stag', 'horn'],
+      ['a triskele spiral', 'roundel'],
+      ['a golden sickle', 'sword'],
+      //['a cauldron', 'ring'],
+      //['a raven on a skull', 'skull'],
+      ['a mistletoe branch', 'tree'],
+      ['a salmon of wisdom', 'bird']
+    ],
+    domains: [
+      'the Mother, goddess of the land',
+      'the Horned One, lord of beasts',
+      'god of the sun and craft',
+      'goddess of rivers and wells',
+      'the queen of battle and fate',
+      'god of the sea',
+      'the lord of the underworld and the dead',
+      'the keeper of the magic cauldron',
+      'god of the wild hunt',
+      'goddess of the hearth and spring'
+    ],
+    gods: [4, 6],
+    age: [1500, 2500],
+    beliefs: [
+      'Druids alone may judge',
+      'Feasts at the turning of the year',
+      'Heads of foes are kept as trophies',
+      'The soul does not perish, but passes at death into another body',
+      'Sacrifices drowned in bogs or hanged in groves appease the land',
+      'Mist and oak moss hold the original magic of the earth',
+      'Swearing an oath by the three elements—wind, fire, and water—binds until death',
+      'To cut a sacred oak without blood offering brings a blight upon the tribe'
+    ],
+    sect: [
+      'the {N} Brotherhood',
+      'the Grove of {N}',
+      'the Circle of the Wicker',
+      'the Order of the Golden Sickle',
+      'the Priesthood of the Horned Lord',
+      'the Keepers of the Peat Altar'
+    ],
+    doctrines: { 
+      head: { pontiff: 2, none: 1 }, 
+      clergy: { open: 2, hereditary: 1 }, 
+      conversion: { closed: 3 }, 
+      others: { pluralist: 2, righteous: 0.5 }, 
+      death: { barrows: 2, burning: 1 }, 
+      marriage: { monogamy: 1, concubines: 1 } 
+    },
+    tenets: ['sacredGroves', 'rebirth', 'sacredWaters', 'divination', 'nature', 'witchcraft'], 
+    places: ['forest', 'lake', 'island'],
   },
   stars: {
-    kind: 'worship of the stars', names: ['the Song of the Stars', 'the Starlit Way', 'the Light of {P}'], adherents: ['the Starborn'],
-    head: ['High Priestess', 'Keeper of the Stars'], clergy: ['star-singers', 'priestesses of the moon'], temple: ['open-roofed star temples', 'moonlit shrines'],
-    scripture: ['the Lay of {P}', 'the Song of First Light'], symbols: [['a star', 'estoile'], ['a crescent moon', 'crescent'], ['a tree', 'tree']],
-    domains: ['the Lady of the Stars, who sang the world', 'lord of the moon', 'lady of the evening star', 'keeper of the forest', 'lord of the sea and the far west', 'lady of dreams'],
-    gods: [4, 6], age: [3000, 6000],
-    beliefs: ['The stars are the first light and the elves its children', 'Every forest has its guardian', 'Song is prayer'],
-    sect: ['the Moon-sworn of {N}', 'the {N} Choir'],
-    doctrines: { head: { pontiff: 1, none: 1 }, clergy: { priestesses: 3, open: 1 }, conversion: { closed: 3 }, others: { pluralist: 3, righteous: 0.5 }, death: { sea: 3, burial: 1 }, marriage: { monogamy: 4 } },
-    tenets: ['astrology', 'nature', 'pacifism', 'rebirth', 'sacredGroves', 'witchcraft'], places: ['forest', 'island', 'lake'],
+    kind: 'worship of the stars',
+    names: [
+      'the Song of the Stars',
+      'the Starlit Way',
+      'the Light of {P}',
+      'the Eternal Choir of the Heavens',
+      'the Path of the Silver Needle',
+      'the Order of the Evening Star',
+      'the Weavers of Starlight',
+      'the Sanctum of the High Canopy'
+    ],
+    adherents: [
+      'the Starborn',
+      'the Children of First Light',
+      'the Singers of the Canopy',
+      'the Keepers of the Silver Glade',
+      'the Moon-Bound',
+      'the Kin of the Starlit Waters'
+    ],
+    head: [
+      'High Priestess',
+      'Keeper of the Stars',
+      'First Voice of the Heavenly Song',
+      'Lady of the Silver Canopy',
+      'Grand Astronomer of the West',
+      'Oracle of the Moonlit Pool'
+    ],
+    clergy: [
+      'star-singers',
+      'priestesses of the moon',
+      'glade-keepers and starlight weavers',
+      'canopy astrologers and silver bards',
+      'dream-readers and keepers of the sacred grove'
+    ],
+    temple: [
+      'open-roofed star temples',
+      'moonlit shrines',
+      'silver-spired marble bowers',
+      'ancient living groves surrounded by starlit pools',
+      'high mountain observatories of white stone'
+    ],
+    scripture: [
+      'the Lay of {P}',
+      'the Song of First Light',
+      'the Scrolls of the Evening Canopy',
+      'the Chronicle of the West-Sailing Ships',
+      'the High Canticles of the Silver Moon'
+    ],
+    symbols: [
+      ['a star', 'estoile'],
+      ['a crescent moon', 'crescent'],
+      ['a tree', 'tree'],
+      ['a silver harp', 'roundel'],
+      ['a swan in flight', 'bird'],
+      ['a silver leaf', 'tree'],
+      //['a pool reflecting eight stars', 'moon'],
+      ['a crystal vial of starlight', 'cross'],
+      //['a woven vine ring', 'ring'],
+      ['a silver bow and arrow', 'sword']
+    ],
+    domains: [
+      'the Lady of the Stars, who sang the world',
+      'lord of the moon',
+      'lady of the evening star',
+      'keeper of the forest',
+      'lord of the sea and the far west',
+      'lady of dreams',
+      'patron of memory and ancient lore',
+      'lord of wind and autumn leaves',
+      'weaver of fate and starlight',
+      'guardian of sacred springs'
+    ],
+    gods: [4, 6],
+    age: [3000, 6000],
+    beliefs: [
+      'The stars are the first light and the elves its children',
+      'Every forest has its guardian',
+      'Song is prayer',
+      'The physical world is merely a reflection of the eternal starlit realm',
+      'Memory never truly dies while the ancient trees still stand',
+      'Starlight purified in sacred waters reveals secrets of what is to come',
+      'To fell a heart-tree is to extinguish a divine melody in the song of the world',
+      'Departed souls sail across the silver sea to the far western haven'
+    ],
+    sect: [
+      'the Moon-sworn of {N}',
+      'the {N} Choir',
+      'the Order of the Silver Swan',
+      'the Circle of the Evening Canopy',
+      'the Keepers of the First Starlight',
+      'the Weavers of the Sacred Grove',
+      'the Guardians of the Haven'
+    ],
+    doctrines: { 
+      head: { pontiff: 1, none: 1 }, 
+      clergy: { priestesses: 3, open: 1 }, 
+      conversion: { closed: 3 }, 
+      others: { pluralist: 3, righteous: 0.5 }, 
+      death: { sea: 3, burial: 1 }, 
+      marriage: { monogamy: 4 } 
+    },
+    tenets: ['astrology', 'nature', 'pacifism', 'rebirth', 'sacredGroves', 'witchcraft'], 
+    places: ['forest', 'island', 'lake'],
   },
   ancestors: {
-    kind: 'worship of the ancestors', names: ['the Forge and the Fathers', 'the Way of the Ancestors', 'the Hall of the Fathers'], adherents: ['the Children of the Forge'],
-    head: ['High Forgepriest', 'Keeper of the Runes'], clergy: ['forge-priests and rune-keepers'], temple: ['deep shrines and ancestor halls'], scripture: ['the Rune-tablets of the Fathers', 'the Book of Grudges'],
-    symbols: [['a hammer', 'hammer'], ['an anvil', 'hammer'], ['a mountain', 'tower']],
-    domains: ['the Forge-father, who carved the first folk from stone', 'the Mother of the Deeps', 'god of oaths and grudges', 'god of gold and the hoard', 'god of the halls and hearth'],
-    gods: [3, 5], age: [3000, 5000],
-    beliefs: ['The first folk were carved from stone', 'Grudges are written and never forgotten', 'The ancestors watch from the deep halls'],
-    sect: ['the {N} Rune-lodge', 'the Deep Fathers'],
-    doctrines: { head: { pontiff: 1, ruler: 1 }, clergy: { hereditary: 3, married: 1 }, conversion: { closed: 4 }, others: { righteous: 2, pluralist: 1 }, death: { tombs: 4 }, marriage: { monogamy: 3 } },
-    tenets: ['ancestors', 'craft', 'sacredLaw', 'asceticism', 'adorcism', 'suicide', 'filialPiety'], places: ['peak'],
+    kind: 'worship of the ancestors',
+    names: [
+      'the Forge and the Fathers',
+      'the Way of the Ancestors',
+      'the Hall of the Fathers',
+      'the Path of the Deep Anvil',
+      'the Eternal Rune-Lodge',
+      'the Priesthood of Cold Iron',
+      'the Keepers of the Great Grudge',
+      'the Sacred Clan-Loom'
+    ],
+    adherents: [
+      'the Children of the Forge',
+      'the Folk of the Anvil',
+      'the Clan of the Mountain Roots',
+      'the Keepers of the Rune-Stones',
+      'the Oath-Bound',
+      'the Sons and Daughters of Stone'
+    ],
+    head: [
+      'High Forgepriest',
+      'Keeper of the Runes',
+      'Grand Master of the Anvil',
+      'Supreme Grudgek keeper',
+      'First Voice of the Fathers',
+      'Arch-Mason of the Deep Halls'
+    ],
+    clergy: [
+      'forge-priests and rune-keepers',
+      'clan elders and grudge-reciters',
+      'tomb-carvers and stone-singers',
+      'anvil-masters and gold-weighers',
+      'runic armorers and ancestral bards'
+    ],
+    temple: [
+      'deep shrines and ancestor halls',
+      'subterranean forge-cathedrals',
+      'granite vaults beneath the roots',
+      'rune-carved mountain fortresses',
+      'pillar-lined halls of the ancient kings'
+    ],
+    scripture: [
+      'the Rune-tablets of the Fathers',
+      'the Book of Grudges',
+      'the Great Anvil-Roll of Kings',
+      'the Carved Code of Cold Iron',
+      'the Saga of the First Shaping'
+    ],
+    symbols: [
+      ['a hammer', 'hammer'],
+      ['an anvil', 'hammer'],
+      ['a mountain', 'tower'],
+      ['a glowing rune', 'cross'],
+      ['a dwarven battle-axe', 'sword'],
+      //['a heavy iron lock', 'ring'],
+      ['a gold horn', 'horn'],
+      //['a stone beard', 'skull'],
+      ['a pair of mason callipers', 'roundel'],
+      //['a pickaxe over an ingot', 'star']
+    ],
+    domains: [
+      'the Forge-father, who carved the first folk from stone',
+      'the Mother of the Deeps',
+      'god of oaths and grudges',
+      'god of gold and the hoard',
+      'god of the halls and hearth',
+      'patron of smiths and armor-framers',
+      'the Lord of Underground Streams and Veins',
+      'the Guardian of the Deep Gates',
+      'god of siege-craft and stone-hewing',
+      'the Silent Watcher of the Royal Tombs'
+    ],
+    gods: [3, 5],
+    age: [3000, 5000],
+    beliefs: [
+      'The first folk were carved from stone',
+      'Grudges are written and never forgotten',
+      'The ancestors watch from the deep halls',
+      'An oath sworn on cold iron binds the soul beyond death',
+      'Flawless craft honors the gods more than spoken prayers',
+      'Wealth built by honest sweat and hammer-strikes is holy',
+      'To abandon a fallen kin\'s tomb is to invite the mountain\'s wrath',
+      'The deepest veins of the earth hold the original breath of the Forge-father'
+    ],
+    sect: [
+      'the {N} Rune-lodge',
+      'the Deep Fathers',
+      'the Brotherhood of the Red Anvil',
+      'the Order of the Iron Ledger',
+      'the Keepers of the Great Vein',
+      'the Guild of the Stone-Singers',
+      'the Watchers of the Deep Gate'
+    ],
+    doctrines: { 
+      head: { pontiff: 1, ruler: 1 }, 
+      clergy: { hereditary: 3, married: 1 }, 
+      conversion: { closed: 4 }, 
+      others: { righteous: 2, pluralist: 1 }, 
+      death: { tombs: 4 }, 
+      marriage: { monogamy: 3 } 
+    },
+    tenets: ['ancestors', 'craft', 'sacredLaw', 'asceticism', 'adorcism', 'suicide', 'filialPiety'], 
+    places: ['peak'],
   },
   sky: {
-    kind: 'cult of the eternal sky', names: ['the Eternal Sky', 'the Sky and the Earth', 'the Blue Heaven', 'the Way of {P}'], adherents: ['the Children of the Sky'],
-    head: ['Chief Shaman'], clergy: ['shamans'], temple: ['cairns on the high passes'], scripture: ['the songs of the shamans'],
-    symbols: [['a horse', 'horn'], ['the sun', 'sun'], ['an eagle', 'eagle']],
-    domains: ['the Eternal Sky, father of all', 'the Earth Mother', 'spirit of the hearth', 'spirit of the horse herds', 'the wolf ancestor'], gods: [3, 5], age: [2000, 3000],
-    beliefs: ['The Sky gives a ruler fortune to rule', 'Spirits dwell in fire, water and stone', 'Shamans walk between the worlds'],
-    sect: ['the Black Shamans', 'the White Shamans'],
-    doctrines: { head: { none: 2, ruler: 2 }, clergy: { open: 3 }, conversion: { closed: 2, sword: 1 }, others: { pluralist: 4 }, death: { sky: 4, barrows: 1 }, marriage: { polygamy: 2, concubines: 2 } },
-    tenets: ['nature', 'sacredWaters', 'divination', 'warriorCult', 'adorcism', 'suicide', 'takamine'], places: ['peak', 'lake'],
+    kind: 'cult of the eternal sky',
+    names: [
+      'the Eternal Sky',
+      'the Sky and the Earth',
+      'the Blue Heaven',
+      'the Way of {P}',
+      'the Path of the Nine Heavens',
+      'the Law of the Great Steppe',
+      'the Breath of the High Wind',
+      'the Circle of the Five Banners'
+    ],
+    adherents: [
+      'the Children of the Sky',
+      'the Riders of the Wind',
+      'the People of the Felt Tents',
+      'the Bearers of the Sky-Seal',
+      'the Servants of the Eternal Blue',
+      'the Kin of the Iron Wolf'
+    ],
+    head: [
+      'Chief Shaman',
+      'Supreme Sky Reader',
+      'Voice of the Great Ancestors',
+      'Keeper of the Eternal Fire',
+      'High Shaman of the Nine Pines'
+    ],
+    clergy: [
+      'shamans',
+      'bone-diviners and drum-beaters',
+      'spirit-riders and fire-priests',
+      'horse-chanters and sky-singers',
+      'herbalists and ancestral shamans'
+    ],
+    temple: [
+      'cairns on the high passes',
+      'stone ovoos draped in silk scarves',
+      'sacred mountain groves and river headwaters',
+      'earthen kurgan mounds',
+      'open steppe circles around the clan hearth-fire'
+    ],
+    scripture: [
+      'the songs of the shamans',
+      'the secret history of the ancestors',
+      'the epic tales of the grand horsemen',
+      'the chants of the nine sky-spirits',
+      'the sayings written on birch bark'
+    ],
+    symbols: [
+      ['a horse', 'horn'],
+      ['the sun', 'sun'],
+      ['an eagle', 'eagle'],
+      //['a blue wolf', 'skull'],
+      //['a crescent moon and star', 'moon'],
+      ['a shaman drum', 'roundel'],
+      ['a sacred spear with horsehair tassels', 'sword'],
+      //['a mountain peak under three clouds', 'peak'],
+      ['a burning hearth-fire', 'sun'],
+      ['a golden falcon', 'bird']
+    ],
+    domains: [
+      'the Eternal Sky, father of all',
+      'the Earth Mother',
+      'spirit of the hearth',
+      'spirit of the horse herds',
+      'the wolf ancestor',
+      'the god of war and iron weapons',
+      'the lord of the underworld and cold spirits',
+      'the goddess of fertility and young children',
+      'spirit of the high mountain passes',
+      'the guardian of water springs'
+    ],
+    gods: [3, 5],
+    age: [2000, 3000],
+    beliefs: [
+      'The Sky gives a ruler fortune to rule',
+      'Spirits dwell in fire, water and stone',
+      'Shamans walk between the worlds',
+      'Pouring milk or liquor upon the earth honors the spirits',
+      'A warrior who falls in battle rides eternally across the starry sky',
+      'Crossing a hearth-fire purifies both guests and weapons',
+      'Defiling running water or burning garbage in a hearth invites terrible curses',
+      'The bone of a sheep holds the outline of coming winters and battles'
+    ],
+    sect: [
+      'the Black Shamans',
+      'the White Shamans',
+      'the Order of the Iron Wolf',
+      'the Society of the Sky-Drum',
+      'the Guardians of the Royal Kurgan',
+      'the Priesthood of the Nine Pines'
+    ],
+    doctrines: { 
+      head: { none: 2, ruler: 2 }, 
+      clergy: { open: 3 }, 
+      conversion: { closed: 2, sword: 1 }, 
+      others: { pluralist: 4 }, 
+      death: { sky: 4, barrows: 1 }, 
+      marriage: { polygamy: 2, concubines: 2 } 
+    },
+    tenets: ['nature', 'sacredWaters', 'divination', 'warriorCult', 'adorcism', 'suicide', 'takamine'], 
+    places: ['peak', 'lake'],
   },
   heaven: {
-    kind: 'way of heaven', names: ['the Way of Heaven', 'the Teachings of the Sages', 'the Way of {P}', 'the Middle Way'], adherents: ['the Followers of the Way'],
-    head: ['Grand Master of Rites', 'Celestial Master'], clergy: ['monks, sages and ritualists'], temple: ['temples and ancestral halls', 'monasteries and shrines'],
-    scripture: ['the Classics of the Sages', 'the Sayings of {P}', 'the Book of Changes'], symbols: [['a dragon', 'serpent'], ['clouds', 'cloud'], ['the sun', 'sun'], ['a lotus', 'blossom']],
-    domains: ['Heaven, which grants the mandate to rule', 'the Jade Lord, ruler of the celestial court', 'the first sage', 'the god of the hearth', 'the queen mother of the west'],
-    gods: [3, 5], age: [1500, 2600],
-    beliefs: ['Filial duty', 'Harmony between Heaven, Earth and Man', 'Learning opens the road to office'],
-    sect: ['the School of {N}', 'the Pure Land', 'the Sudden Way', 'the {N} Teaching', 'the Way of Rites'],
-    doctrines: { head: { ruler: 3, pontiff: 1 }, clergy: { celibate: 2, married: 2 }, conversion: { missionary: 2, closed: 1 }, others: { pluralist: 4 }, death: { burial: 4, burning: 1 }, marriage: { concubines: 3, monogamy: 1 } },
-    tenets: ['ancestors', 'monasticism', 'asceticism', 'kingship', 'pacifism', 'rebirth', 'filialPiety'], places: ['peak', 'lake'],
+    kind: 'way of heaven',
+    names: [
+      'the Way of Heaven',
+      'the Teachings of the Sages',
+      'the Way of {P}',
+      'the Middle Way',
+      'the Great Harmony',
+      'the Path of the Jade Emperor',
+      'the Five Eternal Virtues',
+      'the Celestial Order of {H}'
+    ],
+    adherents: [
+      'the Followers of the Way',
+      'the Scholars of the Sages',
+      'the Seekers of Harmony',
+      'the Servants of the Mandate',
+      'the Children of the Middle Realm',
+      'the Pure-Hearted'
+    ],
+    head: [
+      'Grand Master of Rites',
+      'Celestial Master',
+      'Abbot of the White Cloud Temple',
+      'Imperial Preceptor',
+      'High Keeper of the Classics',
+      'Grand Tutor of the Realm'
+    ],
+    clergy: [
+      'monks, sages and ritualists',
+      'scholars and shrine keepers',
+      'hermits and astrology masters',
+      'diviners and ancestral priests',
+      'monks and court ritualists'
+    ],
+    temple: [
+      'temples and ancestral halls',
+      'monasteries and shrines',
+      'pagoda complexes and scholar academies',
+      'walled temple courts and mountain retreats',
+      'halls of imperial ancestor-tablets'
+    ],
+    scripture: [
+      'the Classics of the Sages',
+      'the Sayings of {P}',
+      'the Book of Changes',
+      'the Sutras of the Lotus and Cloud',
+      'the Annals of the Five Sages',
+      'the Great Canon of Filial Duty'
+    ],
+    symbols: [
+      ['a dragon', 'serpent'],
+      ['clouds', 'cloud'],
+      ['the sun', 'sun'],
+      ['a lotus', 'blossom'],
+      ['a twin fish circle', 'roundel'],
+      ['a jade tablet', 'cross'],
+      ['a crane in flight', 'bird'],
+      //['a five-tiered pagoda', 'peak'],
+      ['an ink brush and scroll', 'sword'],
+      //['a tiger', 'skull']
+    ],
+    domains: [
+      'Heaven, which grants the mandate to rule',
+      'the Jade Lord, ruler of the celestial court',
+      'the first sage',
+      'the god of the hearth',
+      'the queen mother of the west',
+      'the god of examinations and literature',
+      'the lord of the nine underworld courts',
+      'goddess of mercy and compassion',
+      'the dragon king of the waters',
+      'the spirit of the five sacred mountains'
+    ],
+    gods: [3, 5],
+    age: [1500, 2600],
+    beliefs: [
+      'Filial duty',
+      'Harmony between Heaven, Earth and Man',
+      'Learning opens the road to office',
+      'Rulers lose the Mandate of Heaven through wickedness or incompetence',
+      'Ancestors require offerings of incense and burnt paper gold',
+      'All things exist in a delicate balance of light and shadow',
+      'Cultivating the mind through study and meditation purifies the soul',
+      'Actions in this life determine the rank of the soul in the next rebirth'
+    ],
+    sect: [
+      'the School of {N}',
+      'the Pure Land',
+      'the Sudden Way',
+      'the {N} Teaching',
+      'the Way of Rites',
+      'the Academy of the White Lotus',
+      'the Celestial Bureaucracy Society',
+      'the Hermits of the Bamboo Grove'
+    ],
+    doctrines: { 
+      head: { ruler: 3, pontiff: 1 }, 
+      clergy: { celibate: 2, married: 2 }, 
+      conversion: { missionary: 2, closed: 1 }, 
+      others: { pluralist: 4 }, 
+      death: { burial: 4, burning: 1 }, 
+      marriage: { concubines: 3, monogamy: 1 } 
+    },
+    tenets: ['ancestors', 'monasticism', 'asceticism', 'kingship', 'pacifism', 'rebirth', 'filialPiety'], 
+    places: ['peak', 'lake'],
   },
   kami: {
-    kind: 'way of the spirits', names: ['the Way of the Spirits', 'the Eight Thousand Spirits', 'the Way of {P}'], adherents: ['the Faithful'],
-    head: ['High Priestess of the Sun'], clergy: ['shrine priests and shrine maidens', 'monks and shrine priests'], temple: ['shrines with gates and temples'],
-    scripture: ['the Records of Ancient Matters'], symbols: [['the rising sun', 'sun'], ['a comma', 'tomoe'], ['a blossom', 'blossom']],
-    domains: ['goddess of the sun, ancestor of the emperors', 'god of storms and the sea', 'god of the moon', 'god of rice and foxes', 'god of war and archery'], gods: [4, 6], age: [1500, 2500],
-    beliefs: ['Spirits dwell in mountains, trees and rivers', 'The emperor descends from the sun', 'Festivals for each season'],
-    sect: ['the {N} Sect', 'the Mountain Ascetics', 'the Pure Land'],
-    doctrines: { head: { ruler: 3, none: 1 }, clergy: { hereditary: 2, open: 1 }, conversion: { closed: 3 }, others: { pluralist: 4 }, death: { burning: 2, burial: 2 }, marriage: { concubines: 2, monogamy: 2 } },
-    tenets: ['purity', 'kingship', 'nature', 'feastDays', 'adorcism', 'takamine'], places: ['peak', 'forest', 'island'],
+    kind: 'way of the spirits',
+    names: [
+      'the Way of the Spirits',
+      'the Eight Thousand Spirits',
+      'the Way of {P}',
+      'the Way of the Gods',
+      'the Sacred Mirror',
+      'the Path of the White Crane',
+      'the Circle of the Five Elements',
+      'the Heavenly Realm of {H}'
+    ],
+    adherents: [
+      'the Faithful',
+      'the People of the Isles',
+      'the Servants of the {H}',
+      'the Keepers of the Shrines',
+      'the Pure-Hearted',
+      'the Children of the Sun'
+    ],
+    head: [
+      'High Priestess of the Sun',
+      'Supreme Shrine Keeper',
+      'Master of the Imperial Rites',
+      'Oracle of the Sacred Mirror',
+      'Grand Abbot of the Mountain Peaks'
+    ],
+    clergy: [
+      'shrine priests and shrine maidens',
+      'monks and shrine priests',
+      'mountain ascetics and oracle maidens',
+      'exorcists and ritual dancers',
+      'hermits and diviners'
+    ],
+    temple: [
+      'shrines with gates and temples',
+      'vermilion shrines with torii gates',
+      'mountain grottoes and sacred groves',
+      'island shrines surrounded by water',
+      'hillside pagoda complexes and paper-lantern halls'
+    ],
+    scripture: [
+      'the Records of Ancient Matters',
+      'the Chronicles of the Heavenly Gods',
+      'the Scrolls of the Eight Million Souls',
+      'the Secret Songs of the Oracle',
+      'the Sutras of the Mountain Spirits'
+    ],
+    symbols: [
+      ['the rising sun', 'sun'],
+      ['a comma', 'tomoe'],
+      ['a blossom', 'blossom'],
+      ['a sacred gateway', 'cross'],
+      ['a nine-tailed fox', 'roundel'],
+      //['a sacred mirror', 'moon'],
+      ['a folded paper talisman', 'sword'],
+      ['a coiled dragon', 'serpent'],
+      ['a pine bough bound with paper', 'tree'],
+      //['a bronze ritual bell', 'ring']
+    ],
+    domains: [
+      'goddess of the sun, ancestor of the emperors',
+      'god of storms and the sea',
+      'god of the moon',
+      'god of rice and foxes',
+      'god of war and archery',
+      'god of the underworld and earth tremors',
+      'goddess of the hearth and weavers',
+      'spirit of the sacred mountain peak',
+      'god of thunder and lightning',
+      'patron spirit of craftsmen and sword-smiths'
+    ],
+    gods: [4, 6],
+    age: [1500, 2500],
+    beliefs: [
+      'Spirits dwell in mountains, trees and rivers',
+      'The emperor descends from the sun',
+      'Festivals for each season',
+      'Purity of body and spirit repels evil influences',
+      'Blood and decay bring spiritual corruption',
+      'Ancestor spirits watch over the family hearth',
+      'Even old objects acquire a soul after a hundred years',
+      'Impurities are washed away in running water and mountain streams'
+    ],
+    sect: [
+      'the {N} Sect',
+      'the Mountain Ascetics',
+      'the Pure Land',
+      'the Order of the Sacred Mirror',
+      'the Fox-Spirit Brotherhood',
+      'the Priesthood of the Storm-King',
+      'the Shrine-Keepers of {N}'
+    ],
+    doctrines: { 
+      head: { ruler: 3, none: 1 }, 
+      clergy: { hereditary: 2, open: 1 }, 
+      conversion: { closed: 3 }, 
+      others: { pluralist: 4 }, 
+      death: { burning: 2, burial: 2 }, 
+      marriage: { concubines: 2, monogamy: 2 } 
+    },
+    tenets: ['purity', 'kingship', 'nature', 'feastDays', 'adorcism', 'takamine'], 
+    places: ['peak', 'forest', 'island'],
   },
   spirits: {
-    kind: 'faith of the great spirit', names: ['the Great Spirit', 'the Way of the Grandfathers', 'the Sacred Circle'], adherents: ['the People'],
-    head: ['Keeper of the Medicine'], clergy: ['medicine men and women'], temple: ['medicine lodges and sweat lodges'], scripture: ['the stories of the elders'],
-    symbols: [['a feather', 'feather'], ['a bird', 'bird'], ['the sun', 'sun'], ['a serpent', 'serpent']],
-    domains: ['the Great Spirit, in all things', 'Grandfather Sun', 'Grandmother Moon', 'the Thunderbird', 'the Trickster', 'Mother Earth'], gods: [3, 5], age: [3000, 6000],
-    beliefs: ['Visions guide the young', 'Land belongs to no one', 'Decisions consider seven generations'],
-    sect: ['the {N} Dance', 'the {N} Society'],
-    doctrines: { head: { none: 4 }, clergy: { open: 3 }, conversion: { closed: 3 }, others: { pluralist: 4 }, death: { burial: 2, sky: 1, burning: 1 }, marriage: { monogamy: 2, polygamy: 1 } },
-    tenets: ['nature', 'divination', 'ancestors', 'rebirth', 'hospitality', 'carnalism', 'adorcism', 'witchcraft', 'takamine'], places: ['lake', 'peak', 'forest'],
+    kind: 'faith of the great spirit',
+    names: [
+      'the Great Spirit',
+      'the Way of the Grandfathers',
+      'the Sacred Circle',
+      'the Path of the Four Winds',
+      'the Breath of All Things',
+      'the Circle of the Medicine Wheel',
+      'the Voice of the Elders',
+      'the Way of the Tree of Peace'
+    ],
+    adherents: [
+      'the People',
+      'the Children of the Earth',
+      'the Keepers of the Fire',
+      'the People of the Sacred Pipe',
+      'the Walkers of the Red Road',
+      'the Kin of the Animal Spirits'
+    ],
+    head: [
+      'Keeper of the Medicine',
+      'Peace Chief',
+      'Pipe Carrier',
+      'Grand Medicine Singer',
+      'Elder of the Four Directions',
+      'Keeper of the Wampum'
+    ],
+    clergy: [
+      'medicine men and women',
+      'vision-seekers and storytellers',
+      'pipe-carriers and dream-readers',
+      'drum-keepers and herbalists',
+      'ritual singers and fire-keepers'
+    ],
+    temple: [
+      'medicine lodges and sweat lodges',
+      'sacred council fires and sun-dance arbors',
+      'vision pits and birch-bark lodges',
+      'earthen mounds and sacred groves',
+      'open-air dance circles and river-bend shrines'
+    ],
+    scripture: [
+      'the stories of the elders',
+      'the woven wampum belts',
+      'the carved birch-bark scrolls',
+      'the painted winter counts',
+      'the songs handed down through generations'
+    ],
+    symbols: [
+      ['a feather', 'feather'],
+      ['a bird', 'bird'],
+      ['the sun', 'sun'],
+      ['a serpent', 'serpent'],
+      ['a dreamcatcher', 'roundel'],
+      //['a bear paw print', 'skull'],
+      ['a medicine wheel', 'cross'],
+      ['a sacred pipe', 'sword'],
+      //['a howling wolf', 'moon'],
+      ['a thunderbird', 'eagle']
+    ],
+    domains: [
+      'the Great Spirit, in all things',
+      'Grandfather Sun',
+      'Grandmother Moon',
+      'the Thunderbird',
+      'the Trickster',
+      'Mother Earth',
+      'the Great Bear, spirit of healing',
+      'the White Buffalo, bringer of peace',
+      'the Four Winds, masters of the seasons',
+      'the Horned Serpent of the deep waters',
+      'the Cedar and Tobacco, sacred messengers',
+      'the Ancestors who walk in the Milky Way'
+    ],
+    gods: [3, 5],
+    age: [3000, 6000],
+    beliefs: [
+      'Visions guide the young',
+      'Land belongs to no one',
+      'Decisions consider seven generations',
+      'All living creatures are our sacred kin',
+      'Tobacco smoke carries prayers to the Sky Father',
+      'Taking life from nature requires a gift of thanks and respect',
+      'Dreams are messages from the grandfathers',
+      'The sacred hoop of the world must remain unbroken'
+    ],
+    sect: [
+      'the {N} Dance',
+      'the {N} Society',
+      'the False Face Society',
+      'the Order of the Sacred Pipe',
+      'the Medicine Lodge of {N}',
+      'the Keepers of the Sun Dance',
+      'the Clan of the Horned Serpent'
+    ],
+    doctrines: { 
+      head: { none: 4 }, 
+      clergy: { open: 3 }, 
+      conversion: { closed: 3 }, 
+      others: { pluralist: 4 }, 
+      death: { burial: 2, sky: 1, burning: 1 }, 
+      marriage: { monogamy: 2, polygamy: 1 } 
+    },
+    tenets: ['nature', 'divination', 'ancestors', 'rebirth', 'hospitality', 'carnalism', 'adorcism', 'witchcraft', 'takamine'], 
+    places: ['lake', 'peak', 'forest'],
   },
   sun: {
-    kind: 'cult of the sun', names: ['the Children of the Sun', 'the Sun and the Mountains', 'the Cult of the Sun'], adherents: ['the Children of the Sun'],
-    head: ['High Priest of the Sun'], clergy: ['priests and chosen women'], temple: ['sun temples and mountain shrines'], scripture: ['the knotted records of the priests'],
-    symbols: [['the sun', 'sun'], ['a condor', 'eagle'], ['a stepped cross', 'cross']],
-    domains: ['the Sun, father of kings', 'the Moon, his sister-wife', 'the Creator, who rose from the lake', 'god of thunder and rain', 'the Earth Mother', 'the spirits of the mountains'],
-    gods: [4, 6], age: [800, 1500],
-    beliefs: ['Mountains and springs are holy', 'Labour is owed to the Sun and the state'],
-    sect: ['the Lake Cult', 'the Mountain Cult of {N}'],
-    doctrines: { head: { ruler: 4 }, clergy: { hereditary: 2, open: 1 }, conversion: { sword: 2, closed: 1 }, others: { righteous: 2, pluralist: 1 }, death: { tombs: 4 }, marriage: { polygamy: 2, concubines: 2 } },
-    tenets: ['kingship', 'ancestors', 'ritualSacrifice', 'astrology', 'sacredWaters', 'hedonism', 'suicide'], places: ['peak', 'lake'],
+    kind: 'cult of the sun',
+    names: [
+      'the Children of the Sun',
+      'the Sun and the Mountains',
+      'the Cult of the Sun',
+      'the Way of the Golden Disk',
+      'the Path of the Four Directions',
+      'the Priesthood of the Sky-Father',
+      'the Order of the Sacred Peak',
+      'the Keepers of the Sun\'s Gold'
+    ],
+    adherents: [
+      'the Children of the Sun',
+      'the Sun\'s Servants',
+      'the People of the Four Quarters',
+      'the Sun-Born',
+      'the Keepers of the Peaks',
+      'the Servants of the Golden Disk'
+    ],
+    head: [
+      'High Priest of the Sun',
+      'Speaker for the Golden Sun',
+      'Guardian of the Royal Mummies',
+      'Supreme Solar Keeper',
+      'First Voice of the High Peaks'
+    ],
+    clergy: [
+      'priests and chosen women',
+      'sun-priests and aclla maidens',
+      'quipu-keepers and mountain shamans',
+      'shrine-keepers and mummy-servants',
+      'solar astrologers and terrace-priests'
+    ],
+    temple: [
+      'sun temples and mountain shrines',
+      'golden temples and high-altitude altars',
+      'stepped stone shrines and sacred mountain caves',
+      'polised granite sun-enclosures',
+      'royal terraces and peak observatories'
+    ],
+    scripture: [
+      'the knotted records of the priests',
+      'the sacred quipu cords',
+      'the golden tablets of the royal lineage',
+      'the songs of the ancestral mummies',
+      'the solar calendars of the High Sun'
+    ],
+    symbols: [
+      ['the sun', 'sun'],
+      ['a condor', 'eagle'],
+      ['a stepped cross', 'cross'],
+      ['a golden llama', 'roundel'],
+      ['a puma', 'bird'],
+      //['a mountain peak with a sunburst', 'peak'],
+      //['a knot-cord seal', 'ring'],
+      //['a golden mask', 'skull']
+    ],
+    domains: [
+      'the Sun, father of kings',
+      'the Moon, his sister-wife',
+      'the Creator, who rose from the lake',
+      'god of thunder and rain',
+      'the Earth Mother',
+      'the spirits of the mountains',
+      'the Rainbow, messenger of the gods',
+      'the Lord of Earthquakes and Subterranean Fire',
+      'the Morning Star, herald of dawn',
+      'the Divine Llama, guardian of herds'
+    ],
+    gods: [4, 6],
+    age: [800, 1500],
+    beliefs: [
+      'Mountains and springs are holy',
+      'Labour is owed to the Sun and the state',
+      'Royal ancestors never die; their mummies must be fed and consulted',
+      'All gold belongs to the Sun, and all silver to the Moon',
+      'The king is the living son of the Sun on earth',
+      'High mountain peaks are the thrones of the sacred guardian spirits',
+      'The world was created from the deep waters of the holy lake',
+      'Sacrifices on high snow-capped peaks bring seasonal rains and fertile crops'
+    ],
+    sect: [
+      'the Lake Cult',
+      'the Mountain Cult of {N}',
+      'the Sisterhood of the Sun-Maidens',
+      'the Order of the Golden Disk',
+      'the Keeper-Priesthood of the Royal Ancestors',
+      'the Guardians of the High Huacas'
+    ],
+    doctrines: { 
+      head: { ruler: 4 }, 
+      clergy: { hereditary: 2, open: 1 }, 
+      conversion: { sword: 2, closed: 1 }, 
+      others: { righteous: 2, pluralist: 1 }, 
+      death: { tombs: 4 }, 
+      marriage: { polygamy: 2, concubines: 2 } 
+    },
+    tenets: ['kingship', 'ancestors', 'ritualSacrifice', 'astrology', 'sacredWaters', 'hedonism', 'suicide'], 
+    places: ['peak', 'lake'],
   },
   serpent: {
-    kind: 'cult of the feathered serpent', names: ['the Feathered Serpent', 'the Count of Days', 'the Gods of {H}'], adherents: ['the Faithful'],
-    head: ['High Priest', 'Speaker of the Calendar'], clergy: ['priests and calendar-keepers'], temple: ['stepped pyramids', 'pyramid temples and ball-courts'],
-    scripture: ['the folded books of days'], symbols: [['a feathered serpent', 'serpent'], ['a jaguar', 'roundel'], ['the sun', 'sun'], ['a bird', 'bird']],
-    domains: ['the Feathered Serpent, bringer of learning', 'god of rain', 'god of maize', 'the Smoking Mirror, god of night and fate', 'the sun, who must be fed', 'god of death'],
-    gods: [5, 7], age: [1500, 2500],
-    beliefs: ['Time turns in great cycles', 'The ball-game re-enacts the struggle of the gods', 'Kings bleed to speak to their ancestors'],
-    sect: ['the Cult of {N}', 'the Jaguar Brotherhood'],
-    doctrines: { head: { pontiff: 2, ruler: 2 }, clergy: { hereditary: 2, open: 1 }, conversion: { sword: 2, closed: 1 }, others: { righteous: 2, pluralist: 1 }, death: { tombs: 2, burial: 2 }, marriage: { polygamy: 2, monogamy: 1 } },
-    tenets: ['ritualSacrifice', 'astrology', 'kingship', 'feastDays', 'dualism', 'carnalism', 'witchcraft', 'suicide'], places: ['peak', 'lake'],
-  },
+    kind: 'cult of the feathered serpent',
+    names: [
+      'the Feathered Serpent',
+      'the Count of Days',
+      'the Gods of {H}',
+      'the Way of the Emerald Plume',
+      'the Path of the Sun\'s Blood',
+      'the Way of the Nine Underworlds',
+      'the Circle of the Five Suns',
+      'the Keepers of the Maize',
+      'the Lords of the Night'
+    ],
+    adherents: [
+      'the Faithful',
+      'the Sun\'s Children',
+      'the People of Maize',
+      'the Bearers of the Blood-Debt',
+      'the Blood-Givers',
+      'the Servants of the Emerald Sky'
+    ],
+    head: [
+      'High Priest',
+      'Speaker of the Calendar',
+      'First Voice of the Sun',
+      'Grand Sacrificer',
+      'High Keeper of the Codex',
+      'Supreme Jaguar Speaker'
+    ],
+    clergy: [
+      'priests and calendar-keepers',
+      'blood-drawers and astrologers',
+      'day-keepers and sky-watchers',
+      'codex-scribes and sacrificers',
+      'jaguar-shaman and night-priests'
+    ],
+    temple: [
+      'stepped pyramids',
+      'pyramid temples and ball-courts',
+      'terraced pyramid-complexes',
+      'temple-mounds and sacred cenotes',
+      'carved stone plazas and sky-observatories'
+    ],
+    scripture: [
+      'the folded books of days',
+      'the bark-paper codices',
+      'the painted screenfolds of the sky',
+      'the carved stone stelae',
+      'the songs of the five suns'
+    ],
+    symbols: [
+      ['a feathered serpent', 'serpent'],
+      ['a jaguar', 'roundel'],
+      ['the sun', 'sun'],
+      ['a bird', 'bird'],
+      ['an obsidian blade', 'sword'],
+      ['a ear of maize', 'tree'],
+      //['a skull dripping blood', 'skull'],
+      //['a smoking mirror', 'moon'],
+      ['a quetzal feather', 'bird'],
+      ['a coiled rattlesnake', 'serpent']
+    ],
+    domains: [
+      'the Feathered Serpent, bringer of learning',
+      'god of rain',
+      'god of maize',
+      'the Smoking Mirror, god of night and fate',
+      'the sun, who must be fed',
+      'god of death',
+      'the Flayed Lord, god of rebirth and spring',
+      'the Lord of the Underworld',
+      'the Mother of Stars',
+      'god of the sacred cenote',
+      'god of the hunt and wild places',
+      'goddess of childbearing and weaving'
+    ],
+    gods: [5, 7],
+    age: [1500, 2500],
+    beliefs: [
+      'Time turns in great cycles',
+      'The ball-game re-enacts the struggle of the gods',
+      'Kings bleed to speak to their ancestors',
+      'The sun will die unless fed with human blood',
+      'Four worlds ended before this one, and ours shall end in fire and earthquake',
+      'The dead must navigate nine treacherous layers of the underworld',
+      'Human flesh is formed from sacred ground maize and water',
+      'Every person possesses a wild animal spirit-twin',
+      'The sky is held up by four great world-trees at the cardinal points'
+    ],
+    sect: [
+      'the Cult of {N}',
+      'the Jaguar Brotherhood',
+      'the Order of the Obsidian Blade',
+      'the Circle of the Smoking Mirror',
+      'the Keepers of the Sun-Stone',
+      'the Priesthood of the Flayed Skin',
+      'the Eagle Warriors of {N}'
+    ],
+    doctrines: { 
+      head: { pontiff: 2, ruler: 2 }, 
+      clergy: { hereditary: 2, open: 1 }, 
+      conversion: { sword: 2, closed: 1 }, 
+      others: { righteous: 2, pluralist: 1 }, 
+      death: { tombs: 2, burial: 2 }, 
+      marriage: { polygamy: 2, monogamy: 1 } 
+    },
+    tenets: ['ritualSacrifice', 'astrology', 'kingship', 'feastDays', 'dualism', 'carnalism', 'witchcraft', 'suicide'], 
+    places: ['peak', 'lake'],
+} ,
 };
 export const ARCHETYPE_LABEL: Record<FaithFamily, string> = {
   church: 'a church', crescent: 'the faith of the prophets', pantheon: 'a pantheon', oldgods: 'the old gods', druid: 'a druid faith', stars: 'the stars', ancestors: 'the ancestors',
