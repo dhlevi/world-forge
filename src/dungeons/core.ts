@@ -36,16 +36,25 @@ export interface DungeonSite {
   scale?: number;
   /** Sewers: the other grates down from the streets (local metres from the main one). */
   grates?: number[][];
+  /** Sewers: the thieves' guild hides in these (one of a city's sewers; a chance under a town's). */
+  thieves?: boolean;
 }
 
 /**
- * How large a town's sewers are, against a small town's (96 x 72 m): larger towns 1.25, cities
- * from 1.5 up to 2.6 for the greatest (up to 250 x 187 m).
+ * How large each of a town's sewers is, against a small town's (96 x 72 m): larger towns 1.25,
+ * and each of a city's several sewers from 1.3 up to 1.8 for the greatest cities (up to 173 x 130 m).
  */
 export function sewerScale(tier: string, population: number): number {
-  if (tier === 'city') return Math.min(2.6, 1.5 + Math.max(0, population - 6000) / 30000);
+  if (tier === 'city') return Math.min(1.8, 1.3 + Math.max(0, population - 6000) / 60000);
   return population >= 8000 ? 1.25 : 1;
 }
+
+/** How many separate sewers run under a town: one under a town, two to four under a city (by size). */
+export function sewerCount(tier: string, population: number): number {
+  return tier === 'city' ? 2 + (population >= 15000 ? 1 : 0) + (population >= 30000 ? 1 : 0) : 1;
+}
+
+const COMPASS = ['East', 'North-East', 'North', 'North-West', 'West', 'South-West', 'South', 'South-East'];
 
 /** Battlemap squares (5 ft). */
 export const CELL_M = 1.5;
@@ -300,21 +309,34 @@ export function packLines(lines: number[][][]): string {
 /**
  * What lies under a town (decided from the town alone, so search can list it before the plan is
  * drawn): sewers under cities and towns of 4,000 or more, catacombs under every city and about
- * half the towns. The plan then places the entrances (a grate on a main street; a stair in the
- * graveyard, by the temple, or in the market).
+ * half the towns. A city has several separate sewers, each draining its own quarter of the city
+ * (in the direction `angle`, radians from east, from the centre), named for it ("the North Sewers
+ * of X"); the thieves' guild hides in one of them. The plan then places the entrances (grates on
+ * the streets of each quarter; a stair in the graveyard, by the temple, or in the market).
  */
 export function townUnderground(
   s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string },
   /** Names from an English pattern ({0} the town), in the local language and in English. */
   named: (tpl: string) => { name: string; en: string } = (tpl) => ({ name: tpl.replace('{0}', s.name ?? ''), en: tpl.replace('{0}', s.name ?? '') }),
-): { dkind: 'sewer' | 'catacomb'; did: string; name: string; en: string; tags: string[] }[] {
+): Underground[] {
   if ((s.tier !== 'city' && s.tier !== 'town') || s.kind === 'tribal') return [];
-  const out: { dkind: 'sewer' | 'catacomb'; did: string; name: string; en: string; tags: string[] }[] = [];
+  const out: Underground[] = [];
   const u = (k: number) => hash(s.seed ^ k) / 4294967296;
   const size = s.tier === 'city' ? 'large' : 'medium';
   if (s.tier === 'city' || s.population >= 4000) {
-    const levels = s.tier === 'city' && u(0x5e1) < 0.6 ? 2 : 1;
-    out.push({ dkind: 'sewer', did: `${s.id}/sewer`, ...named('the Sewers of {0}'), tags: [size, ...(levels > 1 ? ['2 levels'] : [])] });
+    const n = sewerCount(s.tier, s.population);
+    const base = u(0x5e2) * Math.PI * 2;
+    // Under most cities (and a few large towns) the thieves' guild, in one of the sewers.
+    const den = s.tier === 'city' ? (u(0x5e4) < 0.85 ? Math.floor(u(0x5e5) * n) : -1) : u(0x5e6) < (s.population >= 8000 ? 0.35 : 0.1) ? 0 : -1;
+    for (let k = 0; k < n; k++) {
+      const angle = n > 1 ? base + (k * Math.PI * 2) / n : undefined;
+      const levels = s.tier === 'city' && u(0x5e1 + k * 0x101) < 0.5 ? 2 : 1;
+      const dir = angle === undefined ? '' : COMPASS[Math.round((((angle % (2 * Math.PI)) + 2 * Math.PI) % (2 * Math.PI)) / (Math.PI / 4)) % 8];
+      out.push({
+        dkind: 'sewer', did: k ? `${s.id}/sewer${k + 1}` : `${s.id}/sewer`, ...named(dir ? `the ${dir} Sewers of {0}` : 'the Sewers of {0}'),
+        tags: [size, ...(levels > 1 ? ['2 levels'] : [])], angle, k, thieves: den === k,
+      });
+    }
   }
   if (s.tier === 'city' || u(0xca7a) < 0.55) {
     const r = u(0xca7b);
@@ -323,6 +345,19 @@ export function townUnderground(
     out.push({ dkind: 'catacomb', did: `${s.id}/catacomb`, ...nm, tags: [size, ...(levels > 1 ? [`${levels} levels`] : [])] });
   }
   return out;
+}
+
+export interface Underground {
+  dkind: 'sewer' | 'catacomb';
+  did: string;
+  name: string;
+  en: string;
+  tags: string[];
+  /** Sewers: the direction of its quarter from the centre (radians from east), for a city's several. */
+  angle?: number;
+  /** Sewers: which of the town's sewers (0 the first). */
+  k?: number;
+  thieves?: boolean;
 }
 
 /** Integer hash (as gen/rng hash32, repeated here to keep this module free of imports with side effects). */

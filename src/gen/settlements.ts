@@ -146,6 +146,48 @@ export function makeSettlement(
   };
 }
 
+/** Share of a town's core (a disc of `coreM`) that is water at full shoreline detail, from 24 samples. */
+function coreWater(sampler: DetailSampler, lon: number, lat: number, coreM: number): number {
+  const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+  let w = 0;
+  for (let q = 0; q < 24; q++) {
+    const a = q * 2.39996, r = coreM * Math.sqrt((q + 0.5) / 24);
+    if (sampler.isWater(lon + Math.cos(a) * r * kLon, lat + Math.sin(a) * r * kLat)) w++;
+  }
+  return w / 24;
+}
+
+/**
+ * Moves a town whose core is more than half water to the nearest spot (within ~3 km, or ~8 km if
+ * there is no dry ground nearer) whose core is
+ * mostly land, or failing that the driest spot found; towns already on enough land stay put.
+ * False for a town with almost no dry ground (a land cell that is open water at full detail, or a
+ * scatter of islets), which is then left out.
+ */
+function landfall(sampler: DetailSampler, s: Settlement): boolean {
+  if (coreWater(sampler, s.lon, s.lat, s.coreM) <= 0.5) return true;
+  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((s.lat * Math.PI) / 180));
+  let best: [number, number] | null = null, bestW = Infinity;
+  // Out to 3 km for a better spot, and on to 8 km while there is no dry ground at all.
+  for (let d = 0.3; d <= 8; d += d < 3 ? 0.3 : 0.5) {
+    if (d > 3 && best) break;
+    for (let q = 0; q < 12; q++) {
+      const a = (q / 12) * Math.PI * 2 + d;
+      const x = s.lon + Math.cos(a) * d * kmLon, y = s.lat + Math.sin(a) * d * kmLat;
+      if (sampler.isWater(x, y)) continue;
+      const w = coreWater(sampler, x, y, s.coreM);
+      if (w < bestW) {
+        bestW = w;
+        best = [x, y];
+      }
+    }
+    if (bestW <= 0.35) break;
+  }
+  if (best) [s.lon, s.lat] = best;
+  // No town where nearly all the ground for miles around is water.
+  return best ? bestW <= 0.8 : !sampler.isWater(s.lon, s.lat) && coreWater(sampler, s.lon, s.lat, s.coreM) <= 0.8;
+}
+
 /** Moves a point off water (at full shoreline detail) to the nearest land within ~20 km. */
 export function nudgeOntoLand(sampler: DetailSampler, lon: number, lat: number): [number, number] {
   if (!sampler.isWater(lon, lat)) return [lon, lat];
@@ -282,7 +324,8 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
   }
 
   let nCity = 0, nTown = 0;
-  const settlements: Settlement[] = sites.map(({ c, tier }) => {
+  const drowned = new Set<string>();
+  const placed: Settlement[] = sites.map(({ c, tier }) => {
     const sseed = hash32(c ^ seed ^ 0x7a11);
     const i = c % W, j = (c / W) | 0;
     const id = tier === 'city' ? `c${nCity++}` : `t${nTown++}`;
@@ -328,6 +371,14 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
         }
       }
     }
+    // A site on a sliver of land (an islet or spit only the fine shoreline shows) would leave
+    // the town no ground to build on: it moves to the nearest spot whose core is mostly land.
+    {
+      // Coastal towns, and any with water at two of four points around the core (lake towns).
+      const kLat = s.coreM * 0.5 / 111200, kLon = kLat / Math.max(0.05, Math.cos((s.lat * Math.PI) / 180));
+      const wet = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([x, y]) => sampler.isWater(s.lon + x * kLon, s.lat + y * kLat)).length;
+      if ((s.coastal || wet >= 2) && !landfall(sampler, s)) drowned.add(s.id);
+    }
     if (f.newWorld[c]) {
       // New World towns are tribal towns (smaller), until some are chosen as colonies.
       s.newWorld = true;
@@ -340,7 +391,10 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
     }
     return s;
   });
-  const cells = sites.map((s) => s.c);
+  // Towns with no dry ground at all are left out (sites and settlements stay in step).
+  const keep = placed.map((s) => !drowned.has(s.id));
+  const settlements = placed.filter((_, k) => keep[k]);
+  const cells = sites.filter((_, k) => keep[k]).map((s) => s.c);
   const roads = buildRoads(g, f, seed, isRiver, settlements, cells, sampler);
   return { settlements, roads };
 }

@@ -843,8 +843,8 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
     L.rooms.push(roomOf(r, 1, [tag]));
   }
   doorsForRooms(L, rects.slice(L.rooms.filter((r) => r.tags[0] === 'junction').length), rnd, doorPick(rnd, [['door', 2], ['bars', 1.5], ['locked', 1], ['arch', 1]]));
-  // The thieves' guild: hidden rooms off a quiet tunnel, behind a secret door (under most cities).
-  if (rnd() < (k >= 1.5 ? 0.8 : k > 1 ? 0.35 : 0.1)) thievesDen(L, channel, g, rnd);
+  // The thieves' guild: hidden rooms off a quiet tunnel, behind a secret door (in one sewer under most cities).
+  if (site.thieves) thievesDen(L, channel, g, rnd);
   // The outfall: bars where the main channel leaves the map toward the river or sea.
   if (outEnd) {
     L.rooms.push(roomOf({ x: outEnd[0] - 1, y: outEnd[1] - 1, w: 3, h: 3 }, 1, ['outfall']));

@@ -689,8 +689,9 @@ export class TownManager {
   }
 
   /**
-   * Entrances below a town, drawn on its plan: a sewer grate on a main street near the centre
-   * (cities and larger towns), and a catacomb stair in the graveyard or beside the temple.
+   * Entrances below a town, drawn on its plan: sewer grates on the streets (near the centre under
+   * a town; under a city, in each of the quarters its several sewers drain), and a catacomb stair
+   * in the graveyard or beside the temple.
    */
   private underground(s: Settlement, out: PlanOut, frame: LocalFrame, water: (p: Pt) => boolean, culture: number): void {
     const under = townUnderground(s, (tpl) => this.names.named(culture, tpl, [{ name: s.name ?? '', en: s.nameEn ?? s.name ?? '' }]));
@@ -700,27 +701,42 @@ export class TownManager {
       .map((c) => frame.fromLL(c[0], c[1]) as Pt);
     const streets = out.features.filter((f) => f.properties.kind === 'street').map(local);
     const centroid = (p: Pt[]): Pt => [p.reduce((a, q) => a + q[0], 0) / p.length, p.reduce((a, q) => a + q[1], 0) / p.length];
+    // Main grates of the sewers placed so far: each sewer's map keeps clear of the others.
+    const mains: Pt[] = [];
     for (const u of under) {
-      const props = { did: u.did, dkind: u.dkind, name: u.name, ...(u.en !== u.name ? { en: u.en } : {}), seed: hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 : 0xca7)), tags: u.tags.join(','), culture, sid: s.id };
+      const seed = hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 + (u.k ?? 0) * 0x1001 : 0xca7));
+      const props = { did: u.did, dkind: u.dkind, name: u.name, ...(u.en !== u.name ? { en: u.en } : {}), seed, tags: u.tags.join(','), culture, sid: s.id, ...(u.thieves ? { thieves: 1 } : {}) };
       if (u.dkind === 'sewer') {
-        // The grate: a street vertex 25 to 45 m from the centre, on dry ground.
+        // The main grate: under a town, a street vertex 25 to 45 m from the centre; under a city,
+        // the street vertex nearest the middle of the sewer's quarter. On dry ground.
         let g: Pt = [0, 0], bd = Infinity;
         const want = 25 + rnd() * 20;
-        for (const l of streets) {
-          for (const p of l) {
-            const d = Math.abs(Math.hypot(p[0], p[1]) - want);
-            if (d < bd && !water(p)) {
-              bd = d;
-              g = p;
+        const r = s.coreM * (0.45 + 0.15 * rnd());
+        const target: Pt | null = u.angle === undefined ? null : [Math.cos(u.angle) * r, Math.sin(u.angle) * r];
+        const clear = 1.4 * 100 * sewerScale(s.tier, s.population);
+        for (const pass of [0, 1]) {
+          for (const l of streets) {
+            for (const p of l) {
+              if (water(p)) continue;
+              // First pass: away from the other sewers' maps; failing that, as far from them as can be.
+              const apart = mains.length ? Math.min(...mains.map((m) => Math.hypot(p[0] - m[0], p[1] - m[1]))) : Infinity;
+              if (pass === 0 && apart < clear) continue;
+              const d = pass === 1 ? -apart : target ? Math.hypot(p[0] - target[0], p[1] - target[1]) : Math.abs(Math.hypot(p[0], p[1]) - want);
+              if (d < bd) {
+                bd = d;
+                g = p;
+              }
             }
           }
+          if (bd < Infinity) break;
         }
+        mains.push(g);
         // Streets around it (relative to the grate, clipped to the sewer map: 96 x 72 m for a small
-        // town, up to two and a half times that under a great city).
+        // town, up to 1.8 times that for each of a great city's sewers).
         const sc = sewerScale(s.tier, s.population);
         const box = (p: Pt) => Math.abs(p[0] - g[0]) < 50 * sc && Math.abs(p[1] - g[1]) < 38 * sc;
         // More grates down from the streets under larger towns, spread over the map.
-        const nGrates = s.tier === 'city' ? 2 + Math.floor(sc * 1.5) : s.population >= 6000 ? 1 : 0;
+        const nGrates = s.tier === 'city' ? 1 + Math.floor(sc * 1.2) : s.population >= 6000 ? 1 : 0;
         const grates: Pt[] = [];
         const cand: Pt[] = [];
         for (const l of streets) {
