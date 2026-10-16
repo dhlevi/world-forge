@@ -52,6 +52,13 @@ const HOOKS: Record<string, string[]> = {
     "The ruins were a lord's hall until a single night of fire; the family's fate was never known.",
     'A herb-woman pays for nightcap mushrooms that grow only in the ruined cellars.',
   ],
+  well: [
+    'The village well has begun to taste of iron and smoke, and a bucket came up with a cut rope.',
+    'A child who climbed down the well for a dare came back up speaking of lights and voices below.',
+    'Goods vanish from the village and turn up for sale in the next town; the trail ends at the well.',
+    'On still nights the well echoes with chanting, though no one in the village admits to hearing it.',
+    "An old woman swears her grandfather hid the lord's silver down the well when the raiders came.",
+  ],
   sewer: [
     'Something has been taking cats, and lately a child, through the gratings of the lower town.',
     'A thieves\' guild runs its business from the drains; the watch would pay for a map of them.',
@@ -94,13 +101,20 @@ const ROOMS: Record<string, Entry> = {
   'thieves-hall': ['Thieves\' guildhall', ['Behind the false wall, a lamplit hall: a long table, a map of the city above pinned with daggers, and a chair at its head no one else sits in.', 'The guild meets here. Chalk marks on the wall tally debts and the names of marks; a bell on a cord rings if the secret door is opened.', 'A warm, dry hall that smells of pipe smoke and wine, strange after the sewer. Cards and coin lie where a game was left.']],
   'thieves-vault': ['Guild vault', ['Chests of coin and stolen plate, a strongbox of letters useful for blackmail, and a ledger in a cipher.', 'The guild\'s takings, sorted and tagged for the fences: silverware, rings, a reliquary that will be missed.', 'Locked chests and a trapped strongbox. A list of the city watch and the price of each of them is nailed to the wall.']],
   'thieves-dorm': ['Thieves\' quarters', ['Bunks for the guild\'s apprentices, picks and dark cloaks hung on pegs.', 'Bedrolls and a practice lock bolted to a table, its brass worn bright by many hands.']],
+  wellpool: ['Bottom of the well', ['The shaft opens into a grotto; the rope hangs down into a cold, clear pool, and a ledge runs round it.', 'Daylight falls in a pale column from the well mouth far above onto black water and a shelf of wet stone.', 'A dropped bucket floats in the pool beneath the shaft; scratches on the rock show where others have climbed down.']],
+  grotto: ['Grotto', ['A low natural cave; water drips from pale stone teeth into small pools.', 'A cavern of flowstone, its walls slick and shining in the lamplight.', 'A dry grotto where the passages meet; something has scraped a sleeping hollow in the floor.']],
+  pooled: ['Pool cave', ['Still water fills most of this cave; a narrow shelf runs along one wall.', 'The floor drops away into a pool so clear the bottom looks close enough to touch. It is not.']],
+  smugglers: ["Smugglers' cache", ['Behind the hidden door, a dry room of worked stone stacked with casks and bales that never paid a toll.', 'Crates marked with the stamps of three different ports; a tally board on the wall lists names from the village.']],
+  'hidden-shrine': ['Hidden shrine', ['A shrine to a god the village claims to have forgotten: an altar, fresh offerings and a ring of burnt candles.', 'The walls are painted with eyes and spirals; the altar stone is stained dark and still tacky.']],
+  hoard: ['Forgotten hoard', ['A sealed chamber, its door hidden for generations; an iron-bound chest waits beneath the dust.', 'Funeral urns and a rotted chest of coin: someone hid their wealth here long ago and never came back for it.']],
   outfall: ['Outfall', ['Iron bars close the outfall where the sewer empties toward the water.', 'The outfall: a rusted grille, one bar bent wide enough to squeeze through.']],
 };
 
 export function writeKey(d: Dungeon, rnd: Rng): void {
-  const kind = d.site.kind as SiteKind;
+  // The caves under a well take their creatures, traps and treasure from the natural caves.
+  const kind = (d.site.kind === 'well' ? 'cave' : d.site.kind) as SiteKind;
   d.title = d.site.name;
-  d.hook = [pick(rnd, HOOKS[kind] ?? HOOKS.crypt), hookTail(rnd)].filter(Boolean).join(' ');
+  d.hook = [pick(rnd, HOOKS[d.site.kind] ?? HOOKS.crypt), hookTail(rnd)].filter(Boolean).join(' ');
   const used = new Set<string>();
   d.levels.forEach((L, k) => {
     for (const r of L.rooms) {

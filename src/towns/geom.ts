@@ -282,3 +282,75 @@ export function hatch(p: Poly, gap: number): Pt[][] {
   }
   return lines;
 }
+
+/**
+ * How rectangular a polygon is: its area over that of the smallest rectangle around it (with a
+ * side along one of its edges); 1 for a rectangle, 0.5 for a triangle.
+ */
+export function rectangularity(p: Poly): number {
+  const A = area(p);
+  let best = Infinity;
+  for (let k = 0; k < p.length; k++) {
+    const a = p[k], b = p[(k + 1) % p.length];
+    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), c = Math.cos(ang), s = Math.sin(ang);
+    let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
+    for (const [x, y] of p) {
+      const u = x * c + y * s, v = -x * s + y * c;
+      u0 = Math.min(u0, u); u1 = Math.max(u1, u); v0 = Math.min(v0, v); v1 = Math.max(v1, v);
+    }
+    best = Math.min(best, (u1 - u0) * (v1 - v0));
+  }
+  return best > 0 ? A / best : 0;
+}
+
+/**
+ * The largest rectangle inside a convex polygon with one side on edge `e` (a house fronting the
+ * street on an odd-shaped lot), or null if none is at least `minSide` m on each side.
+ */
+export function frontRect(p: Poly, e: number, minSide = 3.5): Poly | null {
+  const a = p[e], b = p[(e + 1) % p.length];
+  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  if (len < minSide) return null;
+  const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
+  // Inward normal: toward the centroid.
+  const c = centroid(p);
+  let nx = -uy, ny = ux;
+  if ((c[0] - a[0]) * nx + (c[1] - a[1]) * ny < 0) [nx, ny] = [-nx, -ny];
+  const local = p.map(([x, y]): Pt => [(x - a[0]) * ux + (y - a[1]) * uy, (x - a[0]) * nx + (y - a[1]) * ny]);
+  let depth = 0;
+  for (const [, v] of local) depth = Math.max(depth, v);
+  // The polygon's extent along the front at depth v (convex: one interval).
+  const span = (v: number): [number, number] => {
+    let lo = Infinity, hi = -Infinity;
+    for (let k = 0; k < local.length; k++) {
+      const [u0, v0] = local[k], [u1, v1] = local[(k + 1) % local.length];
+      if ((v0 - v) * (v1 - v) > 0 || v0 === v1) {
+        if (Math.abs(v0 - v) < 1e-9) { lo = Math.min(lo, u0); hi = Math.max(hi, u0); }
+        continue;
+      }
+      const u = u0 + ((u1 - u0) * (v - v0)) / (v1 - v0);
+      lo = Math.min(lo, u);
+      hi = Math.max(hi, u);
+    }
+    return [lo, hi];
+  };
+  let best: [number, number, number] | null = null, bestA = 0;
+  const steps = 24;
+  for (let q = 1; q <= steps; q++) {
+    const h = (depth * q) / steps;
+    if (h < minSide) continue;
+    const [a0, b0] = span(0.01), [a1, b1] = span(h - 0.01);
+    const lo = Math.max(a0, a1), hi = Math.min(b0, b1);
+    const w = hi - lo;
+    // A slight preference for deeper houses over long thin sheds along the street.
+    const score = w * h * Math.min(1, h / 5);
+    if (w >= minSide && score > bestA) {
+      bestA = score;
+      best = [lo, hi, h];
+    }
+  }
+  if (!best) return null;
+  const [lo, hi, h] = best;
+  const at = (u: number, v: number): Pt => [a[0] + ux * u + nx * v, a[1] + uy * u + ny * v];
+  return [at(lo, 0), at(hi, 0), at(hi, h), at(lo, h)];
+}

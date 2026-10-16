@@ -463,12 +463,14 @@ const DUNGEON_NOUNS: Record<string, string[]> = {
   crypt: ['Crypt', 'Tomb', 'Mausoleum', 'Barrow', 'Sepulchre', 'Vault'],
   ruin: ['Ruins', 'Manor', 'Hall', 'Priory', 'Steading', 'Grange'],
   mine: ['Mine', 'Workings', 'Diggings', 'Delvings', 'Pits', 'Shafts'],
+  well: ['Well', 'Wellspring', 'Hollow', 'Deep', 'Sump'],
 };
 const DUNGEON_ADJ: Record<string, string[]> = {
   tower: ['Crooked', 'Lonely', 'Black', 'Broken', 'Grey', 'Leaning', 'Silent', 'Burnt', 'Wizard\'s', 'Old'],
   crypt: ['Forgotten', 'Sunken', 'Silent', 'Weeping', 'Nameless', 'Hollow', 'Bleak', 'Ancient', 'Shrouded'],
   ruin: ['Burnt', 'Fallen', 'Old', 'Abandoned', 'Overgrown', 'Ruined', 'Haunted', 'Shattered'],
   mine: ['Old', 'Deep', 'Drowned', 'Lost', 'Silver', 'Copper', 'Iron', 'Abandoned', 'Collapsed'],
+  well: ['Old', 'Bottomless', 'Whispering', 'Dry', 'Drowned', 'Black', 'Wishing', 'Sunken'],
 };
 const DUNGEON_WHO = ['Witch', 'Baron', 'Hermit', 'Sorcerer', 'Abbot', 'Saint', 'King', 'Giant', 'Necromancer', 'Knight', 'Widow', 'Alchemist'];
 

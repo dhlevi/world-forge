@@ -10,8 +10,8 @@ const ppm = (metres: unknown) => ['*', metres, ['get', 'ppm20']];
 const physWidth = (minPx: unknown, metres: unknown) =>
   e(['interpolate', ['exponential', 2], ['zoom'], 12, minPx, 20, ['+', minPx, ppm(metres)]]);
 
-const ROAD_PX = ['match', ['get', 'cls'], 'major', 2.2, 'minor', 1.5, 'street', 1, 1];
-const ROAD_M = ['match', ['get', 'cls'], 'major', 7, 'minor', 5, 'street', 6, 3.5];
+const ROAD_PX = ['match', ['get', 'cls'], 'major', 2.2, 'minor', 1.5, 'street', 1, 'path', 0.6, 1];
+const ROAD_M = ['match', ['get', 'cls'], 'major', 7, 'minor', 5, 'street', 6, 'path', 1.6, 3.5];
 const roadWidth = (casingPx: number) => e([
   'interpolate', ['exponential', 2], ['zoom'],
   3, ['*', ROAD_PX, 0.35],
@@ -88,6 +88,16 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'fill-color': '#f4ecd9', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
   {
+    // A village's market square: beaten earth and cobbles where the lanes meet.
+    id: 'plan-square', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('square'),
+    paint: { 'fill-color': '#e2d5b4', 'fill-outline-color': '#b9ab86', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    // Ground beaten bare round an army's camp.
+    id: 'plan-trodden', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('trodden'),
+    paint: { 'fill-color': '#d8caa4', 'fill-opacity': e(['interpolate', ['linear'], ['zoom'], TOWN_PLAN_ZOOM, 0, 12.3, 0.8]) },
+  },
+  {
     id: 'plan-garden', type: 'fill', source: 'plans', minzoom: 13, filter: kind('garden'),
     paint: { 'fill-color': '#bcc68a', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(13, 13.6) },
   },
@@ -156,6 +166,28 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     },
   },
   {
+    // Market stalls, tents and wagons.
+    id: 'plan-stalls', type: 'fill', source: 'plans', minzoom: 13, filter: kind('stall', 'tent', 'wagon'),
+    paint: {
+      'fill-color': e(['match', ['get', 'kind'], 'stall', '#d6b48a', 'wagon', '#9b7a52', ['case', ['has', 'big'], '#c9a46e', '#ece0c2']]),
+      'fill-outline-color': INK,
+      'fill-opacity': fadeIn(13, 13.6),
+    },
+  },
+  {
+    id: 'plan-horses', type: 'fill', source: 'plans', minzoom: 14.5, filter: kind('horse'),
+    paint: { 'fill-color': '#7a5c40', 'fill-opacity': fadeIn(14.5, 15.2) },
+  },
+  {
+    id: 'plan-picket', type: 'line', source: 'plans', minzoom: 14, filter: kind('picket'),
+    paint: { 'line-color': INK, 'line-width': 0.6, 'line-opacity': fadeIn(14, 14.6) },
+  },
+  {
+    // A watermill's wheel in the stream.
+    id: 'plan-millwheel', type: 'fill', source: 'plans', minzoom: 13, filter: kind('millwheel'),
+    paint: { 'fill-color': '#8d6b47', 'fill-outline-color': INK, 'fill-opacity': fadeIn(13, 13.6) },
+  },
+  {
     id: 'plan-graves', type: 'fill', source: 'plans', minzoom: 14.5, filter: kind('grave'),
     paint: { 'fill-color': '#a8a291', 'fill-outline-color': INK, 'fill-opacity': fadeIn(14.5, 15.2) },
   },
@@ -164,10 +196,27 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     paint: {
       // Notable buildings are washed a little warmer so they stand out from the terraces.
       'fill-color': e(['case', ['has', 'role'],
-        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians'], '#b8a689', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', '#c6b08e'],
-        ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', '#cdbd9c']]),
+        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', 'apothecary', '#bdb38a', 'witch', '#a7a07c', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians'], '#b8a689', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', '#c6b08e'],
+        ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', 'witch', '#a7a07c', '#cdbd9c']]),
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
+    },
+  },
+  {
+    // A windmill's sails, crossed over its round tower.
+    id: 'plan-sails', type: 'line', source: 'plans', minzoom: 13, filter: kind('sails'), layout: LINE_LAYOUT,
+    paint: { 'line-color': INK, 'line-width': physWidth(0.8, 1.2), 'line-opacity': fadeIn(13, 13.6) },
+  },
+  {
+    // The village well: a ring of stone round dark water.
+    id: 'plan-wells', type: 'circle', source: 'plans', minzoom: 13, filter: kind('well'),
+    paint: {
+      'circle-color': '#4f6f86',
+      'circle-radius': physWidth(1.2, ['get', 'r']),
+      'circle-stroke-color': '#8c8172',
+      'circle-stroke-width': e(['interpolate', ['linear'], ['zoom'], 13, 1, 17, 2.5]),
+      'circle-opacity': fadeIn(13, 13.6),
+      'circle-stroke-opacity': fadeIn(13, 13.6),
     },
   },
   {
@@ -199,10 +248,10 @@ export const MARKER_LAYERS: LayerSpecification[] = [
     paint: {
       // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
       'circle-color': e(['match', ['get', 'kind'],
-        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, 'tribal', '#8a5a3a', INK]),
+        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, 'tribal', '#8a5a3a', 'camp', '#b0402c', INK]),
       'circle-radius': e(['interpolate', ['linear'], ['zoom'],
-        8, ['match', ['get', 'kind'], ['keep', 'monastery'], 2, 1.5],
-        12, ['match', ['get', 'kind'], ['keep', 'monastery'], 4, 3]]),
+        8, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp'], 2, 1.5],
+        12, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp'], 4, 3]]),
       'circle-stroke-color': e(['match', ['get', 'kind'], 'monastery', INK, PAPER]),
       'circle-stroke-width': e(['match', ['get', 'kind'], 'monastery', 1.2, 0.8]),
       'circle-opacity': e(['interpolate', ['linear'], ['zoom'], VILLAGE_ZOOM, 0, 8.2, 1, 12.6, 1, 13.3, 0]),
@@ -269,7 +318,7 @@ export const LAIR_LAYERS: LayerSpecification[] = [
     // Fainter close in, where the map itself is laid over the ground on hover.
     paint: { 'icon-opacity': e(['interpolate', ['linear'], ['zoom'], LAIR_ZOOM, 0, LAIR_ZOOM + 0.6, 1, 16, 1, 17.5, 0.6]) },
   },
-  // Sewer grates and catacomb stairs drawn on town plans.
+  // Sewer grates, catacomb stairs and secret wells drawn on town and village plans.
   {
     id: 'dentry-icons', type: 'symbol', source: 'plans', minzoom: 13.6,
     filter: e(['==', ['get', 'kind'], 'dentry']) as FilterSpecification,
@@ -478,7 +527,31 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
     g.arc(17.7, 14, 1.6, 0, Math.PI * 2);
     g.fill();
   });
+  // A secret way down a village well: the well head with its winch, over dark water.
+  const well = make((g) => {
+    disc(g);
+    g.fillStyle = '#2f3e4a';
+    g.beginPath();
+    g.ellipse(15, 18.5, 6.5, 3.2, 0, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.lineWidth = 1.6;
+    g.beginPath();
+    g.moveTo(9, 18);
+    g.lineTo(9, 8);
+    g.moveTo(21, 18);
+    g.lineTo(21, 8);
+    g.moveTo(8, 8.5);
+    g.lineTo(22, 8.5);
+    g.moveTo(15, 8.5);
+    g.lineTo(15, 15.5);
+    g.stroke();
+    g.fillStyle = '#8d6b47';
+    g.fillRect(13.3, 13.5, 3.4, 3);
+    g.strokeRect(13.3, 13.5, 3.4, 3);
+  });
   return [
+    { id: 'dun-well', image: well, pixelRatio: pr },
     { id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr },
     { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },
     { id: 'dun-mine', image: mine, pixelRatio: pr }, { id: 'dun-sewer', image: sewer, pixelRatio: pr }, { id: 'dun-catacomb', image: catacomb, pixelRatio: pr },

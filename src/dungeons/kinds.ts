@@ -37,6 +37,7 @@ function build(site: DungeonSite): Dungeon {
     case 'catacomb': levels = stack(n, rnd, (k, anchors) => catacombLevel(site, rnd, k, anchors), 'stairs'); break;
     case 'sewer': levels = stack(n, rnd, (k, anchors) => k === 0 ? sewerLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cistern level', Math.round(64 * Math.max(1, Math.min(3, site.scale ?? 1))), Math.round(48 * Math.max(1, Math.min(3, site.scale ?? 1)))), 'ladder'); break;
     case 'ruin': levels = stack(n, rnd, (k, anchors) => k === 0 ? ruinLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cellars', 40, 30), 'stairs'); break;
+    case 'well': levels = stack(n, rnd, (k, anchors) => k === 0 ? wellLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Hidden vaults', 36, 28), 'stairs'); break;
     default: levels = stack(n, rnd, (k, anchors) => cryptLevel(site, rnd, k, anchors), 'stairs'); break;
   }
   // Rooms are numbered through the whole dungeon, level by level.
@@ -580,6 +581,100 @@ function simplifyCells(pts: [number, number][], tol: number): [number, number][]
     }
   }
   return pts.filter((_, k) => keep[k]);
+}
+
+// ---- Below a village well -------------------------------------------------------------------------
+
+/**
+ * Under a village well: the shaft drops into a pool in a natural grotto, and passages of the
+ * living rock wind away to further caves; behind a hidden door, a worked chamber that someone
+ * keeps secret (a smugglers' cache, a forbidden shrine, or a hoard nobody remembers).
+ */
+function wellLevel(site: DungeonSite, rnd: Rng): DLevel {
+  const big = site.tags.includes('medium');
+  const W = big ? 40 : 34, H = big ? 30 : 26;
+  const L = newLevel('The well grotto', W, H);
+  const wet = site.tags.includes('wet');
+  // The shaft and its pool, toward one side.
+  const sx = 6 + Math.floor(rnd() * 4), sy = Math.floor(H / 2) + Math.floor((rnd() - 0.5) * 6);
+  carveCircle(L, sx + 0.5, sy + 0.5, 3.6);
+  carveCircle(L, sx + 0.5, sy + 0.5, 2.4, WATER);
+  L.props.push({ kind: 'well', x: sx + 0.5, y: sy + 0.5 });
+  L.entrances.push({ x: sx, y: sy, dir: 0 });
+  L.links.push({ x: sx, y: sy, dir: 'up', to: -1, style: 'shaft' });
+  const rects: Rect[] = [{ x: sx - 3, y: sy - 3, w: 7, h: 7 }];
+  const tags: string[] = ['wellpool'];
+  // Passages: wandering chains of rounded cave, each ending in a grotto.
+  const ends: [number, number][] = [];
+  const nBranch = big ? 4 : 3;
+  for (let b = 0; b < nBranch; b++) {
+    let x = sx + 0.5, y = sy + 0.5;
+    let a = (rnd() - 0.5) * 2.2 + (b % 2 ? 0.6 : -0.6) * (b > 1 ? 1.6 : 1);
+    const steps = 9 + Math.floor(rnd() * 8);
+    for (let q = 0; q < steps; q++) {
+      a += (rnd() - 0.5) * 0.9;
+      x = Math.max(3, Math.min(W - 4, x + Math.cos(a) * 1.6));
+      y = Math.max(3, Math.min(H - 4, y + Math.sin(a) * 1.6));
+      carveCircle(L, x, y, 1 + rnd() * 0.9);
+    }
+    const r = 2.4 + rnd() * 1.6;
+    carveCircle(L, x, y, r);
+    carveCircle(L, x + (rnd() - 0.5) * 2.5, y + (rnd() - 0.5) * 2.5, r * 0.7);
+    const box: Rect = { x: Math.floor(x - r), y: Math.floor(y - r), w: Math.ceil(2 * r), h: Math.ceil(2 * r) };
+    if (rects.every((q) => !overlaps(q, box, 0))) {
+      rects.push(box);
+      tags.push(wet && rnd() < 0.4 ? 'pooled' : 'grotto');
+      ends.push([Math.floor(x), Math.floor(y)]);
+    }
+  }
+  // Puddles and seeps on a wet site.
+  if (wet) for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (at(L, x, y) === FLOOR && rnd() < 0.06 && Math.hypot(x - sx, y - sy) > 4) set(L, x, y, WATER);
+  // The hidden chamber: worked stone off the furthest grotto, behind a secret door.
+  const far = ends.sort((p, q) => Math.hypot(q[0] - sx, q[1] - sy) - Math.hypot(p[0] - sx, p[1] - sy))[0];
+  if (far) {
+    const rw = 5 + Math.floor(rnd() * 2), rh = 4 + Math.floor(rnd() * 2);
+    // Solid rock all round it (so the secret door is the only way in), as near the grotto as that allows.
+    const solid = (r: Rect) => {
+      for (let y = r.y - 1; y <= r.y + r.h; y++) for (let x = r.x - 1; x <= r.x + r.w; x++) if (at(L, x, y) !== VOID) return false;
+      return true;
+    };
+    let room: Rect | null = null, bd = Infinity;
+    for (let y = 2; y + rh <= H - 2; y++) {
+      for (let x = 2; x + rw <= W - 2; x++) {
+        const r: Rect = { x, y, w: rw, h: rh };
+        const d = Math.hypot(x + rw / 2 - far[0], y + rh / 2 - far[1]);
+        if (d < bd && d > 4 && solid(r)) {
+          bd = d;
+          room = r;
+        }
+      }
+    }
+    if (room) {
+    carveRect(L, room.x, room.y, room.w, room.h);
+    carveCorridor(L, far[0], far[1], room.x + Math.floor(room.w / 2), room.y + Math.floor(room.h / 2), rnd() < 0.5);
+    doorsForRooms(L, [room], rnd, () => 'secret');
+    const secret = pickW(rnd, [['smugglers', 3], ['hidden-shrine', 2], ['hoard', 1.5]] as [string, number][]);
+    const cx = room.x + room.w / 2, cy = room.y + room.h / 2;
+    if (secret === 'smugglers') {
+      for (let q = 0; q < 5; q++) L.props.push({ kind: rnd() < 0.5 ? 'crate' : 'barrel', x: room.x + 0.8 + rnd() * (room.w - 1.6), y: room.y + 0.8 + rnd() * (room.h - 1.6) });
+      L.props.push({ kind: 'table', x: cx, y: cy, w: 1.6, h: 0.9 });
+    } else if (secret === 'hidden-shrine') {
+      L.props.push({ kind: 'altar', x: cx, y: room.y + 0.9, w: 2, h: 1 }, { kind: 'brazier', x: room.x + 0.8, y: room.y + 0.8 }, { kind: 'brazier', x: room.x + room.w - 0.8, y: room.y + 0.8 });
+      L.props.push({ kind: 'skull', x: cx, y: cy + 1 });
+    } else {
+      L.props.push({ kind: 'chest', x: cx, y: cy }, { kind: 'urn', x: room.x + 0.8, y: room.y + 0.8 }, { kind: 'bones', x: cx + 1.2, y: cy + 0.8 });
+    }
+    rects.push(room);
+    tags.push(secret);
+    }
+  }
+  // Loose rock and old bones in the caves.
+  for (let q = 0; q < 10; q++) {
+    const x = 2 + Math.floor(rnd() * (W - 4)), y = 2 + Math.floor(rnd() * (H - 4));
+    if (at(L, x, y) === FLOOR && Math.hypot(x - sx, y - sy) > 3.5) L.props.push({ kind: rnd() < 0.75 ? 'rubble' : 'bones', x: x + 0.5, y: y + 0.5 });
+  }
+  rects.forEach((r, i) => L.rooms.push(roomOf(r, 1, [tags[i]])));
+  return L;
 }
 
 // ---- Sewers --------------------------------------------------------------------------------------

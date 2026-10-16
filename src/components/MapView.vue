@@ -94,8 +94,9 @@ function syncWorld(): void {
   (map.getSource('borders') as GeoJSONSource).setData(world.value.politics.borders);
   if (townsGen !== world.value.gen) {
     townsGen = world.value.gen;
-    const { raster, settlements, roads, rivers } = world.value;
-    postTowns({ type: 'init', gen: townsGen, world: { raster, settlements, roads, rivers } });
+    const { raster, settlements, roads, rivers, politics, labels } = world.value;
+    // Politics and labels let the towns worker build the world's lore and camp armies on the fronts of its wars.
+    postTowns({ type: 'init', gen: townsGen, world: { raster, settlements, roads, rivers, politics, labels } });
     const empty = { type: 'FeatureCollection' as const, features: [] };
     (map.getSource('roads') as GeoJSONSource).setData(roads);
     (map.getSource('sites') as GeoJSONSource).setData(siteFeatures(settlements));
@@ -509,7 +510,7 @@ function villageHere(): typeof store.here {
     const d = Math.hypot((lon - c.lng) * 111.32 * Math.cos((c.lat * Math.PI) / 180), (lat - c.lat) * 110.57);
     if (d < bd) {
       bd = d;
-      best = { name: String(f.properties.name ?? ''), ...(f.properties.en ? { en: String(f.properties.en) } : {}), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0) };
+      best = { name: String(f.properties.name ?? ''), ...(f.properties.en ? { en: String(f.properties.en) } : {}), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0), ...(f.properties.realm ? { realm: String(f.properties.realm), war: String(f.properties.war ?? '') } : {}) };
     }
   }
   return best;

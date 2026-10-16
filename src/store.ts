@@ -55,7 +55,7 @@ export const store = reactive({
   /** Map zoom (updated when the map settles). */
   zoom: 1.6,
   /** The village under the map centre at close zoom, if any (from the towns worker's data). */
-  here: null as { name: string; en?: string; kind: string; population: number } | null,
+  here: null as { name: string; en?: string; kind: string; population: number; realm?: string; war?: string } | null,
 });
 
 export const world = shallowRef<ClientWorld | null>(null);

@@ -13,11 +13,13 @@ import type { Pt } from './geom';
 import { LocalFrame, type PlanFeature, PlanOut } from './plan';
 import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
-import { buildVillage } from './village';
+import { buildVillage, secretWell } from './village';
 import { Ground } from './ground';
 import { NameBank, type Named, dungeonName, lairName } from '../names/names';
 import { type DungeonSite, packLines, sewerScale, townUnderground } from '../dungeons/core';
 import type { LairSite } from '../lairs/lair';
+import { loreFor } from '../lore/realm';
+import { CULTURES } from '../names/cultures';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
 export const VILLAGE_ZOOM = 7.5;
@@ -121,7 +123,20 @@ export interface Bounds {
 type FC<F> = { type: 'FeatureCollection'; features: F[] };
 
 /** The parts of a generated world the town manager needs (posted to its worker). */
-export type TownWorld = Pick<GeneratedWorld, 'raster' | 'settlements' | 'roads' | 'rivers'>;
+/** What the towns need of the world; with `politics` (and `labels`), army camps stand on the borders of realms at war. */
+export type TownWorld = Pick<GeneratedWorld, 'raster' | 'settlements' | 'roads' | 'rivers'> & Partial<Pick<GeneratedWorld, 'politics' | 'labels'>>;
+
+/** A stretch of a front between realms at war, and the camp of one side's army behind it. */
+interface FrontCamp {
+  lon: number;
+  lat: number;
+  realm: string;
+  war: string;
+  culture: number;
+  /** Strength of the host, by the realm's size. */
+  men: number;
+  seed: number;
+}
 
 /** City and town markers. */
 export function siteFeatures(settlements: Settlement[]): FC<PlanFeature> {
@@ -150,6 +165,8 @@ export class TownManager {
   private plans = new Map<string, PlanFeature[]>();
   /** Villages' names before they were dressed ("Ashby" of "Ashby Mine"). */
   private baseNames = new Map<string, Named>();
+  /** Army camps behind the fronts of today's wars, by 1° block key (made on first use). */
+  private camps: Map<number, FrontCamp[]> | null = null;
 
   constructor(private world: TownWorld) {
     this.sampler = new DetailSampler(world.raster, new RiverIndex(world.rivers, world.raster.seed));
@@ -188,7 +205,10 @@ export class TownManager {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [v.lon, v.lat] },
-          properties: { id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '', ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) },
+          properties: {
+            id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '', ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}),
+            ...(v.army ? { realm: v.army.realm, war: v.army.war } : {}),
+          },
         });
       }
     }
@@ -289,7 +309,8 @@ export class TownManager {
       const key = this.blockKey(bx + 180, by + 90);
       const blk = this.blocks.get(key) ?? this.generateBlock(wrapLon(bx + 0.5) - 0.5, by, key, false);
       for (const v of blk.villages) {
-        entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info: `${v.population.toLocaleString('en')} people`, ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) });
+        const info = v.army ? `${v.population.toLocaleString('en')} soldiers of ${v.army.realm}` : `${v.population.toLocaleString('en')} people`;
+        entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info, ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) });
       }
       for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · '), ...(l.en && l.en !== l.name ? { en: l.en } : {}) });
       for (const d of blk.dungeons) entries.push({ id: d.id, name: d.name, tier: 'lair', kind: d.kind, lon: d.lon, lat: d.lat, info: d.tags.join(' · '), ...(d.en && d.en !== d.name ? { en: d.en } : {}) });
@@ -469,6 +490,26 @@ export class TownManager {
         if (track) tracks.push(track);
       }
     }
+    for (const fc of this.frontCamps().get(key) ?? []) {
+      // Camps keep clear of towns and villages, on level, dry ground.
+      let blocked = false;
+      this.sites.forEach(fc.lon, fc.lat, 15, (s, d) => {
+        if (d < s.radiusM / 1000 + 2) blocked = true;
+      });
+      if (blocked || villages.some((v) => distKm(fc.lon, fc.lat, v.lon, v.lat) < 3)) continue;
+      const pos = this.bestNear(fc.lon, fc.lat, 1500, (_x, _y, _h, sl) => -sl);
+      if (this.sampler.isWater(pos[0], pos[1]) || this.slopeAt(pos[0], pos[1]) > 0.14) continue;
+      const v = makeSettlement('village', `c${key}_${villages.length}`, pos[0], pos[1], 0, fc.seed, false, false, 'camp');
+      v.population = fc.men;
+      v.coreM = Math.sqrt(fc.men * 7.5) / 2;
+      v.radiusM = v.coreM * 2.4 + 120;
+      v.army = { realm: fc.realm, war: fc.war };
+      const adj = CULTURES[fc.culture]?.name ?? '';
+      v.name = v.nameEn = `the ${adj ? `${adj} ` : ''}War Camp`;
+      villages.push(v);
+      const track = withTracks ? this.track(v, this.roadPts.nearest(pos[0], pos[1], S.villageLinkKm), villages, hash32(fc.seed ^ 0x7ac) / 4294967296) : null;
+      if (track) tracks.push(track);
+    }
     const lairs = this.lairs(lon0, lat0, key, seed, villages, sample, cellOf, used);
     return { villages, tracks, lairs, dungeons: this.dungeons(lon0, lat0, key, seed, villages, lairs, cellOf, used) };
   }
@@ -492,6 +533,15 @@ export class TownManager {
       used.add(nm.name);
       out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0xd0d0), tags, lon, lat, culture });
     };
+    // A well that leads down to something hidden: drawn on the village's plan, entered from its well.
+    for (const v of villages) {
+      if (!secretWell(v)) continue;
+      const h0 = hash32(v.seed ^ 0x3e12);
+      const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
+      const levels = rr(3) < 0.55 ? 1 : 2;
+      add('well', v.lon, v.lat, h0, [rr(4) < 0.5 ? 'small' : 'medium', ...(rr(5) < 0.5 ? ['wet'] : []), ...(levels > 1 ? ['2 levels'] : [])], this.baseNames.get(v.id));
+      out[out.length - 1].town = v.id;
+    }
     for (const v of villages) {
       if (v.kind !== 'mining') continue;
       const h0 = hash32(v.seed ^ 0x313e);
@@ -756,6 +806,92 @@ export class TownManager {
     out.point('dentry', p, { did: site.id, dkind: 'mine', name: site.name, seed: site.seed, tags: site.tags.join(','), culture, sid: s.id });
   }
 
+  /** The way down a village's secret well, marked at the well on its plan. */
+  private wellEntry(s: Settlement, out: PlanOut, frame: LocalFrame, culture: number): void {
+    let site: DungeonSite | undefined;
+    for (const b of this.blocks.values()) {
+      site = b.dungeons.find((d) => d.town === s.id && d.kind === 'well');
+      if (site) break;
+    }
+    const well = out.features.find((f) => f.properties.kind === 'well');
+    if (!site || !well || well.geometry.type !== 'Point') return;
+    const c = well.geometry.coordinates;
+    out.point('dentry', frame.fromLL(c[0], c[1]), { did: site.id, dkind: 'well', name: site.name, ...(site.en && site.en !== site.name ? { en: site.en } : {}), seed: site.seed, tags: site.tags.join(','), culture, sid: s.id });
+  }
+
+  /**
+   * Army camps behind the fronts of today's wars: wherever two realms at war share a border,
+   * each side camps a host every 40 km or so along it, some 8 km back from the line. Needs the
+   * world's lore (its wars), which is built here on first use.
+   */
+  private frontCamps(): Map<number, FrontCamp[]> {
+    if (this.camps) return this.camps;
+    this.camps = new Map();
+    const { politics, settlements, labels, raster } = this.world;
+    if (!politics) return this.camps;
+    const ctx = loreFor(`towns#${raster.seed}`, raster.seed, politics, settlements, labels?.features ?? []);
+    const { L } = ctx;
+    const units = politics.units;
+    // Today's foes of each realm.
+    const foes = new Map<number, Map<number, string>>();
+    for (const w of L.wars) {
+      if (w.end !== undefined) continue;
+      for (const a of w.attackers) for (const d of w.defenders) {
+        for (const [x, y] of [[a, d], [d, a]]) (foes.get(x) ?? foes.set(x, new Map()).get(x)!).set(y, w.name);
+      }
+    }
+    if (!foes.size) return this.camps;
+    const { W, H, baronyOf } = politics;
+    const top = (c: number) => (baronyOf[c] >= 0 ? L.topOf[baronyOf[c]] : -1);
+    const lonOf = (i: number) => ((i + 0.5) / W) * 360 - 180, latOf = (j: number) => 90 - ((j + 0.5) / H) * 180;
+    // Border cells of each side, binned along the front in ~40 km stretches.
+    const bins = new Map<string, { side: number; foe: number; n: number; lon: number; lat: number; dx: number; dy: number }>();
+    const add = (c: number, n: number, side: number, foe: number) => {
+      const i = c % W, j = (c / W) | 0, ni = n % W, nj = (n / W) | 0;
+      const lon = lonOf(i), lat = latOf(j);
+      const cosL = Math.max(0.1, Math.cos((lat * Math.PI) / 180));
+      const key = `${side}:${foe}:${Math.floor(lat / 0.36)}:${Math.floor((lon * cosL) / 0.36)}`;
+      const b = bins.get(key) ?? bins.set(key, { side, foe, n: 0, lon: 0, lat: 0, dx: 0, dy: 0 }).get(key)!;
+      b.n++;
+      b.lon += lon;
+      b.lat += lat;
+      let dI = i - ni;
+      if (dI > W / 2) dI -= W;
+      if (dI < -W / 2) dI += W;
+      b.dx += dI * cosL;
+      b.dy += nj - j;
+    };
+    for (let j = 0; j < H; j++) {
+      for (let i = 0; i < W; i++) {
+        const c = j * W + i, ta = top(c);
+        const fa = ta >= 0 ? foes.get(ta) : undefined;
+        if (!fa) continue;
+        for (const n of [j * W + ((i + 1) % W), j + 1 < H ? c + W : -1]) {
+          if (n < 0) continue;
+          const tb = top(n);
+          if (tb < 0 || !fa.has(tb)) continue;
+          add(c, n, ta, tb);
+          add(n, c, tb, ta);
+        }
+      }
+    }
+    for (const [key, b] of bins) {
+      const h = hash32(hashString(`${raster.seed}#camp#${key}`));
+      if (b.n < 2 || h / 4294967296 > 0.65) continue;
+      // Back from the line, into the side's own land.
+      const lat0 = b.lat / b.n, lon0 = b.lon / b.n, l = Math.hypot(b.dx, b.dy) || 1;
+      const kLat = 8 / 111.2, kLon = kLat / Math.max(0.1, Math.cos((lat0 * Math.PI) / 180));
+      const lon = wrapLon(lon0 + (b.dx / l) * kLon), lat = lat0 - (b.dy / l) * kLat;
+      const u = units[b.side];
+      const realmBaronies = L.baronies(b.side).length;
+      const men = Math.round((400 + Math.min(2600, realmBaronies * 60) * (0.5 + (hash32(h ^ 1) / 4294967296))) / 50) * 50;
+      const bk = this.blockKey(Math.floor(lon) + 180, Math.floor(lat) + 90);
+      const list = this.camps.get(bk) ?? this.camps.set(bk, []).get(bk)!;
+      list.push({ lon, lat, realm: u?.name ?? '', war: foes.get(b.side)?.get(b.foe) ?? '', culture: u?.culture ?? 0, men, seed: h });
+    }
+    return this.camps;
+  }
+
   /** A village name in the local culture, dressed for its kind ("Ashby Keep", "Thorn Abbey"). */
   private villageName(v: Settlement, cell: number, used: Set<string>): Named {
     const { raster } = this.world;
@@ -976,6 +1112,7 @@ export class TownManager {
       // Villages, and the New World's tribal towns, are built as villages.
       buildVillage(inp);
       if (s.kind === 'mining') this.mineEntry(s, out, frame, culture);
+      if (secretWell(s)) this.wellEntry(s, out, frame, culture);
     } else {
       buildCity(inp);
       this.underground(s, out, frame, water, culture);

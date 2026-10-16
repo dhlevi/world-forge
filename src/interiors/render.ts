@@ -529,6 +529,35 @@ function drawItem(g: Ctx2D, it: Item, X: (u: number) => number, Y: (v: number) =
       g.fill();
       break;
     }
+    case 'millstone': {
+      // The runner stone, with its eye and dressing grooves.
+      const r = Math.min(w, h) / 2;
+      g.fillStyle = '#b2aa9c';
+      g.arc(cx, cy, r, 0, 2 * Math.PI);
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      g.arc(cx, cy, r * 0.18, 0, 2 * Math.PI);
+      for (let q = 0; q < 6; q++) {
+        const a = (q / 6) * Math.PI * 2;
+        g.moveTo(cx + Math.cos(a) * r * 0.25, cy + Math.sin(a) * r * 0.25);
+        g.lineTo(cx + Math.cos(a + 0.4) * r * 0.9, cy + Math.sin(a + 0.4) * r * 0.9);
+      }
+      g.stroke();
+      break;
+    }
+    case 'cauldron': {
+      const r = Math.min(w, h) / 2;
+      g.fillStyle = '#3a3532';
+      g.arc(cx, cy, r * 0.85, 0, 2 * Math.PI);
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      g.fillStyle = 'rgba(110,150,80,0.85)';
+      g.arc(cx, cy, r * 0.6, 0, 2 * Math.PI);
+      g.fill();
+      break;
+    }
     case 'anvil': {
       g.fillStyle = '#6c6560';
       g.fillRect(x0, y0, w, h);
@@ -640,7 +669,7 @@ const ROOF_COLOURS: Record<string, [string, string]> = {
 
 function roofMaterial(d: Dwelling): keyof typeof ROOF_COLOURS {
   switch (d.label) {
-    case 'Cottage': case 'Farmhouse': return 'thatch';
+    case 'Cottage': case 'Farmhouse': case "Witch's hut": return 'thatch';
     case 'Cabin': case 'Miner\'s hut': case 'Mill': case 'Storehouse': return 'shingle';
     case 'Temple': case 'Mansion': case 'Monastic range': return 'slate';
     default: return 'tile';
@@ -847,7 +876,63 @@ export function drawExterior(g: Ctx2D, d: Dwelling, view: ExteriorView): void {
   } else {
     const [lit, shade] = ROOF_COLOURS[roofMaterial(d)];
     const quads: { depth: number; draw: () => void }[] = [];
-    for (const q of pieces) {
+    // A hip roof on a convex footprint is planar facets, one per wall: the part of the roof
+    // nearer that wall than any other (its straight skeleton). Drawn whole, so the hips and
+    // ridge are crisp, with courses of tiles or thatch running parallel to the eaves.
+    const facets = P0 && d.roof.type === 'hip';
+    if (facets) {
+      const pitch = d.roof.pitch;
+      // Inward distance (m) from wall w's line.
+      const dIn = (w: (typeof walls)[number], u: number, v: number) => -((u - w.e[0]) * cw * w.nu + (v - w.e[1]) * ch * w.nv);
+      for (const w of walls) {
+        let q: [number, number][] = P0!.map((p) => [p[0], p[1]]);
+        for (const o of walls) {
+          if (o === w || q.length < 3) continue;
+          // Keep where this wall is the nearer: dIn(w) - dIn(o) <= 0.
+          const f = (p: [number, number]) => dIn(w, p[0], p[1]) - dIn(o, p[0], p[1]);
+          const next: [number, number][] = [];
+          for (let k = 0; k < q.length; k++) {
+            const a = q[k], b = q[(k + 1) % q.length], fa = f(a), fb = f(b);
+            if (fa <= 1e-9) next.push(a);
+            if ((fa <= 1e-9) !== (fb <= 1e-9)) {
+              const t = fa / (fa - fb);
+              next.push([a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t]);
+            }
+          }
+          q = next;
+        }
+        if (q.length < 3) continue;
+        const hs = q.map(([u, v]) => Math.max(0, dIn(w, u, v)) * pitch);
+        const gu = -pitch * w.nu, gv = -pitch * w.nv;
+        const l = Math.max(0, Math.min(1, 0.55 + 0.35 * gv - 0.3 * gu));
+        const fill = mixHex(shade, lit, l);
+        let su = 0, sv = 0;
+        for (const [u, v] of q) { su += u / q.length; sv += v / q.length; }
+        const maxH = Math.max(...hs);
+        quads.push({
+          depth: (su * cw + sv * ch) * 2,
+          draw: () => {
+            const pp = q.map(([u, v], k) => Q(u, v, topZ + hs[k]));
+            poly(pp, fill, 'rgba(60,40,30,0.55)', 0.8);
+            // Courses: lines of equal height across the facet, every half metre of rise.
+            g.strokeStyle = 'rgba(60,40,30,0.22)';
+            g.lineWidth = 0.6;
+            for (let z = 0.5 * pitch; z < maxH - 0.05; z += 0.5 * pitch) {
+              const cut: [number, number][] = [];
+              for (let k = 0; k < q.length; k++) {
+                const a = hs[k] - z, b = hs[(k + 1) % q.length] - z;
+                if ((a < 0) !== (b < 0)) {
+                  const t = a / (a - b), A = q[k], B = q[(k + 1) % q.length];
+                  cut.push(Q(A[0] + (B[0] - A[0]) * t, A[1] + (B[1] - A[1]) * t, topZ + z));
+                }
+              }
+              if (cut.length === 2) line(g, cut[0][0], cut[0][1], cut[1][0], cut[1][1]);
+            }
+          },
+        });
+      }
+    }
+    for (const q of facets ? [] : pieces) {
       const hs = q.map(([u, v]) => roofHeight(d, u, v));
       // Slope from the corner heights (least squares over the piece's vertices).
       let su = 0, sv = 0, sh = 0;

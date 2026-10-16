@@ -39,7 +39,7 @@ function pair(native: string, en?: string): { name: string; alt?: string } {
 }
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
-const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village' };
+const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp' };
 const townArms = new Map<string, Arms>();
 
 /** "2.3 million", "34,000", "870". */
@@ -117,6 +117,13 @@ const info = computed<Line | null>(() => {
       // Keeps are baronial holdings, monasteries abbey lands, within the barony they stand in.
       const h = store.here;
       const tie = h.kind === 'keep' ? `a holding of the ${barony.name}` : h.kind === 'monastery' ? `abbey lands in the ${barony.name}` : '';
+      // An army camp: whose host, and the war it is fighting.
+      if (h.kind === 'camp') {
+        return {
+          ...pair(h.name, h.en), sub: [`Army camp of ${h.population.toLocaleString('en')} soldiers`, h.realm ? `the host of the ${h.realm}` : '', h.war].filter(Boolean).join(' · '),
+          arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
+        };
+      }
       return {
         ...pair(h.name, h.en), sub: [`${VILLAGE[h.kind] ?? 'Village'} of ${h.population.toLocaleString('en')}`, tie].filter(Boolean).join(' · '),
         arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,

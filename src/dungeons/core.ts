@@ -4,13 +4,14 @@ import type { KeyNote } from '../keys/flavour';
 /**
  * Dungeons in the manner of Watabou's One Page Dungeon: a grid of 5 ft squares carved into rooms
  * and corridors, with doors, props, numbered rooms and a written key, on one or more levels
- * joined by stairs, ladders and shafts. Each kind (mine, tower, crypt, ruin, catacomb, sewer)
+ * joined by stairs, ladders and shafts. Each kind (mine, tower, crypt, ruin, catacomb, sewer, and the
+ * caves found under some village wells)
  * has its own generator (kinds.ts) on this shared core.
  */
-export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer';
-export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer'];
+export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'well';
+export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer', 'well'];
 export const KIND_NAME: Record<DungeonKind, string> = {
-  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers',
+  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers', well: 'Below the well',
 };
 
 export interface DungeonSite {

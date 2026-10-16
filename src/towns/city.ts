@@ -2,7 +2,8 @@ import { Delaunay } from 'd3-delaunay';
 import { mulberry32 } from '../gen/rng';
 import { chaikin } from '../gen/rivers';
 import {
-  type Poly, type Pt, area, ccw, centroid, compactness, distToLine, distToSeg, inset, pointInPoly, rect, rectIn, strips, subdivide,
+  type Poly, type Pt, area, ccw, centroid, compactness, distToLine, distToSeg, frontRect, inset, longestEdge, pointInPoly, rect, rectIn, rectangularity,
+  strips, subdivide,
 } from './geom';
 import { addDocks } from './harbour';
 import type { PlanFeature, PlanInput } from './plan';
@@ -494,7 +495,8 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
             if (rnd() < (rich ? 0.2 : 0.04)) continue;
             if (!goodLot(lot, minArea)) continue;
             if (drill && lot.some((v) => pointInPoly(drill, v[0], v[1]))) continue;
-            addBuilding(lot, i, { ctx: garrison ? 'ward' : pt.kind, front: streetFront(lot, block) });
+            const house = squareUp(lot, block);
+            if (house) addBuilding(house, i, { ctx: garrison ? 'ward' : pt.kind, front: streetFront(house, block) ?? streetFront(lot, block) });
           }
         }
       }
@@ -521,7 +523,8 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         yard(block, 'garden');
         for (const lot of subdivide(block, 140, rnd)) {
           if (!touchesEdge(lot, block) || rnd() > 0.8 || !goodLot(lot, 140)) continue;
-          addBuilding(lot, i, { ctx: 'suburb', front: streetFront(lot, block) ?? roadFront(centroid(lot), roadLines) });
+          const house = squareUp(lot, block);
+          if (house) addBuilding(house, i, { ctx: 'suburb', front: streetFront(house, block) ?? streetFront(lot, block) ?? roadFront(centroid(house), roadLines) });
         }
       }
       return;
@@ -624,6 +627,31 @@ function siteAxis(style: CityLayout, terrain: PlanInput['terrain'], water: (p: P
   if (gl > 0.03) return [-g[1] / gl, g[0] / gl];
   if (ang.length) return [Math.cos(ang[0]), Math.sin(ang[0])];
   return fallback;
+}
+
+/**
+ * The house on a lot: the lot itself when it is near enough rectangular (so terraces keep an
+ * unbroken street front), otherwise the largest rectangle fronting the street on the lot's
+ * street edge, the rest left as yard. Wedges and triangles at block corners would otherwise give
+ * houses (and their floor plans and roofs) of strange shapes. Null if no house fits.
+ */
+function squareUp(lot: Poly, block: Poly): Poly | null {
+  if (lot.length === 4 && rectangularity(lot) >= 0.72) return lot;
+  // The street edge: the longest lot edge on the block's edge (else the longest edge).
+  let e = -1, bestLen = 0;
+  for (let k = 0; k < lot.length; k++) {
+    const a = lot[k], b = lot[(k + 1) % lot.length];
+    const m = mid(a, b);
+    if (!block.some((p, j) => distToSeg(m[0], m[1], p, block[(j + 1) % block.length]) < 0.3)) continue;
+    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    if (len > bestLen) {
+      bestLen = len;
+      e = k;
+    }
+  }
+  if (e < 0) e = longestEdge(lot);
+  const r = frontRect(lot, e);
+  return r && area(r) >= Math.max(24, area(lot) * 0.4) ? r : null;
 }
 
 /** Outward direction (radians, local frame) of the lot edge lying on its block's edge: the street front. */
