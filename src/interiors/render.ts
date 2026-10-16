@@ -546,6 +546,20 @@ function drawItem(g: Ctx2D, it: Item, X: (u: number) => number, Y: (v: number) =
       g.stroke();
       break;
     }
+    case 'font':
+    case 'well': {
+      // A stone basin, or a well head over dark water.
+      const r = Math.min(w, h) / 2;
+      g.fillStyle = '#c9bfae';
+      g.arc(cx, cy, r, 0, 2 * Math.PI);
+      g.fill();
+      g.stroke();
+      g.beginPath();
+      g.fillStyle = it.type === 'well' ? '#3d4a55' : '#9fb6c4';
+      g.arc(cx, cy, r * 0.62, 0, 2 * Math.PI);
+      g.fill();
+      break;
+    }
     case 'cauldron': {
       const r = Math.min(w, h) / 2;
       g.fillStyle = '#3a3532';

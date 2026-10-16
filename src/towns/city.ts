@@ -410,6 +410,256 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     return block.some((b, j) => distToSeg(m[0], m[1], b, block[(j + 1) % block.length]) < 0.3);
   });
 
+  /**
+   * A large rectangle (to `frac` of it) in a polygon, `margin` m inside it, as a local frame:
+   * T(u, v) with u along the long side (|u| <= W/2). It tries centres about the middle, the
+   * directions of the longer edges and a few proportions, and keeps the largest, so a ward with a
+   * ragged shore still finds its open ground.
+   */
+  const frameIn = (q: Poly, margin: number, frac = 1) => {
+    // A rectangle (grown by the margin) lies inside when its corners do and no vertex of the
+    // polygon pokes into it (an inset of a ragged polygon is unreliable).
+    const fits = (c: Pt, ang: number, w: number, h: number) => {
+      const cs = Math.cos(ang), sn = Math.sin(ang), hw = w / 2 + margin, hh = h / 2 + margin;
+      for (const [su, sv] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        const x = c[0] + su * hw * cs - sv * hh * sn, y = c[1] + su * hw * sn + sv * hh * cs;
+        if (!pointInPoly(q, x, y)) return false;
+      }
+      for (const [x, y] of q) {
+        const dx = x - c[0], dy = y - c[1];
+        if (Math.abs(dx * cs + dy * sn) < hw && Math.abs(-dx * sn + dy * cs) < hh) return false;
+      }
+      return true;
+    };
+    const c0 = centroid(q);
+    const lens = q.map((p, k) => Math.hypot(q[(k + 1) % q.length][0] - p[0], q[(k + 1) % q.length][1] - p[1]));
+    const maxLen = Math.max(...lens);
+    const angs = q.map((p, k) => ({ k, len: lens[k] })).filter((x) => x.len >= maxLen * 0.3).sort((x, y) => y.len - x.len).slice(0, 4)
+      .map(({ k }) => Math.atan2(q[(k + 1) % q.length][1] - q[k][1], q[(k + 1) % q.length][0] - q[k][0]));
+    const centres: Pt[] = [c0];
+    // Up to eight directions out from the middle (a ragged shore has hundreds of vertices).
+    const stepV = Math.max(1, Math.floor(q.length / 8));
+    for (let k = 0; k < q.length; k += stepV) for (const t of [0.25, 0.45]) centres.push([c0[0] + (q[k][0] - c0[0]) * t, c0[1] + (q[k][1] - c0[1]) * t]);
+    let best: { c: Pt; ang: number; W: number; H: number } | null = null;
+    for (const c of centres) {
+      if (!fits(c, 0, 0, 0)) continue;
+      for (const ang of angs) {
+        for (const asp of [1, 1.4, 2]) {
+          let lo = 0, hi = maxLen * 1.5;
+          for (let t = 0; t < 12; t++) {
+            const m = (lo + hi) / 2;
+            if (fits(c, ang, m * asp, m)) lo = m;
+            else hi = m;
+          }
+          if (!best || lo * lo * asp > best.W * best.H) best = { c, ang, W: lo * asp, H: lo };
+        }
+      }
+    }
+    if (!best) return null;
+    let { W, H, ang } = best;
+    const c = best.c;
+    W *= Math.sqrt(frac);
+    H *= Math.sqrt(frac);
+    if (W < 8 || H < 8) return null;
+    if (H > W) {
+      [W, H] = [H, W];
+      ang += Math.PI / 2;
+    }
+    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const T = (u: number, v: number): Pt => [c[0] + u * ca - v * sa, c[1] + u * sa + v * ca];
+    const box = (u: number, v: number, w: number, h: number): Poly => [T(u - w / 2, v - h / 2), T(u + w / 2, v - h / 2), T(u + w / 2, v + h / 2), T(u - w / 2, v + h / 2)];
+    return { T, box, W, H, ang };
+  };
+
+  /**
+   * A market: double rows of stalls with aisles between, turned to the square's long side, a
+   * fountain (in a city) or a well at the heart, and a few carts drawn up at the edges.
+   */
+  const market = (q: Poly, city: boolean) => {
+    const f = frameIn(q, 4);
+    if (!f) return;
+    const { T, box, W, H, ang } = f;
+    const rC = city ? 3.4 : 1.6;
+    out.point(city ? 'fountain' : 'well', T(0, 0), { r: rC });
+    const clearC = rC + 6;
+    // Back-to-back pairs of stalls in short runs of three to five, with lanes between the rows
+    // and cross aisles between the runs; a run here and there is left out for an open pitch.
+    for (let v = -H / 2 + 3; v + 4.6 <= H / 2 - 3; v += 11) {
+      let u = -W / 2 + 2 + rnd() * 4;
+      while (u + 3 <= W / 2 - 2) {
+        const run = 3 + Math.floor(rnd() * 3), bare = rnd() < 0.2;
+        for (let k = 0; k < run && u + 3 <= W / 2 - 2; k++, u += 3.3) {
+          if (bare) continue;
+          for (const side of [0, 2.4]) {
+            const cu = u + 1.5, cv = v + side + 1.1;
+            if (Math.hypot(cu, cv) < clearC || rnd() < 0.12) continue;
+            const st = box(cu, cv, 3, 2.2);
+            if (!st.every((p) => pointInPoly(q, p[0], p[1]) && !water(p))) continue;
+            out.poly('stall', st, { tone: Math.floor(rnd() * 4) });
+          }
+        }
+        u += 5 + rnd() * 3;
+      }
+    }
+    for (let k = 0, n = 2 + Math.floor(rnd() * 4); k < n; k++) {
+      const p = T((rnd() - 0.5) * W, (rnd() < 0.5 ? -1 : 1) * (H / 2 + 1.5));
+      if (pointInPoly(q, p[0], p[1]) && !water(p)) out.poly('wagon', rect(p[0], p[1], ang + (rnd() - 0.5) * 0.4, 4, 1.8));
+    }
+  };
+
+  /**
+   * A temple close: the temple itself along one side, church-proportioned rather than filling
+   * the ward; on a large enough ward a cloister beside it (a garth with the priests' ranges on
+   * three sides), and the graveyard with trees on the rest.
+   */
+  const templeClose = (q: Poly) => {
+    const f = frameIn(q, 3);
+    if (!f) {
+      const t = rectIn(q, 0.3);
+      if (t && ground.allOk(t, BUILD_GROUND)) out.poly('building', t, { use: 'temple' });
+      return;
+    }
+    const { box, W, H } = f;
+    // The temple: long and narrow, its front to the open side of the close.
+    const L = Math.min(W * 0.62, 46), B = Math.min(H * 0.42, L / 2.3, 18);
+    const tu = -W / 2 + L / 2, tv = H / 2 - B / 2;
+    const temple = box(tu, tv, L, B);
+    if (ground.allOk(temple, BUILD_GROUND)) out.poly('building', temple, { use: 'temple' });
+    // The cloister under the temple's flank, if there is room for it.
+    const C = Math.min(H - B - 4, W * 0.42, 34);
+    let cloisterU = Infinity;
+    if (C >= 18) {
+      const cu = tu + L / 2 - C / 2, cv = tv - B / 2 - 1 - C / 2;
+      cloisterU = cu - C / 2;
+      const d = 6;
+      const ranges: [Poly, string][] = [
+        [box(cu - C / 2 + d / 2, cv, d, C), 'Chapter house'],
+        [box(cu + C / 2 - d / 2, cv, d, C), 'Priests\' lodging'],
+        [box(cu, cv - C / 2 + d / 2, C - 2 * d, d), 'Refectory'],
+      ];
+      out.poly('green', box(cu, cv, C - 2 * d - 2, C - d - 2));
+      out.point('well', box(cu, cv, 0, 0)[0], { r: 1.2 });
+      for (const [r] of ranges) if (ground.allOk(r, BUILD_GROUND)) out.poly('building', r, { ctx: 'monastery' });
+    }
+    // The graveyard on the open ground: beyond the temple's end if the close runs on past it,
+    // or else beside the cloister.
+    const plots: [number, number, number, number][] = [];
+    const ew = W / 2 - 1 - (-W / 2 + L + 3);
+    if (ew >= 10) plots.push([-W / 2 + L + 3 + Math.min(ew, 40) / 2, H / 2 - 1 - Math.min(H - 2, 50) / 2, Math.min(ew, 40), Math.min(H - 2, 50)]);
+    const gw = Math.min(cloisterU + W / 2 - 3, W * 0.5), gh = H - B - 4;
+    if (gw >= 10 && gh >= 8) plots.push([-W / 2 + gw / 2, tv - B / 2 - 2 - gh / 2, gw, gh]);
+    const plot = plots.sort((a, b) => b[2] * b[3] - a[2] * a[3])[0];
+    if (plot) {
+      const yard = box(...plot);
+      if (yard.every((p) => !water(p))) {
+        out.poly('graveyard', yard);
+        out.line('hedge', [...yard, yard[0]]);
+        graves(yard, rnd, out, ground);
+        trees(yard, Math.min(6, Math.round(area(yard) / 400)), 2.5, 4);
+      }
+    }
+  };
+
+  /**
+   * A castle within the citadel wall. A small citadel is one ward: the keep in a corner, ranges
+   * against the curtain (the great hall, a chapel, barracks, stables and storehouses), a well and
+   * an open bailey. A large one holds an inner ward of that kind behind its own wall in the keep's
+   * corner, and an outer bailey with a tiltyard, a garden or orchard, and the stables, smithy and
+   * barracks along the outer wall.
+   */
+  type Role = Record<string, string | undefined>;
+  const depthOf = (r: Role) => (r.use === 'hall' ? 10 : r.use === 'temple' ? 8 : 7);
+  const lenOf = (r: Role) => (r.use === 'hall' ? 24 : r.use === 'temple' ? 14 : r.role === 'smithy' ? 10 : 18);
+  /**
+   * Ranges along the sides of a w×h court centred at (cu, cv) in a frame: each in turn goes to
+   * the side with the most room left, clear of the corner (ku, kv) where a keep of side ks stands.
+   * `open` names sides left bare (they face the rest of the bailey).
+   */
+  const ranges = (box: (u: number, v: number, w: number, h: number) => Poly, cu: number, cv: number, w: number, h: number,
+    roles: Role[], ku: number, kv: number, ks: number, open: string[] = []) => {
+    type Side = { id: string; along: 'u' | 'v'; at: number; inward: number; p: number; to: number };
+    const kc = ks + 3;
+    const sides: Side[] = [
+      { id: 'v-', along: 'u', at: cv - h / 2, inward: 1, p: cu - w / 2 + (kv < 0 && ku < 0 ? kc : 2), to: cu + w / 2 - (kv < 0 && ku > 0 ? kc : 2) },
+      { id: 'v+', along: 'u', at: cv + h / 2, inward: -1, p: cu - w / 2 + (kv > 0 && ku < 0 ? kc : 2), to: cu + w / 2 - (kv > 0 && ku > 0 ? kc : 2) },
+      // The short sides start clear of the long sides' ranges (up to 10 m deep).
+      { id: 'u-', along: 'v', at: cu - w / 2, inward: 1, p: cv - h / 2 + (ku < 0 && kv < 0 ? kc : 12), to: cv + h / 2 - (ku < 0 && kv > 0 ? kc : 12) },
+      { id: 'u+', along: 'v', at: cu + w / 2, inward: -1, p: cv - h / 2 + (ku > 0 && kv < 0 ? kc : 12), to: cv + h / 2 - (ku > 0 && kv > 0 ? kc : 12) },
+    ].filter((sd) => !open.includes(sd.id)) as Side[];
+    for (const r of roles) {
+      const want = lenOf(r);
+      const sd = sides.reduce((a, b) => (b.to - b.p > a.to - a.p ? b : a));
+      const len = Math.min(want, sd.to - sd.p);
+      if (len < 9) break;
+      const d = depthOf(r), mid = sd.p + len / 2;
+      const b = sd.along === 'u' ? box(mid, sd.at + sd.inward * d / 2, len, d) : box(sd.at + sd.inward * d / 2, mid, d, len);
+      if (ground.allOk(b, BUILD_GROUND)) out.poly('building', b, r);
+      sd.p += len + 3 + rnd() * 3;
+    }
+  };
+  const castle = (q: Poly) => {
+    const f = frameIn(q, 3);
+    if (!f) {
+      const keep = rectIn(q, 0.18);
+      if (keep && ground.allOk(keep, BUILD_GROUND)) out.poly('building', keep, { use: 'keep' });
+      return;
+    }
+    const { T, box, W, H } = f;
+    const su = rnd() < 0.5 ? 1 : -1, sv = rnd() < 0.5 ? 1 : -1;
+    // The inner ward: the whole frame, or for a large citadel a court in the keep's corner.
+    const big = W > 84 || H > 66;
+    const Wi = big ? Math.min(W * 0.6, 84) : W, Hi = big ? Math.min(H * 0.64, 66) : H;
+    const cu = (su * (W - Wi)) / 2, cv = (sv * (H - Hi)) / 2;
+    const ks = Math.max(10, Math.min(big ? 20 : 18, Math.min(Wi, Hi) * 0.4));
+    const keep = box(cu + su * (Wi / 2 - ks / 2), cv + sv * (Hi / 2 - ks / 2), ks, ks);
+    if (ground.allOk(keep, BUILD_GROUND)) out.poly('building', keep, { use: 'keep' });
+    out.point('well', T(cu - su * Wi * 0.12, cv - sv * Hi * 0.1), { r: 1.4 });
+    if (Wi >= 30 && Hi >= 22) {
+      const inner: Role[] = [{ use: 'hall' }, { use: 'temple', ctx: 'castle' }, { role: 'barracks', ctx: 'ward' }, { use: 'store' }, { use: 'store' }];
+      if (!big) inner.push({ role: 'stables', ctx: 'ward' }, { role: 'smithy', ctx: 'ward' }, { use: 'store' }, { role: 'barracks', ctx: 'ward' });
+      ranges(box, cu, cv, Wi, Hi, inner, su, sv, ks);
+    }
+    if (!big) return;
+    // The inner curtain, with towers at its corners and a gate in the side facing the bailey.
+    const c = box(cu, cv, Wi, Hi);
+    out.line('wall', [...c, c[0]], { w: 2 });
+    for (const v of c) out.point('tower', v, { r: 3 });
+    // The outer bailey: an L of open ground round the inner ward.
+    const stripW = W - Wi, stripH = H - Hi;
+    const outer: Role[] = [{ role: 'stables', ctx: 'ward' }, { role: 'smithy', ctx: 'ward' }, { role: 'barracks', ctx: 'ward' }, { use: 'store' }, { role: 'stables', ctx: 'ward' }, { role: 'barracks', ctx: 'ward' }];
+    if (stripW >= 24) {
+      // The strip beside the inner ward, the whole height of the citadel: a tiltyard in the
+      // middle, and the bailey's ranges against the outer wall.
+      const us = -su * (W / 2) + su * (stripW / 2);
+      const tw = Math.min(stripW - 18, 22), th = Math.min(H - 24, 80);
+      if (tw >= 10 && th >= 24) {
+        const tilt = box(us, 0, tw, th);
+        if (tilt.every((p) => !water(p))) {
+          out.poly('green', tilt);
+          out.line('picket', [box(us, 0, 0, th - 6)[0], box(us, 0, 0, th - 6)[3]]);
+        }
+      }
+      ranges(box, us, 0, stripW, H, outer.splice(0, 3), 0, 0, 0, [su > 0 ? 'u+' : 'u-']);
+    }
+    if (stripH >= 20) {
+      // The strip under the inner ward: a garden or an orchard, and storehouses on the wall.
+      const vs = -sv * (H / 2) + sv * (stripH / 2);
+      const gw = Math.min(Wi - 8, 50), gh = Math.min(stripH - 10, 30);
+      if (gw >= 12 && gh >= 8) {
+        const g = box(cu, vs + sv * 3, gw, gh);
+        if (g.every((p) => !water(p))) {
+          if (rnd() < 0.5) {
+            out.poly('garden', g);
+          } else {
+            out.poly('green', g);
+            trees(g, Math.min(24, Math.round(area(g) / 60)), 2, 3);
+          }
+        }
+      }
+      ranges(box, cu, vs, Wi, stripH, outer, 0, 0, 0, [sv > 0 ? 'v+' : 'v-', 'u-', 'u+']);
+    }
+  };
+
   for (const i of inner) {
     const pt = patches[i];
     if (!pt.inside) continue;
@@ -418,7 +668,10 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       case 'plaza': {
         const q0 = inset(pt.poly, offsets(i, wallOff, 3, 3));
         const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
-        if (q) out.poly('plaza', q);
+        if (q) {
+          out.poly('plaza', q);
+          market(q, s.tier === 'city');
+        }
         break;
       }
       case 'temple': {
@@ -426,8 +679,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
         if (!q0 || !q) break;
         out.poly('plaza', q);
-        const t = rectIn(q0, 0.4);
-        if (t && ground.allOk(t, BUILD_GROUND)) out.poly('building', t, { use: 'temple' });
+        templeClose(q0);
         break;
       }
       case 'citadel': {
@@ -443,8 +695,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
           out.point('tower', v, { r: 4 });
           last = v;
         }
-        const keep = rectIn(q0, 0.22);
-        if (keep && ground.allOk(keep, BUILD_GROUND)) out.poly('building', keep, { use: 'keep' });
+        castle(q);
         break;
       }
       case 'park': {

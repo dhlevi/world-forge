@@ -76,14 +76,6 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'line-color': '#c2b385', 'line-width': e(['interpolate', ['linear'], ['zoom'], 13.5, 0.4, 16, 0.8, 19, 1.4]) },
   },
   {
-    id: 'plan-green', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('green'),
-    paint: { 'fill-color': '#cfd8a4', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
-  },
-  {
-    id: 'plan-graveyard', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('graveyard'),
-    paint: { 'fill-color': '#c3c9a0', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
-  },
-  {
     id: 'plan-plaza', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('plaza'),
     paint: { 'fill-color': '#f4ecd9', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
@@ -91,6 +83,16 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     // A village's market square: beaten earth and cobbles where the lanes meet.
     id: 'plan-square', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('square'),
     paint: { 'fill-color': '#e2d5b4', 'fill-outline-color': '#b9ab86', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    // Greens and graveyards lie over the paving of the plazas they stand in (a cloister garth,
+    // a castle's tiltyard).
+    id: 'plan-green', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('green'),
+    paint: { 'fill-color': '#cfd8a4', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-graveyard', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('graveyard'),
+    paint: { 'fill-color': '#c3c9a0', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
   {
     // Ground beaten bare round an army's camp.
@@ -169,7 +171,9 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     // Market stalls, tents and wagons.
     id: 'plan-stalls', type: 'fill', source: 'plans', minzoom: 13, filter: kind('stall', 'tent', 'wagon'),
     paint: {
-      'fill-color': e(['match', ['get', 'kind'], 'stall', '#d6b48a', 'wagon', '#9b7a52', ['case', ['has', 'big'], '#c9a46e', '#ece0c2']]),
+      'fill-color': e(['match', ['get', 'kind'],
+        'stall', ['match', ['get', 'tone'], 1, '#c98f6b', 2, '#b4b07a', 3, '#9fb0bf', '#d6b48a'],
+        'wagon', '#9b7a52', ['case', ['has', 'big'], '#c9a46e', '#ece0c2']]),
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(13, 13.6),
     },
@@ -208,10 +212,10 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     paint: { 'line-color': INK, 'line-width': physWidth(0.8, 1.2), 'line-opacity': fadeIn(13, 13.6) },
   },
   {
-    // The village well: a ring of stone round dark water.
-    id: 'plan-wells', type: 'circle', source: 'plans', minzoom: 13, filter: kind('well'),
+    // Wells and market fountains: a ring of stone round dark water.
+    id: 'plan-wells', type: 'circle', source: 'plans', minzoom: 13, filter: kind('well', 'fountain'),
     paint: {
-      'circle-color': '#4f6f86',
+      'circle-color': e(['match', ['get', 'kind'], 'fountain', '#6c93b0', '#4f6f86']),
       'circle-radius': physWidth(1.2, ['get', 'r']),
       'circle-stroke-color': '#8c8172',
       'circle-stroke-width': e(['interpolate', ['linear'], ['zoom'], 13, 1, 17, 2.5]),

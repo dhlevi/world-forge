@@ -470,7 +470,7 @@ function programs(kind: Kind, inp: DwellingInput, storeys: number, rnd: () => nu
     case 'store':
       return { basement: cellar, floors: [{ roles: [R('Storehouse', 'large')], fallback: 'Storehouse', merge: true, surface: 'earth' }], attic: loft };
     case 'hall':
-      return { basement: cellar, floors: [{ roles: [R('Hall', 'large'), R('Buttery', 'small'), R('Kitchen', 'back')], fallback: 'Pantry', surface: 'flags' }], attic: loft };
+      return { basement: cellar, floors: [{ roles: [R('Great hall', 'large'), R('Buttery', 'small'), R('Kitchen', 'back')], fallback: 'Pantry', surface: 'flags' }], attic: loft };
     case 'range':
       return {
         basement: cellar,
@@ -482,9 +482,9 @@ function programs(kind: Kind, inp: DwellingInput, storeys: number, rnd: () => nu
       };
     case 'keep':
       return {
-        basement: { roles: [R('Dungeon', 'stair'), R('Cell'), R('Cell'), R('Cell')], fallback: 'Cell', surface: 'earth' },
+        basement: { roles: [R('Dungeon', 'stair'), R('Cell', 'small'), R('Cell', 'small'), R('Cell', 'small'), R('Cell', 'small'), R('Cell', 'small'), R('Gaoler\'s room')], fallback: 'Storeroom', surface: 'earth' },
         floors: [
-          { roles: [R('Guardroom', 'stair'), R('Storeroom'), R('Armoury')], fallback: 'Storeroom', surface: 'flags' },
+          { roles: [R('Guardroom', 'stair'), R('Armoury'), R('Storeroom'), R('Well room', 'small'), R('Kitchen', 'back')], fallback: 'Storeroom', surface: 'flags' },
           { roles: [R('Great hall', 'large')], fallback: 'Great hall', merge: true, surface: 'flags' },
           ...Array.from({ length: storeys - 2 }, (): Program => ({
             roles: [R('Lord\'s chamber', 'large'), R('Solar'), R('Garderobe', 'small')], fallback: 'Chamber', surface: 'boards',
@@ -612,11 +612,11 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
   }
 
   const roomArea: Record<Kind, number> = {
-    townhouse: 14, mansion: 20, warehouse: 45, cottage: 16, farmhouse: 15, cabin: 18, hut: 14, temple: 1, keep: 25,
+    townhouse: 14, mansion: 20, warehouse: 45, cottage: 16, farmhouse: 15, cabin: 18, hut: 14, temple: 1, keep: 45,
     hall: 30, store: 999, mill: 35, range: 30, inn: 13, civic: 30, library: 25, barracks: 30, stables: 40, bathhouse: 25, university: 28, guild: 22, witch: 12,
   };
   const maxRooms: Record<Kind, number> = {
-    townhouse: 5, mansion: 8, warehouse: 3, cottage: 3, farmhouse: 5, cabin: 2, hut: 2, temple: 1, keep: 3,
+    townhouse: 5, mansion: 8, warehouse: 3, cottage: 3, farmhouse: 5, cabin: 2, hut: 2, temple: 1, keep: 6,
     hall: 3, store: 1, mill: 3, range: 4, inn: 6, civic: 4, library: 3, barracks: 3, stables: 2, bathhouse: 3, university: 5, guild: 5, witch: 3,
   };
   const nRooms = Math.max(1, Math.min(maxRooms[kind], Math.round(areaM2 / roomArea[kind])));
@@ -735,20 +735,41 @@ function cleanMask(mask: Uint8Array, nx: number, ny: number): void {
 }
 
 /** Temple: a nave toward the entrance, a sanctuary at the far end with a vestry beside it. */
+/**
+ * A temple's rooms, named in order by TEMPLE_ROOMS: the nave down the middle (with aisles either
+ * side in a wide temple), the sanctuary at the far end with the vestry beside it, a porch inside
+ * the door of a long one, and side chapels off the aisles of a large one.
+ */
 function templeLeaves(c: Ctx): Leaf[] {
   const { g, nx, ny } = c;
-  const back = Math.max(2, Math.round(ny * 0.28));
+  const back = Math.max(2, Math.round(ny * 0.24));
   const vw = nx >= 6 ? Math.max(2, Math.round(nx * 0.3)) : 0;
-  const leaves: Leaf[] = [];
-  const add = (i0: number, j0: number, i1: number, j1: number) => {
+  const porch = ny >= 16 ? 2 : 0;
+  const aisle = nx >= 10 ? Math.max(2, Math.round(nx * 0.2)) : 0;
+  const chapels = aisle && ny - back - porch >= 12;
+  const leaves: (Leaf & { name: string })[] = [];
+  const add = (name: string, i0: number, j0: number, i1: number, j1: number) => {
     const cells = leafCells(g, i0, j0, i1, j1);
-    if (cells.length) leaves.push({ i0, j0, i1, j1, cells });
+    if (cells.length) leaves.push({ i0, j0, i1, j1, cells, name });
   };
-  add(0, back, nx, ny);
-  add(0, 0, nx - vw, back);
-  if (vw) add(nx - vw, 0, nx, back);
+  add('Nave', aisle, back, nx - aisle, ny - porch);
+  add('Sanctuary', 0, 0, nx - vw, back);
+  if (vw) add('Vestry', nx - vw, 0, nx, back);
+  if (porch) add('Porch', 0, ny - porch, nx, ny);
+  if (aisle) {
+    // Aisles, with a side chapel at the sanctuary end of each in a large temple.
+    const cl = chapels ? Math.max(3, Math.round((ny - back - porch) * 0.3)) : 0;
+    add('Aisle', 0, back + cl, aisle, ny - porch);
+    add('Aisle', nx - aisle, back + cl, nx, ny - porch);
+    if (cl) {
+      add('Side chapel', 0, back, aisle, back + cl);
+      add('Side chapel', nx - aisle, back, nx, back + cl);
+    }
+  }
+  TEMPLE_ROOMS.set(c, leaves.map((l) => l.name));
   return leaves;
 }
+const TEMPLE_ROOMS = new WeakMap<Ctx, string[]>();
 
 /** Height (m) of the roof surface above the wall plate at grid point (u, v) in cell units. */
 export function roofHeight(d: Dwelling, u: number, v: number): number {
@@ -871,7 +892,7 @@ function buildFloor(
   const name = level < 0 ? 'Basement' : isAttic ? (kind === 'cottage' || kind === 'farmhouse' ? 'Loft' : 'Attic')
     : level === 0 ? 'Ground floor' : `${ordinal(level)} floor`;
   if (temple) {
-    const names = ['Nave', 'Sanctuary', 'Vestry'];
+    const names = TEMPLE_ROOMS.get(c) ?? ['Nave', 'Sanctuary', 'Vestry'];
     leaves.forEach((L, li) => {
       const cells = L.cells.filter((k) => floorMask[k]);
       for (const k of cells) room[k] = rooms.length;
@@ -1100,7 +1121,6 @@ const FURNITURE: [RegExp, Spec[]][] = [
   [/Master's lodging/, [DBED, HEARTH, DESK, BOOKS, RUG]],
   [/Scholars' room/, [BED, DESK, BOOKS, CHEST]],
   [/Barrack room/, [S('bed', 'deep', 0.9, 1.9, 10), CHEST, CHEST]],
-  [/Mess hall/, [HEARTH, S('table', 'table', 0, 0, 3)]],
   [/^Stalls$|Hayloft/, [S('straw', 'grid', 0, 0)]],
   [/Tack room/, [S('rack', 'long', 2.4, 0.5), CHEST, BARREL]],
   [/Bath hall/, [S('bath', 'grid', 0, 0)]],
@@ -1119,8 +1139,11 @@ const FURNITURE: [RegExp, Spec[]][] = [
   [/Closet|Dressing room/, [WARDROBE, WARDROBE, CHEST]],
   [/Nursery/, [BED, BED, CHEST, RUG]],
   [/Servants' (room|garret)|Dormitory|Bunk room|Garret|^Loft$/, [S('bed', 'deep', 0.9, 1.9, 6), CHEST, CHEST]],
+  [/^Well room$/, [S('well', 'table', 0, 0), BARREL, BARREL, S('bucket', 'wall', 0.4, 0.4)]],
+  [/Gaoler's room/, [TABLE, BED, CHEST, S('rack', 'long', 2.4, 0.5)]],
   [/Guardroom/, [TABLE, S('bed', 'deep', 0.9, 1.9, 2), S('rack', 'long', 2.4, 0.5), CHEST]],
-  [/Dining room|Refectory|Great hall|^Hall$|Servants' hall/, [HEARTH, S('table', 'table', 0, 0, 2), S('sideboard', 'long', 2.4, 0.55)]],
+  [/Great hall|Refectory|Mess hall/, [HEARTH, S('sideboard', 'long', 2.4, 0.55), S('trestle', 'grid', 0, 0)]],
+  [/Dining room|^Hall$|Servants' hall/, [HEARTH, S('table', 'table', 0, 0, 2), S('sideboard', 'long', 2.4, 0.55)]],
   [/Study|Office|Counting room/, [DESK, BOOKS, CHEST]],
   [/Library/, [BOOKS, BOOKS, BOOKS, BOOKS, TABLE, RUG]],
   [/Cellar/, [S('barrel', 'wall', 0.75, 0.75, 8), CRATE, CRATE]],
@@ -1128,6 +1151,9 @@ const FURNITURE: [RegExp, Spec[]][] = [
   [/^Nave$/, [S('pew', 'grid', 0, 0)]],
   [/^Sanctuary$/, [S('altar', 'wall', 1.8, 0.8), S('candle', 'wall', 0.35, 0.35, 2)]],
   [/^Vestry$/, [WARDROBE, CHEST, DESK]],
+  [/^Porch$/, [BENCH, BENCH, S('font', 'table', 0, 0)]],
+  [/^Aisle$/, [S('candle', 'wall', 0.35, 0.35, 3), BENCH]],
+  [/^Side chapel$/, [S('altar', 'wall', 1.2, 0.6), S('candle', 'wall', 0.35, 0.35, 2), S('tomb', 'wall', 0.9, 2)]],
   [/^Crypt$/, [S('tomb', 'grid', 0, 0)]],
   [/Chapter house/, [BENCH, BENCH, BENCH, S('chair', 'wall', 0.7, 0.7)]],
   [/Dungeon|^Cell$/, [S('straw', 'wall', 1.0, 1.4), S('bucket', 'wall', 0.4, 0.4)]],
@@ -1192,7 +1218,9 @@ function furnish(c: Ctx, d: Dwelling, kind: Kind, f: Floor, stairCells: number[]
       return NB.filter(([di, dj, side]) => !inRoom(r, i + di, j + dj) && !isDoorEdge(i, j, side)).map(([, , s]) => s);
     };
     for (const sp of specs) {
-      for (let n = 0; n < (sp.n ?? 1); n++) {
+      // Rows of beds fill a dormitory or barrack room however long it is.
+      const count = sp.t === 'bed' && (sp.n ?? 1) > 1 ? Math.max(sp.n ?? 1, Math.round(room.cells.length / 5)) : sp.n ?? 1;
+      for (let n = 0; n < count; n++) {
         const cells = shuffle(free());
         let placed = false;
         switch (sp.at) {
@@ -1256,6 +1284,14 @@ function furnish(c: Ctx, d: Dwelling, kind: Kind, f: Floor, stairCells: number[]
               const i = k % nx, j = (k / nx) | 0;
               if (sp.t === 'anvil') {
                 f.items.push({ type: 'anvil', x0: i + 0.3, x1: i + 0.7, y0: j + 0.38, y1: j + 0.62 });
+                occupied.add(k);
+                placed = true;
+                break;
+              }
+              if (sp.t !== 'table') {
+                // A round object standing alone (a millstone, a font, a well head), in its cell.
+                const m = sp.t === 'millstone' ? 0.08 : 0.2;
+                f.items.push({ type: sp.t, x0: i + m, x1: i + 1 - m, y0: j + m, y1: j + 1 - m });
                 occupied.add(k);
                 placed = true;
                 break;
@@ -1336,6 +1372,21 @@ function fillGrid(c: Ctx, f: Floor, r: number, room: Room, t: string, occupied: 
         if (Math.abs(i - mid) < 0.75 || j <= j0 || j >= j1) continue;
         f.items.push({ type: 'pew', x0: i + 0.05, x1: i + 0.95, y0: j + 0.3, y1: j + 0.62 });
         break;
+      case 'trestle': {
+        // Long tables with benches down the hall in runs of up to five cells, a cell between the
+        // runs, and the high table across the top.
+        const run = (j - j0 - 3) % 6;
+        if (j === j0 + 1 && i > i0 && i < i1) {
+          f.items.push({ type: 'table', x0: i, x1: i + 1, y0: j + 0.2, y1: j + 0.75 });
+          if ((i - i0) % 2) f.items.push({ type: 'chair', x0: i + 0.36, x1: i + 0.64, y0: j - 0.2, y1: j + 0.08 });
+          break;
+        }
+        if ((i - i0) % 3 !== 2 || i >= i1 || j < j0 + 3 || j >= j1 || run === 5) continue;
+        f.items.push({ type: 'table', x0: i + 0.22, x1: i + 0.78, y0: j + (run === 0 ? 0.1 : 0), y1: j + (run === 4 || j === j1 - 1 ? 0.9 : 1) });
+        f.items.push({ type: 'bench', x0: i - 0.2, x1: i + 0.06, y0: j + 0.1, y1: j + 0.9 });
+        f.items.push({ type: 'bench', x0: i + 0.94, x1: i + 1.2, y0: j + 0.1, y1: j + 0.9 });
+        break;
+      }
       case 'tomb':
         if ((i - i0) % 2 === 1 || (j - j0) % 3 === 2) continue;
         f.items.push({ type: 'tomb', x0: i + 0.18, x1: i + 0.82, y0: j + 0.15, y1: j + 1.85 > j1 + 1 ? j + 0.85 : j + 1.7 });
