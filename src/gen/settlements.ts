@@ -48,6 +48,8 @@ export interface Settlement {
   coastal: boolean;
   river: boolean;
   seed: number;
+  /** A delve: a city or town of an underground people (dwarves), its halls under the mountain behind a gate. */
+  delve?: boolean;
   /** Town plan layout (cities and towns), chosen once cultures are known. */
   layout?: CityLayout;
 }

@@ -1,3 +1,4 @@
+import { BUNDLE } from '../names/bundles';
 import { type Grid, distKm, neighbor } from './grid';
 import { MinHeap } from './heap';
 import { Biome } from './biomes';
@@ -84,6 +85,9 @@ export function nameWorld(
         const n = neighbor(g, i, j, k);
         if (n >= 0 && f.height[n] > 0) relief = Math.max(relief, Math.abs(f.height[n] - f.height[c]));
       }
+      // An underground people's towns in high or steep country are delves under the mountain.
+      const ci = s.culture ?? f.culture[c];
+      if (!s.colony && BUNDLE.get(CULTURES[ci]?.id ?? '')?.underground && (f.height[c] > 650 || relief > 180) && bank.rng(`delve:${s.id}`)() < 0.85) s.delve = true;
       s.layout = chooseLayout({
         tier: s.tier, population: s.population, river: s.river, coastal: s.coastal, relief,
         culture: CULTURES[s.culture ?? f.culture[c]]?.id ?? '', r: bank.rng(`layout:${s.id}`)(),

@@ -8,6 +8,7 @@ export const DWARVEN: TemplateBundle = {
   label: 'Dwarvish',
   folk: 'Dwarves',
   world: 'old',
+  underground: true,
   stock: 'north',
   spread: (height, _biome, sea) => (sea ? 1 : height < 700 ? 12 : height < 1100 ? 0.8 : 0.2),
   culture: {

@@ -148,7 +148,8 @@ export function worldThemes(c: Ctx, seed: string): WorldThemes {
     return (land.biome[Biome.Wetland] + land.biome[Biome.Mangrove]) / a;
   };
   const themes = new Map<string, ThemeOf>();
-  const cities = settlements.filter((s) => s.tier === 'city' && !s.newWorld && !s.colony && s.name);
+  // Delves are their halls under the mountain: they take no theme of the streets above.
+  const cities = settlements.filter((s) => s.tier === 'city' && !s.newWorld && !s.colony && !s.delve && s.name);
   const universities = cities.filter((s) => s.university).length;
   for (const s of cities) {
     const b = baronyAt(s);

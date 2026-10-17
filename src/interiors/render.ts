@@ -679,9 +679,17 @@ const ROOF_COLOURS: Record<string, [string, string]> = {
   tile: ['#b9735a', '#8f5442'],
   slate: ['#8b929a', '#666c74'],
   shingle: ['#9c7b5a', '#765b40'],
+  turf: ['#97a965', '#71824a'],
+  pantile: ['#cf8d5f', '#a1653f'],
+  glazed: ['#7b878c', '#566166'],
+  palm: ['#bea96d', '#93804c'],
+  bark: ['#86715a', '#615140'],
+  greenslate: ['#93a89e', '#6e8279'],
+  mud: ['#cfae86', '#a98a64'],
 };
 
 function roofMaterial(d: Dwelling): keyof typeof ROOF_COLOURS {
+  if (d.style) return d.style.roof;
   switch (d.label) {
     case 'Cottage': case 'Farmhouse': case "Witch's hut": return 'thatch';
     case 'Cabin': case 'Miner\'s hut': case 'Mill': case 'Storehouse': return 'shingle';
@@ -769,9 +777,13 @@ export function drawExterior(g: Ctx2D, d: Dwelling, view: ExteriorView): void {
     g.fill();
   }
 
-  const stone = d.label === 'Keep' || d.label === 'Temple' || d.label === 'Warehouse' || d.label === 'Monastic range';
-  const timber = d.label === 'Town house' || d.label === 'Mansion' || d.label === 'Farmhouse';
-  const wallLit = stone ? '#d8d0bf' : '#efe4c8', wallShade = stone ? '#b7ad9a' : '#cfc0a0';
+  // Walls: as the people build (see interiors/style.ts), or by the building's kind.
+  const st = d.style;
+  const stone = st ? st.wall === 'stone' : d.label === 'Keep' || d.label === 'Temple' || d.label === 'Warehouse' || d.label === 'Monastic range';
+  const timber = st ? st.wall === 'timber' : d.label === 'Town house' || d.label === 'Mansion' || d.label === 'Farmhouse';
+  const logs = st?.wall === 'log', planks = st?.wall === 'plank', bricks = st?.wall === 'brick';
+  const wallLit = st?.colour?.[0] ?? (stone ? '#d8d0bf' : '#efe4c8'), wallShade = st?.colour?.[1] ?? (stone ? '#b7ad9a' : '#cfc0a0');
+  const burrow = d.roof.type === 'mound';
   const beam = '#5d4733';
 
   // Openings per wall: on the grid, keyed by cell edge; on a true footprint, anchored to an edge.
@@ -831,11 +843,28 @@ export function drawExterior(g: Ctx2D, d: Dwelling, view: ExteriorView): void {
           }
         }
       }
-    } else if (stone) {
+    } else if (stone || bricks) {
       g.lineWidth = 0.6;
       g.strokeStyle = 'rgba(80,70,60,0.3)';
-      for (let z = 0.6; z < H; z += 0.6) {
+      for (let z = bricks ? 0.3 : 0.6; z < H; z += bricks ? 0.3 : 0.6) {
         const a = at(0, z), b = at(1, z);
+        line(g, a[0], a[1], b[0], b[1]);
+      }
+    } else if (logs) {
+      // Round logs laid one on another.
+      g.lineWidth = Math.max(0.8, sc * 0.06);
+      g.strokeStyle = 'rgba(70,45,25,0.55)';
+      for (let z = 0.3; z < H; z += 0.3) {
+        const a = at(0, z), b = at(1, z);
+        line(g, a[0], a[1], b[0], b[1]);
+      }
+    } else if (planks) {
+      // Upright boards.
+      g.lineWidth = 0.7;
+      g.strokeStyle = 'rgba(60,40,25,0.4)';
+      const n = Math.max(2, Math.round(lenM / 0.35));
+      for (let q = 1; q < n; q++) {
+        const a = at(q / n, 0), b = at(q / n, H);
         line(g, a[0], a[1], b[0], b[1]);
       }
     }
@@ -847,6 +876,24 @@ export function drawExterior(g: Ctx2D, d: Dwelling, view: ExteriorView): void {
       const half = (door ? 0.55 : o.kind === 'slit' ? 0.12 : 0.42) / lenM;
       const z1 = door ? 0 : storeyH * 0.32, z2 = door ? Math.min(storeyH * 0.75, 2.2) : storeyH * 0.75;
       if (o.level >= storeys && d.roof.type !== 'gable') continue;
+      if (burrow) {
+        // A burrow's round door (painted green, with a brass knob) and round windows.
+        const rr = door ? 0.62 : 0.38, zc = z0 + (door ? 0.72 : storeyH * 0.5);
+        const ring: [number, number][] = [];
+        for (let q = 0; q < 16; q++) {
+          const ang = (q / 16) * Math.PI * 2;
+          ring.push(at(o.t + (Math.cos(ang) * rr) / lenM, Math.max(0, zc + Math.sin(ang) * rr)));
+        }
+        poly(ring, door ? '#4f7a3a' : '#4e5a63', INK, 1);
+        if (door) {
+          const kb = at(o.t, zc);
+          g.fillStyle = '#d6b34a';
+          g.beginPath();
+          g.arc(kb[0], kb[1], Math.max(1.2, sc * 0.06), 0, Math.PI * 2);
+          g.fill();
+        }
+        continue;
+      }
       poly([at(o.t - half, z0 + z1), at(o.t + half, z0 + z1), at(o.t + half, z0 + z2), at(o.t - half, z0 + z2)], door ? '#6b5038' : '#4e5a63', INK, 1);
       if (!door && o.kind !== 'slit') {
         const m0 = at(o.t, z0 + z1), m1 = at(o.t, z0 + z2);
@@ -874,7 +921,16 @@ export function drawExterior(g: Ctx2D, d: Dwelling, view: ExteriorView): void {
       pieces.push(q);
     }
   }
-  if (d.roof.type === 'flat') {
+  if (d.roof.type === 'flat' && d.label !== 'Keep') {
+    // A flat roof of beaten earth or plaster behind a low parapet.
+    const roofC = d.style ? ROOF_COLOURS[d.style.roof][0] : '#c4baa6';
+    for (const q of pieces) poly(q.map(([u, v]) => Q(u, v, topZ)), roofC, 'rgba(60,50,40,0.15)', 0.6);
+    const back = walls.slice().sort((a, b) => a.e[0] + a.e[1] - (b.e[0] + b.e[1]));
+    for (const { e, nu, nv } of back) {
+      const lit = 0.5 + 0.5 * Math.max(0, Math.min(1, nv - nu * 0.4));
+      poly([Q(e[0], e[1], topZ), Q(e[2], e[3], topZ), Q(e[2], e[3], topZ + 0.6), Q(e[0], e[1], topZ + 0.6)], mixHex(wallShade, wallLit, lit), INK, 0.9);
+    }
+  } else if (d.roof.type === 'flat') {
     for (const q of pieces) poly(q.map(([u, v]) => Q(u, v, topZ)), '#c4baa6', 'rgba(60,50,40,0.25)', 0.6);
     const merlons = walls.slice().sort((a, b) => a.e[0] + a.e[1] - (b.e[0] + b.e[1]));
     for (const { e } of merlons) {
@@ -1002,6 +1058,24 @@ export function drawExterior(g: Ctx2D, d: Dwelling, view: ExteriorView): void {
         else g.moveTo(p[0], p[1]);
       }
       g.stroke();
+    }
+    // Eaves that sweep up at the corners (Sinic, Japonic and Koreanic roofs).
+    if (d.style?.form === 'upturned') {
+      const corners = P0 ? P0 : [[0, 0], [nx, 0], [nx, ny], [0, ny]];
+      let mu = 0, mv = 0;
+      for (const c of corners) { mu += c[0] / corners.length; mv += c[1] / corners.length; }
+      g.strokeStyle = INK;
+      g.lineWidth = 1.4;
+      for (const c of corners) {
+        const du = c[0] - mu, dv = c[1] - mv, l = Math.hypot(du * cw, dv * ch) || 1;
+        const a = Q(c[0], c[1], topZ + roofHeight(d, c[0], c[1]));
+        const m = Q(c[0] + (du * 0.5) / l, c[1] + (dv * 0.5) / l, topZ + 0.15);
+        const b = Q(c[0] + (du * 0.9) / l, c[1] + (dv * 0.9) / l, topZ + 0.75);
+        g.beginPath();
+        g.moveTo(a[0], a[1]);
+        g.quadraticCurveTo(m[0], m[1], b[0], b[1]);
+        g.stroke();
+      }
     }
   }
   g.restore();

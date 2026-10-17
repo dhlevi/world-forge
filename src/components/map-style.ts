@@ -95,6 +95,11 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'fill-color': '#c3c9a0', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
   {
+    // A burrow's grassy mound, under the turfed roof of the burrow itself.
+    id: 'plan-mound', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('mound'),
+    paint: { 'fill-color': '#bfca93', 'fill-outline-color': '#8d9a62', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
     // A canal city's waterways: water between stone quays.
     id: 'plan-canal-quay', type: 'line', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('canal'), layout: LINE_LAYOUT,
     paint: { 'line-color': '#8f8370', 'line-width': physWidth(1.6, ['+', ['get', 'w'], 1.2]), 'line-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
@@ -232,6 +237,7 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
       // Notable buildings are washed a little warmer so they stand out from the terraces.
       'fill-color': e(['case', ['has', 'role'],
         ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', 'apothecary', '#bdb38a', 'witch', '#a7a07c', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians'], '#b8a689', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', 'magetower', '#a99bb3', 'countinghouse', '#c2a978', 'foundry', '#a8978a', 'shrine', '#bba27c', '#c6b08e'],
+        ['has', 'burrow'], '#a5b47a',
         ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', 'witch', '#a7a07c', '#cdbd9c']]),
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
@@ -597,7 +603,31 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
     g.fillRect(13.3, 13.5, 3.4, 3);
     g.strokeRect(13.3, 13.5, 3.4, 3);
   });
+  // A delve: a great door under a carved lintel in the mountainside.
+  const delve = make((g) => {
+    disc(g);
+    g.fillStyle = '#9a9184';
+    g.beginPath();
+    g.moveTo(5, 23);
+    g.lineTo(11, 7);
+    g.lineTo(19, 7);
+    g.lineTo(25, 23);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#2b2420';
+    g.beginPath();
+    g.moveTo(11.5, 23);
+    g.lineTo(11.5, 15);
+    g.arc(15, 15, 3.5, Math.PI, 0);
+    g.lineTo(18.5, 23);
+    g.closePath();
+    g.fill();
+    g.fillStyle = '#c9a227';
+    g.fillRect(10, 10, 10, 1.6);
+  });
   return [
+    { id: 'dun-delve', image: delve, pixelRatio: pr },
     { id: 'dun-well', image: well, pixelRatio: pr },
     { id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr },
     { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },

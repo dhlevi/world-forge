@@ -21,6 +21,7 @@ import type { LairSite } from '../lairs/lair';
 import { loreFor } from '../lore/realm';
 import { type NaturalShrine, type WorldThemes, worldThemes } from '../lore/themes';
 import { CULTURES } from '../names/cultures';
+import { BUNDLE } from '../names/bundles';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
 export const VILLAGE_ZOOM = 7.5;
@@ -850,6 +851,10 @@ export class TownManager {
         out.point('dentry', g, { ...props, ...more });
         // Every grate opens the same sewers.
         for (const p of grates) out.point('dentry', p, { ...props, ...more });
+      } else if (u.dkind === 'delve') {
+        // A delve: entered through the great gate in the mountainside.
+        const gate = out.features.find((f) => f.properties.kind === 'building' && f.properties.role === 'delvegate');
+        out.point('dentry', gate ? centroid(local(gate)) : [0, 0], props);
       } else {
         // Catacombs: under the graveyard, else beside the temple, else in the market.
         const yard = out.features.find((f) => f.properties.kind === 'graveyard');
@@ -1173,7 +1178,9 @@ export class TownManager {
 
   private plan(s: Settlement): PlanFeature[] {
     const frame = new LocalFrame(s.lon, s.lat);
-    const out = new PlanOut(frame, pxPerMeterZ20(s.lat), { sid: s.id, tier: s.tier, ctx: s.tier === 'village' ? s.kind ?? 'farming' : 'ward' });
+    const cul0 = this.world.raster.culture[this.cell(s.lon, s.lat)] ?? 0;
+    const tpl = CULTURES[s.culture ?? cul0]?.id ?? '';
+    const out = new PlanOut(frame, pxPerMeterZ20(s.lat), { sid: s.id, tier: s.tier, ctx: s.tier === 'village' ? s.kind ?? 'farming' : 'ward', cul: tpl, burrows: !!BUNDLE.get(tpl)?.burrows });
     const exits = (this.exits.get(s.id) ?? []).map((e) => ({ p: frame.fromLL(e.ll[0], e.ll[1]), cls: e.cls }));
     // Plans keep 8 m clear of the true river bank (the same tapered width the tiles draw).
     const inRiver = (p: Pt) => {
@@ -1203,9 +1210,10 @@ export class TownManager {
     const culture = this.world.raster.culture[this.cell(s.lon, s.lat)] ?? 0;
     const th = this.themes();
     const inp = { s, exits, water, terrain, ground, out, names: this.names, culture, theme: th?.themes.get(s.id)?.theme, holy: th?.holy.get(s.id) };
-    if (s.tier === 'village' || s.kind === 'tribal') {
-      // Villages, and the New World's tribal towns, are built as villages.
+    if (s.tier === 'village' || s.kind === 'tribal' || s.delve) {
+      // Villages, the New World's tribal towns and the gates of delves are built as villages.
       buildVillage(inp);
+      if (s.delve) this.underground(s, out, frame, water, culture);
       if (s.kind === 'mining') this.mineEntry(s, out, frame, culture);
       if (secretWell(s)) this.wellEntry(s, out, frame, culture);
     } else {

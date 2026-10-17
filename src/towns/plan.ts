@@ -1,5 +1,8 @@
 import type { CityTheme, HolyTown } from '../lore/themes';
-import type { Pt } from './geom';
+import { type Pt, roundPoly } from './geom';
+
+/** Where a burrowing people's houses are burrows (not its halls, mills or temples). */
+const BURROW_CTX = new Set(['ward', 'rich', 'suburb', 'farm', 'farming', 'fishing', 'slum', 'counting']);
 import type { LocalTerrain } from './terrain';
 import type { Ground } from './ground';
 import type { NameBank } from '../names/names';
@@ -45,15 +48,28 @@ export class PlanOut {
    */
   constructor(
     private frame: LocalFrame, private ppm20: number,
-    private site: { sid: string; tier: string; ctx: string } = { sid: '', tier: '', ctx: '' },
+    private site: { sid: string; tier: string; ctx: string; cul?: string; burrows?: boolean } = { sid: '', tier: '', ctx: '' },
   ) {}
 
   poly(kind: string, p: Pt[], props: Record<string, string | number | undefined> = {}): void {
     for (const k of Object.keys(props)) if (props[k] === undefined) delete props[k];
+    // A burrowing people's houses are dug into grassy mounds: the house rounded off, on its mound.
+    if (kind === 'building' && this.site.burrows && !props.use && !props.role && BURROW_CTX.has(String(props.ctx ?? this.site.ctx))) {
+      p = roundPoly(p, 2);
+      let cx = 0, cy = 0;
+      for (const q of p) {
+        cx += q[0] / p.length;
+        cy += q[1] / p.length;
+      }
+      const r = Math.max(...p.map((q) => Math.hypot(q[0] - cx, q[1] - cy)));
+      const k = (r + 2.5) / Math.max(1, r);
+      this.poly('mound', p.map((q) => [cx + (q[0] - cx) * k, cy + (q[1] - cy) * k] as Pt));
+      props = { ...props, burrow: 1 };
+    }
     const ring = p.map((q) => this.frame.toLL(q));
     ring.push(ring[0]);
     if (kind === 'building') {
-      props = { bid: `${this.site.sid}/${this.nBuildings++}`, sid: this.site.sid, tier: this.site.tier, ctx: this.site.ctx, ...props };
+      props = { bid: `${this.site.sid}/${this.nBuildings++}`, sid: this.site.sid, tier: this.site.tier, ctx: this.site.ctx, ...(this.site.cul ? { cul: this.site.cul } : {}), ...props };
     }
     this.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { kind, ppm20: this.ppm20, ...(props as Record<string, string | number>) } });
   }

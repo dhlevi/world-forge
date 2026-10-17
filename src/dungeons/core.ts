@@ -8,10 +8,10 @@ import type { KeyNote } from '../keys/flavour';
  * caves found under some village wells)
  * has its own generator (kinds.ts) on this shared core.
  */
-export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'well';
-export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer', 'well'];
+export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'well' | 'delve';
+export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer', 'well', 'delve'];
 export const KIND_NAME: Record<DungeonKind, string> = {
-  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers', well: 'Below the well',
+  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers', well: 'Below the well', delve: 'Delve',
 };
 
 export interface DungeonSite {
@@ -317,13 +317,19 @@ export function packLines(lines: number[][][]): string {
  * the streets of each quarter; a stair in the graveyard, by the temple, or in the market).
  */
 export function townUnderground(
-  s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string },
+  s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string; delve?: boolean },
   /** Names from an English pattern ({0} the town), in the local language and in English. */
   named: (tpl: string) => { name: string; en: string } = (tpl) => ({ name: tpl.replace('{0}', s.name ?? ''), en: tpl.replace('{0}', s.name ?? '') }),
 ): Underground[] {
   if ((s.tier !== 'city' && s.tier !== 'town') || s.kind === 'tribal') return [];
   const out: Underground[] = [];
   const u = (k: number) => hash(s.seed ^ k) / 4294967296;
+  // A delve: the town is its halls under the mountain, entered by the great gate.
+  if (s.delve) {
+    const levels = s.tier === 'city' ? 4 : 3;
+    const r = u(0xde1);
+    return [{ dkind: 'delve', did: `${s.id}/delve`, ...named(r < 0.4 ? 'the Halls of {0}' : r < 0.7 ? 'the Deeps of {0}' : 'the Delve of {0}'), tags: [s.tier === 'city' ? 'large' : 'medium', `${levels} levels`] }];
+  }
   const size = s.tier === 'city' ? 'large' : 'medium';
   if (s.tier === 'city' || s.population >= 4000) {
     const n = sewerCount(s.tier, s.population);
@@ -350,7 +356,7 @@ export function townUnderground(
 }
 
 export interface Underground {
-  dkind: 'sewer' | 'catacomb';
+  dkind: 'sewer' | 'catacomb' | 'delve';
   did: string;
   name: string;
   en: string;

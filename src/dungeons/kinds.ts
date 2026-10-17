@@ -38,6 +38,7 @@ function build(site: DungeonSite): Dungeon {
     case 'sewer': levels = stack(n, rnd, (k, anchors) => k === 0 ? sewerLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cistern level', Math.round(64 * Math.max(1, Math.min(3, site.scale ?? 1))), Math.round(48 * Math.max(1, Math.min(3, site.scale ?? 1)))), 'ladder'); break;
     case 'ruin': levels = stack(n, rnd, (k, anchors) => k === 0 ? ruinLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cellars', 40, 30), 'stairs'); break;
     case 'well': levels = stack(n, rnd, (k, anchors) => k === 0 ? wellLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Hidden vaults', 36, 28), 'stairs'); break;
+    case 'delve': levels = stack(n, rnd, (k, anchors) => (k === n - 1 && n > 2 ? deepsLevel(site, rnd, k, anchors) : delveLevel(site, rnd, k, n, anchors)), 'stairs'); break;
     default: levels = stack(n, rnd, (k, anchors) => cryptLevel(site, rnd, k, anchors), 'stairs'); break;
   }
   // Rooms are numbered through the whole dungeon, level by level.
@@ -287,19 +288,21 @@ function catacombLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number,
 
 // ---- Mines ---------------------------------------------------------------------------------------
 
-function mineLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number, number][]): DLevel {
-  const W = 46, H = 34;
+function mineLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number, number][], size: [number, number] = [46, 34]): DLevel {
+  const [W, H] = size;
   const L = newLevel(k === 0 ? 'Adit level' : `Level ${k + 1}`, W, H);
   // Galleries: a main drift across the level, cross-cuts off it, and stopes (worked-out chambers).
   const y0 = 8 + Math.floor(rnd() * (H - 16));
   const start: [number, number] = k === 0 ? [0, y0] : anchors[0] ?? [Math.floor(W / 2), y0];
-  const mainEnd: [number, number] = [W - 4 - Math.floor(rnd() * 6), Math.max(4, Math.min(H - 5, y0 + Math.floor((rnd() - 0.5) * 14)))];
+  // The main drift runs to the far side of the level from where it starts.
+  const endX = start[0] > W / 2 ? 3 + Math.floor(rnd() * 6) : W - 4 - Math.floor(rnd() * 6);
+  const mainEnd: [number, number] = [endX, Math.max(4, Math.min(H - 5, y0 + Math.floor((rnd() - 0.5) * 14)))];
   const drift = wanderPath(start, mainEnd, rnd);
   for (const [x, y] of drift) carveRect(L, x, y, 2, 2);
   L.rails.push(drift.map(([x, y]) => [x + 1, y + 1]));
   if (k === 0) L.entrances.push({ x: 0, y: y0, dir: 0 });
   const rects: Rect[] = [];
-  const cuts = 4 + Math.floor(rnd() * 4);
+  const cuts = Math.round((4 + Math.floor(rnd() * 4)) * Math.sqrt((W * H) / (46 * 34)));
   for (let c = 0; c < cuts; c++) {
     const from = drift[Math.floor((0.15 + 0.8 * rnd()) * drift.length)];
     const to: [number, number] = [Math.max(3, Math.min(W - 4, from[0] + Math.floor((rnd() - 0.5) * 18))), rnd() < 0.5 ? 3 + Math.floor(rnd() * 5) : H - 4 - Math.floor(rnd() * 5)];
@@ -460,6 +463,148 @@ function furnish(L: DLevel, r: Rect, use: string, rnd: Rng, ok: (x: number, y: n
     case 'hall': put('table', cx, cy, { w: 2.5, h: 1 }); put('throne', cx, cy - 1.5); break;
     default: put('table', cx, cy, { w: 1.5, h: 0.9 }); put('chest', cx + 1, cy + 1);
   }
+}
+
+// ---- Delves ----------------------------------------------------------------------------------
+
+/**
+ * The rooms of each level of a delve (a dwarven city under the mountain), by what the level is:
+ * the gate halls behind the great gate, the halls where the people live and trade, the forges,
+ * or all three in one for a small delve's middle level. [tag, count, size range, furnishing].
+ */
+type DelveRoom = [tag: string, count: number, size: [number, number], use: string];
+const DELVE_LEVELS: Record<string, { name: string; rooms: DelveRoom[] }> = {
+  gate: {
+    name: 'Gate halls',
+    rooms: [['delve-throne', 1, [8, 10], 'throne'], ['guard', 2, [4, 5], 'guard'], ['delve-barracks', 2, [5, 7], 'barracks'], ['store', 2, [4, 6], 'store'],
+      ['delve-brewery', 1, [5, 6], 'brewery'], ['delve-stable', 1, [5, 7], 'stable']],
+  },
+  halls: {
+    name: 'The halls',
+    rooms: [['delve-market', 1, [9, 11], 'market'], ['delve-temple', 1, [6, 8], 'temple'], ['delve-tavern', 1, [5, 7], 'tavern'], ['delve-home', 9, [3, 5], 'home'],
+      ['delve-moot', 1, [6, 8], 'hall'], ['delve-home', 5, [3, 5], 'home'], ['store', 1, [4, 5], 'store']],
+  },
+  forges: {
+    name: 'The forges',
+    rooms: [['delve-forge', 4, [5, 7], 'forge'], ['delve-smelter', 2, [5, 7], 'smelter'], ['armoury', 1, [4, 6], 'armoury'], ['delve-vault', 1, [4, 5], 'vault'],
+      ['store', 2, [4, 6], 'store'], ['delve-home', 6, [3, 4], 'home'], ['delve-forge', 2, [4, 6], 'forge']],
+  },
+  mixed: {
+    name: 'The halls and forges',
+    rooms: [['delve-market', 1, [8, 10], 'market'], ['delve-temple', 1, [5, 7], 'temple'], ['delve-forge', 2, [5, 6], 'forge'], ['delve-smelter', 1, [5, 6], 'smelter'],
+      ['delve-vault', 1, [4, 5], 'vault'], ['delve-home', 6, [3, 5], 'home'], ['delve-tavern', 1, [5, 6], 'tavern']],
+  },
+};
+
+/**
+ * A level of a delve: a pillared great hall at its heart, a broad avenue across the level lined
+ * with statues of the ancestors, cross avenues, and the level's rooms opening off them. The first
+ * level is entered from the great gate at the west edge.
+ */
+function delveLevel(site: DungeonSite, rnd: Rng, k: number, n: number, anchors: [number, number][]): DLevel {
+  const large = site.tags.includes('large');
+  const W = large ? 84 : 68, H = large ? 62 : 50;
+  const which = k === 0 ? 'gate' : n === 3 ? 'mixed' : k === 1 ? 'halls' : 'forges';
+  const spec = DELVE_LEVELS[which];
+  const L = newLevel(spec.name, W, H);
+  const cy = Math.floor(H / 2), cx = Math.floor(W / 2);
+  // The great hall.
+  const hw = large ? 16 : 12, hh = large ? 10 : 8;
+  const hall: Rect = { x: cx - hw / 2, y: cy - hh / 2, w: hw, h: hh };
+  carveRect(L, hall.x, hall.y, hall.w, hall.h);
+  for (let x = hall.x + 2; x < hall.x + hall.w - 1; x += 3) for (const y of [hall.y + 1.5, hall.y + hall.h - 1.5]) L.props.push({ kind: 'pillar', x: x + 0.5, y });
+  // The avenues: the main one across the level (the gate's on the first), and two cross avenues.
+  const ax0 = k === 0 ? 0 : 3;
+  carveCorridor(L, ax0, cy, W - 4, cy, true, 3);
+  const crossX = [Math.floor(W * 0.24), Math.floor(W * 0.76)];
+  for (const x of crossX) carveCorridor(L, x, 3, x, H - 4, false, 2);
+  // Ancestors' statues along the main avenue.
+  for (let x = 6; x < W - 6; x += 6) {
+    if (x > hall.x - 2 && x < hall.x + hall.w + 2) continue;
+    for (const y of [cy - 1.2, cy + 2.2]) L.props.push({ kind: 'statue', x: x + 0.5, y });
+  }
+  if (k === 0) L.entrances.push({ x: 0, y: cy, dir: 0 });
+  // The ways down from above open on the avenues.
+  for (const [x, y] of anchors) {
+    carveRect(L, Math.max(1, x - 1), Math.max(1, y - 1), 3, 3);
+    const nx = crossX.reduce((a, b) => (Math.abs(b - x) < Math.abs(a - x) ? b : a));
+    carveCorridor(L, x, y, Math.abs(nx - x) < Math.abs(cy - y) ? nx : x, Math.abs(nx - x) < Math.abs(cy - y) ? y : cy, Math.abs(nx - x) < Math.abs(cy - y), 2);
+  }
+  // Rooms off the avenues: each kept one cell clear of the open floor, with a doorway through.
+  const rooms: { r: Rect; tag: string; use: string }[] = [{ r: hall, tag: k === 0 ? 'delve-gatehall' : 'delve-hall', use: 'pillars' }];
+  const clear = (r: Rect) => {
+    for (let y = r.y - 1; y <= r.y + r.h; y++) for (let x = r.x - 1; x <= r.x + r.w; x++) if (at(L, x, y) !== VOID) return false;
+    return r.x >= 2 && r.y >= 2 && r.x + r.w <= W - 2 && r.y + r.h <= H - 2;
+  };
+  /** A doorway cell between the room and open floor two cells out, if there is one. */
+  const doorway = (r: Rect): [number, number] | null => {
+    const c: [number, number][] = [];
+    for (let x = r.x + 1; x < r.x + r.w - 1; x++) {
+      if (open(at(L, x, r.y - 2))) c.push([x, r.y - 1]);
+      if (open(at(L, x, r.y + r.h + 1))) c.push([x, r.y + r.h]);
+    }
+    for (let y = r.y + 1; y < r.y + r.h - 1; y++) {
+      if (open(at(L, r.x - 2, y))) c.push([r.x - 1, y]);
+      if (open(at(L, r.x + r.w + 1, y))) c.push([r.x + r.w, y]);
+    }
+    return c.length ? c[Math.floor(rnd() * c.length)] : null;
+  };
+  for (const [tag, count, size, use] of spec.rooms) {
+    for (let q = 0; q < count; q++) {
+      for (let t = 0; t < 400; t++) {
+        const w = size[0] + Math.floor(rnd() * (size[1] - size[0] + 1)), h = size[0] + Math.floor(rnd() * (size[1] - size[0] + 1));
+        const r: Rect = { x: 2 + Math.floor(rnd() * (W - w - 4)), y: 2 + Math.floor(rnd() * (H - h - 4)), w, h };
+        if (!clear(r)) continue;
+        const d = doorway(r);
+        if (!d) continue;
+        carveRect(L, r.x, r.y, r.w, r.h);
+        set(L, d[0], d[1], FLOOR);
+        rooms.push({ r, tag, use });
+        break;
+      }
+    }
+  }
+  doorsForRooms(L, rooms.map((x) => x.r), rnd, doorPick(rnd, [['door', 5], ['arch', 3]]));
+  // The vault is locked; its door is iron.
+  for (const x of rooms) {
+    if (x.use !== 'vault') continue;
+    for (const d of L.doors) if (d.x >= x.r.x - 1 && d.x <= x.r.x + x.r.w + 1 && d.y >= x.r.y - 1 && d.y <= x.r.y + x.r.h + 1) d.kind = 'locked';
+  }
+  for (const { r, tag, use } of rooms) {
+    const c = centre(r);
+    const put = (kind: Parameters<typeof L.props.push>[0]['kind'], x: number, y: number, extra: object = {}) => L.props.push({ kind, x, y, ...extra });
+    switch (use) {
+      case 'throne': put('throne', r.x + r.w / 2, r.y + 1.2); put('table', r.x + r.w / 2, r.y + r.h / 2 + 0.5, { w: Math.max(2, r.w - 4), h: 1 }); for (let y = r.y + 1.5; y < r.y + r.h - 1; y += 3) put('pillar', r.x + 1, y), put('pillar', r.x + r.w - 1, y); break;
+      case 'barracks': for (let x = r.x + 0.7; x < r.x + r.w - 0.5; x += 1.2) put('bed', x, r.y + 1.1, { w: 0.9, h: 1.8 }); put('chest', c[0], r.y + r.h - 0.8); break;
+      case 'brewery': for (let q = 0; q < 6; q++) put('barrel', r.x + 0.8 + (q % 3) * 1.3, r.y + 0.8 + Math.floor(q / 3) * 1.3); put('brazier', r.x + r.w - 1, r.y + r.h - 1); break;
+      case 'stable': for (let x = r.x + 0.5; x < r.x + r.w - 0.5; x += 1.5) put('crate', x + 0.5, r.y + 0.6); put('cart', c[0], r.y + r.h - 1.2, { a: 0 }); break;
+      case 'market': for (let y = r.y + 1.5; y < r.y + r.h - 1; y += 2.5) for (let x = r.x + 1.5; x < r.x + r.w - 1; x += 2.5) put(rnd() < 0.5 ? 'table' : rnd() < 0.5 ? 'crate' : 'barrel', x, y, { w: 1.4, h: 0.8 }); break;
+      case 'temple': put('altar', c[0], r.y + 1, { w: 1.8, h: 0.8 }); put('brazier', c[0] - 1.6, r.y + 1); put('brazier', c[0] + 1.6, r.y + 1); for (let y = r.y + 2.5; y < r.y + r.h - 0.5; y += 2) put('statue', r.x + 0.7, y), put('statue', r.x + r.w - 0.7, y); break;
+      case 'tavern': put('table', c[0] - 1, c[1], { w: 1.6, h: 0.9 }); put('table', c[0] + 1.4, c[1] + 1, { w: 1.6, h: 0.9 }); put('barrel', r.x + 0.7, r.y + 0.7); put('barrel', r.x + 1.6, r.y + 0.7); break;
+      case 'home': put('bed', r.x + 0.8, r.y + 1.2, { w: 1, h: 1.9 }); put('table', c[0] + 0.5, c[1] + 0.3, { w: 1.2, h: 0.8 }); put('chest', r.x + r.w - 0.7, r.y + r.h - 0.7); break;
+      case 'forge': put('brazier', r.x + 1, r.y + 1); put('brazier', r.x + r.w - 1, r.y + 1); put('table', c[0], c[1], { w: 1.4, h: 0.8 }); put('barrel', r.x + 0.8, r.y + r.h - 0.8); put('crate', r.x + r.w - 0.8, r.y + r.h - 0.8); break;
+      case 'smelter': put('brazier', c[0], c[1]); put('ore', r.x + 1, r.y + r.h - 1); put('ore', r.x + 2, r.y + r.h - 1); put('cart', r.x + r.w - 1.5, r.y + 1.2, { a: 0 }); break;
+      case 'vault': for (let q = 0; q < 5; q++) put('chest', r.x + 0.8 + rnd() * (r.w - 1.6), r.y + 0.8 + rnd() * (r.h - 1.6)); break;
+      case 'pillars': if (k === 0) put('statue', c[0], c[1]); else put('well', c[0], c[1]); break;
+      default: furnish(L, r, use, rnd, () => true);
+    }
+    L.rooms.push(roomOf(r, 1, [tag]));
+  }
+  return L;
+}
+
+/** The deepest level of a delve: the mines, worked stopes and, somewhere, a door the dwarves sealed. */
+function deepsLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number, number][]): DLevel {
+  const large = site.tags.includes('large');
+  const L = mineLevel(site, rnd, k, anchors, large ? [84, 62] : [68, 50]);
+  L.name = 'The deeps';
+  // One worked chamber was walled up: something was found down here.
+  const r = L.rooms.filter((x) => x.n && x.w >= 3 && x.h >= 3).sort(() => rnd() - 0.5)[0];
+  if (r) {
+    r.tags.unshift('delve-sealed');
+    for (const d of L.doors) if (d.x >= r.x - 1 && d.x <= r.x + r.w + 1 && d.y >= r.y - 1 && d.y <= r.y + r.h + 1) d.kind = 'locked';
+  }
+  return L;
 }
 
 // ---- Ruins ---------------------------------------------------------------------------------------

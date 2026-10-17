@@ -5,7 +5,7 @@ import type { Rng } from '../gen/rng';
  * it, what lies hidden there, and a detail for the senses, by kind of site. Shared by
  * `dungeons/key.ts` and `lairs/lair.ts`. Every table is plain data, so it is easy to extend.
  */
-export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove';
+export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve';
 
 export interface KeyNote {
   /** "Creature", "Trap", "Treasure" or "Hazard". */
@@ -16,6 +16,18 @@ export interface KeyNote {
 const pick = <T>(rnd: Rng, a: T[]): T => a[Math.floor(rnd() * a.length)];
 
 export const CREATURES: Record<SiteKind, string[]> = {
+  delve: [
+    'Two dwarven wardens in mail stop every stranger and ask their business, and their clan.',
+    'A smith and her apprentices argue over a blade that rang wrong on the anvil.',
+    'A merchant of the surface folk haggles, badly, through a dwarven interpreter.',
+    'An old loremaster sits among the statues, reciting the names of the ancestors to anyone who will listen.',
+    'Children of the clan race carts down the avenue, to the fury of the wardens.',
+    'A delegation from a rival clan waits, stiffly, to be received.',
+    'A grey-bearded miner, back from the deeps, will not say what he saw, and drinks alone.',
+    'A cloaked duergar spy watches from the shadow of a pillar.',
+    'A stone golem stands sentinel, motionless until someone touches what it guards.',
+    'The king\'s hearthguard escort a prisoner in chains toward the gate halls.',
+  ],
   mine: [
     'Four kobolds are prising ore from the wall. They flee at the first sign of a fight and return with more.',
     'A rust monster gnaws on an abandoned pick, drawn by the smell of iron.',
@@ -323,6 +335,13 @@ export const CREATURES: Record<SiteKind, string[]> = {
 };
 
 const TRAPS: Record<SiteKind, string[]> = {
+  delve: [
+    'A rune-lock on the door: the wrong word seals it and rings a bell in the wardens\' hall.',
+    'A pressure plate drops a portcullis across the passage behind anyone who steps on it.',
+    'A floor of loose slabs tips into a shaft; the dwarves know which ones to step on.',
+    'Blades swing from slots in the walls when the vault door is forced.',
+    'A gas of the deep, heavier than air, pools in a hollow of the floor.',
+  ],
   mine: [
     'Rotten timbers: loud noise or a fight here brings down part of the roof.',
     'A pocket of bad air. A flame burns blue a moment before it gutters out.',
@@ -523,6 +542,14 @@ const TREASURE_ANY = [
 ];
 
 const TREASURE: Record<SiteKind, string[]> = {
+  delve: [
+    'Ingots of bright steel stamped with the clan\'s mark, worth a fortune on the surface.',
+    'A small chest of uncut gems, sorted by colour into leather pouches.',
+    'An axe of ancestral make, its haft bound in silver wire, hung over the hearth.',
+    'A ledger of debts owed by surface lords, in a cipher only the clan reads.',
+    'A mithral-threaded mail shirt, folded in oiled cloth.',
+    'A great book of genealogies, its clasps of gold.',
+  ],
   mine: [
     'A seam of raw silver, worth 150 gold to anyone with the tools to cut it.',
     'A miner\'s lamp that burns without oil.',
@@ -766,6 +793,14 @@ const TREASURE: Record<SiteKind, string[]> = {
 };
 
 export const SENSES: Record<SiteKind, string[]> = {
+  delve: [
+    'The ring of hammers carries through the stone from the forges.',
+    'Warm air rises from the vents, smelling of coal smoke and hot iron.',
+    'Lamps of oil burn in iron brackets, and the stone glows gold where they fall.',
+    'A deep song rises from somewhere below, many voices in slow time.',
+    'The smell of ale and roasting meat drifts down the avenue.',
+    'Runes carved into the lintels catch the lamplight.',
+  ],
   mine: [
     'Water drips steadily from the roof.',
     'The air is hot and close.',
@@ -1159,7 +1194,7 @@ export function roomNotes(kind: SiteKind, rnd: Rng, o: { tag?: string; entry?: b
   const pTreasure = rich ? 1 : 0.2 + 0.05 * depth;
   if (rnd() < pCreature) {
     const s = fresh(CREATURES[kind]);
-    if (s) out.push({ label: 'Creature', text: s });
+    if (s) out.push({ label: kind === 'delve' ? 'Who is here' : 'Creature', text: s });
   }
   if (rnd() < pTrap) {
     const s = fresh(TRAPS[kind]);

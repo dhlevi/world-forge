@@ -86,6 +86,20 @@ export function strips(p: Poly, n: Pt, width: number, gap: number): Poly[] {
   return out;
 }
 
+/** A closed polygon with its corners rounded off (Chaikin corner cutting, `n` times). */
+export function roundPoly(p: Poly, n = 2): Poly {
+  let q = p;
+  for (let t = 0; t < n; t++) {
+    const out: Poly = [];
+    for (let k = 0; k < q.length; k++) {
+      const a = q[k], b = q[(k + 1) % q.length];
+      out.push([a[0] * 0.75 + b[0] * 0.25, a[1] * 0.75 + b[1] * 0.25], [a[0] * 0.25 + b[0] * 0.75, a[1] * 0.25 + b[1] * 0.75]);
+    }
+    q = out;
+  }
+  return q;
+}
+
 /** Irregular rounded blob (spoil heaps, ponds). */
 export function blob(c: Pt, r: number, rnd: () => number, n = 10): Poly {
   const ph = rnd() * 6, a1 = 0.15 + rnd() * 0.15, a2 = rnd() * 0.12;

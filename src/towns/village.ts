@@ -28,7 +28,8 @@ export const secretWell = (s: Pick<Settlement, 'kind' | 'newWorld' | 'seed'>): b
  */
 export function buildVillage(inp: PlanInput): void {
   const k = new Kit(inp);
-  switch (inp.s.kind) {
+  switch (inp.s.delve ? 'delve' : inp.s.kind) {
+    case 'delve': delveGate(k); break;
     case 'fishing': fishing(k); break;
     case 'logging': logging(k); break;
     case 'mining': mining(k); break;
@@ -84,7 +85,7 @@ function villageLabels(k: Kit): void {
     }
   }
   const ordinary = k.buildings.filter((b) => !b.use && !used.has(b)).sort((a, b) => Math.hypot(...a.c) - Math.hypot(...b.c));
-  const farmingLike = !s.kind || s.kind === 'farming' || s.kind === 'fishing';
+  const farmingLike = !s.delve && (!s.kind || s.kind === 'farming' || s.kind === 'fishing');
   if (farmingLike && s.population > 120 && ordinary[0]) mark(ordinary.shift()!, 'inn', innName(names.rng(`${s.id}:inn`)));
   if (farmingLike && s.population > 220 && ordinary.length > 3) mark(ordinary.splice(2, 1)[0], 'smithy', 'Smithy');
   // A village apothecary: herbs, salves and simples for the villages round about.
@@ -296,6 +297,75 @@ function chapel(k: Kit): void {
   for (let t = 0; t < 12; t++) {
     if (k.house(k.polar(15 + k.rnd() * 25, k.rnd() * 2 * Math.PI), k.rnd() * Math.PI, 16, 9, 'temple')) return;
   }
+}
+
+/**
+ * The surface of a delve: the great gate cut into the mountainside, between towers and a wall
+ * across the rock face, carved guardians either side, a paved forecourt below it, and the works
+ * that need the open air (smelters, stables, a few houses) along the road up, with heaps of slag.
+ */
+function delveGate(k: Kit): void {
+  const { rnd, inp } = k;
+  const out = inp.out;
+  const core = Math.min(k.core, 140);
+  // The gate faces the road that comes up to it (or else down the slope), cut into the rise.
+  const g = inp.terrain.grad([0, 0]);
+  const gl = Math.hypot(...g);
+  const ex = inp.exits[0]?.p;
+  const el = ex ? Math.hypot(...ex) : 0;
+  const up: Pt = ex && el > 1 ? [-ex[0] / el, -ex[1] / el] : gl > 1e-4 ? [g[0] / gl, g[1] / gl] : k.polar(1, rnd() * Math.PI * 2);
+  const perp: Pt = [-up[1], up[0]];
+  const a = Math.atan2(perp[1], perp[0]);
+  let gate: Pt = [up[0] * core * 0.45, up[1] * core * 0.45];
+  for (let t = 0; t < 8 && inp.water(gate); t++) gate = [gate[0] * 0.8, gate[1] * 0.8];
+  const at = (u: number, v: number): Pt => [gate[0] + perp[0] * u + up[0] * v, gate[1] + perp[1] * u + up[1] * v];
+  // The rock face: a wall either side of the gate, with towers, and the gatehouse cut into it.
+  const half = 26 + rnd() * 14;
+  out.line('wall', [at(-half, 0), at(-7, 0)], { w: 4 });
+  out.line('wall', [at(7, 0), at(half, 0)], { w: 4 });
+  for (const u of [-half, -9, 9, half]) out.point('tower', at(u, 0), { r: Math.abs(u) < 10 ? 4.5 : 3.5 });
+  const gh = rect(...at(0, 6), a, 14, 12);
+  const title = `the Gate of ${inp.s.name ?? 'the Delve'}`;
+  out.poly('building', gh, { role: 'delvegate', label: title, use: 'keep' });
+  out.point('blabel', at(0, 6), { name: title, role: 'delvegate' });
+  out.point('menhir', at(-12, -4), { r: 2 });
+  out.point('menhir', at(12, -4), { r: 2 });
+  k.blocked.push(rect(...at(0, 4), a, half * 2 + 8, 22));
+  // The forecourt.
+  const court = rect(...at(0, -18), a, 34, 26);
+  out.poly('plaza', court);
+  k.blocked.push(court);
+  out.point('well', at(-10, -18), { r: 1.4 });
+  k.exitLanes(at(0, -32), 26);
+  inp.out.line('road', [at(0, -32), at(0, -6)], { cls: 'track' });
+  // Smelters and stables by the road, a few houses, and the slag heaps.
+  const placeOff = (w: number, d: number, use: string | undefined, role: string, label: string) => {
+    for (let t = 0; t < 30; t++) {
+      const c = at((rnd() < 0.5 ? -1 : 1) * (24 + rnd() * 30), -20 - rnd() * 50);
+      if (!k.house(c, a + (rnd() - 0.5) * 0.3, w, d, use)) continue;
+      const b = k.buildings[k.buildings.length - 1];
+      if (role) {
+        b.f.properties.role = role;
+        b.f.properties.label = label;
+        out.point('blabel', b.c, { name: label, role });
+      }
+      return;
+    }
+  };
+  placeOff(16, 10, undefined, 'foundry', 'Smelter');
+  if (inp.s.tier === 'city') placeOff(16, 10, undefined, 'foundry', 'Smelter');
+  placeOff(18, 8, undefined, 'stables', 'Stables');
+  placeOff(12, 8, undefined, 'inn', 'the Gate Inn');
+  for (let q = 0; q < (inp.s.tier === 'city' ? 8 : 4); q++) placeOff(9 + rnd() * 3, 6 + rnd() * 2, undefined, '', '');
+  for (let t = 0, n = 0; t < 30 && n < 4; t++) {
+    const c = at((rnd() < 0.5 ? -1 : 1) * (40 + rnd() * 40), -10 - rnd() * 60);
+    if (inp.water(c) || k.inBlocked(c) || k.nearLane(c, 6) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 12)) continue;
+    const heap = blob(c, 7 + rnd() * 9, rnd);
+    out.poly('spoil', heap);
+    k.blocked.push(heap);
+    n++;
+  }
+  k.clumps(3, core, k.R);
 }
 
 /**

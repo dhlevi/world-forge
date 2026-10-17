@@ -9,6 +9,7 @@ export const HALFLING: TemplateBundle = {
   label: 'Halfling',
   folk: 'Halflings',
   world: 'old',
+  burrows: true,
   rarity: 0.7,
   spread: (height, _biome, sea) => (sea ? 1.3 : height > 1400 ? 4 : 1),
   culture: {

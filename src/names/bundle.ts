@@ -89,6 +89,14 @@ export interface TemplateBundle {
   /** How planned their towns are (grids and axes, default 0.15), and whether they build on hills. */
   planned?: number;
   hilly?: boolean;
+  /**
+   * Its people build their great towns beneath the mountains: a city or town of theirs in high or
+   * steep country is a delve, a gate in the mountainside with its halls below (towns/delve; the
+   * halls are a dungeon map, dungeons/kinds.ts).
+   */
+  underground?: boolean;
+  /** Its people live in burrows: houses dug into grassy mounds, with round doors and windows. */
+  burrows?: boolean;
 
   // ---- Rule ----------------------------------------------------------------------------------
   /** Ruler titles from barony to empire (default the Anglic ones). */

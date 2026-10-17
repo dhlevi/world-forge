@@ -46,6 +46,8 @@ export function buildingView(f: PlanFeature, seed: string): BuildingView | null 
     front: typeof p.front === 'number' ? p.front : undefined,
     role: typeof p.role === 'string' ? p.role : undefined,
     name: typeof p.label === 'string' ? p.label : undefined,
+    culture: typeof p.cul === 'string' ? p.cul : undefined,
+    burrow: !!p.burrow,
   });
   const ctx = String(p.ctx ?? '');
   const view: BuildingView = { d, frame, place: PLACES[ctx] ?? (p.tier === 'city' ? 'in the city' : 'in town') };
