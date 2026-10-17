@@ -43,7 +43,7 @@ export const SOUTHERN: TemplateBundle = {
     finals: ['s', 'n', 'r'],
     compound: 'final', roots: [2, 3], stress: 'penultimate',
     spell: { θ: 'th', x: 'ch', f: 'ph', y: 'y', 'eː': 'e', 'oː': 'o' },
-    grammar: grammar({ order: 'SVO', adj: 'before', def: 'word', indef: 'none', poss: 'suffix', gender: 2, agree: true, tense: 'suffix' }),
+    grammar: grammar({ order: 'SVO', adj: 'before', def: 'word', indef: 'none', poss: 'suffix', gender: 2, agree: true, tense: 'suffix', possPron: 'word' }),
     forms: { def: 'ho', poss: 'ou', past: 'sa' },
     masc: ['os', 'on', 'ias', 'ides', 'andros', 'ikos', 'eus'], fem: ['a', 'e', 'ia', 'issa', 'ope', 'ione'],
     demonym: ['ean', 'ian', 'ic', 'ot'],

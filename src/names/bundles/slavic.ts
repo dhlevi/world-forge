@@ -46,7 +46,7 @@ export const SLAVIC: TemplateBundle = {
     finals: ['v', 'k', 'n', 'd', 'l', 'r', 'ts', 's', 'tʃ', 'j', 'm', 'z'],
     compound: 'final', roots: [1, 2], stress: 'penultimate',
     spell: { x: 'kh', ʒ: 'zh', ts: 'ts', tʃ: 'ch', ʃ: 'sh', ɨ: 'y', j: 'y', ɲ: 'n' },
-    grammar: grammar({ order: 'SVO', adj: 'before', def: 'none', indef: 'none', poss: 'suffix', gender: 2, agree: true, tense: 'suffix' }),
+    grammar: grammar({ order: 'SVO', adj: 'before', def: 'none', indef: 'none', poss: 'suffix', gender: 2, agree: true, tense: 'suffix', possPron: 'word' }),
     forms: { poss: 'a', past: 'l', fem: 'a', neg: 'ne' },
     masc: ['slav', 'mir', 'gost', 'mysl', 'dan', 'vlad', 'or'], fem: ['a', 'slava', 'mira', 'ka', 'ena', 'ina', 'ava'],
     demonym: ['ian', 'ic', 'ish', 'ovan'],

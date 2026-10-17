@@ -43,7 +43,7 @@ export const JUNGLE: TemplateBundle = {
     compound: 'final', roots: [2, 3], stress: 'penultimate',
     spell: { tɬ: 'tl', ts: 'tz', ʃ: 'x', tʃ: 'ch', w: 'hu', j: 'y', ʔ: "'", k: 'c' },
     rules: [['c(?=[ei])', 'qu', '/k/ is written qu before e and i'], ["'", '', 'the glottal stop is not written in names']],
-    grammar: grammar({ order: 'VSO', adj: 'before', def: 'word', indef: 'none', poss: 'prefix', tense: 'prefix' }),
+    grammar: grammar({ order: 'VSO', adj: 'before', def: 'word', indef: 'none', poss: 'prefix', tense: 'prefix', possPron: 'prefix' }),
     forms: { def: 'in', poss: 'i', past: 'o' },
     masc: ['tl', 'atl', 'oc', 'ec', 'tzin', 'pal'], fem: ['tli', 'chel', 'tzin', 'xo', 'tal'],
     demonym: ['ec', 'an', 'ian'],

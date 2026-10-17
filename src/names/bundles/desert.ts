@@ -45,7 +45,7 @@ export const DESERT: TemplateBundle = {
     codas: [],
     compound: false, roots: [2, 3], stress: 'penultimate',
     spell: { x: 'kh', ɣ: 'gh', ʃ: 'sh', ħ: 'h', dʒ: 'j', 'aː': 'a', 'iː': 'i', 'uː': 'u', j: 'y', θ: 'th' },
-    grammar: grammar({ order: 'VSO', adj: 'after', def: 'prefix', indef: 'none', poss: 'construct', gender: 2, agree: true, tense: 'prefix' }),
+    grammar: grammar({ order: 'VSO', adj: 'after', def: 'prefix', indef: 'none', poss: 'construct', gender: 2, agree: true, tense: 'prefix', possPron: 'suffix' }),
     forms: { def: 'al', fem: 'a', neg: 'la' },
     masc: ['id', 'ir', 'im', 'an', 'ar', 'ul'], fem: ['a', 'ah', 'iya', 'ina', 'ara'],
     demonym: ['i', 'ite', 'ian'],

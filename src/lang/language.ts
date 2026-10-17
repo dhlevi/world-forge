@@ -19,6 +19,9 @@ const HEIGHT_ORDER: readonly string[] = HEIGHTS;
  */
 
 const pick = <T>(rnd: Rng, a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
+/** Glosses for owners by person (I to they), and for the pronouns themselves. */
+export const POSS_GLOSS = ['1SG.POSS', '2SG.POSS', '3SG.M.POSS', '3SG.F.POSS', '3SG.N.POSS', '1PL.POSS', '2PL.POSS', '3PL.POSS'];
+const PRON_GLOSS = ['I', 'you', 'he', 'she', 'it', 'we', 'you.PL', 'they'];
 const weighted = <T>(rnd: Rng, a: [T, number][]): T => {
   const tot = a.reduce((s, x) => s + x[1], 0);
   let r = rnd() * tot;
@@ -137,6 +140,8 @@ export class Language {
   readonly grammar: Grammar;
   readonly forms: Record<FormKey, string>;
   readonly personEndings: string[];
+  /** Possessive endings (or prefixes) by person, I to they, for languages that put them on the noun. */
+  readonly possEndings: string[];
   readonly harmony: boolean;
   readonly tones: number;
   readonly stress: LangTemplate['stress'];
@@ -230,6 +235,12 @@ export class Language {
     for (const k of Object.keys(GRAMMAR_OPTS) as (keyof GrammarBias)[]) {
       if (r() < d * 0.5) (gb as unknown as Record<string, unknown>)[k] = weighted(r, GRAMMAR_OPTS[k] as [unknown, number][]);
     }
+    // "My" and "their" follow the language's own way of showing possession, unless the template
+    // says; drift re-rolls them now and then (on a stream of its own, so the rest of the grammar,
+    // and every name made from it, stays as it was before possessives were added).
+    const rpp = mulberry32(hashString(`${spec.key}#possPron`));
+    if (gb.possPron && rpp() < d * 0.5) gb.possPron = weighted(rpp, [['word', 3], ['suffix', 2], ['prefix', 1], ['pronoun', 1.5]] as ['word' | 'suffix' | 'prefix' | 'pronoun', number][]);
+    if (!gb.possPron) gb.possPron = gb.poss === 'prefix' ? 'prefix' : gb.poss === 'particle' ? 'pronoun' : gb.poss === 'suffix' || gb.poss === 'construct' ? (hashString(`${spec.key}#pp`) % 3 ? 'suffix' : 'word') : 'word';
     if (gb.order === 'SOV' || gb.order === 'OVS' || gb.order === 'OSV') gb.adposition = r() < 0.85 ? 'post' : 'pre';
     else if (r() < d * 0.3) gb.adposition = gb.adposition === 'pre' ? 'post' : 'pre';
     this.grammar = { ...gb, genders: gb.gender === 2 ? ((gb.genderKind ?? 'sex') === 'animacy' ? ['animate', 'inanimate'] : ['masculine', 'feminine']) : null };
@@ -243,6 +254,18 @@ export class Language {
     }
     const rp = mulberry32(hashString(`${this.key}#person`));
     this.personEndings = PRONOUNS.slice(0, 6).map(() => this.morpheme(rp, 'suffix'));
+    const rq = mulberry32(hashString(`${this.key}#possessive`));
+    const seen = new Set<string>();
+    this.possEndings = PRONOUNS.map(() => {
+      for (let t = 0; t < 6; t++) {
+        const m = this.morpheme(rq, gb.possPron === 'prefix' ? 'prefix' : 'suffix');
+        if (!seen.has(m)) {
+          seen.add(m);
+          return m;
+        }
+      }
+      return this.morpheme(rq, 'suffix');
+    });
 
     // Descent: sound changes since the parent language (more with more drift).
     this.parent = spec.parent ?? null;
@@ -407,12 +430,12 @@ export class Language {
       w = { spell, ipa: this.toIpa(spell), src: 'old' };
     }
     if (!w && P) {
-      const core = c?.pos === 'pron' || c?.pos === 'num' || /^(pronoun|adposition):/.test(key);
+      const core = c?.pos === 'pron' || c?.pos === 'num' || /^(pronoun|possessive|adposition):/.test(key);
       if (r() < (core ? Math.min(0.97, this.retention + 0.12) : this.retention)) w = this.inherit(P.segments(P.word(key)));
     }
     if (!w) {
       const [lo, hi] = this.t.roots;
-      const short = c?.short || c?.pos === 'pron' || c?.pos === 'adv' || /^(pronoun|adposition):/.test(key);
+      const short = c?.short || c?.pos === 'pron' || c?.pos === 'adv' || /^(pronoun|possessive|adposition):/.test(key);
       const n = short ? 1 : Math.max(1, lo + Math.floor(r() * (hi - lo + 1)) - (c && c.pos !== 'n' && c.pos !== 'v' && r() < 0.4 ? 1 : 0));
       w = { ...this.gen(r, n), src: 'new' };
     }
@@ -422,6 +445,15 @@ export class Language {
 
   pronoun(i: number): Word {
     return this.word(`pronoun:${PRONOUNS[i]}`);
+  }
+
+  /**
+   * "My", "your" and the rest (person 0 to 7, I to they) as a word of their own: the pronoun
+   * with the possessive ending where the language marks owners with one, else a word of its own.
+   */
+  possessiveWord(i: number): string {
+    if (this.grammar.poss === 'suffix') return join(this.pronoun(i).spell, this.forms.poss);
+    return this.word(`possessive:${PRONOUNS[i]}`).spell;
   }
 
   /** The class of a noun, for languages with two (by meaning, or by chance). */
@@ -515,6 +547,13 @@ export class Language {
       return i === at ? w.toUpperCase() : w;
     }).join('-');
     return { ipa, sounds };
+  }
+
+  /** A written form as syllables of sounds (IPA segments), as the language divides them. */
+  syllablesOf(spell: string): string[][] {
+    const segs = segment(this.toIpa(spell)).filter((x) => x && !/^[ˈ.ˌ]$/.test(x));
+    if (!segs.some(isVowel)) return [segs];
+    return this.syllabify(segs);
   }
 
   /** Mends a word to the language's patterns: no runs of three consonants, allowed clusters and endings. */
@@ -642,7 +681,7 @@ export class Language {
   // ---- Grammar ---------------------------------------------------------------------------------------
 
   /** A noun phrase: adjectives, articles, plural and the noun's class agreement. */
-  nounPhrase(noun: string, o: { adjs?: string[]; def?: boolean; indef?: boolean; plural?: boolean } = {}): Token[] {
+  nounPhrase(noun: string, o: { adjs?: string[]; def?: boolean; indef?: boolean; plural?: boolean; poss?: number } = {}): Token[] {
     const g = this.grammar;
     const f = this.forms;
     let n = this.word(noun).spell;
@@ -661,6 +700,15 @@ export class Language {
       n = `${f.def}-${n}`;
       gl = `DEF-${gl}`;
     }
+    // An owner's person (my, your...): an ending or prefix on the noun itself.
+    const pp = o.poss ?? -1;
+    if (pp >= 0 && g.possPron === 'suffix') {
+      n = join(n, this.possEndings[pp]);
+      gl += `-${POSS_GLOSS[pp]}`;
+    } else if (pp >= 0 && g.possPron === 'prefix') {
+      n = join(this.possEndings[pp], n);
+      gl = `${POSS_GLOSS[pp]}-${gl}`;
+    }
     const head: Token = { form: n, gloss: gl };
     const adjs: Token[] = (o.adjs ?? []).map((a) => {
       let w = this.word(a).spell;
@@ -671,9 +719,16 @@ export class Language {
       }
       return { form: w, gloss: ag };
     });
-    const out = g.adj === 'before' ? [...adjs, head] : [head, ...adjs];
+    let out = g.adj === 'before' ? [...adjs, head] : [head, ...adjs];
     if (o.def && g.def === 'word') out.unshift({ form: f.def, gloss: 'the' });
     if (o.indef && !o.def && g.indef === 'word') out.unshift({ form: f.indef, gloss: 'a' });
+    if (pp >= 0 && g.possPron === 'word') {
+      // A possessive word stands where the article would: before the noun phrase, or after it where adjectives follow.
+      const w: Token = { form: this.possessiveWord(pp), gloss: POSS_GLOSS[pp] };
+      out = g.adj === 'before' || g.def === 'word' ? [w, ...out] : [...out, w];
+    } else if (pp >= 0 && g.possPron === 'pronoun') {
+      out = this.possess(out, [{ form: this.pronoun(pp).spell, gloss: PRON_GLOSS[pp] }]);
+    }
     return out;
   }
 

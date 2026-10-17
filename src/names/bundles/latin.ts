@@ -52,7 +52,7 @@ export const LATIN: TemplateBundle = {
     finals: ['s', 'n', 'm', 'r', 'l', 'x'],
     compound: false, roots: [2, 3], stress: 'penultimate',
     rules: [['k', 'c', '/k/ is written c'], ['cs', 'x', '/ks/ is written x']],
-    grammar: grammar({ order: 'SOV', adj: 'after', def: 'none', indef: 'none', poss: 'suffix', gender: 2, agree: true, tense: 'suffix' }),
+    grammar: grammar({ order: 'SOV', adj: 'after', def: 'none', indef: 'none', poss: 'suffix', gender: 2, agree: true, tense: 'suffix', possPron: 'word' }),
     forms: { poss: 'i', plural: 'es', past: 'avit', fem: 'a', masc: 'us', neg: 'non' },
     masc: ['us', 'ius', 'o', 'anus', 'ian', 'inus'], fem: ['a', 'ia', 'ina', 'illa', 'ana'],
     demonym: ['an', 'ian', 'ine', 'ese'],

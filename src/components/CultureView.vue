@@ -7,6 +7,7 @@ import { ETHOS, TRADITIONS } from '../names/traits';
 import { LEXICON } from '../lang/lexicon';
 import { cognates, consonantChart, examples, grammarNotes, pronounTable, soundChangeNotes, spellingNotes, vowelChart } from '../lang/describe';
 import { translate } from '../lang/translate';
+import { glyphSvg, scriptOf, sigilSvg, textSvg } from '../lang/script';
 import { cultureInfo } from '../lore/culture';
 import { fmtPeople } from '../lore/realm';
 import { armsImage } from '../heraldry/draw';
@@ -16,9 +17,10 @@ import { currentLore } from './realm-lore';
  * The culture window: a people of the world, their outlook, traditions and customs, where they
  * live and rule, and their language: its sounds (with IPA), syllables, spelling, grammar,
  * examples word by word, its family (the proto-language, the sound changes since, and cognates
- * in the sister tongues), a dictionary and a box that translates English into it.
+ * in the sister tongues), its script (the letters or signs, words written in it, and sigils), a
+ * dictionary and a box that translates English into it (written in the script as well).
  */
-type Tab = 'overview' | 'sounds' | 'grammar' | 'family' | 'dictionary' | 'translate';
+type Tab = 'overview' | 'sounds' | 'grammar' | 'writing' | 'family' | 'dictionary' | 'translate';
 const tab = ref<Tab>('overview');
 const query = ref('');
 const phrase = ref('The old king rules the great city.');
@@ -35,7 +37,7 @@ watch(openCulture, () => {
 });
 watch(world, () => (openCulture.value = null));
 
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['sounds', 'Sounds'], ['grammar', 'Grammar'], ['family', 'Family'], ['dictionary', 'Dictionary'], ['translate', 'Translate']];
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['sounds', 'Sounds'], ['grammar', 'Grammar'], ['writing', 'Writing'], ['family', 'Family'], ['dictionary', 'Dictionary'], ['translate', 'Translate']];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const units = computed(() => world.value?.politics.units ?? []);
 const arms = (id: number) => armsImage(units.value[id].arms, 16, `u${id}`);
@@ -75,9 +77,25 @@ const dict = computed(() => {
   if (/^[a-z]+$/.test(q) && !rows.some((x) => x.en === q)) hit.unshift({ en: q, pos: 'n', cat: '', w: lang.word(q), g: '' });
   return hit;
 });
+// The script: its letters or signs, words written in it, and sigils (SVG made here, from the language alone).
+const script = computed(() => (L.value ? scriptOf(L.value) : null));
+const scriptChart = computed(() => (script.value ? script.value.chart().map((x) => ({ label: x.label, svg: glyphSvg(script.value!, x.glyph, 42) })) : []));
+const scriptName = computed(() => (L.value ? L.value.word('writing').spell : ''));
+const writtenExamples = computed(() => {
+  const sc = script.value, lang = L.value, x = c.value;
+  if (!sc || !lang || !x) return [];
+  const rows = [{ en: `their own name, the ${x.endonym}`, native: x.endonym }, ...exs.value.slice(0, 5).map((e) => ({ en: e.en, native: e.tokens.map((t) => t.form).join(' ') }))];
+  return rows.map((r) => ({ ...r, svg: textSvg(sc, r.native, { size: 32, maxWidth: 520 }) }));
+});
+const sigils = computed(() => {
+  const sc = script.value, x = c.value;
+  if (!sc || !x) return [];
+  return [x.endonym, x.name].map((n) => ({ name: n, svg: sigilSvg(sc, n, 132) }));
+});
 const translated = computed(() => (L.value && phrase.value.trim() ? translate(L.value, phrase.value, { capitalsProper: true }) : []));
 /** How the translation is said, word by word. */
 const spoken = computed(() => (L.value ? translated.value.map((t) => L.value!.pronounce(t.form)) : []));
+const translatedScript = computed(() => (script.value && translated.value.length ? textSvg(script.value, translated.value.map((t) => t.form).join(' '), { size: 34, maxWidth: 520 }) : ''));
 
 const description = computed(() => {
   const x = c.value, i = info.value;
@@ -203,6 +221,11 @@ function showHome(): void {
         <table class="dict">
           <tr v-for="p in prons" :key="p.en"><td>{{ p.en }}</td><td><b>{{ p.word }}</b></td><td class="ipa">/{{ p.ipa }}/</td></tr>
         </table>
+        <h3>Possessives</h3>
+        <table class="dict">
+          <tr><th /><th /><th class="dim">“… house”</th></tr>
+          <tr v-for="p in prons" :key="p.possEn"><td>{{ p.possEn }}</td><td><b>{{ p.poss }}</b></td><td>{{ p.example }}</td></tr>
+        </table>
         <h3>Examples</h3>
         <div v-for="e in exs" :key="e.en" class="ex">
           <div class="en">{{ e.en }}</div>
@@ -210,6 +233,27 @@ function showHome(): void {
             <span v-for="(t, i) in e.tokens" :key="i" class="tok"><b>{{ t.form }}</b><small>{{ t.gloss }}</small></span>
           </div>
         </div>
+      </section>
+
+      <section v-else-if="tab === 'writing' && L && script">
+        <p>{{ cap(c.people) }} write with {{ script.info.label }}<template v-if="scriptName">; they call their writing <i>{{ scriptName }}</i></template>.</p>
+        <ul v-if="script.info.notes.length" class="plain"><li v-for="n in script.info.notes" :key="n">{{ n }}</li></ul>
+        <h3>{{ script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary' ? 'Signs' : script.info.kind === 'featural' ? 'Letters' : 'Letters' }}</h3>
+        <div class="glyphs">
+          <span v-for="(g, i) in scriptChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
+        </div>
+        <p class="note">Each {{ script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary' ? 'sign' : 'letter' }} is shown with its sound as the transcription spells it.<template v-if="script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary'"> Only the commoner syllables are shown; every syllable of the language has its own.</template></p>
+        <h3>Written</h3>
+        <div v-for="(e, i) in writtenExamples" :key="i" class="ex">
+          <div class="en">{{ e.en }}</div>
+          <div class="written" :class="script.info.style" v-html="e.svg" />
+          <div class="dim">{{ e.native }}</div>
+        </div>
+        <h3>Sigils</h3>
+        <div class="sigils">
+          <figure v-for="sg in sigils" :key="sg.name"><span v-html="sg.svg" /><figcaption>{{ sg.name }}</figcaption></figure>
+        </div>
+        <p class="note">A sigil is made from a name: its letters become points on three rings, joined in order and mirrored, with the name written small between the outer rings.</p>
       </section>
 
       <section v-else-if="tab === 'family' && L">
@@ -253,6 +297,7 @@ function showHome(): void {
         <div v-if="translated.length" class="ex big">
           <div class="native">{{ translated.map((t) => t.form).join(' ') }}</div>
           <div class="say"><span class="ipa">/{{ spoken.map((x) => x.ipa).join(' ') }}/</span> · sounds like <b>{{ spoken.map((x) => x.sounds).join(' ') }}</b></div>
+          <div v-if="translatedScript" class="written" v-html="translatedScript" />
           <div class="gloss">
             <span v-for="(t, i) in translated" :key="i" class="tok"><b>{{ t.form }}</b><small>{{ t.gloss }}</small></span>
           </div>
@@ -542,5 +587,41 @@ textarea {
   .say-cell {
     display: none;
   }
+}
+.glyphs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.glyph {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+  padding: 2px;
+  border: 1px solid rgba(43, 36, 32, 0.12);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.glyph small {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.written {
+  margin: 4px 0;
+  overflow-x: auto;
+}
+.sigils {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.sigils figure {
+  margin: 0;
+  text-align: center;
+}
+.sigils figcaption {
+  font-size: 12px;
+  font-style: italic;
 }
 </style>

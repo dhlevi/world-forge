@@ -60,7 +60,7 @@ export const NORSE: TemplateBundle = {
     codas: ['r d', 'r n', 'l d', 'n d', 'n g', 'l l', 'n n', 's t', 'f t', 'l f', 'r k', 'r g', 'l m'],
     compound: 'final', roots: [1, 2], stress: 'initial',
     spell: { 'aː': 'aa', 'iː': 'ii', æ: 'ae', ø: 'ø', y: 'y', ɔ: 'å', j: 'j', θ: 'th' },
-    grammar: grammar({ order: 'SVO', adj: 'before', def: 'suffix', indef: 'word', poss: 'suffix', gender: 2, tense: 'suffix' }),
+    grammar: grammar({ order: 'SVO', adj: 'before', def: 'suffix', indef: 'word', poss: 'suffix', gender: 2, tense: 'suffix', possPron: 'word' }),
     forms: { def: 'en', indef: 'en', poss: 's', past: 'de', plural: 'ar' },
     masc: ['ar', 'ulf', 'mund', 'vald', 'stein', 'bjorn', 'geir', 'ir'], fem: ['a', 'hild', 'rid', 'dis', 'veig', 'run', 'borg'],
     demonym: ['ic', 'ish', 'ian', 'sk'],

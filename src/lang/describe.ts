@@ -44,6 +44,11 @@ export function grammarNotes(L: Language): string[] {
   out.push(g.indef === 'word' ? `“A” is a separate word, ${f.indef}.` : 'There is no word for “a”.');
   out.push(g.plural === 'none' ? 'Nouns do not mark the plural; number words or context show it.' : g.plural === 'suffix' ? `Plurals take the suffix -${f.plural}.` : g.plural === 'prefix' ? `Plurals take the prefix ${f.plural}-.` : 'Plurals repeat the first syllable of the noun.');
   out.push(g.poss === 'suffix' ? `Possession: the owner takes the suffix -${f.poss} and comes first.` : g.poss === 'prefix' ? `Possession: the thing owned takes the prefix ${f.poss}- and follows its owner.` : g.poss === 'particle' ? `Possession: owner, then the particle ${f.poss}, then the thing owned.` : g.poss === 'construct' ? 'Possession: the thing owned comes first, then its owner, with no word between.' : `Possession: a word for “of”, ${f.of}.`);
+  const pp = g.possPron;
+  out.push(pp === 'word' ? `“My”, “your”, “their” and the rest are words of their own${g.poss === 'suffix' ? ' (the pronoun with its possessive ending)' : ''}, ${g.adj === 'before' || g.def === 'word' ? 'before' : 'after'} the noun.`
+    : pp === 'suffix' ? `“My”, “your”, “their” and the rest are endings on the thing owned: ${L.possEndings.map((e, i) => `-${e} (${POSS_EN[i]})`).join(', ')}.`
+      : pp === 'prefix' ? `“My”, “your”, “their” and the rest are prefixes on the thing owned: ${L.possEndings.map((e, i) => `${e}- (${POSS_EN[i]})`).join(', ')}.`
+        : '“My”, “your” and “their” are the pronouns, owning the thing as any owner does (“house of me”).');
   if (g.genders) out.push(`Nouns are ${g.genders[0]} or ${g.genders[1]}${g.genderKind !== 'animacy' && g.agree ? `; adjectives take -${f.fem} with ${g.genders[1]} nouns` : ''}.`);
   out.push(g.tense === 'particle' ? `Tense is shown by particles before the verb: ${f.past} (past), ${f.future} (future).` : g.tense === 'prefix' ? `Tense is shown by prefixes: ${f.past}- (past), ${f.future}- (future).` : `Tense is shown by suffixes: -${f.past} (past), -${f.future} (future).`);
   if (g.agree) out.push(`Verbs agree with their subject: ${L.personEndings.map((e, i) => `-${e} (${['I', 'you', 'he, she, it', 'we', 'you all', 'they'][i]})`).join(', ')}.`);
@@ -51,12 +56,18 @@ export function grammarNotes(L: Language): string[] {
   return out;
 }
 
-export function pronounTable(L: Language): { en: string; word: string; ipa: string }[] {
-  return PRONOUNS.map((en, i) => ({ en, word: L.pronoun(i).spell, ipa: L.pronoun(i).ipa }));
+const POSS_EN = ['my', 'your', 'his', 'her', 'its', 'our', 'your (plural)', 'their'];
+export function pronounTable(L: Language): { en: string; word: string; ipa: string; poss: string; possEn: string; example: string }[] {
+  return PRONOUNS.map((en, i) => ({
+    en, word: L.pronoun(i).spell, ipa: L.pronoun(i).ipa, possEn: POSS_EN[i],
+    // "My house", written out in the language's own way.
+    poss: L.grammar.possPron === 'word' ? L.possessiveWord(i) : L.grammar.possPron === 'suffix' ? `-${L.possEndings[i]}` : L.grammar.possPron === 'prefix' ? `${L.possEndings[i]}-` : L.pronoun(i).spell,
+    example: L.nounPhrase('house', { poss: i }).map((t) => t.form).join(' '),
+  }));
 }
 
 export const EXAMPLES = [
-  'the old king', 'the kings', "the king's sword", 'the city of the river', 'The king rules the great city.', 'We saw a white horse by the river.',
+  'the old king', 'the kings', "the king's sword", 'our father', 'their great city', 'the city of the river', 'The king rules the great city.', 'We saw a white horse by the river.',
   'The warriors will fight the giants of the north.', 'I do not know the way.', "The queen's daughter sang a sweet song.",
 ];
 

@@ -42,7 +42,7 @@ export const KOREANIC: TemplateBundle = {
     finals: ['k', 'n', 'l', 'm', 'p', 'ŋ'],
     compound: 'final', roots: [1, 2], stress: 'none',
     spell: { ʌ: 'eo', ɯ: 'eu', æ: 'ae', ŋ: 'ng', tʃ: 'j', tʃʰ: 'ch', j: 'y' },
-    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'suffix', poss: 'particle', tense: 'suffix', adposition: 'post' }),
+    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'suffix', poss: 'particle', tense: 'suffix', adposition: 'post', possPron: 'pronoun' }),
     forms: { poss: 'ui', plural: 'deul', past: 'eot', neg: 'an' },
     masc: [], fem: [],
     demonym: ['ian', 'ese'],

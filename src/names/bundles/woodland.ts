@@ -45,7 +45,7 @@ export const WOODLAND: TemplateBundle = {
     finals: ['k', 'n', 'm', 's', 't'],
     compound: 'final', roots: [2, 3], stress: 'penultimate',
     spell: { ʃ: 'sh', tʃ: 'ch', 'aː': 'aa', 'iː': 'ee', j: 'y' },
-    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'suffix', poss: 'prefix', gender: 2, genderKind: 'animacy', tense: 'prefix', agree: true }),
+    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'suffix', poss: 'prefix', gender: 2, genderKind: 'animacy', tense: 'prefix', agree: true, possPron: 'prefix' }),
     forms: { plural: 'ak', poss: 'o' },
     masc: ['ok', 'an', 'is', 'aw', 'ee'], fem: ['a', 'ee', 'ah', 'wa', 'ka'],
     demonym: ['ee', 'ic', 'an'],

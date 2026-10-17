@@ -48,7 +48,7 @@ export const SINIC: TemplateBundle = {
     compound: 'final', roots: [1, 1], stress: 'none', tones: 4,
     spell: { pʰ: 'p', p: 'b', tʰ: 't', t: 'd', kʰ: 'k', k: 'g', ʂ: 'sh', ʐ: 'r', x: 'h', ts: 'z', tsʰ: 'c', tɕ: 'j', tɕʰ: 'q', ɕ: 'x', ŋ: 'ng', y: 'ü', ə: 'e', j: 'y', w: 'w' },
     rules: [['([jqx])ü', '$1u', 'ü is written u after j, q and x']],
-    grammar: grammar({ order: 'SVO', adj: 'before', def: 'none', indef: 'none', plural: 'none', poss: 'particle', tense: 'particle' }),
+    grammar: grammar({ order: 'SVO', adj: 'before', def: 'none', indef: 'none', plural: 'none', poss: 'particle', tense: 'particle', possPron: 'pronoun' }),
     forms: { poss: 'de', past: 'le', neg: 'bu' },
     masc: [], fem: [],
     demonym: ['ese', 'ian'],

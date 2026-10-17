@@ -54,7 +54,7 @@ export const DWARVEN: TemplateBundle = {
     codas: ['r k', 'r n', 'n d', 'z d', 'r g', 'l d', 'm m', 'r m', 'r d', 'k k'],
     compound: 'final', roots: [1, 2], stress: 'initial',
     spell: { x: 'kh', θ: 'th', ð: 'dh', k: 'k' },
-    grammar: grammar({ order: 'SOV', adj: 'before', def: 'word', indef: 'none', poss: 'particle', tense: 'suffix', adposition: 'post' }),
+    grammar: grammar({ order: 'SOV', adj: 'before', def: 'word', indef: 'none', poss: 'particle', tense: 'suffix', adposition: 'post', possPron: 'pronoun' }),
     forms: { def: 'ul', poss: 'az' },
     masc: ['in', 'ur', 'ak', 'grim', 'dur', 'rik', 'ok'], fem: ['a', 'dis', 'ra', 'hild', 'ria', 'run'],
     demonym: ['ish', 'en', 'ic'],

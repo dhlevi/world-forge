@@ -8,6 +8,8 @@ import { LEX } from './lexicon';
  * core vocabulary get words of their own, made the same way, so anything can be translated.
  */
 
+/** Possessive words, by the person of the owner (as the pronouns: I, you, he, she, it, we, you all, they). */
+const POSSESSIVE: Record<string, number> = { my: 0, thy: 1, your: 1, his: 2, her: 3, its: 4, our: 5, their: 7 };
 const PRONOUN: Record<string, number> = { i: 0, me: 0, you: 1, he: 2, him: 2, she: 3, her: 3, it: 4, we: 5, us: 5, they: 7, them: 7 };
 const PREPS = new Set(['in', 'on', 'at', 'to', 'from', 'by', 'with', 'near', 'under', 'over', 'into', 'through', 'for', 'across', 'beyond', 'behind', 'before', 'after', 'among', 'beside', 'upon', 'towards', 'against', 'within', 'without']);
 const DETS = new Set(['the', 'a', 'an', 'this', 'that', 'these', 'those', 'some']);
@@ -103,13 +105,27 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
       }
       return { tokens: [p], person: 2 };
     }
-    if (PRONOUN[w] !== undefined) {
+    // "My", "your", "her" before a noun ("her" alone is the pronoun); "your all" for the plural.
+    let poss = -1;
+    if (POSSESSIVE[w] !== undefined) {
+      const nx = words[i + 1];
+      const possible = !!nx && !PREPS.has(nx) && nx !== 'of' && !DETS.has(nx) && PRONOUN[nx] === undefined && (w !== 'her' || !verbOf(nx) || LEX.get(nx)?.pos === 'n');
+      if (possible || w !== 'her') {
+        poss = POSSESSIVE[w];
+        i++;
+        if (poss === 1 && (words[i] === 'all' || words[i] === "y'all")) {
+          poss = 6;
+          i++;
+        }
+      }
+    }
+    if (poss < 0 && PRONOUN[w] !== undefined) {
       i++;
       const p = PRONOUN[w];
       return { tokens: [{ form: L.pronoun(p).spell, gloss: ['I', 'you', 'he', 'she', 'it', 'we', 'you.PL', 'they'][p] }], person: p };
     }
     let def = false, indef = false;
-    if (DETS.has(w)) {
+    if (poss < 0 && DETS.has(w)) {
       def = w !== 'a' && w !== 'an' && w !== 'some';
       indef = w === 'a' || w === 'an';
       i++;
@@ -119,7 +135,7 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
     if (i >= words.length || PREPS.has(words[i]) || words[i] === 'of') {
       if (!adjs.length) return null;
       const last = adjs.pop()!;
-      return { tokens: L.nounPhrase(last, { adjs, def, indef }), person: 2 };
+      return { tokens: L.nounPhrase(last, { adjs, def, indef, ...(poss >= 0 ? { poss } : {}) }), person: 2 };
     }
     // Adjectives before a proper name ("New ‹Ashford›"), perhaps naming a noun after it ("the Old ‹Ashford› Road").
     let pre: Token | null = null;
@@ -138,7 +154,7 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
       possessive = true;
     }
     const { n, plural } = nounOf(raw.replace(/'$/, ''));
-    let np: NP = { tokens: L.nounPhrase(n, { adjs, def, indef, plural }), person: plural ? 7 : 2 };
+    let np: NP = { tokens: L.nounPhrase(n, { adjs, def, indef, plural, ...(poss >= 0 ? { poss } : {}) }), person: plural ? 7 : 2 };
     if (pre) np = { tokens: L.appose(np.tokens, pre), person: np.person };
     // A noun naming the proper name after it ("Castle Varsk", "Lake Kethvik").
     if (words[i] && isProper(words[i])) np = { tokens: L.appose(np.tokens, properTok(words[i++])), person: np.person };

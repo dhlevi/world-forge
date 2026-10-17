@@ -43,7 +43,7 @@ export const STEPPE: TemplateBundle = {
     codas: ['r t', 'l t', 'r k', 'n t'],
     compound: 'final', roots: [2, 2], stress: 'final', harmony: true,
     spell: { x: 'kh', ʃ: 'sh', tʃ: 'ch', dʒ: 'j', ø: 'ö', y: 'ü', ɨ: 'y', j: 'y', ŋ: 'ng' },
-    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'word', poss: 'suffix', tense: 'suffix', adposition: 'post', agree: true }),
+    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'word', poss: 'suffix', tense: 'suffix', adposition: 'post', agree: true, possPron: 'suffix' }),
     forms: { indef: 'bir', plural: 'lar', poss: 'ning', past: 'di', neg: 'ma' },
     masc: ['an', 'ar', 'ai', 'tur', 'bek', 'ei', 'ur'], fem: ['a', 'ai', 'gul', 'jan', 'tai', 'un'],
     demonym: ['ic', 'i', 'ish'],

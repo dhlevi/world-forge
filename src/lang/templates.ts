@@ -18,6 +18,12 @@ export interface GrammarBias {
   plural: 'suffix' | 'prefix' | 'none' | 'reduplication';
   /** Possession: a suffix or prefix on the possessor, an "of" word, a particle after the possessor, or the construct (possessed first, possessor after, unmarked). */
   poss: 'suffix' | 'prefix' | 'of' | 'particle' | 'construct';
+  /**
+   * "My", "your", "their": a word of its own before (or after) the noun, a person ending on the
+   * thing owned ("house-my"), a person prefix ("my-house"), or the pronoun as an ordinary owner
+   * ("house of me", "me-GEN house"). Unset: chosen from the way the language shows possession.
+   */
+  possPron?: 'word' | 'suffix' | 'prefix' | 'pronoun';
   gender: 0 | 2;
   genderKind?: 'sex' | 'animacy';
   /** Verbs agree with their subject's person and number. */

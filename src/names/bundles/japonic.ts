@@ -46,7 +46,7 @@ export const JAPONIC: TemplateBundle = {
     compound: 'final', roots: [2, 3], stress: 'none',
     spell: { 'oː': 'o', 'uː': 'u', j: 'y' },
     rules: [['si', 'shi', '/si/ is written shi'], ['ti', 'chi', '/ti/ is written chi'], ['tu', 'tsu', '/tu/ is written tsu'], ['hu', 'fu', '/hu/ is written fu'], ['zi', 'ji', '/zi/ is written ji'], ['di', 'ji', '/di/ is written ji'], ['du', 'zu', '/du/ is written zu'], ['w([iue])', '$1', '/w/ is lost before i, u and e'], ['y([ie])', '$1', '/j/ is lost before i and e'], ['n(?=[bmp])', 'm', '/n/ is written m before b, m and p']],
-    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'none', poss: 'particle', tense: 'suffix', adposition: 'post' }),
+    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'none', poss: 'particle', tense: 'suffix', adposition: 'post', possPron: 'pronoun' }),
     forms: { poss: 'no', past: 'ta', neg: 'nai' },
     masc: ['o', 'ro', 'hiko', 'nobu', 'mune', 'masa'], fem: ['ko', 'mi', 'e', 'yo', 'na', 'ka'],
     demonym: ['ese', 'ian'],

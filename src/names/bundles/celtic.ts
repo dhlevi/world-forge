@@ -53,7 +53,7 @@ export const CELTIC: TemplateBundle = {
     compound: 'initial', roots: [1, 2], stress: 'penultimate',
     spell: { v: 'f', f: 'ff', ð: 'dd', θ: 'th', x: 'ch', ɬ: 'll', ɨ: 'y', ə: 'y', 'aː': 'â', k: 'c' },
     rules: [['^ff', 'f', 'initial /f/ is written f']],
-    grammar: grammar({ order: 'VSO', adj: 'after', def: 'word', indef: 'none', poss: 'construct', gender: 2, agree: true, tense: 'particle' }),
+    grammar: grammar({ order: 'VSO', adj: 'after', def: 'word', indef: 'none', poss: 'construct', gender: 2, agree: true, tense: 'particle', possPron: 'word' }),
     forms: { def: 'yr', past: 'do' },
     masc: ['an', 'ach', 'wyn', 'ion', 'ric', 'mor'], fem: ['wen', 'a', 'eth', 'id', 'ann', 'wyn'],
     demonym: ['ic', 'ish', 'ian'],

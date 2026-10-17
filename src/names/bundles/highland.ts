@@ -42,7 +42,7 @@ export const HIGHLAND: TemplateBundle = {
     compound: 'final', roots: [2, 3], stress: 'penultimate',
     spell: { ɲ: 'ñ', ʎ: 'll', tʃ: 'ch', ʃ: 'sh', j: 'y', w: 'hu' },
     rules: [['^hu(?=[aeiou])', 'w', 'initial /w/ before a vowel is written w']],
-    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'suffix', poss: 'suffix', tense: 'suffix', adposition: 'post', agree: true }),
+    grammar: grammar({ order: 'SOV', adj: 'before', def: 'none', indef: 'none', plural: 'suffix', poss: 'suffix', tense: 'suffix', adposition: 'post', agree: true, possPron: 'suffix' }),
     forms: { plural: 'kuna', poss: 'pa', past: 'rqa' },
     masc: ['c', 'pa', 'ac', 'ui', 'ru'], fem: ['a', 'lla', 'ya', 'sa', 'cha'],
     demonym: ['an', 'ian', 'ine'],
