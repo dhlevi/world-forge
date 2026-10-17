@@ -95,6 +95,21 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'fill-color': '#c3c9a0', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
   {
+    // A delve's districts and great avenue under the mountain, shown faintly behind its gate.
+    id: 'plan-underhall', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM,
+    filter: e(['all', ['==', ['get', 'kind'], 'underhall'], ['==', ['geometry-type'], 'Polygon']]) as FilterSpecification,
+    paint: { 'fill-color': '#5a4a3a', 'fill-opacity': e(['interpolate', ['linear'], ['zoom'], TOWN_PLAN_ZOOM, 0, 12.6, 0.08]) },
+  },
+  {
+    id: 'plan-underhall-line', type: 'line', source: 'plans', minzoom: TOWN_PLAN_ZOOM,
+    filter: e(['all', ['==', ['get', 'kind'], 'underhall'], ['==', ['geometry-type'], 'LineString']]) as FilterSpecification,
+    paint: {
+      'line-color': '#5a4a3a', 'line-dasharray': [3, 2],
+      'line-width': physWidth(0.8, ['get', 'w']),
+      'line-opacity': e(['interpolate', ['linear'], ['zoom'], TOWN_PLAN_ZOOM, 0, 12.6, ['case', ['>', ['get', 'w'], 0], 0.12, 0.45]]),
+    },
+  },
+  {
     // A burrow's grassy mound, under the turfed roof of the burrow itself.
     id: 'plan-mound', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('mound'),
     paint: { 'fill-color': '#bfca93', 'fill-outline-color': '#8d9a62', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },

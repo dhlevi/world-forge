@@ -1,4 +1,5 @@
-import { type Pt, blob, pointInPoly, rect } from './geom';
+import { type Pt, blob, pointInPoly, rect, roundPoly } from './geom';
+import { delveDistricts } from '../dungeons/core';
 import { addDocks } from './harbour';
 import { Kit } from './kit';
 import type { PlanInput } from './plan';
@@ -307,7 +308,8 @@ function chapel(k: Kit): void {
 function delveGate(k: Kit): void {
   const { rnd, inp } = k;
   const out = inp.out;
-  const core = Math.min(k.core, 140);
+  const pop = inp.s.population;
+  const core = Math.min(k.core, 140 + pop / 300);
   // The gate faces the road that comes up to it (or else down the slope), cut into the rise.
   const g = inp.terrain.grad([0, 0]);
   const gl = Math.hypot(...g);
@@ -352,12 +354,27 @@ function delveGate(k: Kit): void {
       return;
     }
   };
-  placeOff(16, 10, undefined, 'foundry', 'Smelter');
-  if (inp.s.tier === 'city') placeOff(16, 10, undefined, 'foundry', 'Smelter');
+  // The works grow with the delve: a smelter for every 8,000 people or so, inns, storehouses.
+  const big = Math.min(1, pop / 30000);
+  for (let q = 0, n = 1 + Math.floor(pop / 8000); q < n; q++) placeOff(16, 10, undefined, 'foundry', 'Smelter');
   placeOff(18, 8, undefined, 'stables', 'Stables');
   placeOff(12, 8, undefined, 'inn', 'the Gate Inn');
-  for (let q = 0; q < (inp.s.tier === 'city' ? 8 : 4); q++) placeOff(9 + rnd() * 3, 6 + rnd() * 2, undefined, '', '');
-  for (let t = 0, n = 0; t < 30 && n < 4; t++) {
+  if (pop > 12000) placeOff(12, 8, undefined, 'inn', 'the Travellers\' Rest');
+  for (let q = 0, n = Math.floor(pop / 10000); q < n; q++) placeOff(16, 9, 'store', '', '');
+  for (let q = 0; q < 4 + Math.round(big * 14); q++) placeOff(9 + rnd() * 3, 6 + rnd() * 2, undefined, '', '');
+  // The delve's districts under the mountain, faintly, fanning out behind the gate.
+  const dists = delveDistricts(inp.s.seed, pop);
+  const cols = Math.min(3, dists.length);
+  out.line('underhall', [at(0, 10), at(0, 40 + Math.ceil(dists.length / cols) * 52)], { w: 6 });
+  dists.forEach((dd, q) => {
+    const row = Math.floor(q / cols), col = q % cols, nIn = Math.min(cols, dists.length - row * cols);
+    const u = (col - (nIn - 1) / 2) * 62, v = 46 + row * 52;
+    const hall = roundPoly(rect(...at(u, v), a, 46, 34), 2);
+    out.poly('underhall', hall);
+    out.line('underhall', [...hall, hall[0]], { w: 0 });
+    out.point('dlabel', at(u, v), { name: dd.name.charAt(0).toUpperCase() + dd.name.slice(1), under: 1 });
+  });
+  for (let t = 0, n = 0; t < 40 && n < 3 + Math.round(big * 5); t++) {
     const c = at((rnd() < 0.5 ? -1 : 1) * (40 + rnd() * 40), -10 - rnd() * 60);
     if (inp.water(c) || k.inBlocked(c) || k.nearLane(c, 6) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 12)) continue;
     const heap = blob(c, 7 + rnd() * 9, rnd);

@@ -106,7 +106,8 @@ export interface DProp {
   h?: number;
 }
 
-export type LinkStyle = 'stairs' | 'ladder' | 'shaft' | 'spiral';
+/** passage: a way along to another map at the same depth (a delve's districts and its overview). */
+export type LinkStyle = 'stairs' | 'ladder' | 'shaft' | 'spiral' | 'passage';
 export interface DLink {
   x: number;
   y: number;
@@ -326,9 +327,9 @@ export function townUnderground(
   const u = (k: number) => hash(s.seed ^ k) / 4294967296;
   // A delve: the town is its halls under the mountain, entered by the great gate.
   if (s.delve) {
-    const levels = s.tier === 'city' ? 4 : 3;
+    const n = delveDistricts(s.seed, s.population).length;
     const r = u(0xde1);
-    return [{ dkind: 'delve', did: `${s.id}/delve`, ...named(r < 0.4 ? 'the Halls of {0}' : r < 0.7 ? 'the Deeps of {0}' : 'the Delve of {0}'), tags: [s.tier === 'city' ? 'large' : 'medium', `${levels} levels`] }];
+    return [{ dkind: 'delve', did: `${s.id}/delve`, ...named(r < 0.4 ? 'the Halls of {0}' : r < 0.7 ? 'the Deeps of {0}' : 'the Delve of {0}'), tags: [s.tier === 'city' ? 'large' : 'medium', `${n} ${n === 1 ? 'district' : 'districts'}`, `pop:${s.population}`] }];
   }
   const size = s.tier === 'city' ? 'large' : 'medium';
   if (s.tier === 'city' || s.population >= 4000) {
@@ -367,6 +368,39 @@ export interface Underground {
   k?: number;
   thieves?: boolean;
 }
+
+/** A district of a delve: what it holds, and its name. */
+export interface DelveDistrict {
+  kind: 'halls' | 'clan' | 'market' | 'forge' | 'temple';
+  name: string;
+}
+const CLANS = ['Ironbrow', 'Stonehelm', 'Deepdelver', 'Goldvein', 'Anvilborn', 'Coalbeard', 'Granitehand', 'Silverseam', 'Hammerfell', 'Brightaxe',
+  'Copperkettle', 'Flintheart', 'Blackforge', 'Oakenshield', 'Runecarver', 'Boulderbrow', 'Steelgrip', 'Glimmerdeep'];
+/**
+ * The districts of a delve, from its people (decided from the town alone, so the plan's outline
+ * on the map and the delve's maps agree): about one for every 2,800 people, up to fourteen. The
+ * first holds the market and the hall of the ancestors; about one in three are forges; the rest
+ * are the homes of the clans, with a market quarter and a temple district in the larger delves.
+ */
+export function delveDistricts(seed: number, population: number): DelveDistrict[] {
+  const u = (k: number) => hash(seed ^ k) / 4294967296;
+  const n = Math.max(1, Math.min(14, Math.round(population / 2800)));
+  const out: DelveDistrict[] = [{ kind: 'halls', name: n === 1 ? 'the Halls' : 'the Great Halls' }];
+  const clans = CLANS.slice().sort((a, b) => hash(seed ^ hashStr(a)) - hash(seed ^ hashStr(b)));
+  const forges = n >= 3 ? Math.max(1, Math.round(n / 3)) : n === 2 ? 1 : 0;
+  const forgeNames = ['the Smiths\' Deep', 'the Foundries', 'the Anvil Halls', 'the Hammer Deeps', 'the Smelting Halls'];
+  for (let k = 0; k < forges; k++) out.push({ kind: 'forge', name: forgeNames[k % forgeNames.length] });
+  if (n >= 6) out.push({ kind: 'market', name: u(0xd15) < 0.5 ? 'the Market Vaults' : 'the Merchants\' Deep' });
+  if (n >= 9) out.push({ kind: 'temple', name: u(0xd16) < 0.5 ? 'the Halls of the Fathers' : 'the Tombs of the Kings' });
+  let c = 0;
+  while (out.length < n) out.push({ kind: 'clan', name: `the Halls of Clan ${clans[c++ % clans.length]}` });
+  return out;
+}
+const hashStr = (s: string) => {
+  let h = 2166136261;
+  for (let k = 0; k < s.length; k++) h = Math.imul(h ^ s.charCodeAt(k), 16777619);
+  return h >>> 0;
+};
 
 /** Integer hash (as gen/rng hash32, repeated here to keep this module free of imports with side effects). */
 function hash(n: number): number {

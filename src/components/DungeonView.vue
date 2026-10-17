@@ -8,7 +8,8 @@ import { drawLevel, dungeonPage } from '../dungeons/render';
 /**
  * A dungeon in the manner of the One Page Dungeon: the level's map with numbered rooms and, beside
  * it (below on narrow screens), the key: the hook, then each room's heading and description.
- * Tabs switch levels; clicking a stair, ladder or shaft goes to the level it leads to.
+ * Tabs switch levels; clicking a stair, ladder or shaft goes to the level it leads to. The map
+ * zooms (wheel, pinch or the buttons) and pans (drag); clicking a room in the key brings it into view.
  */
 const PAPER = '#f3ead3';
 const canvas = ref<HTMLCanvasElement>();
@@ -18,6 +19,12 @@ const marks = ref(true);
 const level = ref(0);
 let observer: ResizeObserver | null = null;
 let linkSpots: { x: number; y: number; to: number }[] = [];
+/** Zoom over the fitted view (1 = the whole level), and the pan in screen pixels. */
+const zoom = ref(1);
+const pan = ref({ x: 0, y: 0 });
+const MAX_ZOOM = 8;
+/** The fitted view's scale and origin, kept for turning screen points into map cells. */
+let fit = { scale: 1, ox: 0, oy: 0 };
 
 const site = computed(() => openDungeon.value);
 const d = computed(() => (site.value ? dungeon(site.value) : null));
@@ -33,10 +40,17 @@ const subtitle = computed(() => {
 watch(site, () => {
   // Open on the way in (the ground floor of a tower, not its cellar).
   level.value = Math.max(0, d.value?.levels.findIndex((l) => l.entrances.length) ?? 0);
+  resetView();
   nextTick(draw);
   document.fonts?.load("italic 14px 'IM Fell English'").then(() => draw()).catch(() => {});
 });
-watch([grid, marks, level], () => nextTick(draw));
+watch(level, resetView);
+watch([grid, marks, level, zoom, pan], () => nextTick(draw), { deep: true });
+
+function resetView(): void {
+  zoom.value = 1;
+  pan.value = { x: 0, y: 0 };
+}
 
 function draw(): void {
   const cv = canvas.value, st = stage.value, dd = d.value, lv = L.value;
@@ -53,8 +67,11 @@ function draw(): void {
   g.fillStyle = PAPER;
   g.fillRect(0, 0, W, H);
   const margin = 24;
-  const scale = Math.min((W - 2 * margin) / lv.W, (H - 2 * margin) / lv.H);
-  const ox = (W - lv.W * scale) / 2, oy = (H - lv.H * scale) / 2;
+  const base = Math.min((W - 2 * margin) / lv.W, (H - 2 * margin) / lv.H);
+  fit = { scale: base, ox: (W - lv.W * base) / 2, oy: (H - lv.H * base) / 2 };
+  // Zoomed about the middle of the stage, then panned.
+  const scale = base * zoom.value;
+  const ox = W / 2 - (W / 2 - fit.ox) * zoom.value + pan.value.x, oy = H / 2 - (H / 2 - fit.oy) * zoom.value + pan.value.y;
   drawLevel(g, dd, lv, { scale, ox, oy, grid: grid.value, labels: marks.value });
   g.strokeStyle = '#2b2420';
   g.lineWidth = 1.5;
@@ -92,14 +109,90 @@ function onKey(e: KeyboardEvent): void {
 function spotAt(e: MouseEvent) {
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
-  return linkSpots.find((s) => Math.hypot(s.x - x, s.y - y) < 22);
+  return linkSpots.find((s) => Math.hypot(s.x - x, s.y - y) < Math.max(22, 10 * zoom.value));
 }
 function onCanvasClick(e: MouseEvent): void {
+  // A drag is not a click.
+  if (dragged) return;
   const hit = spotAt(e);
   if (hit) level.value = hit.to;
 }
 function onCanvasMove(e: MouseEvent): void {
-  (e.currentTarget as HTMLElement).style.cursor = spotAt(e) ? 'pointer' : '';
+  if (pointers.size) return;
+  (e.currentTarget as HTMLElement).style.cursor = spotAt(e) ? 'pointer' : zoom.value > 1 ? 'grab' : '';
+}
+
+/** Zoom by `k` about a screen point (stage pixels), keeping that point of the map still. */
+function zoomAt(k: number, px?: number, py?: number): void {
+  const st = stage.value;
+  if (!st) return;
+  const W = st.clientWidth, H = st.clientHeight;
+  const z0 = zoom.value, z1 = Math.max(1, Math.min(MAX_ZOOM, z0 * k));
+  if (z1 === z0) return;
+  const x = px ?? W / 2, y = py ?? H / 2;
+  // The map point under (x, y) before and after must agree.
+  const ox0 = W / 2 - (W / 2 - fit.ox) * z0 + pan.value.x, oy0 = H / 2 - (H / 2 - fit.oy) * z0 + pan.value.y;
+  const mx = (x - ox0) / (fit.scale * z0), my = (y - oy0) / (fit.scale * z0);
+  const ox1 = x - mx * fit.scale * z1, oy1 = y - my * fit.scale * z1;
+  zoom.value = z1;
+  pan.value = z1 === 1 ? { x: 0, y: 0 } : { x: ox1 - (W / 2 - (W / 2 - fit.ox) * z1), y: oy1 - (H / 2 - (H / 2 - fit.oy) * z1) };
+}
+function onWheel(e: WheelEvent): void {
+  e.preventDefault();
+  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+  zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
+}
+
+// Dragging pans; two fingers pinch to zoom.
+const pointers = new Map<number, { x: number; y: number }>();
+let dragged = false;
+let pinch0 = 0;
+function onPointerDown(e: PointerEvent): void {
+  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  dragged = false;
+  if (pointers.size === 2) {
+    const [a, b] = [...pointers.values()];
+    pinch0 = Math.hypot(a.x - b.x, a.y - b.y);
+  }
+}
+function onPointerMove(e: PointerEvent): void {
+  const p = pointers.get(e.pointerId);
+  if (!p) return;
+  const dx = e.clientX - p.x, dy = e.clientY - p.y;
+  if (pointers.size === 2) {
+    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const [a, b] = [...pointers.values()];
+    const d = Math.hypot(a.x - b.x, a.y - b.y);
+    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
+    if (pinch0 > 0) zoomAt(d / pinch0, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
+    pinch0 = d;
+    dragged = true;
+    return;
+  }
+  if (Math.abs(dx) + Math.abs(dy) > 3) dragged = true;
+  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
+  if (zoom.value > 1) {
+    pan.value = { x: pan.value.x + dx, y: pan.value.y + dy };
+    (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
+  }
+}
+function onPointerUp(e: PointerEvent): void {
+  pointers.delete(e.pointerId);
+  if (pointers.size < 2) pinch0 = 0;
+}
+
+/** Bring a room of the key into view, zoomed in on it. */
+function showRoom(r: { x: number; y: number; w: number; h: number }): void {
+  const st = stage.value;
+  if (!st) return;
+  const W = st.clientWidth, H = st.clientHeight;
+  const z = Math.max(zoom.value, Math.min(MAX_ZOOM, 2.5));
+  const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
+  // Where the room's centre would be at zoom z with no pan, moved to the middle of the stage.
+  const ox = W / 2 - (W / 2 - fit.ox) * z, oy = H / 2 - (H / 2 - fit.oy) * z;
+  zoom.value = z;
+  pan.value = { x: W / 2 - (ox + cx * fit.scale * z), y: H / 2 - (oy + cy * fit.scale * z) };
 }
 
 onMounted(() => {
@@ -127,6 +220,11 @@ watch(stage, (el, old) => {
       <div class="actions">
         <label class="chip"><input v-model="grid" type="checkbox" /> Grid</label>
         <label class="chip"><input v-model="marks" type="checkbox" /> Numbers</label>
+        <span class="zoom" role="group" aria-label="Zoom">
+          <button title="Zoom out" aria-label="Zoom out" :disabled="zoom <= 1" @click="zoomAt(1 / 1.5)">&minus;</button>
+          <button title="Fit the whole level" @click="resetView">Fit</button>
+          <button title="Zoom in" aria-label="Zoom in" :disabled="zoom >= MAX_ZOOM" @click="zoomAt(1.5)">+</button>
+        </span>
         <button @click="download">Download PNG</button>
         <button class="leave" @click="leave">Leave</button>
       </div>
@@ -138,13 +236,16 @@ watch(stage, (el, old) => {
     </nav>
     <div class="body">
       <div ref="stage" class="stage">
-        <canvas ref="canvas" @click="onCanvasClick" @mousemove="onCanvasMove" />
+        <canvas
+          ref="canvas" @click="onCanvasClick" @mousemove="onCanvasMove" @wheel="onWheel"
+          @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp"
+        />
       </div>
       <aside class="key">
         <p class="hook">{{ d.hook }}</p>
         <ol>
           <li v-for="r in rooms" :key="r.n" :value="r.n">
-            <strong>{{ r.name }}.</strong> {{ r.text }}
+            <button class="room" :title="`Show room ${r.n} on the map`" @click="showRoom(r)"><strong>{{ r.name }}.</strong></button> {{ r.text }}
             <div v-for="(nt, k) in r.notes" :key="k" class="note" :class="nt.label.toLowerCase()"><em>{{ nt.label }}.</em> {{ nt.text }}</div>
           </li>
         </ol>
@@ -252,6 +353,34 @@ button:hover {
 canvas {
   position: absolute;
   inset: 0;
+  touch-action: none;
+}
+.zoom {
+  display: inline-flex;
+  gap: 2px;
+}
+.zoom button {
+  min-width: 34px;
+  justify-content: center;
+}
+.zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+button.room {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-size: inherit;
+  display: inline;
+  cursor: pointer;
+  color: inherit;
+  text-decoration: underline dotted rgba(43, 36, 32, 0.45);
+}
+button.room:hover {
+  background: none;
+  text-decoration-color: #2b2420;
 }
 .key {
   width: 340px;

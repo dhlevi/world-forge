@@ -32,7 +32,8 @@ export function dungeonFromFeature(p: Record<string, unknown>, coords: number[])
 }
 
 export function dungeonTags(s: DungeonSite): string {
-  return s.tags.join(' · ');
+  // Tags for the generator (a delve's people, 'pop:...') are not shown.
+  return s.tags.filter((t) => !t.includes(':')).join(' · ');
 }
 
 const thumbs = new Map<string, string>();

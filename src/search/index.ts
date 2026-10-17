@@ -93,7 +93,7 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
     for (const u of townUnderground(s, (tpl) => namePhrase(ci, tpl, [{ name: s.name ?? '', en: s.nameEn ?? s.name ?? '' }]))) {
       out.push({
         id: u.did, name: cap(u.name), ...(u.en !== u.name ? { alt: cap(u.en) } : {}), type: u.dkind === 'sewer' ? 'Sewers' : u.dkind === 'delve' ? 'Delve' : 'Catacombs', cat: 'lair', lon: s.lon, lat: s.lat, zoom: 15.2, rank: 0.3,
-        sid: s.id, info: u.tags.join(' · '),
+        sid: s.id, info: u.tags.filter((t) => !t.includes(':')).join(' · '),
       });
     }
   }
@@ -191,7 +191,7 @@ export function planEntries(features: { geometry: { type: string; coordinates: u
       const [lon, lat] = f.geometry.coordinates as number[];
       out.push({
         id: String(p.did), name: cap(String(p.name)), ...(p.en ? { alt: cap(String(p.en)) } : {}), type: LAIR_TYPE[String(p.dkind)] ?? 'Dungeon', cat: 'lair', lon, lat, zoom: 16.4, rank: 0.3,
-        sid: p.sid ? String(p.sid) : undefined, info: String(p.tags ?? '').split(',').filter(Boolean).join(' · '), upgrade: true,
+        sid: p.sid ? String(p.sid) : undefined, info: String(p.tags ?? '').split(',').filter((t) => t && !t.includes(':')).join(' · '), upgrade: true,
       });
       continue;
     }

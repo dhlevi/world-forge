@@ -260,7 +260,7 @@ export function drawLevel(g: Ctx2D, d: Dungeon, L: DLevel, o: DungeonDrawOpts): 
       if (l.to < 0) continue;
       const k = `${l.x},${l.y}`;
       const lines = spots.get(k) ?? [];
-      lines.push(`${l.dir === 'up' ? 'Up' : 'Down'}: ${d.levels[l.to]?.name ?? ''}`);
+      lines.push(`${l.style === 'passage' ? 'To' : l.dir === 'up' ? 'Up' : 'Down'}: ${d.levels[l.to]?.name ?? ''}`);
       spots.set(k, lines.sort((a, b) => (a < b ? 1 : -1)));
     }
     for (const [k, lines] of spots) {
@@ -462,6 +462,21 @@ function link(g: Ctx2D, l: DLink, lw: (n: number) => number): void {
     g.textAlign = 'center';
     g.textBaseline = 'middle';
     g.fillText(down ? '▼' : '▲', down ? 0.95 : -0.95, -0.85);
+  } else if (l.style === 'passage') {
+    // A way along to another map: an arched opening with an arrow.
+    g.fillStyle = '#f8f1df';
+    g.beginPath();
+    g.arc(0, 0, 0.8, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.fillStyle = INK;
+    g.beginPath();
+    g.moveTo(0.5, 0);
+    g.lineTo(-0.3, -0.38);
+    g.lineTo(-0.12, 0);
+    g.lineTo(-0.3, 0.38);
+    g.closePath();
+    g.fill();
   } else if (l.style === 'stairs') {
     const gr = g.createLinearGradient(-0.5, 0, 0.5, 0);
     gr.addColorStop(0, '#fff');

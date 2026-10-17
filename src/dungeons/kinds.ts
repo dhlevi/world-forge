@@ -1,6 +1,6 @@
 import { mulberry32, type Rng } from '../gen/rng';
 import {
-  CHANNEL, CELL_M, type DLevel, type DoorKind, type DRoom, type Dungeon, type DungeonSite, FLOOR, GROUND, type LinkStyle, type Rect, RUBBLE, VOID, WATER,
+  CHANNEL, CELL_M, type DelveDistrict, type DLevel, delveDistricts, type DoorKind, type DRoom, type Dungeon, type DungeonSite, FLOOR, GROUND, type LinkStyle, type Rect, RUBBLE, VOID, WATER,
   at, carveCircle, carveCorridor, carveRect, centre, connectAll, doorsForRooms, newLevel, open, overlaps, pick, pickW, roomOf, scatterRooms, set,
 } from './core';
 import { writeKey } from './key';
@@ -38,7 +38,7 @@ function build(site: DungeonSite): Dungeon {
     case 'sewer': levels = stack(n, rnd, (k, anchors) => k === 0 ? sewerLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cistern level', Math.round(64 * Math.max(1, Math.min(3, site.scale ?? 1))), Math.round(48 * Math.max(1, Math.min(3, site.scale ?? 1)))), 'ladder'); break;
     case 'ruin': levels = stack(n, rnd, (k, anchors) => k === 0 ? ruinLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Cellars', 40, 30), 'stairs'); break;
     case 'well': levels = stack(n, rnd, (k, anchors) => k === 0 ? wellLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Hidden vaults', 36, 28), 'stairs'); break;
-    case 'delve': levels = stack(n, rnd, (k, anchors) => (k === n - 1 && n > 2 ? deepsLevel(site, rnd, k, anchors) : delveLevel(site, rnd, k, n, anchors)), 'stairs'); break;
+    case 'delve': levels = delve(site, rnd); break;
     default: levels = stack(n, rnd, (k, anchors) => cryptLevel(site, rnd, k, anchors), 'stairs'); break;
   }
   // Rooms are numbered through the whole dungeon, level by level.
@@ -46,6 +46,13 @@ function build(site: DungeonSite): Dungeon {
   for (const L of levels) for (const r of L.rooms) if (r.n) r.n = num++;
   const d: Dungeon = { site, title: site.name, hook: '', levels };
   writeKey(d, mulberry32(site.seed ^ 0x6e7));
+  // A delve's overview names its districts and says what each holds.
+  for (const L of levels) for (const r of L.rooms) {
+    const o = OVERVIEW_TEXT.get(r);
+    if (!o) continue;
+    [r.name, r.text] = o;
+    r.notes = [];
+  }
   return d;
 }
 
@@ -489,6 +496,20 @@ const DELVE_LEVELS: Record<string, { name: string; rooms: DelveRoom[] }> = {
     rooms: [['delve-forge', 4, [5, 7], 'forge'], ['delve-smelter', 2, [5, 7], 'smelter'], ['armoury', 1, [4, 6], 'armoury'], ['delve-vault', 1, [4, 5], 'vault'],
       ['store', 2, [4, 6], 'store'], ['delve-home', 6, [3, 4], 'home'], ['delve-forge', 2, [4, 6], 'forge']],
   },
+  clan: {
+    name: 'Clan halls',
+    rooms: [['delve-clanhall', 1, [7, 9], 'hall'], ['delve-home', 16, [3, 5], 'home'], ['delve-tavern', 1, [5, 6], 'tavern'], ['delve-shrine', 1, [4, 5], 'temple'],
+      ['store', 2, [4, 5], 'store'], ['delve-brewery', 1, [4, 6], 'brewery'], ['delve-home', 4, [3, 4], 'home']],
+  },
+  market: {
+    name: 'Market vaults',
+    rooms: [['delve-market', 2, [8, 10], 'market'], ['delve-tavern', 2, [5, 6], 'tavern'], ['store', 4, [4, 6], 'store'], ['delve-vault', 1, [4, 5], 'vault'],
+      ['delve-home', 8, [3, 4], 'home']],
+  },
+  temple: {
+    name: 'Halls of the ancestors',
+    rooms: [['delve-temple', 1, [9, 11], 'temple'], ['delve-tomb', 6, [4, 6], 'tomb'], ['delve-shrine', 2, [4, 5], 'temple'], ['delve-home', 6, [3, 4], 'home']],
+  },
   mixed: {
     name: 'The halls and forges',
     rooms: [['delve-market', 1, [8, 10], 'market'], ['delve-temple', 1, [5, 7], 'temple'], ['delve-forge', 2, [5, 6], 'forge'], ['delve-smelter', 1, [5, 6], 'smelter'],
@@ -497,16 +518,111 @@ const DELVE_LEVELS: Record<string, { name: string; rooms: DelveRoom[] }> = {
 };
 
 /**
- * A level of a delve: a pillared great hall at its heart, a broad avenue across the level lined
- * with statues of the ancestors, cross avenues, and the level's rooms opening off them. The first
- * level is entered from the great gate at the west edge.
+ * A delve under the mountain: an overview of the whole delve (not to scale), then the gate halls
+ * behind the great gate, then one map for each of its districts (delveDistricts in core.ts: one
+ * for every 2,800 people or so), and the deeps (the mines) below the first forge district. The
+ * overview's blocks, and a passage at the west end of each map, lead between them.
  */
-function delveLevel(site: DungeonSite, rnd: Rng, k: number, n: number, anchors: [number, number][]): DLevel {
+function delve(site: DungeonSite, rnd: Rng): DLevel[] {
+  const pop = Number(site.tags.find((t) => t.startsWith('pop:'))?.slice(4) ?? 3000);
+  const districts = delveDistricts(site.seed, pop);
+  const overview = delveOverview(site, rnd, districts);
+  const levels: DLevel[] = [overview.L];
+  const gate = delveLevel(site, rnd, 'gate', 'Gate halls', true);
+  levels.push(gate);
+  const SPEC: Record<string, string> = { halls: districts.length === 1 ? 'mixed' : 'halls', clan: 'clan', market: 'market', forge: 'forges', temple: 'temple' };
+  for (const dd of districts) levels.push(delveLevel(site, rnd, SPEC[dd.kind], cap(dd.name), false));
+  // Passages between the overview and each map: the overview's blocks, and each map's west end.
+  overview.blocks.forEach((b, k) => {
+    overview.L.links.push({ x: b[0], y: b[1], dir: 'down', to: k + 1, style: 'passage' });
+    const L = levels[k + 1];
+    const cy = Math.floor(L.H / 2);
+    L.links.push({ x: k === 0 ? L.W - 4 : 1, y: cy, dir: 'up', to: 0, style: 'passage' });
+  });
+  // The deeps under the first forge district (or the only district).
+  const fk = districts.findIndex((dd) => dd.kind === 'forge');
+  const above = levels[2 + (fk >= 0 ? fk : 0)];
+  const r = above.rooms.filter((q) => q.n && q.w >= 3 && q.h >= 3 && q.x >= 3 && q.y >= 3).sort((a, b) => b.lx - a.lx)[0];
+  if (r) {
+    const p: [number, number] = [Math.floor(r.lx), Math.floor(r.ly)];
+    above.props = above.props.filter((q) => Math.hypot(q.x - (p[0] + 0.5), q.y - (p[1] + 0.5)) > 1.2);
+    const deeps = deepsLevel(site, rnd, levels.length, [p]);
+    deeps.links.push({ x: p[0], y: p[1], dir: 'up', to: levels.indexOf(above), style: 'stairs' });
+    above.links.push({ x: p[0], y: p[1], dir: 'down', to: levels.length, style: 'stairs' });
+    r.tags.push('down:stairs');
+    levels.push(deeps);
+  }
+  return levels;
+}
+const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
+
+/**
+ * The overview of a delve, not to scale: the great gate and its hall at the west, the great
+ * avenue east past the king's hall, and the districts in two rows either side of the avenue, each
+ * a block that leads to its own map. Returns the level and the link spot of each block (the gate
+ * halls first, then the districts in order).
+ */
+function delveOverview(site: DungeonSite, rnd: Rng, districts: DelveDistrict[]): { L: DLevel; blocks: [number, number][] } {
+  const cols = Math.ceil(districts.length / 2);
+  const W = Math.max(46, 30 + cols * 13), H = 44;
+  const L = newLevel('The delve (overview, not to scale)', W, H);
+  const cy = Math.floor(H / 2);
+  carveCorridor(L, 0, cy, W - 3, cy, true, 3);
+  L.entrances.push({ x: 0, y: cy, dir: 0 });
+  const blocks: [number, number][] = [];
+  const rooms: { r: Rect; tag: string; name: string; text: string }[] = [];
+  // The gate hall, then the king's hall on the avenue.
+  const gate: Rect = { x: 4, y: cy - 4, w: 9, h: 9 };
+  carveRect(L, gate.x, gate.y, gate.w, gate.h);
+  rooms.push({ r: gate, tag: 'delve-district', name: 'Gate halls', text: 'Behind the great gate: the gate hall, the king\'s hall, the wardens\' barracks, guard rooms, storerooms, a brewery and the pony stables.' });
+  blocks.push([gate.x + 4, gate.y + 2]);
+  for (let x = gate.x + 1; x < gate.x + gate.w - 1; x += 3) L.props.push({ kind: 'pillar', x: x + 0.5, y: gate.y + gate.h - 1.5 });
+  // The districts: alternately above and below the avenue, joined to it by a short way.
+  const WHAT: Record<string, string> = {
+    halls: 'The heart of the delve: the market hall, the hall of the ancestors, the moot hall, an alehouse and many homes.',
+    clan: 'The homes of one of the great clans round their clan hall, with an alehouse, a shrine of the clan\'s ancestors, a brewery and storerooms.',
+    market: 'Market halls under the mountain, alehouses, storerooms and a strongroom, and the homes of the merchant families.',
+    forge: 'Forges and smelters that never go cold, an armoury, the clan vault, storerooms and the smiths\' homes; the way down to the deeps.',
+    temple: 'The great hall of the ancestors and the tombs of the kings, shrines and the homes of the priests.',
+  };
+  districts.forEach((dd, k) => {
+    const col = Math.floor(k / 2), up = k % 2 === 0;
+    const w = 10, h = 8;
+    const x = 18 + col * 13, y = up ? cy - 6 - h - Math.floor(rnd() * 4) : cy + 7 + Math.floor(rnd() * 4);
+    const r: Rect = { x, y, w, h };
+    carveRect(L, r.x, r.y, r.w, r.h);
+    carveCorridor(L, x + 5, up ? y + h : y - 1, x + 5, cy, false, 2);
+    // Only the first forge district has the way down to the deeps.
+    const deeps = k === Math.max(0, districts.findIndex((q) => q.kind === 'forge'));
+    const text = WHAT[dd.kind].replace('; the way down to the deeps.', '.') + (deeps ? ' The way down to the deeps opens here.' : '');
+    rooms.push({ r, tag: 'delve-district', name: cap(dd.name), text });
+    blocks.push([x + 5, y + 3]);
+    L.props.push({ kind: 'statue', x: x + 1, y: y + 1 }, { kind: 'statue', x: x + w - 1, y: y + 1 });
+  });
+  for (let x = 16; x < W - 4; x += 5) for (const y of [cy - 1.3, cy + 2.3]) L.props.push({ kind: 'statue', x: x + 0.5, y });
+  doorsForRooms(L, rooms.map((q) => q.r), rnd, () => 'arch');
+  for (const q of rooms) {
+    const room = roomOf(q.r, 1, [q.tag]);
+    OVERVIEW_TEXT.set(room, [q.name, q.text]);
+    L.rooms.push(room);
+  }
+  return { L, blocks };
+}
+/** The names and summaries of the overview's blocks, set over the written key (see build). */
+const OVERVIEW_TEXT = new WeakMap<DRoom, [string, string]>();
+
+/**
+ * A level of a delve: a pillared great hall at its heart, a broad avenue across the level lined
+ * with statues of the ancestors, cross avenues, and the level's rooms opening off them. The gate
+ * halls are entered from the great gate at the west edge; the others by a passage from the overview.
+ */
+function delveLevel(site: DungeonSite, rnd: Rng, which: string, name: string, gateLevel: boolean): DLevel {
   const large = site.tags.includes('large');
-  const W = large ? 84 : 68, H = large ? 62 : 50;
-  const which = k === 0 ? 'gate' : n === 3 ? 'mixed' : k === 1 ? 'halls' : 'forges';
+  const W = large ? 76 : 64, H = large ? 56 : 48;
+  const k = gateLevel ? 0 : 1;
+  const anchors: [number, number][] = [];
   const spec = DELVE_LEVELS[which];
-  const L = newLevel(spec.name, W, H);
+  const L = newLevel(name, W, H);
   const cy = Math.floor(H / 2), cx = Math.floor(W / 2);
   // The great hall.
   const hw = large ? 16 : 12, hh = large ? 10 : 8;
@@ -514,7 +630,7 @@ function delveLevel(site: DungeonSite, rnd: Rng, k: number, n: number, anchors: 
   carveRect(L, hall.x, hall.y, hall.w, hall.h);
   for (let x = hall.x + 2; x < hall.x + hall.w - 1; x += 3) for (const y of [hall.y + 1.5, hall.y + hall.h - 1.5]) L.props.push({ kind: 'pillar', x: x + 0.5, y });
   // The avenues: the main one across the level (the gate's on the first), and two cross avenues.
-  const ax0 = k === 0 ? 0 : 3;
+  const ax0 = k === 0 ? 0 : 1;
   carveCorridor(L, ax0, cy, W - 4, cy, true, 3);
   const crossX = [Math.floor(W * 0.24), Math.floor(W * 0.76)];
   for (const x of crossX) carveCorridor(L, x, 3, x, H - 4, false, 2);
@@ -584,6 +700,7 @@ function delveLevel(site: DungeonSite, rnd: Rng, k: number, n: number, anchors: 
       case 'home': put('bed', r.x + 0.8, r.y + 1.2, { w: 1, h: 1.9 }); put('table', c[0] + 0.5, c[1] + 0.3, { w: 1.2, h: 0.8 }); put('chest', r.x + r.w - 0.7, r.y + r.h - 0.7); break;
       case 'forge': put('brazier', r.x + 1, r.y + 1); put('brazier', r.x + r.w - 1, r.y + 1); put('table', c[0], c[1], { w: 1.4, h: 0.8 }); put('barrel', r.x + 0.8, r.y + r.h - 0.8); put('crate', r.x + r.w - 0.8, r.y + r.h - 0.8); break;
       case 'smelter': put('brazier', c[0], c[1]); put('ore', r.x + 1, r.y + r.h - 1); put('ore', r.x + 2, r.y + r.h - 1); put('cart', r.x + r.w - 1.5, r.y + 1.2, { a: 0 }); break;
+      case 'tomb': put('sarcophagus', c[0], c[1], { a: r.w > r.h ? 0 : Math.PI / 2, w: 1.8, h: 0.9 }); put('urn', r.x + 0.7, r.y + 0.7); put('urn', r.x + r.w - 0.7, r.y + 0.7); break;
       case 'vault': for (let q = 0; q < 5; q++) put('chest', r.x + 0.8 + rnd() * (r.w - 1.6), r.y + 0.8 + rnd() * (r.h - 1.6)); break;
       case 'pillars': if (k === 0) put('statue', c[0], c[1]); else put('well', c[0], c[1]); break;
       default: furnish(L, r, use, rnd, () => true);
