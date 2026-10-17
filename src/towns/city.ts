@@ -2,14 +2,14 @@ import { Delaunay } from 'd3-delaunay';
 import { mulberry32 } from '../gen/rng';
 import { chaikin } from '../gen/rivers';
 import {
-  type Poly, type Pt, area, ccw, centroid, compactness, distToLine, distToSeg, frontRect, inset, longestEdge, pointInPoly, rect, rectIn, rectangularity,
+  type Poly, type Pt, area, blob, ccw, centroid, compactness, distToLine, distToSeg, frontRect, inset, longestEdge, pointInPoly, rect, rectIn, rectangularity,
   strips, subdivide,
 } from './geom';
 import { addDocks } from './harbour';
 import type { PlanFeature, PlanInput } from './plan';
 import { RIVER } from './terrain';
 import { graves } from './kit';
-import { type BuildingRef, type WardInfo, labelCity } from './naming';
+import { type BuildingRef, type WardInfo, type WardKind, labelCity } from './naming';
 import { BUILD_GROUND, contourStrips, plantField } from './ground';
 import { type CityLayout, makeLayout } from './layout';
 import { CULTURES } from '../names/cultures';
@@ -29,7 +29,7 @@ interface Patch {
   c: Pt;
   water: boolean;
   inside: boolean;
-  kind: 'plaza' | 'temple' | 'citadel' | 'park' | 'harbour' | 'ward' | 'rich' | 'garrison' | 'graveyard' | '';
+  kind: WardKind;
 }
 
 /**
@@ -40,7 +40,7 @@ interface Patch {
  * the town grows onto gentle ground, streets avoid steep grades, blocks terrace along the
  * contours, the citadel and temple take the high ground, and shores get docks.
  */
-export function buildCity({ s, exits, water, terrain, ground, out, names, culture }: PlanInput): void {
+export function buildCity({ s, exits, water, terrain, ground, out, names, culture, theme, holy }: PlanInput): void {
   const rnd = mulberry32(s.seed);
   const town = s.tier !== 'city';
   const nInner = town ? clamp(Math.round(s.population / 500) + 2, 4, 14) : clamp(Math.round(s.population / 900) + 3, 8, 40);
@@ -315,6 +315,90 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     }
   }
 
+  // Canals: in a canal city, waterways take the place of some of the lesser streets, from water
+  // gates in the wall where it meets the water to basins by the market, with bridges where the
+  // main streets cross them.
+  const canalEdges = new Set<string>();
+  const CANAL_W = town ? 6 : 8;
+  if (theme === 'canal') {
+    const inEdge = (ek: string) => {
+      const cells = edgeCells.get(ek)!;
+      return cells.length === 2 && cells.every((i) => patches[i].inside);
+    };
+    const canalCost = (u: number, v: number, ek: string) =>
+      mainEdges.has(ek) || !inEdge(ek) || isWaterEdge(u, v, ek) ? Infinity : len(u, v) * (canalEdges.has(ek) ? 0.3 : 1) * (1 + 0.4 * rnd());
+    // Wall corners near the water, spread round the wall.
+    const toWater = (p: Pt): Pt | null => {
+      let best: Pt | null = null, bd = Infinity;
+      for (let a = 0; a < 16; a++) {
+        const ca = Math.cos((a / 16) * Math.PI * 2), sa = Math.sin((a / 16) * Math.PI * 2);
+        for (let d = 8; d <= 200; d += 8) {
+          const q: Pt = [p[0] + ca * d, p[1] + sa * d];
+          if (!water(q)) continue;
+          if (d < bd) {
+            bd = d;
+            best = q;
+          }
+          break;
+        }
+      }
+      return best;
+    };
+    // Only corners where a lesser street runs in from the wall can start a canal.
+    const opens = (k: number) => adj[nodeId.get(key(wall[k]))!].some((e) => inEdge(e.ek) && !mainEdges.has(e.ek));
+    const starts = wall.map((p, k) => ({ k, w: water(p) || !opens(k) ? null : toWater(p) })).filter((x) => x.w && !gates.some((g) => g.k === x.k))
+      .map((x) => ({ ...x, d: Math.hypot(x.w![0] - wall[x.k][0], x.w![1] - wall[x.k][1]) })).sort((a, b) => a.d - b.d);
+    // Wall corners that open on the water: a water gate leads in from each.
+    const gateOf = new Map<number, Pt>();
+    for (const st of starts) gateOf.set(nodeId.get(key(wall[st.k]))!, st.w!);
+    // Canals start at points spread through the city (by farthest-point sampling over the inner
+    // street corners) and run to a water gate, to the river or shore, or to a canal already dug.
+    const innerNodes = [...new Set(inner.filter((i) => patches[i].inside).flatMap((i) => patches[i].poly.map((p) => nodeId.get(key(p))!)))]
+      .filter((n) => !wallNode.has(n) && adj[n].some((e) => inEdge(e.ek) && !mainEdges.has(e.ek)));
+    const sources: number[] = [];
+    if (innerNodes.length) sources.push(innerNodes.reduce((a, b) => (Math.hypot(...P[b]) < Math.hypot(...P[a]) ? b : a)));
+    while (sources.length < (town ? 3 : 6) && sources.length < innerNodes.length) {
+      let best = -1, bd = -1;
+      for (const n of innerNodes) {
+        const d = Math.min(...sources.map((q) => Math.hypot(P[n][0] - P[q][0], P[n][1] - P[q][1])));
+        if (d > bd) {
+          bd = d;
+          best = n;
+        }
+      }
+      if (best < 0 || bd < 60) break;
+      sources.push(best);
+    }
+    const bridged = new Set<number>();
+    const gated = new Set<number>();
+    for (const n0 of sources) {
+      const goal = (n: number) => n !== n0 && (gateOf.has(n) || adj[n].some((e) => canalEdges.has(e.ek) || isWaterEdge(n, e.to, e.ek)));
+      const path = dijkstra(n0, goal, canalCost);
+      if (!path || path.length < 3) continue;
+      for (let k = 0; k + 1 < path.length; k++) canalEdges.add(ekey(path[k], path[k + 1]));
+      const end = path[path.length - 1];
+      const line: Pt[] = path.map((n) => P[n]);
+      // Out through a water gate to the open water.
+      const w = gateOf.get(end);
+      if (w && !gated.has(end)) {
+        gated.add(end);
+        line.push(w);
+        const a = P[end], b = P[path[path.length - 2]], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        const nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L, off = CANAL_W / 2 + 2;
+        out.point('tower', [a[0] + nx * off, a[1] + ny * off], { r: town ? 3 : 3.8 });
+        out.point('tower', [a[0] - nx * off, a[1] - ny * off], { r: town ? 3 : 3.8 });
+      }
+      out.line('canal', line, { w: CANAL_W });
+      for (const n of path) {
+        const street = adj[n].find((e) => mainEdges.has(e.ek));
+        if (!street || bridged.has(n)) continue;
+        bridged.add(n);
+        const d = [P[street.to][0] - P[n][0], P[street.to][1] - P[n][1]];
+        out.poly('bridge', rect(P[n][0], P[n][1], Math.atan2(d[1], d[0]), CANAL_W + 6, 5.5));
+      }
+    }
+  }
+
   // Special wards.
   const nbrs = (i: number) => Array.from(del.neighbors(i)).filter((j) => patches[j].inside);
   const free = (i: number) => patches[i].inside && patches[i].kind === '';
@@ -331,7 +415,8 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     return p.some((q, e) => wallEdges.has(`${key(q)}|${key(p[(e + 1) % p.length])}`));
   };
   const gateNodes = new Set(gates.map((g) => key(wall[g.k])));
-  if (s.citadel && s.walls) {
+  // A fortress city has a citadel whether or not one was planned.
+  if ((s.citadel || theme === 'fortress') && s.walls) {
     const c = inner.filter((i) => free(i) && touchesWall(i) && !nbrs(plaza).includes(i) && !patches[i].poly.some((q) => gateNodes.has(key(q))));
     if (c.length) patches[highest(c)].kind = 'citadel';
   }
@@ -341,20 +426,87 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     if (c.length) patches[pick(c)].kind = 'park';
   }
   const docks = addDocks(terrain, water, out, rnd, {
-    maxR: Rin * 1.5, spacing: town ? 40 : 26, pierW: town ? 5 : 7,
+    maxR: Rin * 1.5, spacing: town ? 40 : theme === 'merchant' ? 18 : 26, pierW: town ? 5 : 7,
     seaLen: town ? [20, 45] : [30, 80], boatLen: [12, 24], boatProb: 0.6, lighthouse: !town, ships: town ? 1 : 4,
   });
   for (const d of docks) {
     const i = inner.find((j) => free(j) && pointInPoly(patches[j].poly, d.p[0], d.p[1]));
     if (i !== undefined) patches[i].kind = 'harbour';
   }
+  /** A quarter: contiguous free wards grown from a seed, kept off the market's edge. */
+  const grow = (seed: number, n: number) => {
+    const got = [seed];
+    for (let t = 0; t < 20 && got.length < n; t++) {
+      const c = got.flatMap((g) => nbrs(g)).filter((j) => free(j) && !got.includes(j) && !nbrs(plaza).includes(j));
+      if (!c.length) break;
+      got.push(pick(c));
+    }
+    return got;
+  };
+  const waterside = (i: number) => patches[i].poly.some((v) => water(v)) || nbrs(i).length < Array.from(del.neighbors(i)).length;
+  const offMarket = () => inner.filter((i) => free(i) && !plazas.some((pz) => nbrs(pz).includes(i)));
+  /**
+   * The wards a city theme sets aside: a second market and a counting-house quarter (merchant),
+   * a rookery on the low ground by the water or the wall (thieves), a ruined quarter (rebuilt), a
+   * forge quarter by a gate (forge), the mages' tower on the high ground (mages), and a pilgrims'
+   * square beside the temple (pilgrim).
+   */
+  const themeWards = () => {
+    switch (theme) {
+      case 'merchant': {
+        const m = nbrs(plaza).filter(free);
+        if (m.length && !town) patches[pick(m)].kind = 'plaza';
+        const cq = plazas.flatMap((pz) => nbrs(pz)).filter(free).sort(() => rnd() - 0.5);
+        for (const i of cq.slice(0, town ? 1 : 3)) patches[i].kind = 'counting';
+        break;
+      }
+      case 'thieves': {
+        const c = offMarket();
+        if (!c.length) break;
+        const score = (i: number) => terrain.height(patches[i].c) - (waterside(i) ? 15 : 0) - (touchesWall(i) ? 8 : 0);
+        const seed = c.reduce((a, b) => (score(b) < score(a) ? b : a));
+        for (const i of grow(seed, town ? 1 : 2 + Math.floor(rnd() * 2))) patches[i].kind = 'slum';
+        break;
+      }
+      case 'rebuilt': {
+        const c = offMarket();
+        if (c.length) for (const i of grow(pick(c), town ? 1 : 2 + Math.floor(rnd() * 2))) patches[i].kind = 'ruins';
+        break;
+      }
+      case 'forge': {
+        const g = offMarket().filter((i) => touchesWall(i) && patches[i].poly.some((q) => gateNodes.has(key(q))));
+        const c = g.length ? g : offMarket();
+        if (c.length) for (const i of grow(pick(c), town ? 1 : 2)) patches[i].kind = 'forge';
+        break;
+      }
+      case 'mages': {
+        const c = offMarket();
+        if (c.length) patches[highest(c)].kind = 'tower';
+        break;
+      }
+      case 'pilgrim': {
+        const t = inner.find((i) => patches[i].kind === 'temple');
+        const c = t !== undefined ? nbrs(t).filter(free) : [];
+        if (c.length) patches[pick(c)].kind = 'pilgrims';
+        break;
+      }
+    }
+  };
   // A garrison beside the citadel (or by a gate), and a cemetery: an old park, or a ward on the wall.
   if (s.walls && (!town || s.population > 2500)) {
     const byCitadel = inner.filter((i) => free(i) && nbrs(i).some((j) => patches[j].kind === 'citadel'));
     const byGate = inner.filter((i) => free(i) && touchesWall(i) && patches[i].poly.some((q) => gateNodes.has(key(q))));
     const c = byCitadel.length ? byCitadel : byGate;
     if (c.length) patches[pick(c)].kind = 'garrison';
+    // A fortress city keeps a larger garrison: more barracks wards by the gates.
+    if (theme === 'fortress') {
+      for (let k = 0; k < (town ? 1 : 2); k++) {
+        const g = inner.filter((i) => free(i) && touchesWall(i) && patches[i].poly.some((q) => gateNodes.has(key(q))));
+        if (g.length) patches[pick(g)].kind = 'garrison';
+      }
+    }
   }
+  themeWards();
   if (!town || s.population > 2000) {
     const parks = inner.filter((i) => patches[i].kind === 'park');
     const pc = patches[plaza].c;
@@ -374,6 +526,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       const r = p[(e + 1) % p.length];
       if (wallEdges.has(`${key(q)}|${key(r)}`)) return onWall;
       const ek = ekey(nodeId.get(key(q))!, nodeId.get(key(r))!);
+      if (canalEdges.has(ek)) return CANAL_W / 2 + 2.5;
       return mainEdges.has(ek) ? main : lane;
     });
   };
@@ -475,7 +628,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
    * A market: double rows of stalls with aisles between, turned to the square's long side, a
    * fountain (in a city) or a well at the heart, and a few carts drawn up at the edges.
    */
-  const market = (q: Poly, city: boolean) => {
+  const market = (q: Poly, city: boolean, dense = false) => {
     const f = frameIn(q, 4);
     if (!f) return;
     const { T, box, W, H, ang } = f;
@@ -484,10 +637,11 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const clearC = rC + 6;
     // Back-to-back pairs of stalls in short runs of three to five, with lanes between the rows
     // and cross aisles between the runs; a run here and there is left out for an open pitch.
-    for (let v = -H / 2 + 3; v + 4.6 <= H / 2 - 3; v += 11) {
+    // A merchant city's markets are fuller: closer rows and fewer gaps.
+    for (let v = -H / 2 + 3; v + 4.6 <= H / 2 - 3; v += dense ? 9.4 : 11) {
       let u = -W / 2 + 2 + rnd() * 4;
       while (u + 3 <= W / 2 - 2) {
-        const run = 3 + Math.floor(rnd() * 3), bare = rnd() < 0.2;
+        const run = 3 + Math.floor(rnd() * 3), bare = rnd() < (dense ? 0.06 : 0.2);
         for (let k = 0; k < run && u + 3 <= W / 2 - 2; k++, u += 3.3) {
           if (bare) continue;
           for (const side of [0, 2.4]) {
@@ -512,7 +666,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
    * the ward; on a large enough ward a cloister beside it (a garth with the priests' ranges on
    * three sides), and the graveyard with trees on the rest.
    */
-  const templeClose = (q: Poly) => {
+  const templeClose = (q: Poly, holyMode: '' | 'shrine' | 'great' = '') => {
     const f = frameIn(q, 3);
     if (!f) {
       const t = rectIn(q, 0.3);
@@ -521,10 +675,27 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     }
     const { box, W, H } = f;
     // The temple: long and narrow, its front to the open side of the close.
-    const L = Math.min(W * 0.62, 46), B = Math.min(H * 0.42, L / 2.3, 18);
+    // A holy city's great temple is larger.
+    const great = holyMode === 'great';
+    const L = Math.min(W * (great ? 0.72 : 0.62), great ? 66 : 46), B = Math.min(H * (great ? 0.46 : 0.42), L / (great ? 2.2 : 2.3), great ? 26 : 18);
     const tu = -W / 2 + L / 2, tv = H / 2 - B / 2;
     const temple = box(tu, tv, L, B);
-    if (ground.allOk(temple, BUILD_GROUND)) out.poly('building', temple, { use: 'temple' });
+    if (ground.allOk(temple, BUILD_GROUND)) out.poly('building', temple, { use: 'temple', ...(great ? { great: 1 } : {}) });
+    // What makes the place holy: a shrine or reliquary beyond the temple's end (a holy spring
+    // rises beside it).
+    let endU = -W / 2 + L;
+    if (holyMode && holy) {
+      const w = holy.what;
+      const name = /tomb/.test(w) ? 'the Saint\'s Tomb' : /relic/.test(w) ? 'the Reliquary' : /spring/.test(w) ? 'the Holy Spring'
+        : /miracle/.test(w) ? 'the Shrine of the Miracle' : /preached|born|birthplace/.test(w) ? 'the Holy Shrine' : 'the Shrine';
+      const sh = box(endU + 8, tv, 9, Math.min(B, 7));
+      if (endU + 14 < W / 2 && ground.allOk(sh, BUILD_GROUND)) {
+        out.poly('building', sh, { role: 'shrine', label: name });
+        out.point('blabel', box(endU + 8, tv, 0, 0)[0], { name, role: 'shrine' });
+        if (/spring/.test(w)) out.point('well', box(endU + 8, tv - Math.min(B, 7) / 2 - 3, 0, 0)[0], { r: 1.6 });
+        endU += 16;
+      }
+    }
     // The cloister under the temple's flank, if there is room for it.
     const C = Math.min(H - B - 4, W * 0.42, 34);
     let cloisterU = Infinity;
@@ -544,8 +715,8 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     // The graveyard on the open ground: beyond the temple's end if the close runs on past it,
     // or else beside the cloister.
     const plots: [number, number, number, number][] = [];
-    const ew = W / 2 - 1 - (-W / 2 + L + 3);
-    if (ew >= 10) plots.push([-W / 2 + L + 3 + Math.min(ew, 40) / 2, H / 2 - 1 - Math.min(H - 2, 50) / 2, Math.min(ew, 40), Math.min(H - 2, 50)]);
+    const ew = W / 2 - 1 - (endU + 3);
+    if (ew >= 10) plots.push([endU + 3 + Math.min(ew, 40) / 2, H / 2 - 1 - Math.min(H - 2, 50) / 2, Math.min(ew, 40), Math.min(H - 2, 50)]);
     const gw = Math.min(cloisterU + W / 2 - 3, W * 0.5), gh = H - B - 4;
     if (gw >= 10 && gh >= 8) plots.push([-W / 2 + gw / 2, tv - B / 2 - 2 - gh / 2, gw, gh]);
     const plot = plots.sort((a, b) => b[2] * b[3] - a[2] * a[3])[0];
@@ -663,15 +834,67 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   for (const i of inner) {
     const pt = patches[i];
     if (!pt.inside) continue;
-    pave(pt.poly, 'cobbles');
+    pave(pt.poly, pt.kind === 'slum' || pt.kind === 'ruins' ? 'dirt' : 'cobbles');
     switch (pt.kind) {
-      case 'plaza': {
+      case 'plaza':
+      case 'pilgrims': {
+        // A market square; beside a great temple, a pilgrims' square of stalls selling relics,
+        // candles and tokens.
         const q0 = inset(pt.poly, offsets(i, wallOff, 3, 3));
         const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
         if (q) {
           out.poly('plaza', q);
-          market(q, s.tier === 'city');
+          market(q, s.tier === 'city', theme === 'merchant' && pt.kind === 'plaza');
         }
+        break;
+      }
+      case 'tower': {
+        // The mages' tower: a tall octagon in a walled garden, with a lodge or two by the wall.
+        const q0 = inset(pt.poly, offsets(i, wallOff, 4, 3));
+        const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
+        if (!q) break;
+        out.poly('garden', q);
+        out.line('wall', [...q, q[0]], { w: 1.2 });
+        const f = frameIn(q, 4);
+        const c = f ? f.T(0, 0) : centroid(q);
+        const r = f ? Math.max(6, Math.min(11, Math.min(f.W, f.H) * 0.22)) : 7;
+        const oct: Pt[] = [];
+        for (let k = 0; k < 8; k++) oct.push([c[0] + r * Math.cos((k + 0.5) * Math.PI / 4), c[1] + r * Math.sin((k + 0.5) * Math.PI / 4)]);
+        if (ground.allOk(oct, BUILD_GROUND)) {
+          const name = `the ${pick(['Violet', 'Silver', 'Azure', 'Grey', 'Star', 'Moon', 'High', 'Black', 'White', 'Crystal', 'Amber'])} Tower`;
+          out.poly('building', oct, { role: 'magetower', label: name, ctx: 'rich' });
+          out.point('blabel', c, { name, role: 'magetower' });
+        }
+        if (f) {
+          for (const sv of [-1, 1]) {
+            if (rnd() < 0.35) continue;
+            const b = f.box(f.W * (rnd() - 0.5) * 0.5, sv * (f.H / 2 - 4), 10, 7);
+            if (ground.allOk(b, BUILD_GROUND)) out.poly('building', b, { ctx: 'rich' });
+          }
+        }
+        trees(q, Math.min(14, Math.round(area(q) / 500)), 2, 3.5);
+        break;
+      }
+      case 'ruins': {
+        // A quarter never rebuilt after the war: roofless shells, heaps of rubble, and trees
+        // growing up through the old houses.
+        const q = inset(pt.poly, offsets(i, wallOff, 4, lay.laneW));
+        if (!q) break;
+        for (const block of subdivide(q, 85 * 7, rnd, 3, 1, [], 0, 1, lay.skew)) {
+          if (area(block) < 60) continue;
+          for (const lot of subdivide(block, 85, rnd, 0, 0, [], 0, 0.7, lay.skew)) {
+            if (!touchesEdge(lot, block) || !goodLot(lot, 85)) continue;
+            const house = squareUp(lot, block);
+            if (!house) continue;
+            const r = rnd();
+            if (r < 0.55) out.poly('ruin', house);
+            else if (r < 0.8) {
+              const hc = centroid(house);
+              out.poly('spoil', blob(hc, 2 + rnd() * 2.5, rnd, 8));
+            }
+          }
+        }
+        trees(q, Math.min(30, Math.round(area(q) / 250)), 2, 4);
         break;
       }
       case 'temple': {
@@ -679,7 +902,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
         if (!q0 || !q) break;
         out.poly('plaza', q);
-        templeClose(q0);
+        templeClose(q0, holy ? (town ? 'shrine' : 'great') : '');
         break;
       }
       case 'citadel': {
@@ -719,9 +942,11 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       default: {
         const q = inset(pt.poly, offsets(i, wallOff, 4, lay.laneW));
         if (!q) break;
-        const rich = pt.kind === 'rich', harbour = pt.kind === 'harbour', garrison = pt.kind === 'garrison';
+        const rich = pt.kind === 'rich' || pt.kind === 'counting', harbour = pt.kind === 'harbour', garrison = pt.kind === 'garrison';
+        // A rookery is crammed with small houses down narrow alleys.
+        const slum = pt.kind === 'slum';
         const rr = shapeD(pt.c) / Rin;
-        const minArea = (town ? 110 : 85) * (1 + 1.5 * rr * rr) * (rich ? 2.5 : harbour ? 3 : garrison ? 3.5 : 1);
+        const minArea = (town ? 110 : 85) * (1 + 1.5 * rr * rr) * (rich ? 2.5 : harbour ? 3 : garrison ? 3.5 : slum ? 0.6 : 1);
         // A garrison keeps an open drill yard in the middle.
         const drill = garrison ? rectIn(q, 0.3) : null;
         if (drill) out.poly('plaza', drill);
@@ -733,7 +958,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         // Every cut between blocks leaves an alley, so no block is walled in by its neighbours;
         // contour terraces are crossed by alleys too, so they never run unbroken across a ward.
         const blockArea = minArea * (rich || harbour ? 5 : 7);
-        const alley = () => 2.8 + 1.4 * rnd();
+        const alley = () => (slum ? 1.8 + 0.8 * rnd() : 2.8 + 1.4 * rnd());
         const blocks = sl > 0.08
           ? strips(q, [g[0] / sl, g[1] / sl], 22 + 8 * rnd(), 3.5).flatMap((st) => subdivide(st, blockArea, rnd, alley(), 1, [], 0, 1, lay.skew))
           : subdivide(q, blockArea, rnd, alley(), 1, [], 0, 1, lay.skew);
@@ -743,16 +968,74 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
           if (!harbour) yard(block);
           for (const lot of subdivide(block, minArea, rnd, 0, 0, [], 0, 0.7, lay.skew)) {
             if (!touchesEdge(lot, block)) continue;
-            if (rnd() < (rich ? 0.2 : 0.04)) continue;
+            if (rnd() < (rich ? 0.2 : slum ? 0 : 0.04)) continue;
             if (!goodLot(lot, minArea)) continue;
             if (drill && lot.some((v) => pointInPoly(drill, v[0], v[1]))) continue;
             const house = squareUp(lot, block);
-            if (house) addBuilding(house, i, { ctx: garrison ? 'ward' : pt.kind, front: streetFront(house, block) ?? streetFront(lot, block) });
+            if (house) addBuilding(house, i, { ctx: garrison || pt.kind === 'forge' ? 'ward' : pt.kind === 'counting' ? 'rich' : pt.kind, front: streetFront(house, block) ?? streetFront(lot, block) });
           }
         }
       }
     }
   }
+
+  /**
+   * A forge city's works outside the walls: heaps of slag beyond the gate nearest its forge
+   * quarter, and mills on the river banks to drive the hammers and bellows.
+   */
+  const forgeWorks = () => {
+    const fw = inner.filter((i) => patches[i].kind === 'forge');
+    const at = fw.length ? patches[fw[0]].c : [0, 0] as Pt;
+    const g = gates.length ? gates.reduce((a, b) => (Math.hypot(wall[b.k][0] - at[0], wall[b.k][1] - at[1]) < Math.hypot(wall[a.k][0] - at[0], wall[a.k][1] - at[1]) ? b : a)) : null;
+    const clear = (c: Pt, r: number) => !water(c) && clearOfWalls(c) && !pointInPoly(wall, c[0], c[1])
+      && buildingRefs.every((b) => Math.hypot(b.c[0] - c[0], b.c[1] - c[1]) > r + 10)
+      && roadLines.every((l) => distToLine(l, c[0], c[1]) > r + 6);
+    if (g) {
+      const gp = wall[g.k], gl = Math.hypot(...gp) || 1, dir: Pt = [gp[0] / gl, gp[1] / gl], perp: Pt = [-dir[1], dir[0]];
+      for (let t = 0, n = 0; t < 30 && n < (town ? 3 : 5); t++) {
+        const d = 50 + rnd() * 90, side = (rnd() < 0.5 ? -1 : 1) * (20 + rnd() * 60), r = 6 + rnd() * 10;
+        const c: Pt = [gp[0] + dir[0] * d + perp[0] * side, gp[1] + dir[1] * d + perp[1] * side];
+        if (!clear(c, r)) continue;
+        out.poly('spoil', blob(c, r, rnd));
+        n++;
+      }
+    }
+    const banks = terrain.shore(R * 0.9, 40, rnd).filter((b) => b.type === RIVER && !pointInPoly(wall, b.p[0], b.p[1]))
+      .sort((a, b) => Math.hypot(...a.p) - Math.hypot(...b.p));
+    let mills = 0;
+    for (const bank of banks) {
+      if (mills >= (town ? 1 : 3)) break;
+      const c: Pt = [bank.p[0] - bank.n[0] * 9, bank.p[1] - bank.n[1] * 9];
+      const ang = Math.atan2(bank.n[0], -bank.n[1]);
+      const m = rect(c[0], c[1], ang, 12, 9);
+      if (!clear(c, 8) || !ground.allOk(m, BUILD_GROUND)) continue;
+      out.poly('building', m, { use: 'mill', mill: 'water' });
+      const wc: Pt = [c[0] + bank.n[0] * 5.6, c[1] + bank.n[1] * 5.6];
+      out.poly('millwheel', rect(wc[0], wc[1], ang, 5, 1.4));
+      mills++;
+    }
+  };
+
+  // A fortress city's outer wall: a second ring some 26 m beyond the first, gated where it is.
+  let outerWall: Pt[] | null = null;
+  if (theme === 'fortress' && s.walls) {
+    const sgn = area(wall) > 0 ? 1 : -1;
+    const nrm = (a: Pt, b: Pt): Pt => {
+      const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      return [(sgn * (b[1] - a[1])) / L, (-sgn * (b[0] - a[0])) / L];
+    };
+    const off = town ? 20 : 26;
+    outerWall = wall.map((p, k) => {
+      const n1 = nrm(wall[(k + wall.length - 1) % wall.length], p), n2 = nrm(p, wall[(k + 1) % wall.length]);
+      const bx = n1[0] + n2[0], by = n1[1] + n2[1], bl = Math.hypot(bx, by) || 1;
+      const d = off / Math.max(0.5, (bx * n1[0] + by * n1[1]) / bl);
+      return [p[0] + (bx / bl) * d, p[1] + (by / bl) * d];
+    });
+  }
+  const outerLoop = outerWall ? [...outerWall, outerWall[0]] : null;
+  const wallLoop = [...wall, wall[0]];
+  /** Clear of the band between a fortress city's two walls. */
+  const clearOfWalls = (c: Pt) => !outerLoop || (distToLine(outerLoop, c[0], c[1]) > 12 && !(pointInPoly(outerWall!, c[0], c[1]) && distToLine(wallLoop, c[0], c[1]) < 40));
 
   // Outside the walls: suburbs along the roads, then farmland.
   patches.forEach((pt, i) => {
@@ -773,7 +1056,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         }
         yard(block, 'garden');
         for (const lot of subdivide(block, 140, rnd)) {
-          if (!touchesEdge(lot, block) || rnd() > 0.8 || !goodLot(lot, 140)) continue;
+          if (!touchesEdge(lot, block) || rnd() > 0.8 || !goodLot(lot, 140) || !clearOfWalls(centroid(lot))) continue;
           const house = squareUp(lot, block);
           if (house) addBuilding(house, i, { ctx: 'suburb', front: streetFront(house, block) ?? streetFront(lot, block) ?? roadFront(centroid(house), roadLines) });
         }
@@ -804,11 +1087,13 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       const n = q[(k + 1) % q.length];
       const hc: Pt = [v[0], v[1]];
       const farm = rect(hc[0], hc[1], Math.atan2(n[1] - q[k][1], n[0] - q[k][0]), 11, 7);
-      if (ground.allOk(farm, BUILD_GROUND)) addBuilding(farm, i, { ctx: 'farm' });
+      if (ground.allOk(farm, BUILD_GROUND) && clearOfWalls(hc)) addBuilding(farm, i, { ctx: 'farm' });
     }
   });
 
   if (s.walls) drawWall(wall, gates.map((g) => g.k), water, out, town);
+  if (outerWall) drawWall(outerWall, gates.map((g) => g.k), water, out, town);
+  if (theme === 'forge') forgeWorks();
 
   // Names: quarters, districts, streets and notable buildings.
   const suburb = patches.map((pt, i) => i).filter((i) => !patches[i].inside && !patches[i].water && buildingRefs.some((b) => b.ward === i && b.f.properties.ctx === 'suburb'));
@@ -821,7 +1106,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   labelCity({
     names, culture, key: s.id, town, population: s.population, wards: wardInfo, inner: inner.filter((i) => patches[i].inside),
     outer: suburb, gates: gates.map((g) => wall[g.k]), streets: streetRefs, roads: roadRefs, buildings: buildingRefs, out, rnd,
-    place: s.nameEn ?? s.name, university: !!s.university, noGuilds: s.kind === 'tribal',
+    place: s.nameEn ?? s.name, university: !!s.university, noGuilds: s.kind === 'tribal', theme, holy: !!holy,
   });
 }
 

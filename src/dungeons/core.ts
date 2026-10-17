@@ -38,6 +38,8 @@ export interface DungeonSite {
   grates?: number[][];
   /** Sewers: the thieves' guild hides in these (one of a city's sewers; a chance under a town's). */
   thieves?: boolean;
+  /** Sewers: under a thieves' city, the guild's den is larger and richer. */
+  grandDen?: boolean;
 }
 
 /**

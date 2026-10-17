@@ -1,3 +1,4 @@
+import type { CityTheme, HolyTown } from '../lore/themes';
 import type { Pt } from './geom';
 import type { LocalTerrain } from './terrain';
 import type { Ground } from './ground';
@@ -85,4 +86,8 @@ export interface PlanInput {
   /** Names (deterministic, not de-duplicated) and the local culture. */
   names: NameBank;
   culture: number;
+  /** The city's theme, if it has one (see lore/themes.ts). */
+  theme?: CityTheme;
+  /** What makes the town holy, if it is a holy place of a faith. */
+  holy?: HolyTown;
 }

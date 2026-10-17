@@ -63,6 +63,7 @@ const LABEL_TYPE: Record<string, [string, SearchCat]> = {
 
 const VILLAGE_TYPE: Record<string, string> = {
   farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village',
+  camp: 'Army camp', shrine: 'Shrine',
 };
 
 const mid = (c: number[][]) => c[c.length >> 1];
@@ -144,6 +145,17 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
 }
 
 /** Compact entries the towns worker sends for villages, caves and glades. */
+/** City themes (from the lore): a city's entry is listed again with its theme as a word to find it by. */
+export function themeEntries(settlements: Settlement[], themes: Map<string, { theme: string }>, label: Record<string, string>): SearchEntry[] {
+  const out: SearchEntry[] = [];
+  for (const s of settlements) {
+    const t = themes.get(s.id);
+    if (!t || !s.name) continue;
+    out.push({ id: `th:${s.id}`, name: s.name, ...(s.nameEn && s.nameEn !== s.name ? { alt: s.nameEn } : {}), type: cap(label[t.theme].replace(/^an? /, '')), cat: 'settlement', lon: s.lon, lat: s.lat, zoom: 12.4, rank: 0.45, info: `${s.population.toLocaleString('en')} people` });
+  }
+  return out;
+}
+
 /** The world's faiths (from the lore): each opens the faith window. */
 export function faithEntries(faiths: Faith[]): SearchEntry[] {
   return faiths.map((f) => {

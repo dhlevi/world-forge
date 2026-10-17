@@ -844,7 +844,7 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
   }
   doorsForRooms(L, rects.slice(L.rooms.filter((r) => r.tags[0] === 'junction').length), rnd, doorPick(rnd, [['door', 2], ['bars', 1.5], ['locked', 1], ['arch', 1]]));
   // The thieves' guild: hidden rooms off a quiet tunnel, behind a secret door (in one sewer under most cities).
-  if (site.thieves) thievesDen(L, channel, g, rnd);
+  if (site.thieves) thievesDen(L, channel, g, rnd, !!site.grandDen);
   // The outfall: bars where the main channel leaves the map toward the river or sea.
   if (outEnd) {
     L.rooms.push(roomOf({ x: outEnd[0] - 1, y: outEnd[1] - 1, w: 3, h: 3 }, 1, ['outfall']));
@@ -862,48 +862,56 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
  * The thieves' guild's hideout: a hall, a vault and a dormitory in a row, set back from a tunnel
  * far from the main grate and reached by a short passage that ends at a secret door.
  */
-function thievesDen(L: DLevel, channel: [number, number][], grate: [number, number], rnd: Rng): void {
+function thievesDen(L: DLevel, channel: [number, number][], grate: [number, number], rnd: Rng, grand = false): void {
   const far = channel.filter(([x, y]) => Math.hypot(x - grate[0], y - grate[1]) > 12);
-  const hall = { w: 7, h: 5 }, vault = { w: 4, h: 5 }, dorm = { w: 5, h: 5 };
-  const span = hall.w + 1 + vault.w + 1 + dorm.w;
+  // Under a thieves' city the den is larger, with a fences' market and the guildmaster's rooms.
+  type Part = { w: number; h: number; key: string; furn: Parameters<typeof furnish>[2]; lock?: boolean };
+  const H = grand ? 6 : 5;
+  const parts: Part[] = grand
+    ? [{ w: 9, h: H, key: 'thieves-hall', furn: 'hall' }, { w: 5, h: H, key: 'thieves-vault', furn: 'store', lock: true }, { w: 7, h: H, key: 'thieves-fence', furn: 'store' },
+      { w: 5, h: H, key: 'thieves-master', furn: 'bedchamber', lock: true }, { w: 6, h: H, key: 'thieves-dorm', furn: 'bedchamber' }]
+    : [{ w: 7, h: H, key: 'thieves-hall', furn: 'hall' }, { w: 4, h: H, key: 'thieves-vault', furn: 'store', lock: true }, { w: 5, h: H, key: 'thieves-dorm', furn: 'bedchamber' }];
+  const span = parts.reduce((a, r) => a + r.w, 0) + parts.length - 1;
   for (let t = 0; t < 300 && far.length; t++) {
     const [cx, cy] = pick(rnd, far);
     const east = rnd() < 0.5;
     // The hall nearest the tunnel; the passage runs 3 cells from the walkway.
     const x0 = east ? cx + 5 : cx - 4 - span;
-    const y0 = cy - Math.floor(hall.h / 2);
-    if (x0 < 2 || y0 < 2 || x0 + span > L.W - 2 || y0 + hall.h > L.H - 2) continue;
+    const y0 = cy - Math.floor(H / 2);
+    if (x0 < 2 || y0 < 2 || x0 + span > L.W - 2 || y0 + H > L.H - 2) continue;
     let clear = true;
-    for (let j = y0 - 1; j <= y0 + hall.h && clear; j++) for (let i = x0 - 1; i <= x0 + span && clear; i++) if (at(L, i, j) !== VOID) clear = false;
+    for (let j = y0 - 1; j <= y0 + H && clear; j++) for (let i = x0 - 1; i <= x0 + span && clear; i++) if (at(L, i, j) !== VOID) clear = false;
     if (!clear) continue;
-    const order = east ? [hall, vault, dorm] : [dorm, vault, hall];
+    // Laid out from the tunnel outward: the hall first.
+    const order = east ? parts : [...parts].reverse();
     const rects: Rect[] = [];
     let x = x0;
     for (const r of order) {
       rects.push({ x, y: y0, w: r.w, h: r.h });
       x += r.w + 1;
     }
-    const [rh, rv, rd] = east ? rects : [rects[2], rects[1], rects[0]];
+    const rectOf = (k: number) => (east ? rects[k] : rects[rects.length - 1 - k]);
     for (const r of rects) carveRect(L, r.x, r.y, r.w, r.h);
-    // Doors between the rooms (a lock on the vault).
-    const between = (a: Rect, b: Rect, kind: 'door' | 'locked') => {
-      const wx = Math.min(a.x + a.w, b.x + b.w) === a.x + a.w ? a.x + a.w : b.x + b.w;
+    // Doors between neighbouring rooms (locks on the vault and the master's rooms).
+    for (let k = 0; k + 1 < parts.length; k++) {
+      const a = rectOf(k), b = rectOf(k + 1);
+      const wx = east ? a.x + a.w : b.x + b.w;
       const y = y0 + 2;
       set(L, wx, y, FLOOR);
-      L.doors.push({ x: wx + 1, y, vertical: true, kind });
-    };
-    between(east ? rh : rv, east ? rv : rh, 'locked');
-    between(east ? rv : rd, east ? rd : rv, 'door');
+      L.doors.push({ x: wx + 1, y, vertical: true, kind: parts[k + 1].lock ? 'locked' : 'door' });
+    }
     // The passage from the walkway to the hall, ending at a secret door in the hall's wall.
+    const rh = rectOf(0);
     const doorX = east ? rh.x : rh.x + rh.w;
     const from = east ? cx + 2 : cx - 2;
     carveCorridor(L, from, cy, east ? doorX - 1 : doorX, cy, true);
     L.doors.push({ x: doorX, y: cy, vertical: true, kind: 'secret' });
-    furnish(L, rh, 'hall', rnd, () => true);
-    furnish(L, rv, 'store', rnd, () => true);
-    furnish(L, rd, 'bedchamber', rnd, () => true);
-    for (let q = 0; q < 3; q++) L.props.push({ kind: 'chest', x: rv.x + 0.6 + rnd() * (rv.w - 1.2), y: rv.y + 0.6 + rnd() * (rv.h - 1.2) });
-    L.rooms.push(roomOf(rh, 1, ['thieves-hall']), roomOf(rv, 1, ['thieves-vault']), roomOf(rd, 1, ['thieves-dorm']));
+    parts.forEach((pt, k) => {
+      const r = rectOf(k);
+      furnish(L, r, pt.furn, rnd, () => true);
+      if (pt.key === 'thieves-vault') for (let q = 0; q < (grand ? 6 : 3); q++) L.props.push({ kind: 'chest', x: r.x + 0.6 + rnd() * (r.w - 1.2), y: r.y + 0.6 + rnd() * (r.h - 1.2) });
+      L.rooms.push(roomOf(r, 1, [pt.key]));
+    });
     return;
   }
 }

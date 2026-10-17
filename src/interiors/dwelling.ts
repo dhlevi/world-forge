@@ -127,10 +127,11 @@ export const CELL_M = 1.5;
 type Kind =
   | 'cottage' | 'farmhouse' | 'townhouse' | 'mansion' | 'warehouse' | 'temple' | 'keep'
   | 'hall' | 'store' | 'mill' | 'range' | 'cabin' | 'hut' | 'inn' | 'civic' | 'library' | 'barracks' | 'stables' | 'bathhouse'
-  | 'university' | 'guild' | 'witch';
+  | 'university' | 'guild' | 'witch' | 'tower' | 'bank' | 'shrine';
 
 const LABELS: Record<Kind, string> = {
   cottage: 'Cottage', farmhouse: 'Farmhouse', townhouse: 'Town house', mansion: 'Mansion', warehouse: 'Warehouse',
+  tower: 'Mages\' tower', bank: 'Counting house', shrine: 'Shrine',
   temple: 'Temple', keep: 'Keep', hall: 'Hall', store: 'Storehouse', mill: 'Mill', range: 'Monastic range',
   cabin: 'Cabin', hut: 'Miner\'s hut', inn: 'Inn', civic: 'Hall', library: 'Library', barracks: 'Barracks',
   stables: 'Stables', bathhouse: 'Bathhouse', university: 'University', guild: 'Guildhall', witch: "Witch's hut",
@@ -139,11 +140,11 @@ const LABELS: Record<Kind, string> = {
 /** Roles that turn a town house into a trade: the shop floor's name. */
 const TRADE_ROLE: Record<string, string> = {
   tavern: 'Taproom', smithy: 'Smithy', bakery: 'Bakery', apothecary: 'Apothecary', pawnshop: 'Pawnshop', tailor: 'Tailor',
-  butcher: 'Butcher', chandlery: 'Chandlery',
+  butcher: 'Butcher', chandlery: 'Chandlery', foundry: 'Foundry',
 };
 const ROLE_LABEL: Record<string, string> = {
   tavern: 'Tavern', smithy: 'Smithy', bakery: 'Bakery', apothecary: 'Apothecary', pawnshop: 'Pawnshop', tailor: 'Tailor',
-  butcher: 'Butcher', chandlery: 'Chandlery', townhall: 'Town hall', guildhall: 'Guildhall', mill: 'Mill',
+  butcher: 'Butcher', chandlery: 'Chandlery', foundry: 'Foundry', townhall: 'Town hall', guildhall: 'Guildhall', mill: 'Mill',
   university: 'University', college: 'College', 'guild:adventurers': 'Adventurers\' guild', 'guild:warriors': 'Warriors\' guild',
   'guild:cartographers': 'Cartographers\' guild', 'guild:alchemists': 'Alchemists\' guild', 'guild:mages': 'Mages\' guild', 'guild:masons': 'Masons\' guild',
   'guild:smiths': 'Smiths\' guild', 'guild:weavers': 'Weavers\' guild', 'guild:physicians': 'Physicians\' guild',
@@ -169,6 +170,9 @@ function classify(inp: DwellingInput, areaM2: number, rnd: () => number): Kind {
     case 'university': case 'college': return 'university';
   }
   if (inp.role?.startsWith('guild:')) return 'guild';
+  if (inp.role === 'magetower') return 'tower';
+  if (inp.role === 'countinghouse') return 'bank';
+  if (inp.role === 'shrine') return 'shrine';
   if (inp.role === 'witch' || inp.use === 'witch') return 'witch';
   if (inp.role && TRADE_ROLE[inp.role]) return 'townhouse';
   switch (inp.use) {
@@ -182,6 +186,8 @@ function classify(inp: DwellingInput, areaM2: number, rnd: () => number): Kind {
     case 'rich': return 'mansion';
     case 'harbour': return 'warehouse';
     case 'ward': return 'townhouse';
+    // A rookery's houses: tenements, or a single room for the poorest.
+    case 'slum': return areaM2 > 55 ? 'townhouse' : 'cottage';
     case 'suburb': return areaM2 > 90 && rnd() < 0.5 ? 'townhouse' : 'cottage';
     case 'farm': return 'farmhouse';
     case 'logging': return 'cabin';
@@ -354,6 +360,34 @@ function programs(kind: Kind, inp: DwellingInput, storeys: number, rnd: () => nu
         attic: loft,
       };
     }
+    case 'tower': {
+      // A mage's tower: library and hall below, a laboratory and studies above, and an
+      // observatory at the top; a summoning chamber in the cellar.
+      const upper = (k: number): Program => k === storeys - 1
+        ? { roles: [R('Observatory', 'large'), R('Landing', 'stair')], fallback: 'Observatory', merge: true, surface: 'boards' }
+        : k % 2 ? { roles: [R('Laboratory', 'large'), R('Landing', 'stair')], fallback: 'Study', surface: 'flags' }
+          : { roles: [R('Study', 'large'), R('Landing', 'stair'), R('Chamber')], fallback: 'Library', surface: 'boards' };
+      return {
+        basement: { roles: [R('Summoning chamber', 'stair')], fallback: 'Summoning chamber', merge: true, surface: 'flags' },
+        floors: [{ roles: [R('Hall', 'stair'), R('Library', 'large')], fallback: 'Library', surface: 'flags' }, ...Array.from({ length: storeys - 1 }, (_, k) => upper(k + 1))],
+        attic: loft,
+      };
+    }
+    case 'bank':
+      return {
+        basement: { roles: [R('Vault', 'stair')], fallback: 'Vault', merge: true, surface: 'flags' },
+        floors: [
+          { roles: [R('Counting room', 'front'), R('Hall', 'stair'), R('Strongroom', 'small'), R('Clerks\' office')], fallback: 'Clerks\' office', surface: 'flags' },
+          ...Array.from({ length: storeys - 1 }, (): Program => ({ roles: [R('Landing', 'stair'), R('Master bedroom', 'large'), R('Parlour')], fallback: 'Chamber', surface: 'boards' })),
+        ],
+        attic: { ...loft, roles: [R('Servants\' garret', 'large')] },
+      };
+    case 'shrine':
+      return {
+        basement: { roles: [R('Crypt', 'large')], fallback: 'Crypt', merge: true, surface: 'flags' },
+        floors: [{ roles: [R('Shrine', 'large')], fallback: 'Shrine', merge: true, surface: 'flags' }],
+        attic: loft,
+      };
     case 'library':
       return {
         basement: { ...cellar, roles: [R('Archive', 'stair')] },
@@ -576,11 +610,12 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
     farmhouse: () => 1, cabin: () => 1, hut: () => 1, temple: () => 1, keep: () => 3 + (rnd() < 0.4 ? 1 : 0),
     hall: () => 1, store: () => 1, mill: () => (inp.ctx === 'logging' || inp.ctx === 'mining' ? 1 : 2), range: () => 2, inn: () => (areaM2 < 60 ? 2 : 3), civic: () => 2,
     library: () => 2, barracks: () => 2, stables: () => 1, bathhouse: () => 1, university: () => 2 + (areaM2 > 160 ? 1 : 0), guild: () => 2 + (rnd() < 0.35 ? 1 : 0), witch: () => 1,
+    tower: () => 4 + (rnd() < 0.5 ? 1 : 0), bank: () => 2 + (rnd() < 0.4 ? 1 : 0), shrine: () => 1,
   };
   const BASEMENT: Record<Kind, number> = {
     townhouse: 0.5, mansion: 0.85, warehouse: 0.6, cottage: 0.12, farmhouse: 0.25, cabin: 0, hut: 0, temple: 0.6,
     keep: 0.9, hall: 0.3, store: 0.2, mill: 0, range: 0.3, inn: 0.85, civic: 0.6, library: 0.4, barracks: 0.3, stables: 0,
-    bathhouse: 0.5, university: 0.6, guild: 0.75, witch: 0.7,
+    bathhouse: 0.5, university: 0.6, guild: 0.75, witch: 0.7, tower: 0.8, bank: 1, shrine: 0.5,
   };
   const storeys = STOREYS[kind]();
   const storeyH = kind === 'temple' ? 8 : kind === 'hall' || kind === 'mill' ? 5 : kind === 'keep' ? 4 : 3;
@@ -614,10 +649,12 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
   const roomArea: Record<Kind, number> = {
     townhouse: 14, mansion: 20, warehouse: 45, cottage: 16, farmhouse: 15, cabin: 18, hut: 14, temple: 1, keep: 45,
     hall: 30, store: 999, mill: 35, range: 30, inn: 13, civic: 30, library: 25, barracks: 30, stables: 40, bathhouse: 25, university: 28, guild: 22, witch: 12,
+    tower: 30, bank: 18, shrine: 999,
   };
   const maxRooms: Record<Kind, number> = {
     townhouse: 5, mansion: 8, warehouse: 3, cottage: 3, farmhouse: 5, cabin: 2, hut: 2, temple: 1, keep: 6,
     hall: 3, store: 1, mill: 3, range: 4, inn: 6, civic: 4, library: 3, barracks: 3, stables: 2, bathhouse: 3, university: 5, guild: 5, witch: 3,
+    tower: 3, bank: 5, shrine: 1,
   };
   const nRooms = Math.max(1, Math.min(maxRooms[kind], Math.round(areaM2 / roomArea[kind])));
   const leaves = kind === 'temple' ? templeLeaves(c) : partition(g, nRooms, cw, ch, rnd);
@@ -1149,6 +1186,9 @@ const FURNITURE: [RegExp, Spec[]][] = [
   [/Cellar/, [S('barrel', 'wall', 0.75, 0.75, 8), CRATE, CRATE]],
   [/Warehouse|Storage loft|^Attic$/, [S('crate', 'grid', 0.9, 0.9)]],
   [/^Nave$/, [S('pew', 'grid', 0, 0)]],
+  [/^Counting room$/, [COUNTER, DESK, DESK, BOOKS, CHEST]],
+  [/^Vault$/, [S('chest', 'wall', 0.9, 0.5, 6), S('rack', 'long', 2.4, 0.5)]],
+  [/^Shrine$/, [S('altar', 'wall', 1.8, 0.8), S('tomb', 'wall', 0.9, 2), S('candle', 'wall', 0.35, 0.35, 4), BENCH]],
   [/^Sanctuary$/, [S('altar', 'wall', 1.8, 0.8), S('candle', 'wall', 0.35, 0.35, 2)]],
   [/^Vestry$/, [WARDROBE, CHEST, DESK]],
   [/^Porch$/, [BENCH, BENCH, S('font', 'table', 0, 0)]],
@@ -1165,7 +1205,7 @@ const FURNITURE: [RegExp, Spec[]][] = [
   [/^Herb room$|Drying loft/, [SHELF, SHELF, SHELF, WORKBENCH, SACK]],
   [/^Root cellar$/, [SHELF, BARREL, SACK, CHEST]],
   [/Sawmill/, [S('sawbench', 'long', 3.0, 1.0), S('logs', 'long', 2.8, 1.0), CRATE]],
-  [/Smelter/, [S('furnace', 'hearth', 1.8, 1.4), S('anvil', 'table', 0, 0), CRATE, BARREL]],
+  [/Smelter|^Foundry$/, [S('furnace', 'hearth', 1.8, 1.4), S('anvil', 'table', 0, 0), CRATE, BARREL]],
   [/Garderobe/, [S('privy', 'wall', 0.8, 0.6)]],
 ];
 

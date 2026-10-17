@@ -19,6 +19,7 @@ import { NameBank, type Named, dungeonName, lairName } from '../names/names';
 import { type DungeonSite, packLines, sewerScale, townUnderground } from '../dungeons/core';
 import type { LairSite } from '../lairs/lair';
 import { loreFor } from '../lore/realm';
+import { type NaturalShrine, type WorldThemes, worldThemes } from '../lore/themes';
 import { CULTURES } from '../names/cultures';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
@@ -208,6 +209,7 @@ export class TownManager {
           properties: {
             id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '', ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}),
             ...(v.army ? { realm: v.army.realm, war: v.army.war } : {}),
+            ...(v.shrine ? { faith: v.shrine.faith, what: v.shrine.what } : {}),
           },
         });
       }
@@ -309,7 +311,7 @@ export class TownManager {
       const key = this.blockKey(bx + 180, by + 90);
       const blk = this.blocks.get(key) ?? this.generateBlock(wrapLon(bx + 0.5) - 0.5, by, key, false);
       for (const v of blk.villages) {
-        const info = v.army ? `${v.population.toLocaleString('en')} soldiers of ${v.army.realm}` : `${v.population.toLocaleString('en')} people`;
+        const info = v.army ? `${v.population.toLocaleString('en')} soldiers of ${v.army.realm}` : v.shrine ? `holy to ${v.shrine.faith}` : `${v.population.toLocaleString('en')} people`;
         entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info, ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) });
       }
       for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · '), ...(l.en && l.en !== l.name ? { en: l.en } : {}) });
@@ -510,6 +512,54 @@ export class TownManager {
       const track = withTracks ? this.track(v, this.roadPts.nearest(pos[0], pos[1], S.villageLinkKm), villages, hash32(fc.seed ^ 0x7ac) / 4294967296) : null;
       if (track) tracks.push(track);
     }
+    // Shrines at the faiths' natural holy places: on a holy peak's summit, on the shore of a
+    // sacred lake, in a clearing of a holy forest, on a holy isle.
+    for (const sh of this.shrinesIn(key)) {
+      const kLat = 1 / 111.2;
+      let pos: [number, number];
+      if (sh.feature === 'peak' || sh.feature === 'mountains') pos = this.bestNear(sh.lon, sh.lat, 3000, (_x, _y, hh, sl) => hh * 0.01 - 30 * Math.max(0, sl - 0.25));
+      else if (sh.feature === 'lake') {
+        // The label lies out on the water: the nearest shore, then level ground just above it.
+        const kmLon = kLat / Math.max(0.05, Math.cos((sh.lat * Math.PI) / 180));
+        let found: [number, number] | null = null;
+        for (let d = 0.2; d <= 15 && !found; d += 0.2) {
+          for (let q = 0; q < 24; q++) {
+            const x = sh.lon + Math.cos((q / 24) * 2 * Math.PI) * d * kmLon, y = sh.lat + Math.sin((q / 24) * 2 * Math.PI) * d * kLat;
+            if (!this.sampler.isWater(x, y)) {
+              found = [x, y];
+              break;
+            }
+          }
+        }
+        if (!found) continue;
+        const f0 = found;
+        pos = this.bestNear(f0[0], f0[1], 300, (x, y, _hh, sl) => -sl - distKm(f0[0], f0[1], x, y) * 2);
+      } else pos = this.bestNear(sh.lon, sh.lat, 2500, (_x, _y, _hh, sl) => -sl);
+      if (this.sampler.isWater(pos[0], pos[1]) || this.slopeAt(pos[0], pos[1]) > 0.4) continue;
+      let blocked = false;
+      this.sites.forEach(pos[0], pos[1], 10, (s, d) => {
+        if (d < s.radiusM / 1000 + 1) blocked = true;
+      });
+      if (blocked) continue;
+      // A village standing where the shrine goes makes way for it.
+      for (let q = villages.length - 1; q >= 0; q--) {
+        if (distKm(pos[0], pos[1], villages[q].lon, villages[q].lat) >= 1.2) continue;
+        const gone = villages[q].id;
+        villages.splice(q, 1);
+        for (let t = tracks.length - 1; t >= 0; t--) if (tracks[t].properties.a === gone) tracks.splice(t, 1);
+      }
+      const v = makeSettlement('village', `h${key}_${villages.length}`, pos[0], pos[1], 0, sh.seed, false, false, 'shrine');
+      v.population = sh.style === 'pyramid' ? 60 : sh.style === 'hermitage' ? 4 : 12;
+      v.coreM = sh.style === 'pyramid' ? 70 : 40;
+      v.radiusM = v.coreM * 2.5 + 80;
+      v.culture = sh.culture;
+      v.shrine = { style: sh.style, faith: sh.faith, what: sh.what, feature: sh.feature };
+      const NAME: Record<string, string> = { chapel: '{N} Chapel', stones: 'the Stones of {N}', hermitage: '{N} Hermitage', totems: 'the Totems of {N}', pyramid: 'the Pyramid of {N}' };
+      v.name = v.nameEn = NAME[sh.style].replace('{N}', sh.name);
+      villages.push(v);
+      const track = withTracks ? this.track(v, this.roadPts.nearest(pos[0], pos[1], S.villageLinkKm), villages, hash32(sh.seed ^ 0x5a1) / 4294967296) : null;
+      if (track) tracks.push(track);
+    }
     const lairs = this.lairs(lon0, lat0, key, seed, villages, sample, cellOf, used);
     return { villages, tracks, lairs, dungeons: this.dungeons(lon0, lat0, key, seed, villages, lairs, cellOf, used) };
   }
@@ -703,9 +753,15 @@ export class TownManager {
     const centroid = (p: Pt[]): Pt => [p.reduce((a, q) => a + q[0], 0) / p.length, p.reduce((a, q) => a + q[1], 0) / p.length];
     // Main grates of the sewers placed so far: each sewer's map keeps clear of the others.
     const mains: Pt[] = [];
+    // A thieves' city: the guild is always below, larger and richer than elsewhere.
+    const grand = this.themes()?.themes.get(s.id)?.theme === 'thieves';
+    if (grand && !under.some((u) => u.thieves)) {
+      const first = under.find((u) => u.dkind === 'sewer');
+      if (first) first.thieves = true;
+    }
     for (const u of under) {
       const seed = hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 + (u.k ?? 0) * 0x1001 : 0xca7));
-      const props = { did: u.did, dkind: u.dkind, name: u.name, ...(u.en !== u.name ? { en: u.en } : {}), seed, tags: u.tags.join(','), culture, sid: s.id, ...(u.thieves ? { thieves: 1 } : {}) };
+      const props = { did: u.did, dkind: u.dkind, name: u.name, ...(u.en !== u.name ? { en: u.en } : {}), seed, tags: u.tags.join(','), culture, sid: s.id, ...(u.thieves ? { thieves: grand ? 2 : 1 } : {}) };
       if (u.dkind === 'sewer') {
         // The main grate: under a town, a street vertex 25 to 45 m from the centre; under a city,
         // the street vertex nearest the middle of the sewer's quarter. On dry ground.
@@ -1093,6 +1149,28 @@ export class TownManager {
     };
   }
 
+  /** Natural holy places binned by 1° block key. */
+  private shrineBins: Map<number, NaturalShrine[]> | null = null;
+  private shrinesIn(key: number): NaturalShrine[] {
+    if (!this.shrineBins) {
+      this.shrineBins = new Map();
+      for (const sh of this.themes()?.shrines ?? []) {
+        const bk = this.blockKey(Math.floor(sh.lon) + 180, Math.floor(sh.lat) + 90);
+        (this.shrineBins.get(bk) ?? this.shrineBins.set(bk, []).get(bk)!).push(sh);
+      }
+    }
+    return this.shrineBins.get(key) ?? [];
+  }
+
+  /** City themes and holy places, from the world's lore (built here on first use). */
+  private themesCache: WorldThemes | null | undefined;
+  private themes(): WorldThemes | null {
+    if (this.themesCache !== undefined) return this.themesCache;
+    const { politics, settlements, labels, raster } = this.world;
+    this.themesCache = politics ? worldThemes(loreFor(`towns#${raster.seed}`, raster.seed, politics, settlements, labels?.features ?? []), raster.seed) : null;
+    return this.themesCache;
+  }
+
   private plan(s: Settlement): PlanFeature[] {
     const frame = new LocalFrame(s.lon, s.lat);
     const out = new PlanOut(frame, pxPerMeterZ20(s.lat), { sid: s.id, tier: s.tier, ctx: s.tier === 'village' ? s.kind ?? 'farming' : 'ward' });
@@ -1123,7 +1201,8 @@ export class TownManager {
     );
     const ground = new Ground(terrain, water);
     const culture = this.world.raster.culture[this.cell(s.lon, s.lat)] ?? 0;
-    const inp = { s, exits, water, terrain, ground, out, names: this.names, culture };
+    const th = this.themes();
+    const inp = { s, exits, water, terrain, ground, out, names: this.names, culture, theme: th?.themes.get(s.id)?.theme, holy: th?.holy.get(s.id) };
     if (s.tier === 'village' || s.kind === 'tribal') {
       // Villages, and the New World's tribal towns, are built as villages.
       buildVillage(inp);

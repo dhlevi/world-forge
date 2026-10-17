@@ -95,6 +95,28 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'fill-color': '#c3c9a0', 'fill-outline-color': '#8d955f', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
   {
+    // A canal city's waterways: water between stone quays.
+    id: 'plan-canal-quay', type: 'line', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('canal'), layout: LINE_LAYOUT,
+    paint: { 'line-color': '#8f8370', 'line-width': physWidth(1.6, ['+', ['get', 'w'], 1.2]), 'line-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-canal', type: 'line', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('canal'), layout: LINE_LAYOUT,
+    paint: { 'line-color': '#a9c3cc', 'line-width': physWidth(1, ['get', 'w']), 'line-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-bridge', type: 'fill', source: 'plans', minzoom: 13, filter: kind('bridge'),
+    paint: { 'fill-color': '#d8ccb0', 'fill-outline-color': INK, 'fill-opacity': fadeIn(13, 13.6) },
+  },
+  {
+    // A ruined quarter's roofless shells.
+    id: 'plan-ruin', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('ruin'),
+    paint: { 'fill-color': '#d9cfba', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-ruin-walls', type: 'line', source: 'plans', minzoom: 13, filter: kind('ruin'),
+    paint: { 'line-color': INK, 'line-width': e(['interpolate', ['linear'], ['zoom'], 13, 0.5, 17, 1.4]), 'line-dasharray': [2, 1.2], 'line-opacity': fadeIn(13, 13.6) },
+  },
+  {
     // Ground beaten bare round an army's camp.
     id: 'plan-trodden', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('trodden'),
     paint: { 'fill-color': '#d8caa4', 'fill-opacity': e(['interpolate', ['linear'], ['zoom'], TOWN_PLAN_ZOOM, 0, 12.3, 0.8]) },
@@ -196,11 +218,20 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     paint: { 'fill-color': '#a8a291', 'fill-outline-color': INK, 'fill-opacity': fadeIn(14.5, 15.2) },
   },
   {
+    // A step pyramid's platforms, paler toward the top, and its stair.
+    id: 'plan-pyramid', type: 'fill', source: 'plans', minzoom: 13, filter: kind('pyramid'),
+    paint: {
+      'fill-color': e(['match', ['get', 'tier'], 0, '#b9a98a', 1, '#c4b597', 2, '#cfc1a4', 3, '#d9ccb1', 4, '#e2d7be', 9, '#a8987a', '#d0c3a6']),
+      'fill-outline-color': INK,
+      'fill-opacity': fadeIn(13, 13.6),
+    },
+  },
+  {
     id: 'plan-buildings', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('building'),
     paint: {
       // Notable buildings are washed a little warmer so they stand out from the terraces.
       'fill-color': e(['case', ['has', 'role'],
-        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', 'apothecary', '#bdb38a', 'witch', '#a7a07c', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians'], '#b8a689', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', '#c6b08e'],
+        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', 'apothecary', '#bdb38a', 'witch', '#a7a07c', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians'], '#b8a689', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', 'magetower', '#a99bb3', 'countinghouse', '#c2a978', 'foundry', '#a8978a', 'shrine', '#bba27c', '#c6b08e'],
         ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', 'witch', '#a7a07c', '#cdbd9c']]),
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
@@ -210,6 +241,18 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     // A windmill's sails, crossed over its round tower.
     id: 'plan-sails', type: 'line', source: 'plans', minzoom: 13, filter: kind('sails'), layout: LINE_LAYOUT,
     paint: { 'line-color': INK, 'line-width': physWidth(0.8, 1.2), 'line-opacity': fadeIn(13, 13.6) },
+  },
+  {
+    // Standing stones, carved totems and a fire at a holy place.
+    id: 'plan-holy-marks', type: 'circle', source: 'plans', minzoom: 13, filter: kind('menhir', 'totem', 'fire'),
+    paint: {
+      'circle-color': e(['match', ['get', 'kind'], 'totem', '#8b3a2a', 'fire', '#d9822b', '#8f8a80']),
+      'circle-radius': physWidth(1, ['get', 'r']),
+      'circle-stroke-color': INK,
+      'circle-stroke-width': e(['interpolate', ['linear'], ['zoom'], 13, 0.4, 17, 1]),
+      'circle-opacity': fadeIn(13, 13.6),
+      'circle-stroke-opacity': fadeIn(13, 13.6),
+    },
   },
   {
     // Wells and market fountains: a ring of stone round dark water.
@@ -252,10 +295,10 @@ export const MARKER_LAYERS: LayerSpecification[] = [
     paint: {
       // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
       'circle-color': e(['match', ['get', 'kind'],
-        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, 'tribal', '#8a5a3a', 'camp', '#b0402c', INK]),
+        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, 'tribal', '#8a5a3a', 'camp', '#b0402c', 'shrine', '#c9a227', INK]),
       'circle-radius': e(['interpolate', ['linear'], ['zoom'],
-        8, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp'], 2, 1.5],
-        12, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp'], 4, 3]]),
+        8, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp', 'shrine'], 2, 1.5],
+        12, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp', 'shrine'], 4, 3]]),
       'circle-stroke-color': e(['match', ['get', 'kind'], 'monastery', INK, PAPER]),
       'circle-stroke-width': e(['match', ['get', 'kind'], 'monastery', 1.2, 0.8]),
       'circle-opacity': e(['interpolate', ['linear'], ['zoom'], VILLAGE_ZOOM, 0, 8.2, 1, 12.6, 1, 13.3, 0]),

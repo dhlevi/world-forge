@@ -27,6 +27,7 @@ export function dungeonFromFeature(p: Record<string, unknown>, coords: number[])
   if (p.scale !== undefined && Number(p.scale) > 0) site.scale = Number(p.scale);
   if (typeof p.grates === 'string' && p.grates) site.grates = p.grates.split(';').map((g) => g.split(',').map(Number));
   if (p.thieves) site.thieves = true;
+  if (Number(p.thieves) >= 2) site.grandDen = true;
   return site;
 }
 

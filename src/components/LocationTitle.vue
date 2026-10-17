@@ -8,6 +8,8 @@ import { LAYOUT_LABEL } from '../towns/layout';
 import { CULTURES } from '../names/cultures';
 import { BUNDLE } from '../names/bundles';
 import { hashString, mulberry32 } from '../gen/rng';
+import { THEME_LABEL, worldThemes } from '../lore/themes';
+import { currentLore } from './realm-lore';
 
 /**
  * A cartouche at the top of the map naming where you are, at the scale you are looking at:
@@ -39,7 +41,7 @@ function pair(native: string, en?: string): { name: string; alt?: string } {
 }
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
-const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp' };
+const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp', shrine: 'Shrine' };
 const townArms = new Map<string, Arms>();
 
 /** "2.3 million", "34,000", "870". */
@@ -106,10 +108,15 @@ const info = computed<Line | null>(() => {
         townArms.set(s.id, a);
       }
       const kind = s.tier === 'city' ? 'City' : 'Town';
+      // Its theme and holiness, from the lore (built on first need).
+      const lore = currentLore();
+      const th = lore ? worldThemes(lore, w.raster.seed) : null;
+      const theme = th?.themes.get(s.id);
+      const holy = th?.holy.get(s.id);
       const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
         ...pair(s.name ?? '', s.nameEn), old: s.nameOld,
-        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' ? LAYOUT_LABEL[s.layout] : '', s.university ? 'a university city' : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
+        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' ? LAYOUT_LABEL[s.layout] : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
       };
     }
@@ -118,6 +125,12 @@ const info = computed<Line | null>(() => {
       const h = store.here;
       const tie = h.kind === 'keep' ? `a holding of the ${barony.name}` : h.kind === 'monastery' ? `abbey lands in the ${barony.name}` : '';
       // An army camp: whose host, and the war it is fighting.
+      if (h.kind === 'shrine') {
+        return {
+          ...pair(h.name, h.en), sub: ['Shrine', h.what, h.faith ? `holy to ${h.faith}` : ''].filter(Boolean).join(' · '),
+          arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
+        };
+      }
       if (h.kind === 'camp') {
         return {
           ...pair(h.name, h.en), sub: [`Army camp of ${h.population.toLocaleString('en')} soldiers`, h.realm ? `the host of the ${h.realm}` : '', h.war].filter(Boolean).join(' · '),

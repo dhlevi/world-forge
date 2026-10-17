@@ -10,7 +10,7 @@ import type { DetailSampler } from './detail';
 import { chaikin, riverVertex, riverWidthM } from './rivers';
 
 export type Tier = 'city' | 'town' | 'village';
-export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal' | 'camp';
+export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal' | 'camp' | 'shrine';
 /** A New World town founded by an Old World realm. */
 export type ColonyKind = 'colony' | 'fort' | 'post';
 
@@ -29,6 +29,8 @@ export interface Settlement {
   kind?: VillageKind;
   /** Army camps: the realm whose host is camped here, and the war it is fighting. */
   army?: { realm: string; war: string };
+  /** Shrines at a faith's natural holy places: how it is built, the faith and what is holy there. */
+  shrine?: { style: 'chapel' | 'stones' | 'hermitage' | 'totems' | 'pyramid'; faith: string; what: string; feature: string };
   /** In the New World (sparse, tribal lands). */
   newWorld?: boolean;
   /** New World colonies: what kind, and whose culture (index into CULTURES) names and rules it. */

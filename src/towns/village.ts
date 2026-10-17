@@ -36,6 +36,7 @@ export function buildVillage(inp: PlanInput): void {
     case 'keep': keep(k); break;
     case 'tribal': tribal(k); break;
     case 'camp': camp(k); break;
+    case 'shrine': shrine(k); break;
     default: farming(k);
   }
   villageLabels(k);
@@ -298,6 +299,136 @@ function chapel(k: Kit): void {
 }
 
 /**
+ * A step pyramid: four or five stepped platforms, a stair up one face, and a small shrine on top.
+ */
+function stepPyramid(k: Kit, c: Pt, side: number, a: number): void {
+  const out = k.inp.out;
+  const tiers = side > 26 ? 5 : 4;
+  for (let t = 0; t < tiers; t++) {
+    const w = side * (1 - t / (tiers + 0.6));
+    out.poly('pyramid', rect(c[0], c[1], a, w, w), { tier: t });
+  }
+  // The stair, from the ground to the top platform, up the face toward -v.
+  const top = side * (1 - (tiers - 1) / (tiers + 0.6));
+  const sd: Pt = [Math.sin(a), -Math.cos(a)];
+  const mid: Pt = [c[0] + sd[0] * (side + top) / 4, c[1] + sd[1] * (side + top) / 4];
+  out.poly('pyramid', rect(mid[0], mid[1], a + Math.PI / 2, (side - top) / 2 + 1, Math.max(3, side * 0.14)), { tier: 9 });
+  out.poly('building', rect(c[0], c[1], a, top * 0.55, top * 0.55), { use: 'temple', role: 'temple', label: 'the Sky Temple' });
+  out.point('blabel', c, { name: 'the Sky Temple', role: 'temple' });
+  k.blocked.push(rect(c[0], c[1], a, side + 6, side + 6));
+  k.houses.push({ c, r: side * 0.75 });
+}
+
+/** A ring of carved totem poles round a fire, with a stone at the heart. */
+function totemRing(k: Kit, c: Pt, r: number): void {
+  const out = k.inp.out;
+  const n = 8 + Math.floor(k.rnd() * 5), a0 = k.rnd() * Math.PI;
+  for (let q = 0; q < n; q++) {
+    const a = a0 + (q / n) * Math.PI * 2;
+    out.point('totem', [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r], { r: 0.9 });
+  }
+  out.point('fire', c, { r: 1.6 });
+  k.houses.push({ c, r: r + 2 });
+}
+
+/**
+ * A shrine at a faith's natural holy place (on a holy mountain, by a sacred lake, in a holy
+ * forest, on a holy isle): a ring of standing stones, a chapel with a lodge for pilgrims, a
+ * hermitage, or in the New World a ring of totems or a step pyramid with its priests' houses.
+ */
+function shrine(k: Kit): void {
+  const { rnd, core, R, inp } = k;
+  const out = inp.out;
+  const sh = inp.s.shrine;
+  const style = sh?.style ?? 'chapel';
+  const round = (c: Pt, r: number, n = 16): Pt[] => Array.from({ length: n }, (_, q) => [c[0] + Math.cos((q / n) * Math.PI * 2) * r, c[1] + Math.sin((q / n) * Math.PI * 2) * r] as Pt);
+  const lodge = (c: Pt, r: number) => {
+    const ring = round(c, r, 12);
+    if (inp.water(c) || k.inBlocked(c) || !inp.ground.allOk(ring, { maxSlope: 0.35, marginM: 1 })) return false;
+    out.poly('building', ring, { use: 'lodge' });
+    k.houses.push({ c, r: r + 2 });
+    return true;
+  };
+  // Paths stop at the edge of a stone ring, a totem ground or a pyramid's court.
+  const toEdge = (r: number) => {
+    const e = inp.exits[0]?.p ?? k.polar(R, rnd() * Math.PI * 2);
+    const l = Math.hypot(...e) || 1;
+    k.exitLanes([(e[0] / l) * r, (e[1] / l) * r], r + 4);
+  };
+  switch (style) {
+    case 'stones': {
+      const r = 8 + rnd() * 6;
+      toEdge(r + 5);
+      const g = round([0, 0], r + 4, 20);
+      out.poly('green', g);
+      k.blocked.push(g);
+      const n = 9 + Math.floor(rnd() * 6), a0 = rnd() * Math.PI;
+      for (let q = 0; q < n; q++) {
+        if (rnd() < 0.12) continue;
+        const a = a0 + (q / n) * Math.PI * 2 + (rnd() - 0.5) * 0.08;
+        out.point('menhir', [Math.cos(a) * r, Math.sin(a) * r], { r: 0.8 + rnd() * 0.6 });
+      }
+      out.point('menhir', [0, 0], { r: 1.6 });
+      k.houses.push({ c: [0, 0], r: r + 6 });
+      break;
+    }
+    case 'chapel':
+    case 'hermitage': {
+      k.exitLanes([0, 0], 8);
+      const hermit = style === 'hermitage';
+      for (let t = 0; t < 16; t++) if (k.house(k.polar(4 + rnd() * 8, rnd() * Math.PI * 2), rnd() * Math.PI, hermit ? 9 : 14, hermit ? 6 : 8, 'temple')) break;
+      // The keeper's or hermit's cell, a lodge for pilgrims, an herb garden, and a holy well by water.
+      for (let t = 0; t < 16; t++) if (k.house(k.polar(14 + rnd() * 10, rnd() * Math.PI * 2), rnd() * Math.PI, 6, 5)) break;
+      if (!hermit) for (let t = 0; t < 16; t++) if (k.house(k.polar(18 + rnd() * 14, rnd() * Math.PI * 2), rnd() * Math.PI, 12, 6, undefined)) break;
+      for (let t = 0; t < 12; t++) {
+        const c = k.polar(14 + rnd() * 12, rnd() * Math.PI * 2);
+        const q = rect(c[0], c[1], rnd() * Math.PI, 9, 6);
+        if (q.some((v) => inp.water(v) || k.inBlocked(v)) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 6) || q.some((v) => k.nearLane(v, 1))) continue;
+        out.poly('garden', q);
+        k.blocked.push(q);
+        break;
+      }
+      if (sh?.feature === 'lake' || /spring|healing/.test(sh?.what ?? '')) {
+        for (let t = 0; t < 12; t++) {
+          const c = k.polar(8 + rnd() * 10, rnd() * Math.PI * 2);
+          if (inp.water(c) || k.inBlocked(c)) continue;
+          out.point('well', c, { r: 1.3 });
+          break;
+        }
+      }
+      break;
+    }
+    case 'totems': {
+      toEdge(16);
+      const g = round([0, 0], 15, 18);
+      out.poly('green', g);
+      k.blocked.push(g);
+      totemRing(k, [0, 0], 10);
+      for (let t = 0, n = 0; t < 30 && n < 3; t++) if (lodge(k.polar(24 + rnd() * 16, rnd() * Math.PI * 2), 3 + rnd() * 1.5)) n++;
+      break;
+    }
+    case 'pyramid': {
+      const a = rnd() * Math.PI;
+      const side = 26 + rnd() * 10;
+      toEdge(side / 2 + 16);
+      const court = rect(0, 0, a, side + 30, side + 30);
+      out.poly('plaza', court);
+      k.blocked.push(court);
+      stepPyramid(k, [0, 0], side, a);
+      // The priests' houses round the court.
+      for (let t = 0, n = 0; t < 40 && n < 6; t++) {
+        const c = k.polar(side * 0.75 + 22 + rnd() * 25, rnd() * Math.PI * 2);
+        if (k.house(c, a + (rnd() < 0.5 ? 0 : Math.PI / 2), 10 + rnd() * 6, 6)) n++;
+      }
+      break;
+    }
+  }
+  // The holy place's own ground: a holy forest stands close about its shrine.
+  if (sh?.feature === 'forest') k.forest(core * 0.9, R, 9, 0.7);
+  else k.clumps(3, core, R);
+}
+
+/**
  * A New World village or tribal town: an open dancing ground with a council house at its heart,
  * longhouses set round it in one or two rings facing the centre, round lodges and drying racks
  * between, a palisade round the larger ones, and garden plots and forest beyond.
@@ -308,13 +439,17 @@ function tribal(k: Kit): void {
   const ends = k.exitLanes();
   // The dancing ground and council house.
   const plaza: Pt[] = [];
-  const rG = Math.max(10, core * 0.22);
+  // A holy town's ground is wider, for the pyramid or the ring of totems at its heart.
+  const holyNw = inp.holy?.nw;
+  const rG = Math.max(10, core * 0.22) * (holyNw ? 1.5 : 1);
   for (let q = 0; q < 16; q++) {
     const a = (q / 16) * Math.PI * 2;
     plaza.push([Math.cos(a) * rG * (0.9 + 0.2 * rnd()), Math.sin(a) * rG * (0.9 + 0.2 * rnd())]);
   }
   inp.out.poly('green', plaza);
   k.blocked.push(plaza);
+  if (holyNw === 'pyramid') stepPyramid(k, [0, 0], Math.min(rG * 1.1, 34), rnd() * Math.PI);
+  else if (holyNw === 'totems') totemRing(k, [0, 0], rG * 0.72);
   const hall = k.house(k.polar(rG + 8, rnd() * Math.PI * 2), rnd() * Math.PI, 22, 9, 'temple');
   void hall;
   // Longhouses in rings round the ground, their long sides facing the centre.

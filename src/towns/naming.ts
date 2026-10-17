@@ -3,6 +3,7 @@ import { type NameBank, deityName, innName } from '../names/names';
 import type { Rng } from '../gen/rng';
 import { type Poly, type Pt, area, centroid, distToLine } from './geom';
 import type { PlanFeature, PlanOut } from './plan';
+import type { CityTheme } from '../lore/themes';
 
 /**
  * Names and lettering for town plans: quarters (groups of wards), districts (market, castle,
@@ -11,7 +12,10 @@ import type { PlanFeature, PlanOut } from './plan';
  * building features, where the interiors pick them up.
  */
 
-export type WardKind = 'plaza' | 'temple' | 'citadel' | 'park' | 'harbour' | 'ward' | 'rich' | 'garrison' | 'graveyard' | '';
+export type WardKind = 'plaza' | 'temple' | 'citadel' | 'park' | 'harbour' | 'ward' | 'rich' | 'garrison' | 'graveyard'
+  // Wards of the city themes: a merchants' counting-house quarter, a rookery, a ruined quarter, a
+  // forge quarter, a mages' tower in its garden, and a pilgrims' square by a great temple.
+  | 'counting' | 'slum' | 'ruins' | 'forge' | 'tower' | 'pilgrims' | '';
 
 export interface WardInfo {
   poly: Poly;
@@ -53,6 +57,10 @@ export interface CityNaming {
   university?: boolean;
   /** No guilds (tribal towns). */
   noGuilds?: boolean;
+  /** The city's theme (see lore/themes.ts). */
+  theme?: CityTheme;
+  /** A holy town or city. */
+  holy?: boolean;
 }
 
 /**
@@ -130,6 +138,15 @@ export function labelCity(n: CityNaming): void {
       case 'graveyard':
         label = unique(() => pick([`${proper(`grave${i}`)} Cemetery`, 'the Graveyard', `${proper(`grave${i}`)} Burial Ground`, 'the Old Cemetery']));
         break;
+      case 'pilgrims':
+        label = unique(() => pick(['Pilgrims\' Square', 'the Pardon Market', 'Relic Market', 'the Pilgrims\' Court']));
+        break;
+      case 'tower':
+        label = unique(() => pick(['the Arcanum', 'Tower Gardens', 'the Magisterium']));
+        break;
+      case 'ruins':
+        label = unique(() => pick(['the Burnt Quarter', 'the Ruins', 'the Old Quarter', 'the Fallen Ward']));
+        break;
     }
     if (label) out.point('dlabel', labelSpot(w), { name: label });
   });
@@ -182,6 +199,9 @@ export function labelCity(n: CityNaming): void {
         if (has('temple')) return pick(['Temple Quarter', 'Cathedral Close', 'the Holy Quarter']);
         if (has('plaza')) return pick(['Market Quarter', 'Old Town', 'the Chepe']);
         if (has('garrison')) return pick(['the Garrison Ward', 'Soldiers\' Quarter']);
+        if (has('counting')) return pick(['Counting-house Quarter', 'the Exchange Quarter', 'Lombard Quarter', 'Bankers\' Row']);
+        if (has('slum')) return pick(['the Rookery', 'Lower Town', 'the Warrens', 'the Shambles', 'the Sinks']);
+        if (has('forge')) return pick(['the Forges', 'Smiths\' Quarter', 'Foundry Row', 'the Anvils']);
         if (share('rich') >= 0.3) return g.some((i) => wards[i].high) ? 'the Heights' : pick(['Noble Quarter', 'Gold Ward', 'the Lords\' Quarter']);
         if (gateIdx >= 0 && rnd() < 0.6) return gateName(gateIdx);
         if (g.some((i) => wards[i].waterside) && rnd() < 0.5) return pick(['Tanners\' Quarter', 'Dyers\' Row', 'Riverside', 'Fullers\' Ward']);
@@ -269,7 +289,12 @@ export function labelCity(n: CityNaming): void {
     b.f.properties.label = label;
     out.point('blabel', b.c, { name: label, role });
   };
-  const ordinary = (b: BuildingRef) => wards[b.ward].kind === 'ward' || wards[b.ward].kind === 'rich' || !wards[b.ward].inside;
+  const ordinary = (b: BuildingRef) => {
+    const k = wards[b.ward].kind;
+    return k === 'ward' || k === 'rich' || k === 'counting' || k === 'slum' || k === 'forge' || !wards[b.ward].inside;
+  };
+  const inKind = (k: WardKind) => (b: BuildingRef) => wards[b.ward].kind === k;
+  const centresOf = (k: WardKind) => wards.map((w, i) => (w.kind === k ? w.c : null)).filter((c): c is Pt => !!c);
   const onStreet = (d: number) => (b: BuildingRef) => ordinary(b) && n.streets.some((s) => distToLine(s.pts, b.c[0], b.c[1]) < d);
   const plaza = wards.findIndex((w) => w.kind === 'plaza');
   const plazaC = plaza >= 0 ? wards[plaza].c : [0, 0] as Pt;
@@ -279,6 +304,49 @@ export function labelCity(n: CityNaming): void {
   // Inns at the gates, taverns along the main streets.
   for (const b of nearestTo(n.gates, onStreet(30), Math.max(1, Math.round(P / 3000) + 1))) assign(b, 'inn', innName(names.rng(`${key}:inn${b.f.properties.bid}`)));
   for (const b of nearestTo([plazaC], onStreet(40), Math.round(P / 2500) + (n.town ? 0 : 1))) assign(b, 'tavern', innName(names.rng(`${key}:tav${b.f.properties.bid}`)));
+  // ---- Themes ----
+  const theme = n.theme;
+  if (theme === 'merchant') {
+    // Counting houses in their quarter, and the halls of the great merchant companies.
+    const cq = centresOf('counting');
+    for (const b of nearestTo(cq.length ? cq : [plazaC], (x) => ordinary(x) && big(x), n.town ? 1 : 2 + Math.floor(rnd() * 3), 300)) {
+      assign(b, 'countinghouse', unique(() => pick([`${proper(`bank${b.f.properties.bid}`)} Bank`, `the ${proper(`bank${b.f.properties.bid}`)} Counting House`, `House of ${proper(`bank${b.f.properties.bid}`)}`])));
+    }
+    for (const b of nearestTo([plazaC], (x) => ordinary(x) && big(x), n.town ? 1 : 2, 260)) {
+      assign(b, 'guildhall', unique(() => pick(['Drapers\' Hall', 'Vintners\' Hall', 'Grocers\' Hall', 'Mercers\' Hall', 'Spicers\' Hall', 'the Staple Hall', 'Furriers\' Hall'])));
+    }
+  }
+  if (theme === 'pilgrim' || n.holy) {
+    // Inns for the pilgrims round the temple.
+    const t = wards.findIndex((w) => w.kind === 'temple');
+    const at = t >= 0 ? [wards[t].c] : [plazaC];
+    for (const b of nearestTo(at, onStreet(60), theme === 'pilgrim' ? 3 + Math.floor(rnd() * 3) : 1, 400)) {
+      assign(b, 'inn', unique(() => pick(['the Pilgrims\' Rest', 'the Palmer\'s Staff', 'the Scallop Shell', 'the Pilgrim\'s Lantern', 'the Holy Lamb', 'the Seven Stars', 'the Mitre', 'the Pardoner\'s Inn'])));
+    }
+  }
+  if (theme === 'thieves') {
+    // A rookery's dives and fences.
+    const sl = centresOf('slum');
+    const at = sl.length ? sl : [plazaC];
+    for (const b of nearestTo(at, ordinary, 2 + Math.floor(rnd() * 2), 400)) assign(b, 'tavern', innName(names.rng(`${key}:dive${b.f.properties.bid}`)));
+    for (const b of nearestTo(at, ordinary, 2, 400)) assign(b, 'pawnshop', 'Pawnshop');
+  }
+  if (theme === 'forge') {
+    // The forge quarter: smithies and foundries along every street.
+    const fq = n.buildings.filter((b) => !taken.has(b) && inKind('forge')(b));
+    // Only a few are lettered on the plan; the rest show their trade inside.
+    fq.forEach((b, k) => {
+      if (k % 3 === 2) return;
+      const [role, label] = k % 3 === 0 ? ['foundry', 'Foundry'] : ['smithy', pick(['Smithy', 'Armourer', 'Bladesmith', 'Locksmith'])];
+      if (k % 3 === 0 && k < 9) assign(b, role, label);
+      else {
+        taken.add(b);
+        b.f.properties.role = role;
+        b.f.properties.label = label;
+      }
+    });
+  }
+
   // Civic buildings by the market.
   if (plaza >= 0) {
     const hall = nearestTo([plazaC], ordinary, 1, 140);
@@ -289,7 +357,7 @@ export function labelCity(n: CityNaming): void {
     }
   }
   // A university: its great hall near the temple or market, and colleges around it.
-  if (n.university && !n.town) {
+  if ((n.university || theme === 'mages') && !n.town) {
     const at = temple >= 0 ? wards[temple].c : plazaC;
     const main = nearestTo([at], (b) => ordinary(b) && big(b), 1, 400);
     if (main[0]) {
@@ -300,9 +368,15 @@ export function labelCity(n: CityNaming): void {
   }
   // Guilds: more of them the larger the city (a town has at most one).
   if (!n.noGuilds && P >= 4000) {
-    const count = n.town ? (rnd() < 0.5 ? 1 : 0) : P < 10000 ? 2 : P < 20000 ? 3 + Math.floor(rnd() * 2) : 4 + Math.floor(rnd() * 3);
-    const pool = GUILDS.filter((g) => P >= g.minPop || (g.id === 'mages' && n.university));
+    const count = (n.town ? (rnd() < 0.5 ? 1 : 0) : P < 10000 ? 2 : P < 20000 ? 3 + Math.floor(rnd() * 2) : 4 + Math.floor(rnd() * 3)) + (theme === 'mages' ? 1 : 0);
+    const pool = GUILDS.filter((g) => P >= g.minPop || (g.id === 'mages' && (n.university || theme === 'mages')));
     const chosen: (typeof GUILDS)[number][] = [];
+    const must = theme === 'mages' ? ['mages', 'alchemists'] : theme === 'forge' ? ['smiths'] : theme === 'fortress' ? ['warriors'] : [];
+    for (const id of must) {
+      const g = GUILDS.find((x) => x.id === id)!;
+      if (pool.includes(g)) pool.splice(pool.indexOf(g), 1);
+      chosen.push(g);
+    }
     for (let t = 0; t < 30 && chosen.length < count && pool.length; t++) {
       const tot = pool.reduce((a, g) => a + g.w, 0);
       let x = rnd() * tot;
