@@ -1,9 +1,11 @@
 import type { Language, Token } from './language';
 import { LEX } from './lexicon';
+import { isEnglishNumber, numberSystem, numberTokens, readEnglishNumber } from './numbers';
 
 /**
  * Translates simple English into a language: noun phrases (articles, adjectives, plurals,
- * possession with "of" or "'s"), pronouns, one verb with its tense, negation and subject
+ * possession with "of" or "'s"), numbers (as digits or words, "3" and "three" alike, in the
+ * language's own way of counting), pronouns, one verb with its tense, negation and subject
  * agreement, and phrases with prepositions, put in the language's word order. Words outside the
  * core vocabulary get words of their own, made the same way, so anything can be translated.
  */
@@ -77,7 +79,7 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
     src = src.replace(/(^|[^\p{L}'])(\p{Lu}[\p{L}']*)/gu, (m, pre: string, w: string, off: number) => {
       const first = src.slice(0, off).trim() === '' || /[.!?]\s*$/.test(src.slice(0, off));
       const lw = w.toLowerCase();
-      if (o.known?.has(lw) || LEX.has(lw) || PRONOUN[lw] !== undefined || DETS.has(lw) || PREPS.has(lw) || verbOf(lw) || (nounOf(lw).plural && LEX.has(nounOf(lw).n))) return m;
+      if (o.known?.has(lw) || LEX.has(lw) || isEnglishNumber(lw) || PRONOUN[lw] !== undefined || DETS.has(lw) || PREPS.has(lw) || verbOf(lw) || (nounOf(lw).plural && LEX.has(nounOf(lw).n))) return m;
       if (first && lw.length < 3) return m;
       return `${pre} zzp${propers.push(w) - 1}zz `;
     });
@@ -87,7 +89,7 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
     const p = propers[+w.slice(3, -2)];
     return { form: p, gloss: p };
   };
-  const words = src.toLowerCase().replace(/n't\b/g, ' not').replace(/[^a-z0-9' ]/g, ' ').split(/\s+/).filter(Boolean);
+  const words = src.replace(/(\d),(?=\d{3}\b)/g, '$1').toLowerCase().replace(/n't\b/g, ' not').replace(/[^a-z0-9' ]/g, ' ').split(/\s+/).filter(Boolean);
   let i = 0;
   const parts: Part[] = [];
 
@@ -130,12 +132,26 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
       indef = w === 'a' || w === 'an';
       i++;
     }
+    // A number ("3", "three", "three hundred and five"), counting the noun after it or standing alone.
+    let num: number | null = null;
+    const rn = readEnglishNumber(words, i);
+    if (rn) {
+      num = rn.n;
+      i = rn.next;
+      // "One" after an article is a pronoun-like noun ("the one"): left to the noun parser.
+    }
+    const numToks = () => (num === null ? undefined : { toks: numberTokens(L, num), after: numberSystem(L).after });
+    const nPlural = (pl: boolean) => (num === null ? pl : num !== 1 && !numberSystem(L).noPlural);
+    if (num !== null && (i >= words.length || PREPS.has(words[i]) || words[i] === 'of' || verbOf(words[i]) || DETS.has(words[i]) || PRONOUN[words[i]] !== undefined || words[i] === 'and')) {
+      // A number alone ("the 3 of them", "in 1240").
+      return { tokens: numberTokens(L, num), person: num === 1 ? 2 : 7 };
+    }
     const adjs: string[] = [];
     while (i < words.length - 1 && LEX.get(words[i])?.pos === 'adj' && !PREPS.has(words[i + 1])) adjs.push(words[i++]);
     if (i >= words.length || PREPS.has(words[i]) || words[i] === 'of') {
       if (!adjs.length) return null;
       const last = adjs.pop()!;
-      return { tokens: L.nounPhrase(last, { adjs, def, indef, ...(poss >= 0 ? { poss } : {}) }), person: 2 };
+      return { tokens: L.nounPhrase(last, { adjs, def, indef, plural: nPlural(false), num: numToks(), ...(poss >= 0 ? { poss } : {}) }), person: 2 };
     }
     // Adjectives before a proper name ("New ‹Ashford›"), perhaps naming a noun after it ("the Old ‹Ashford› Road").
     let pre: Token | null = null;
@@ -154,7 +170,7 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
       possessive = true;
     }
     const { n, plural } = nounOf(raw.replace(/'$/, ''));
-    let np: NP = { tokens: L.nounPhrase(n, { adjs, def, indef, plural, ...(poss >= 0 ? { poss } : {}) }), person: plural ? 7 : 2 };
+    let np: NP = { tokens: L.nounPhrase(n, { adjs, def, indef, plural: nPlural(plural), num: numToks(), ...(poss >= 0 ? { poss } : {}) }), person: plural || (num ?? 1) > 1 ? 7 : 2 };
     if (pre) np = { tokens: L.appose(np.tokens, pre), person: np.person };
     // A noun naming the proper name after it ("Castle Varsk", "Lake Kethvik").
     if (words[i] && isProper(words[i])) np = { tokens: L.appose(np.tokens, properTok(words[i++])), person: np.person };

@@ -1,6 +1,7 @@
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import type { Language } from './language';
 import { CONS, VOW, isVowel } from './phonemes';
+import { numberSystem } from './numbers';
 
 /**
  * Writing systems. Every language has a script, chosen from its template (Nordic runes, Celtic
@@ -23,6 +24,21 @@ export interface Glyph {
   prims: Prim[];
   /** Advance width (the box is 100 high). */
   w: number;
+}
+
+/**
+ * How numbers are written: positional (a digit for each place, and a sign for an empty place),
+ * additive (signs for one, five and each power, repeated as needed, as Roman numerals), or
+ * multiplicative (a digit before the sign of each power, as Chinese numerals).
+ */
+export type NumeralKind = 'positional' | 'additive' | 'multiplicative';
+export interface NumeralInfo {
+  kind: NumeralKind;
+  base: number;
+  /** Digits built from bars or wedges counting this many (5 or 10), 0 for one sign per digit. */
+  group: number;
+  /** For the culture window. */
+  note: string;
 }
 
 export interface ScriptInfo {
@@ -65,6 +81,7 @@ const LOOK: Record<ScriptStyle, { ink: string; paper: string; stroke: number }> 
 };
 
 const pick = <T>(r: Rng, a: readonly T[]): T => a[Math.floor(r() * a.length)];
+const DIGIT_EN = ['one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten', 'eleven', 'twelve'];
 const L_ = (...p: number[]): Prim => ({ k: 'line', p });
 const Q_ = (...p: number[]): Prim => ({ k: 'quad', p });
 const C_ = (...p: number[]): Prim => ({ k: 'circ', p });
@@ -402,6 +419,174 @@ export class Script {
     });
   }
 
+  // ---- Numerals ---------------------------------------------------------------------------------
+
+  private numInfo: NumeralInfo | null = null;
+  private readonly numCache = new Map<string, Glyph>();
+  private readonly numUsed = new Set<string>();
+
+  /** How this people writes numbers (on a random stream of its own). */
+  get numerals(): NumeralInfo {
+    if (this.numInfo) return this.numInfo;
+    const r = this.rng('numerals');
+    const st = this.info.style;
+    const base = numberSystem(this.L).base;
+    const kind: NumeralKind = st === 'runes' || st === 'ogham' ? 'additive' : st === 'hanzi' || st === 'kana' || st === 'hangul' ? 'multiplicative' : st === 'latin' && r() < 0.35 ? 'additive' : 'positional';
+    const group = kind !== 'positional' ? 0 : st === 'cuneiform' ? (base > 12 ? 10 : 0) : st === 'glyphs' || base > 12 ? (base === 60 ? 10 : 5) : 0;
+    const composite = kind === 'positional' && (st === 'glyphs' || st === 'cuneiform' || base > 12);
+    const bn = { 10: 'ten', 12: 'twelve', 20: 'twenty', 60: 'sixty' }[base] ?? `${base}`;
+    let note: string;
+    if (kind === 'additive') note = `Numbers are written with signs for one, ${this.addGroup === 5 ? 'five' : 'ten'} and each power of ${bn}, each repeated as often as needed and the largest first, as Roman numerals are.`;
+    else if (kind === 'multiplicative') note = `Numbers are written with a digit for each of one to ${base > 12 ? 'nine' : DIGIT_EN[base - 1]} and a sign for each power of ${bn}: each power's sign follows the digit that counts it, and empty places are left out.`;
+    else if (composite) note = `Numbers are written by place, in powers of ${bn}. Each digit is built ${st === 'cuneiform' ? `of wedges: ${group ? 'a corner wedge for each ten and ' : ''}an upright wedge for each one` : `of dots and bars: a dot for each one and a bar for each ${group}`}, and ${st === 'cuneiform' ? 'a pair of slanting wedges' : st === 'glyphs' ? 'a shell' : st === 'abjad' ? 'a dot' : 'a ring'} marks an empty place.`;
+    else note = `Numbers are written by place, in powers of ${bn}, with ${base} digits, one of them a sign for an empty place (zero).`;
+    this.numInfo = { kind, base, group, note };
+    return this.numInfo;
+  }
+  private get addGroup(): number {
+    return numberSystem(this.L).base === 60 ? 10 : 5;
+  }
+
+  /** A numeral sign made once for a key, different from the other numeral signs. */
+  private makeNum(key: string, gen: (r: Rng, t: number) => Glyph): Glyph {
+    const hit = this.numCache.get(key);
+    if (hit) return hit;
+    const r = this.rng(`num:${key}`);
+    let g = gen(r, 0);
+    for (let t = 1; t < 30 && this.numUsed.has(sig(g.prims)); t++) g = gen(r, t);
+    this.numUsed.add(sig(g.prims));
+    this.numCache.set(key, g);
+    return g;
+  }
+
+  /** A pen-drawn sign (for digits and number signs), in the feel of the script. */
+  private numSign(key: string): Glyph {
+    const st = this.info.style;
+    if (st === 'hanzi' || st === 'kana' || st === 'hangul') return this.makeNum(key, (r) => {
+      const a = this.radical(Math.floor(r() * 28));
+      return { prims: r() < 0.5 ? a : [...tf(a, 1, 0.5, 0, 0), ...tf(this.radical(Math.floor(r() * 28)), 1, 0.45, 0, 52)], w: 100 };
+    });
+    const straight = st === 'runes' || st === 'ogham' || st === 'cuneiform';
+    return this.makeNum(key, (r) => {
+      const prims: Prim[] = [];
+      const n = 1 + Math.floor(r() * 2.4);
+      const P = () => [8 + Math.floor(r() * 3) * 22, (st === 'devanagari' ? 26 : 10) + Math.floor(r() * 4) * 28];
+      let [x, y] = P();
+      for (let q = 0; q < n; q++) {
+        let [x1, y1] = P();
+        if (x1 === x && y1 === y) y1 = y1 > 50 ? y1 - 56 : y1 + 56;
+        if (straight || r() < 0.4) prims.push(L_(x, y, x1, y1));
+        else prims.push(Q_(x, y, (x + x1) / 2 + (r() - 0.5) * 70, (y + y1) / 2 + (r() - 0.5) * 50, x1, y1));
+        [x, y] = [x1, y1];
+      }
+      if (st === 'devanagari') prims.push(L_(4, 20, 58, 20));
+      return { prims: prims.map((q) => ({ k: q.k, p: q.p.map((v, i) => (i % 2 ? Math.max(0, Math.min(100, v)) : Math.max(0, Math.min(60, v)))) })), w: 62 };
+    });
+  }
+
+  /** The sign for an empty place. */
+  private zero(): Glyph {
+    const st = this.info.style;
+    if (st === 'abjad') return { prims: [D_(18, 64, 7)], w: 36 };
+    if (st === 'glyphs') return { prims: [Q_(8, 60, 50, 20, 92, 60), Q_(8, 60, 50, 96, 92, 60), L_(30, 50, 40, 66), L_(50, 46, 50, 70), L_(70, 50, 60, 66)], w: 100 };
+    if (st === 'cuneiform') return { prims: [P_(10, 30, 26, 24, 22, 40), L_(22, 34, 40, 56), P_(36, 50, 52, 44, 48, 60), L_(48, 54, 66, 76)], w: 70 };
+    if (st === 'devanagari') return { prims: [L_(4, 20, 58, 20), C_(30, 62, 20)], w: 62 };
+    return { prims: [C_(30, 64, st === 'elvish' ? 16 : 24)], w: 62 };
+  }
+
+  /** A digit built of dots and bars, or of wedges. */
+  private compositeDigit(d: number): Glyph {
+    const G = this.numerals.group, st = this.info.style;
+    if (d === 0) return this.zero();
+    const g = G ? Math.floor(d / G) : 0, u = G ? d % G : d;
+    const prims: Prim[] = [];
+    if (st === 'cuneiform') {
+      for (let k = 0; k < g; k++) {
+        const x = 6 + (k % 3) * 22, y = 30 + Math.floor(k / 3) * 34;
+        prims.push(P_(x, y, x + 18, y - 12, x + 18, y + 12), L_(x + 14, y - 9, x + 22, y - 14), L_(x + 14, y + 9, x + 22, y + 14));
+      }
+      const ox = g ? 6 + Math.min(3, g) * 22 + 6 : 6;
+      for (let k = 0; k < u; k++) {
+        const x = ox + (k % 3) * 18, y = 8 + Math.floor(k / 3) * 32;
+        prims.push(P_(x - 8, y, x + 8, y, x, y + 14), L_(x, y + 10, x, y + 30));
+      }
+      return { prims, w: ox + Math.min(3, u) * 18 + 4 };
+    }
+    // Bars from the bottom up, dots in a row above them.
+    const step = g > 3 ? 12 : 16;
+    for (let k = 0; k < g; k++) prims.push(L_(10, 92 - k * step, 90, 92 - k * step));
+    const top = 92 - g * step - (g ? 4 : -4);
+    // Dots in rows of five.
+    for (let k = 0; k < u; k++) {
+      const row = Math.floor(k / 5), inRow = Math.min(5, u - row * 5), col = k % 5;
+      prims.push(D_(50 - (inRow - 1) * 9 + col * 18, top - 6 - row * 16, 6));
+    }
+    return { prims, w: 100 };
+  }
+
+  /** A digit (below the base). */
+  private digit(d: number): Glyph[] {
+    const nm = this.numerals;
+    if (nm.kind === 'positional' && (nm.group || this.info.style === 'cuneiform' || this.info.style === 'glyphs' || nm.base > 12)) return [this.compositeDigit(d)];
+    if (d === 0) return [this.zero()];
+    const st = this.info.style;
+    // Ideographic one, two and three are so many strokes.
+    if (nm.kind === 'multiplicative' && d <= 3) return [{ prims: Array.from({ length: d }, (_, k) => L_(18, 50 - (d - 1) * 14 + k * 28, 82, 50 - (d - 1) * 14 + k * 28)), w: 100 }];
+    if (st !== 'cuneiform' && d === 1 && nm.kind === 'positional' && this.rng('one')() < 0.6) return [{ prims: [L_(30, st === 'devanagari' ? 20 : 10, 30, 100), ...(st === 'devanagari' ? [L_(4, 20, 58, 20)] : [])], w: 62 }];
+    if (d < 10 || nm.base <= 12) return [this.numSign(`d${d}`)];
+    // Digits past nine in a multiplicative script: tens and units ("two ten three").
+    const q = Math.floor(d / 10), u = d % 10;
+    return [...(q > 1 ? this.digit(q) : []), this.numSign('d10'), ...(u ? this.digit(u) : [])];
+  }
+
+  /** A number in the script's numerals, in reading order. */
+  numeral(n: number): Glyph[] {
+    n = Math.max(0, Math.floor(n));
+    const nm = this.numerals, b = nm.base;
+    const places: number[] = [];
+    for (let x = n; x > 0 || !places.length; x = Math.floor(x / b)) places.unshift(x % b);
+    if (nm.kind === 'positional') return places.flatMap((d) => this.digit(d));
+    const out: Glyph[] = [];
+    const P = places.length;
+    if (nm.kind === 'multiplicative') {
+      if (n === 0) return [this.zero()];
+      places.forEach((d, i) => {
+        const p = P - 1 - i;
+        if (!d) return;
+        if (p === 0) out.push(...this.digit(d));
+        else {
+          if (d > 1 || p > 1) out.push(...this.digit(d));
+          out.push(this.numSign(`p${p}`));
+        }
+      });
+      return out;
+    }
+    // Additive: groups and units of each power, the largest first (fives as Roman V, L, D).
+    if (n === 0) return [this.zero()];
+    const G = this.addGroup;
+    const unit = (p: number): Glyph => (p === 0 ? { prims: [L_(20, 14, 20, 96)], w: 40 } : this.numSign(`p${p}`));
+    const grp = (p: number): Glyph => this.numSign(`g${p}`);
+    places.forEach((d, i) => {
+      const p = P - 1 - i;
+      for (let k = 0; k < Math.floor(d / G); k++) out.push(grp(p));
+      for (let k = 0; k < d % G; k++) out.push(unit(p));
+    });
+    return out;
+  }
+
+  /** The numerals to show in a chart: digits, or each sign with its value. */
+  numeralChart(): { label: string; glyph: Glyph[] }[] {
+    const nm = this.numerals, b = nm.base;
+    const row = (n: number, label = `${n}`) => ({ label, glyph: this.numeral(n) });
+    if (nm.kind === 'positional') {
+      const ds = b <= 20 ? Array.from({ length: b }, (_, i) => i) : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 19, 20, 30, 40, 50, 59];
+      return [...ds.map((d) => ({ label: `${d}`, glyph: this.digit(d) })), row(b), row(b + 1), row(b * b)];
+    }
+    if (nm.kind === 'multiplicative') return [...Array.from({ length: Math.min(b, 10) - 1 }, (_, i) => row(i + 1)), ...(b > 10 ? [row(10)] : []), row(b), row(b * b), row(b ** 3), row(3 * b + 4)];
+    const G = this.addGroup;
+    return [row(1), row(G), row(b), row(G * b), row(b * b), row(G * b * b), row(b ** 3)];
+  }
+
   // ---- Writing words -----------------------------------------------------------------------------
 
   /** A word (spelled in the Latin transcription) as glyphs, in reading order. */
@@ -556,13 +741,20 @@ export function glyphSvg(sc: Script, g: Glyph, size = 40): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(0)}" height="${H}" viewBox="0 0 ${W.toFixed(1)} ${H}"><g fill="none" stroke="${sc.info.ink}" stroke-width="${(sc.info.stroke * k).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" style="--ink:${sc.info.ink}">${g.prims.map((q) => primSvg(q, ox, pad, k)).join('')}</g><style>.f{fill:${sc.info.ink};stroke:none}</style></svg>`;
 }
 
+/** Several glyphs side by side (a numeral), as a small SVG. */
+export function glyphsSvg(sc: Script, gs: Glyph[], size = 40): string {
+  const w = gs.reduce((a, g) => a + g.w + 8, -8);
+  return glyphSvg(sc, { prims: gs.flatMap((g, i) => tf(g.prims, 1, 1, gs.slice(0, i).reduce((a, x) => a + x.w + 8, 0), 0)), w: Math.max(w, 1) }, size);
+}
+
 /**
- * Text (spelled words, as the transcription shows them) written in the script, as an SVG. Lines
+ * Text (spelled words, as the transcription shows them, and numbers in digits) written in the script, as an SVG. Lines
  * break at `maxWidth` pixels; scripts written in columns run top to bottom, right to left.
  */
 export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?: number } = {}): string {
   const size = o.size ?? 36, k = size / 100, gap = 26 * k;
-  const words = text.split(/\s+/).map((w) => w.replace(/[^\p{L}'-]/gu, '')).filter(Boolean).map((w) => sc.word(w));
+  // Words are spelled out; a run of digits is written in the script's numerals.
+  const words = text.split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w.replace(/[^\p{L}'-]/gu, ''))).filter(Boolean).map((w) => (/^\d+$/.test(w) ? sc.numeral(parseInt(w, 10)) : sc.word(w)));
   const { style, direction, ink, paper, stroke } = sc.info;
   const parts: string[] = [];
   const stem = style === 'ogham';
@@ -632,10 +824,10 @@ export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?:
 }
 
 /**
- * A sigil made from a name, after the old way of making them: the name's letters, each once,
- * become points on three rings (the letter's place in the alphabet chooses the point), joined in
- * order from a small ring to a closing bar, and mirrored so the figure stands balanced, inside a
- * double ring lettered with the name in the script itself.
+ * A sigil made from a name, after the old way of making them: the name's letters become points
+ * on three rings (each letter's point is fixed for the script), joined in order (some strokes
+ * bowed) from a small ring to a closing bar or ring, and mirrored so the figure stands balanced,
+ * inside a double ring lettered with the name in the script itself.
  */
 export function sigilSvg(sc: Script, name: string, size = 140): string {
   // Each letter has its place on one of three rings, fixed for the script (so two names in the same

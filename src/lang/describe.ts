@@ -2,6 +2,7 @@ import { type Language, SAMPLE, type Token, type Word } from './language';
 import { BACKS, CONS, HEIGHTS, MANNERS, PLACES, VOW } from './phonemes';
 import { PRONOUNS } from './lexicon';
 import { translate } from './translate';
+import { numberExamples, numberStructure, numberSystem, numberWord } from './numbers';
 
 /** Tables and notes describing a language, for the culture window. */
 
@@ -67,9 +68,34 @@ export function pronounTable(L: Language): { en: string; word: string; ipa: stri
 }
 
 export const EXAMPLES = [
-  'the old king', 'the kings', "the king's sword", 'our father', 'their great city', 'the city of the river', 'The king rules the great city.', 'We saw a white horse by the river.',
+  'the old king', 'the kings', 'three ships', 'twenty-three swords', "the king's sword", 'our father', 'their great city', 'the city of the river', 'The king rules the great city.', 'We saw a white horse by the river.',
   'The warriors will fight the giants of the north.', 'I do not know the way.', "The queen's daughter sang a sweet song.",
 ];
+
+/** How the language counts, in plain sentences. */
+export function countingNotes(L: Language): string[] {
+  const n = numberSystem(L);
+  const out = [`It ${n.label}.`];
+  const w = (x: number) => `${numberWord(L, x)} (${x})`;
+  if (n.base === 20) out.push(`Twenty is ${w(20)}, and forty is two twenties, ${w(40)}; four hundred, ${w(400)}, is a score of scores.`);
+  if (n.base === 60) out.push(`Sixty is ${w(60)}, and the next power is sixty sixties, ${w(3600)}.`);
+  if (n.base === 12) out.push(`Twelve is ${w(12)}, and a dozen dozens, ${w(144)}; ten and eleven have words of their own.`);
+  if (n.sub === 5) out.push(`Six to nine are counted on the second hand: six is ${w(6)}, nine is ${w(9)}.`);
+  out.push(n.bigFirst ? 'The larger part comes first (“twenty-three”).' : 'The units come before the tens (“three-and-twenty”).');
+  out.push(n.multFirst ? 'A multiplier comes before the power it counts (“three hundred”).' : 'A multiplier comes after the power it counts (“hundred three”).');
+  out.push(n.fuse ? 'Tens and units are joined in one word.' : 'Tens and units are separate words.');
+  out.push(n.link === 'and' ? `The parts of a number are joined by “and” (${L.word('and').spell}).` : n.link === 'last' ? 'The last part of a number follows “and”.' : 'The parts of a number stand side by side, with no “and”.');
+  out.push(`Numbers come ${n.after ? 'after' : 'before'} the noun they count${n.noPlural ? ', which stays singular (“three ship”)' : ''}.`);
+  return out;
+}
+
+/** Numbers in words, with how each is built. */
+export function numberTable(L: Language): { n: number; word: string; ipa: string; structure: string }[] {
+  return numberExamples(L).map((n) => {
+    const word = numberWord(L, n);
+    return { n, word, ipa: word.split(' ').map((x) => L.pronounce(x).ipa).join(' '), structure: numberStructure(L, n) };
+  });
+}
 
 export function examples(L: Language): { en: string; tokens: Token[] }[] {
   return EXAMPLES.map((en) => ({ en, tokens: translate(L, en) }));

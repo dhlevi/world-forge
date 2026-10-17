@@ -40,6 +40,9 @@ export interface Word {
 export interface Token {
   form: string;
   gloss: string;
+  /** The first word of a number carries its value; the rest of its words are marked (for writing it in numerals). */
+  num?: number;
+  inNum?: boolean;
 }
 export interface Grammar extends GrammarBias {
   /** Labels for the two noun classes, when there are any. */
@@ -430,12 +433,12 @@ export class Language {
       w = { spell, ipa: this.toIpa(spell), src: 'old' };
     }
     if (!w && P) {
-      const core = c?.pos === 'pron' || c?.pos === 'num' || /^(pronoun|possessive|adposition):/.test(key);
+      const core = c?.pos === 'pron' || c?.pos === 'num' || /^(pronoun|possessive|adposition|number):/.test(key);
       if (r() < (core ? Math.min(0.97, this.retention + 0.12) : this.retention)) w = this.inherit(P.segments(P.word(key)));
     }
     if (!w) {
       const [lo, hi] = this.t.roots;
-      const short = c?.short || c?.pos === 'pron' || c?.pos === 'adv' || /^(pronoun|possessive|adposition):/.test(key);
+      const short = c?.short || c?.pos === 'pron' || c?.pos === 'adv' || /^(pronoun|possessive|adposition|number):/.test(key);
       const n = short ? 1 : Math.max(1, lo + Math.floor(r() * (hi - lo + 1)) - (c && c.pos !== 'n' && c.pos !== 'v' && r() < 0.4 ? 1 : 0));
       w = { ...this.gen(r, n), src: 'new' };
     }
@@ -680,8 +683,8 @@ export class Language {
 
   // ---- Grammar ---------------------------------------------------------------------------------------
 
-  /** A noun phrase: adjectives, articles, plural and the noun's class agreement. */
-  nounPhrase(noun: string, o: { adjs?: string[]; def?: boolean; indef?: boolean; plural?: boolean; poss?: number } = {}): Token[] {
+  /** A noun phrase: a number, adjectives, articles, plural and the noun's class agreement. */
+  nounPhrase(noun: string, o: { adjs?: string[]; def?: boolean; indef?: boolean; plural?: boolean; poss?: number; num?: { toks: Token[]; after: boolean } } = {}): Token[] {
     const g = this.grammar;
     const f = this.forms;
     let n = this.word(noun).spell;
@@ -720,6 +723,8 @@ export class Language {
       return { form: w, gloss: ag };
     });
     let out = g.adj === 'before' ? [...adjs, head] : [head, ...adjs];
+    // A number counting the noun stands before it, or after it in some tongues (see numbers.ts).
+    if (o.num) out = o.num.after ? [...out, ...o.num.toks] : [...o.num.toks, ...out];
     if (o.def && g.def === 'word') out.unshift({ form: f.def, gloss: 'the' });
     if (o.indef && !o.def && g.indef === 'word') out.unshift({ form: f.indef, gloss: 'a' });
     if (pp >= 0 && g.possPron === 'word') {

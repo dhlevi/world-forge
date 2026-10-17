@@ -5,9 +5,10 @@ import { CULTURES, TEMPLATE_LABEL } from '../names/cultures';
 import { templateFolk } from '../names/bundles';
 import { ETHOS, TRADITIONS } from '../names/traits';
 import { LEXICON } from '../lang/lexicon';
-import { cognates, consonantChart, examples, grammarNotes, pronounTable, soundChangeNotes, spellingNotes, vowelChart } from '../lang/describe';
+import { cognates, consonantChart, countingNotes, examples, grammarNotes, numberTable, pronounTable, soundChangeNotes, spellingNotes, vowelChart } from '../lang/describe';
+import { numberWord, writable } from '../lang/numbers';
 import { translate } from '../lang/translate';
-import { glyphSvg, scriptOf, sigilSvg, textSvg } from '../lang/script';
+import { glyphSvg, glyphsSvg, scriptOf, sigilSvg, textSvg } from '../lang/script';
 import { cultureInfo } from '../lore/culture';
 import { fmtPeople } from '../lore/realm';
 import { armsImage } from '../heraldry/draw';
@@ -47,6 +48,11 @@ const vows = computed(() => (L.value ? vowelChart(L.value) : null));
 const notes = computed(() => (L.value ? grammarNotes(L.value) : []));
 const prons = computed(() => (L.value ? pronounTable(L.value) : []));
 const exs = computed(() => (L.value ? examples(L.value) : []));
+const counting = computed(() => (L.value ? countingNotes(L.value) : []));
+const numbers = computed(() => {
+  const sc = script.value;
+  return L.value && sc ? numberTable(L.value).map((x) => ({ ...x, svg: glyphsSvg(sc, sc.numeral(x.n), 30) })) : [];
+});
 const spells = computed(() => (L.value ? spellingNotes(L.value) : []));
 const fam = computed(() => info.value?.family ?? null);
 /** This people first, then its kin (at most five columns). */
@@ -61,6 +67,12 @@ const famText = computed(() => {
   const tpls = new Set(f.members.map((k) => CULTURES[k].id));
   return `${x.name} is one of the ${f.name} languages, which all descend from ${f.protoName}: its sisters are ${others.slice(0, -1).join(', ')}${others.length > 1 ? ' and ' : ''}${others[others.length - 1]}.${tpls.size > 1 ? ` The family spans peoples of different stock (${[...tpls].map((t) => TEMPLATE_LABEL[t] ?? t).join(', ')}), so the sisters share fewer words.` : ''}`;
 });
+/** A number in the dictionary, as the language counts it. */
+const NUM_VALUE: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, hundred: 100, thousand: 1000 };
+function numWord(lang: NonNullable<typeof L.value>, en: string) {
+  const spell = numberWord(lang, NUM_VALUE[en] ?? 1);
+  return { spell, ipa: spell.split(' ').map((x) => lang.pronounce(x).ipa).join(' '), src: lang.word(en).src };
+}
 const dict = computed(() => {
   const lang = L.value;
   if (!lang) return [];
@@ -70,7 +82,7 @@ const dict = computed(() => {
     if (seen.has(x.en)) return false;
     seen.add(x.en);
     return true;
-  }).map((x) => ({ ...x, w: lang.word(x.en), g: lang.grammar.genders && x.pos === 'n' ? lang.grammar.genders[lang.genderOf(x.en)].slice(0, 1) : '' }));
+  }).map((x) => ({ ...x, w: x.pos === 'num' ? numWord(lang, x.en) : lang.word(x.en), g: lang.grammar.genders && x.pos === 'n' ? lang.grammar.genders[lang.genderOf(x.en)].slice(0, 1) : '' }));
   if (!q) return rows;
   const hit = rows.filter((x) => x.en.includes(q) || x.w.spell.includes(q));
   // Any other English word has a word too.
@@ -79,12 +91,13 @@ const dict = computed(() => {
 });
 // The script: its letters or signs, words written in it, and sigils (SVG made here, from the language alone).
 const script = computed(() => (L.value ? scriptOf(L.value) : null));
+const numeralChart = computed(() => (script.value ? script.value.numeralChart().map((x) => ({ label: x.label, svg: glyphsSvg(script.value!, x.glyph, 42) })) : []));
 const scriptChart = computed(() => (script.value ? script.value.chart().map((x) => ({ label: x.label, svg: glyphSvg(script.value!, x.glyph, 42) })) : []));
 const scriptName = computed(() => (L.value ? L.value.word('writing').spell : ''));
 const writtenExamples = computed(() => {
   const sc = script.value, lang = L.value, x = c.value;
   if (!sc || !lang || !x) return [];
-  const rows = [{ en: `their own name, the ${x.endonym}`, native: x.endonym }, ...exs.value.slice(0, 5).map((e) => ({ en: e.en, native: e.tokens.map((t) => t.form).join(' ') }))];
+  const rows = [{ en: `their own name, the ${x.endonym}`, native: x.endonym }, ...exs.value.slice(0, 5).map((e) => ({ en: e.en, native: writable(e.tokens) }))];
   return rows.map((r) => ({ ...r, svg: textSvg(sc, r.native, { size: 32, maxWidth: 520 }) }));
 });
 const sigils = computed(() => {
@@ -95,7 +108,7 @@ const sigils = computed(() => {
 const translated = computed(() => (L.value && phrase.value.trim() ? translate(L.value, phrase.value, { capitalsProper: true }) : []));
 /** How the translation is said, word by word. */
 const spoken = computed(() => (L.value ? translated.value.map((t) => L.value!.pronounce(t.form)) : []));
-const translatedScript = computed(() => (script.value && translated.value.length ? textSvg(script.value, translated.value.map((t) => t.form).join(' '), { size: 34, maxWidth: 520 }) : ''));
+const translatedScript = computed(() => (script.value && translated.value.length ? textSvg(script.value, writable(translated.value), { size: 34, maxWidth: 520 }) : ''));
 
 const description = computed(() => {
   const x = c.value, i = info.value;
@@ -226,6 +239,11 @@ function showHome(): void {
           <tr><th /><th /><th class="dim">“… house”</th></tr>
           <tr v-for="p in prons" :key="p.possEn"><td>{{ p.possEn }}</td><td><b>{{ p.poss }}</b></td><td>{{ p.example }}</td></tr>
         </table>
+        <h3>Counting</h3>
+        <ul class="plain"><li v-for="n in counting" :key="n">{{ n }}</li></ul>
+        <table class="dict nums">
+          <tr v-for="x in numbers" :key="x.n"><td class="num">{{ x.n }}</td><td class="g" v-html="x.svg" /><td><b>{{ x.word }}</b><div class="ipa dim">/{{ x.ipa }}/</div></td><td class="dim">{{ x.structure }}</td></tr>
+        </table>
         <h3>Examples</h3>
         <div v-for="e in exs" :key="e.en" class="ex">
           <div class="en">{{ e.en }}</div>
@@ -243,6 +261,11 @@ function showHome(): void {
           <span v-for="(g, i) in scriptChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
         </div>
         <p class="note">Each {{ script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary' ? 'sign' : 'letter' }} is shown with its sound as the transcription spells it.<template v-if="script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary'"> Only the commoner syllables are shown; every syllable of the language has its own.</template></p>
+        <h3>Numerals</h3>
+        <p>{{ script.numerals.note }}</p>
+        <div class="glyphs">
+          <span v-for="(g, i) in numeralChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
+        </div>
         <h3>Written</h3>
         <div v-for="(e, i) in writtenExamples" :key="i" class="ex">
           <div class="en">{{ e.en }}</div>
@@ -623,5 +646,12 @@ textarea {
 .sigils figcaption {
   font-size: 12px;
   font-style: italic;
+}
+.nums td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.nums td.g {
+  white-space: nowrap;
 }
 </style>
