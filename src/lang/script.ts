@@ -741,6 +741,19 @@ export function glyphSvg(sc: Script, g: Glyph, size = 40): string {
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(0)}" height="${H}" viewBox="0 0 ${W.toFixed(1)} ${H}"><g fill="none" stroke="${sc.info.ink}" stroke-width="${(sc.info.stroke * k).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" style="--ink:${sc.info.ink}">${g.prims.map((q) => primSvg(q, ox, pad, k)).join('')}</g><style>.f{fill:${sc.info.ink};stroke:none}</style></svg>`;
 }
 
+/** Text in the script set around a ring (SVG markup for a 100 by 100 box, centred), for seals and emblems. */
+export function ringText(sc: Script, text: string, radius = 40, ink = sc.info.ink, glyphSize = 7): string {
+  const gl = text.split(/\s+/).filter(Boolean).flatMap((w) => sc.word(w)).slice(0, 24);
+  const k = glyphSize / 100;
+  const parts: string[] = [];
+  gl.forEach((g, i) => {
+    const t = -Math.PI / 2 + ((i + 0.5) / Math.max(10, gl.length)) * Math.PI * 2;
+    const gx = 50 + Math.cos(t) * radius - (g.w * k) / 2, gy = 50 + Math.sin(t) * radius - 50 * k;
+    for (const q of g.prims) parts.push(primSvg(q, gx, gy, k));
+  });
+  return `<g fill="none" stroke="${ink}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">${parts.join('').replace(/class="f"/g, `fill="${ink}" stroke="none"`)}</g>`;
+}
+
 /** Several glyphs side by side (a numeral), as a small SVG. */
 export function glyphsSvg(sc: Script, gs: Glyph[], size = 40): string {
   const w = gs.reduce((a, g) => a + g.w + 8, -8);

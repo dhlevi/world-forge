@@ -7,15 +7,23 @@ import { cultureInfo } from '../lore/culture';
 import { fmtPeople } from '../lore/realm';
 import { armsImage } from '../heraldry/draw';
 import { currentLore } from './realm-lore';
+import { faithMyths } from '../lore/myths';
+import { scriptureVerses } from '../lore/scripture';
+import { faithHeads } from '../lore/faith-heads';
+import { emblemSvg } from '../lore/emblem';
+import { ringText, scriptOf, textSvg } from '../lang/script';
+import { writable } from '../lang/numbers';
 
 /**
  * The faith window: a faith of the world, its name in its own holy tongue, the peoples and
  * realms that keep it, its doctrines and tenets, its gods, clergy and scripture, its holy places
- * (each flies to the map), its sects, and its history of founding, schism and conversion.
+ * (each flies to the map), its sects, its emblem, verses of its scripture (in its holy tongue and
+ * script), its myths and legends, the line of its heads, and its history of founding, schism and
+ * conversion.
  */
-type Tab = 'overview' | 'doctrine' | 'gods' | 'history';
+type Tab = 'overview' | 'doctrine' | 'scripture' | 'myths' | 'gods' | 'heads' | 'history';
 const tab = ref<Tab>('overview');
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['doctrine', 'Doctrine'], ['gods', 'Gods and sects'], ['history', 'History']];
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['doctrine', 'Doctrine'], ['scripture', 'Scripture'], ['myths', 'Myths'], ['gods', 'Gods and sects'], ['heads', 'Heads'], ['history', 'History']];
 const GROUP_LABEL: Record<DoctrineGroup, string> = { head: 'Head of faith', clergy: 'Clergy', conversion: 'Conversion', others: 'Other faiths', death: 'The dead', marriage: 'Marriage' };
 
 const ctx = computed(() => (openFaith.value !== null && world.value ? currentLore() : null));
@@ -28,6 +36,24 @@ const units = computed(() => world.value?.politics.units ?? []);
 const arms = (id: number) => armsImage(units.value[id].arms, 16, `u${id}`);
 const yr = (y: number) => (y < 0 ? `${-y} before the reckoning` : `${y}`);
 
+const script = computed(() => (f.value?.lang ? scriptOf(f.value.lang) : null));
+const emblem = computed(() => {
+  const x = f.value, sc = script.value;
+  return x ? emblemSvg(x, 72, sc ? (ink) => ringText(sc, x.native, 40.5, ink, 6.5) : undefined) : '';
+});
+const myths = computed(() => (f.value ? faithMyths(f.value, (f.value.cultures.length ? f.value.cultures : f.value.former).map((k) => CULTURES[k].name)) : null));
+const godStory = (name: string) => myths.value?.gods.find((g) => g.name === name)?.story ?? '';
+const verses = computed(() => {
+  const x = f.value, sc = script.value;
+  return x ? scriptureVerses(x).map((v) => ({ ...v, native: v.tokens.map((t) => t.form).join(' '), svg: sc && v.tokens.length ? textSvg(sc, writable(v.tokens), { size: 22, maxWidth: 440 }) : '' })) : [];
+});
+const heads = computed(() => (ctx.value && f.value ? faithHeads(ctx.value, f.value) : null));
+const allHeads = ref(false);
+watch(openFaith, () => (allHeads.value = false));
+const shownHeads = computed(() => {
+  const h = heads.value?.heads ?? [];
+  return allHeads.value ? [...h].reverse() : [...h].reverse().slice(0, 25);
+});
 const people = computed(() => (ctx.value && f.value ? f.value.cultures.reduce((s, k) => s + cultureInfo(ctx.value!, k).people, 0) : 0));
 const realms = computed(() => {
   const c = ctx.value, x = f.value;
@@ -86,6 +112,7 @@ function flyTo(lon: number, lat: number, name: string): void {
 <template>
   <aside v-if="f" class="faith">
     <header>
+      <span class="emblem" :title="`Emblem: ${f.symbol}`" v-html="emblem" />
       <div class="title">
         <h2>{{ cap(f.name) }}</h2>
         <p><i>{{ f.native }}</i> · {{ cap(f.kind) }}<template v-if="f.missionary"> · a missionary faith</template> · symbol: {{ f.symbol }}</p>
@@ -144,9 +171,37 @@ function flyTo(lon: number, lat: number, name: string): void {
         <p class="note">Doctrines and tenets shape the world: zealous faiths fight more holy wars and keep colder relations with other faiths; missionary faiths spread further, and pluralist ones leave the old shrines standing when a people converts.</p>
       </section>
 
+      <section v-else-if="tab === 'scripture'">
+        <p>Verses of {{ f.scripture }}<template v-if="f.lang">, in {{ f.tongue }} and in English</template>.</p>
+        <div v-for="(v, i) in verses" :key="i" class="card verse">
+          <div class="about dim">{{ v.about }}</div>
+          <p class="en">“{{ v.en }}”</p>
+          <p v-if="v.native" class="native"><i>{{ v.native }}</i></p>
+          <div v-if="v.svg" class="written" v-html="v.svg" />
+          <p class="cite dim">{{ cap(v.cite) }}</p>
+        </div>
+      </section>
+
+      <section v-else-if="tab === 'myths' && myths">
+        <template v-for="m in [myths.creation, myths.end, myths.afterlife, ...myths.legends]" :key="m.title">
+          <h3>{{ m.title }}</h3>
+          <p v-for="(p, i) in m.paragraphs" :key="i" class="myth">{{ p }}</p>
+        </template>
+        <p class="note">The stories of the gods are on the Gods and sects tab.</p>
+      </section>
+
+      <section v-else-if="tab === 'heads' && heads">
+        <p>{{ heads.label }}<template v-if="heads.realm !== undefined"> (<a href="#" @click.prevent="goRealm(heads.realm!)">the realm</a>)</template>.</p>
+        <ol class="chron">
+          <li v-for="(h, i) in shownHeads" :key="i"><span class="y">{{ yr(h.from) }}{{ h.to !== undefined ? `–${h.to}` : '–' }}</span><span><b>{{ h.name }}</b><span v-if="h.born" class="dim"> (born {{ h.born }})</span><span class="dim">: {{ h.how }}{{ h.end ? `; ${h.end}` : '; holds the office now' }}</span></span></li>
+        </ol>
+        <button v-if="!allHeads && (heads.heads.length > 25)" @click="allHeads = true">Show all {{ heads.heads.length }}</button>
+        <p v-if="heads.forgotten" class="note">The faith is older than its records: the names of the earlier heads are lost.</p>
+      </section>
+
       <section v-else-if="tab === 'gods'">
         <h3>{{ f.deities.length > 2 && !f.missionary ? 'Gods and spirits' : 'Holy figures' }}</h3>
-        <ul class="plain"><li v-for="g in f.deities" :key="g.name"><em>{{ g.name }}</em>, {{ g.domain }}</li></ul>
+        <div v-for="g in f.deities" :key="g.name" class="god"><h4>{{ g.name }} <span class="dim">· {{ g.domain }}</span></h4><p>{{ godStory(g.name) }}</p></div>
         <p class="note">Their names are in {{ f.tongue || 'the faith’s own tongue' }}.</p>
         <h3>Branches of the faith</h3>
         <ul class="plain">
@@ -329,6 +384,37 @@ ol.chron {
   width: 64px;
   font-variant-numeric: tabular-nums;
   opacity: 0.75;
+}
+.emblem {
+  flex: none;
+  width: 72px;
+  height: 72px;
+}
+.verse .about {
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.verse .en {
+  font-size: 15.5px;
+}
+.verse .cite {
+  text-align: right;
+  font-style: italic;
+  font-size: 13px;
+}
+.written {
+  overflow-x: auto;
+  margin: 4px 0;
+}
+.myth {
+  text-indent: 1.2em;
+}
+.god {
+  margin: 8px 0;
+}
+.god h4 span {
+  font-size: 13.5px;
 }
 @media (max-width: 768px) {
   .faith {
