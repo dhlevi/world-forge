@@ -303,47 +303,130 @@ export class Script {
     }
   }
 
+  /**
+   * A kana-like sign: one main stroke (a bar, an upright, a turning stroke like \u30d5, a hook like
+   * \u3057, a loop like \u306e, a long sweep like \u30ce, or a cross), with one or two lesser strokes
+   * (a sweep, a dot, a bar or a drop) joined to it or crossing it, sized to fill the square. Signs
+   * for lone consonants are simpler.
+   */
   private brush(key: string, strokes: number): Glyph {
     return this.make(`kana:${key}`, (r) => {
       const prims: Prim[] = [];
-      const g = () => 12 + Math.floor(r() * 5) * 19;
-      for (let q = 0; q < strokes; q++) {
-        const x0 = g(), y0 = g(), x1 = g(), y1 = g();
-        prims.push(Q_(x0, y0, (x0 + x1) / 2 + (r() - 0.5) * 50, (y0 + y1) / 2 + (r() - 0.5) * 50, x1 === x0 && y1 === y0 ? x1 + 20 : x1, y1));
+      let anchors: [number, number][] = [];
+      const spine = pick(r, strokes <= 1 ? ['H', 'V', 'T', 'C', 'L', 'K', 'T'] : ['H', 'V', 'T', 'C', 'O', 'L', 'X', 'T', 'V', 'K', 'A', 'L', 'C', 'K', 'A']);
+      const j = () => (r() - 0.5) * 10;
+      switch (spine) {
+        case 'H': prims.push(L_(16, 46 + j(), 84, 42 + j())); anchors = [[24, 46], [50, 44], [76, 43]]; break;
+        case 'V': {
+          const x = 46 + j();
+          prims.push(L_(x, 12, x + 2, 84));
+          if (r() < 0.5) prims.push(L_(x + 2, 84, x - 8, 74));
+          anchors = [[x, 22], [x + 1, 48], [x + 2, 72]];
+          break;
+        }
+        case 'T': prims.push(L_(18, 24 + j(), 76, 20), Q_(76, 20, 74 + j(), 60, 34, 86)); anchors = [[20, 24], [48, 22], [70, 50], [50, 74]]; break;
+        case 'C': prims.push(Q_(36 + j(), 14, 32, 92, 82, 62)); anchors = [[36, 26], [38, 56], [62, 70]]; break;
+        case 'O': prims.push(Q_(52, 24, 54, 74, 26, 76), Q_(26, 76, 8, 32, 52, 24), Q_(52, 24, 94, 30 + j() * 2, 70 + j(), 84)); anchors = [[52, 24], [30, 60], [76, 54]]; break;
+        case 'L': prims.push(Q_(68 + j(), 12, 66, 62, 20, 86)); anchors = [[64, 26], [56, 54], [36, 76]]; break;
+        case 'K': prims.push(L_(66, 12, 32 + j(), 50, 68, 86)); anchors = [[52, 28], [32, 50], [52, 70]]; break;
+        case 'A': prims.push(L_(16, 30 + j(), 80, 28, 72, 46)); anchors = [[30, 30], [50, 29], [72, 44]]; break;
+        default: {
+          const y = 36 + j();
+          prims.push(L_(16, y + 2, 84, y - 2), L_(52, 12, 50, 86));
+          anchors = [[30, y + 1], [52, y], [51, 62], [72, y - 1]];
+        }
       }
-      return { prims, w: 100 };
+      const extra = strokes <= 1 ? (r() < 0.5 ? 1 : 0) : 1 + (r() < 0.35 ? 1 : 0);
+      const used = new Set<number>();
+      for (let q = 0; q < extra; q++) {
+        let k = Math.floor(r() * anchors.length);
+        if (used.has(k)) k = (k + 1) % anchors.length;
+        used.add(k);
+        const [ax, ay] = anchors[k];
+        switch (pick(r, ['sweepL', 'sweepR', 'dot', 'bar', 'drop', 'sweepL', 'dot'].filter((x) => !(spine === 'V' && x === 'drop') && !(spine === 'O' && (x === 'dot' || x === 'drop')) && !(spine === 'H' && x === 'bar')))) {
+          case 'sweepL': prims.push(Q_(ax, ay, ax - 4, ay + 22, ax - 26, ay + 32)); break;
+          case 'sweepR': prims.push(Q_(ax, ay, ax + 6, ay + 18, ax + 26, ay + 28)); break;
+          case 'dot': prims.push(L_(ax + 10, ay - 16, ax + 17, ay - 7)); break;
+          case 'bar': prims.push(L_(ax - 22, ay + 2, ax + 22, ay - 2)); break;
+          default: prims.push(L_(ax, ay, ax - 1, ay + 30)); break;
+        }
+      }
+      // Fit the sign to the square, keeping its proportions.
+      const xs = prims.flatMap((p) => p.p.filter((_, i) => i % 2 === 0)), ys = prims.flatMap((p) => p.p.filter((_, i) => i % 2 === 1));
+      const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+      const sc = Math.min(76 / Math.max(20, x1 - x0), 76 / Math.max(20, y1 - y0), 1.15);
+      const tx = 50 - ((x0 + x1) / 2) * sc, ty = 50 - ((y0 + y1) / 2) * sc;
+      return { prims: prims.map((p) => ({ k: p.k, p: p.p.map((v, i) => (i % 2 ? v * sc + ty : v * sc + tx)) })), w: 100 };
     });
   }
 
   private radicals: Prim[][] | null = null;
+  /**
+   * The script's stock of radicals: forms like those of real characters (a mouth, a sun, a tree, a
+   * person, water, earth, a roof, grass, a knife, a gate, fire...), each drawn with its own slight
+   * differences of proportion, plus a few of the script's own built from a bar, an upright and a
+   * sweep. Every character is made of them, so the same parts recur as in a real script.
+   */
   private radical(k: number): Prim[] {
     if (!this.radicals) {
       const r = this.rng('radicals');
-      this.radicals = [];
-      for (let q = 0; q < 28; q++) {
-        const prims: Prim[] = [];
-        const n = 2 + Math.floor(r() * 4);
-        for (let s = 0; s < n; s++) {
-          const t = pick(r, ['h', 'h', 'v', 'v', 'dot', 'left', 'right', 'hook', 'box']);
-          const x = 10 + Math.floor(r() * 4) * 20, y = 10 + Math.floor(r() * 4) * 20;
-          if (t === 'h') prims.push(L_(Math.max(6, x - 20), y, Math.min(94, x + 20 + r() * 20), y));
-          else if (t === 'v') prims.push(L_(x, Math.max(6, y - 20), x, Math.min(94, y + 30 + r() * 20)));
-          else if (t === 'dot') prims.push(L_(x - 4, y - 6, x + 4, y + 6));
-          else if (t === 'left') prims.push(Q_(x + 10, y - 10, x + 6, y + 20, x - 18, y + 34));
-          else if (t === 'right') prims.push(Q_(x - 10, y - 6, x + 4, y + 22, x + 26, y + 34));
-          else if (t === 'hook') prims.push(L_(x, y - 20, x, y + 30, x - 10, y + 22));
-          else prims.push(L_(x - 14, y - 12, x + 14, y - 12, x + 14, y + 14, x - 14, y + 14, x - 14, y - 12));
-        }
-        this.radicals.push(prims.map((p) => ({ k: p.k, p: p.p.map((v) => Math.max(4, Math.min(96, v))) })));
-      }
+      const j = (n = 6) => (r() - 0.5) * n;
+      const forms: (() => Prim[])[] = [
+        () => [L_(22, 24, 22, 80), L_(22, 24, 78, 24, 78, 80), L_(22, 78, 78, 78)],
+        () => [L_(26, 12, 26, 88), L_(26, 12, 74, 12, 74, 88), L_(26, 50, 74, 50), L_(26, 86, 74, 86)],
+        () => [L_(14, 34 + j(), 86, 34), L_(50, 10, 50, 92), Q_(48, 38, 36, 66, 14, 80), Q_(52, 38, 66, 64, 88, 80)],
+        () => [Q_(62, 8, 48, 30, 22, 46), L_(42, 34, 42, 92)],
+        () => [L_(30, 14, 40, 24), L_(24, 38, 34, 48), Q_(18, 86, 30, 74, 40, 58)],
+        () => [L_(20, 40 + j(), 80, 40), L_(50, 14, 50, 82), L_(10, 84, 90, 84)],
+        () => [L_(50, 12, 50, 92), L_(30, 30, 36, 46), L_(70, 28, 64, 42)],
+        () => [L_(16, 34, 84, 32), L_(52, 10, 52, 86, 40, 78), L_(18, 70, 84, 50)],
+        () => [L_(48, 6, 52, 18), L_(14, 40, 14, 28, 86, 28, 86, 40)],
+        () => [L_(10, 30, 90, 30), L_(32, 14, 32, 46), L_(68, 14, 68, 46)],
+        () => [L_(30, 24, 30, 62), L_(68, 10, 68, 90, 56, 82)],
+        () => [L_(16, 10, 22, 20), L_(16, 30, 16, 92), L_(16, 26, 84, 26, 84, 92, 74, 86)],
+        () => [L_(28, 16, 22, 30), L_(72, 16, 78, 30), Q_(50, 10, 48, 60, 12, 90), Q_(50, 50, 62, 76, 88, 90)],
+        () => [L_(24, 12, 24, 88), L_(24, 12, 76, 12, 76, 84, 66, 78), L_(24, 38, 76, 38), L_(24, 62, 76, 62)],
+        () => [L_(16, 16, 84, 16, 84, 84, 16, 84, 16, 16), L_(16, 50, 84, 50), L_(50, 16, 50, 84)],
+        () => [Q_(56, 10, 40, 50, 18, 84), L_(16, 46, 84, 46), Q_(30, 50, 64, 74, 84, 88)],
+        () => [L_(50, 8, 50, 20), L_(14, 26, 86, 26), L_(26, 44, 74, 44), L_(26, 60, 74, 60), L_(26, 74, 26, 92, 74, 92, 74, 74, 26, 74)],
+        () => [Q_(58, 10, 40, 30, 30, 34), L_(30, 34, 66, 52, 30, 70), L_(30, 70, 70, 74), L_(50, 74, 50, 92)],
+        () => [L_(14, 50, 86, 50), Q_(50, 12, 52, 50, 30, 88), L_(54, 54, 82, 86)],
+        () => [L_(20, 16, 80, 16), L_(50, 16, 50, 88), L_(20, 88, 80, 88), L_(30, 52, 70, 52)],
+        () => [L_(12, 30, 88, 30), Q_(50, 30, 44, 66, 20, 88), Q_(50, 30, 58, 66, 82, 88), L_(70, 10, 76, 20)],
+        () => [L_(18, 22, 18, 60, 82, 60, 82, 22), L_(50, 10, 50, 92)],
+      ];
+      // The script's own forms: a bar, an upright and a sweep or dot, joined.
+      for (let q = 0; q < 8; q++) forms.push(() => {
+        const y = 24 + Math.floor(r() * 3) * 22, x = 28 + Math.floor(r() * 3) * 22;
+        const out: Prim[] = [L_(14, y, 86, y + j(4)), L_(x, 10, x + j(4), 90)];
+        const t = pick(r, ['sweep', 'dot', 'bar', 'hook']);
+        if (t === 'sweep') out.push(Q_(x, y + 6, x - 10, y + 34, x - 30, y + 44));
+        else if (t === 'dot') out.push(L_(x + 16, y - 16, x + 22, y - 8));
+        else if (t === 'bar') out.push(L_(20, y + 32, 80, y + 30));
+        else out.push(L_(x + 2, 90, x - 10, 80));
+        return out;
+      });
+      // Shuffle, take 28, and give each its own small differences of proportion.
+      const order = forms.map((_, i) => i).sort(() => r() - 0.5);
+      this.radicals = order.slice(0, 28).map((i) => {
+        const sx = 0.92 + r() * 0.12, sy = 0.92 + r() * 0.12;
+        return forms[i]().map((p) => ({ k: p.k, p: p.p.map((v, n) => Math.max(4, Math.min(96, n % 2 ? 50 + (v - 50) * sy : 50 + (v - 50) * sx))) }));
+      });
     }
     return this.radicals[k % this.radicals.length];
   }
+  /** A character of two radicals: side by side (the left one narrow), one above the other, or one enclosing the other; now and then one alone. */
   private hanzi(key: string): Glyph {
     return this.make(`hz:${key}`, (r) => {
-      const a = this.radical(Math.floor(r() * 28)), b = this.radical(Math.floor(r() * 28));
+      const n = this.radicals?.length ?? 28;
+      const a = this.radical(Math.floor(r() * n)), b = this.radical(Math.floor(r() * n));
       const lay = r();
-      const prims = lay < 0.45 ? [...tf(a, 0.4, 1, 2, 0), ...tf(b, 0.56, 1, 42, 0)] : lay < 0.8 ? [...tf(a, 1, 0.42, 0, 2), ...tf(b, 1, 0.56, 0, 42)] : [...a, ...tf(b, 0.4, 0.4, 56, 56)];
+      const prims =
+        lay < 0.5 ? [...tf(a, 0.36, 0.94, 2, 3), ...tf(b, 0.56, 0.94, 42, 3)]
+        : lay < 0.78 ? [...tf(a, 0.9, 0.38, 5, 2), ...tf(b, 0.9, 0.56, 5, 42)]
+        : lay < 0.9 ? [L_(10, 10, 10, 92), L_(10, 10, 90, 10, 90, 92, 82, 86), ...tf(b, 0.56, 0.58, 22, 26)]
+        : lay < 0.96 ? [...tf(a, 0.36, 0.94, 2, 3), ...tf(b, 0.56, 0.44, 42, 3), ...tf(this.radical(Math.floor(r() * n)), 0.56, 0.44, 42, 52)]
+        : a;
       return { prims, w: 100 };
     });
   }
@@ -404,18 +487,45 @@ export class Script {
     });
   }
 
+  /**
+   * A cuneiform-like sign: wedges pressed in order, left to right, in up to three groups: a stack
+   * of horizontal wedges, a row of upright wedges, a pair of corner wedges, or a slanting wedge,
+   * often strung on a long horizontal wedge through the middle of the sign. The sign is as wide
+   * as its wedges need.
+   */
   private wedges(key: string): Glyph {
     return this.make(`cun:${key}`, (r) => {
       const prims: Prim[] = [];
-      const n = 2 + Math.floor(r() * 5);
-      const wedge = (x: number, y: number, o: string) => {
-        if (o === 'h') prims.push(P_(x, y - 8, x, y + 8, x + 16, y), L_(x + 12, y, x + 44, y));
-        else if (o === 'v') prims.push(P_(x - 8, y, x + 8, y, x, y + 16), L_(x, y + 12, x, y + 44));
-        else if (o === 'd') prims.push(P_(x - 4, y - 10, x - 10, y + 4, x + 10, y + 10), L_(x + 6, y + 6, x + 28, y + 28));
-        else prims.push(L_(x + 18, y - 14, x, y, x + 18, y + 14));
-      };
-      for (let q = 0; q < n; q++) wedge(10 + Math.floor(r() * 3) * 26, 14 + Math.floor(r() * 3) * 28, pick(r, ['h', 'h', 'v', 'v', 'd', 'w']));
-      return { prims, w: 100 };
+      const H = (x: number, y: number, len: number) => prims.push(P_(x, y - 7, x, y + 7, x + 14, y), L_(x + 11, y, x + len, y));
+      const V = (x: number, y: number, len: number) => prims.push(P_(x - 7, y, x + 7, y, x, y + 14), L_(x, y + 11, x, y + len));
+      const W = (x: number, y: number) => prims.push(L_(x + 16, y - 12, x, y, x + 16, y + 12), P_(x, y, x + 8, y - 5, x + 8, y + 5));
+      const D = (x: number, y: number) => prims.push(P_(x - 3, y - 9, x - 9, y + 3, x + 9, y + 9), L_(x + 5, y + 5, x + 24, y + 24));
+      let x = 6;
+      const groups = 1 + Math.floor(r() * 2.6);
+      const spine = r() < 0.5;
+      const start = x;
+      for (let g = 0; g < groups; g++) {
+        const t = pick(r, ['hs', 'vs', 'vs', 'w', 'hs', 'd']);
+        if (t === 'hs') {
+          const n = 1 + Math.floor(r() * 3);
+          const ys = n === 1 ? [50] : n === 2 ? [34, 66] : [22, 50, 78];
+          for (const y of ys) H(x, y, 34);
+          x += 42;
+        } else if (t === 'vs') {
+          const n = 1 + Math.floor(r() * 3);
+          for (let k = 0; k < n; k++) V(x + 8 + k * 16, spine ? 30 : 22, spine ? 44 : 58);
+          x += 16 * n + 6;
+        } else if (t === 'w') {
+          const n = 1 + Math.floor(r() * 2);
+          for (let k = 0; k < n; k++) W(x, n === 1 ? 50 : 36 + k * 28);
+          x += 24;
+        } else {
+          D(x + 8, 28);
+          x += 30;
+        }
+      }
+      if (spine) H(start - 2, 50, Math.max(40, x - start));
+      return { prims, w: Math.max(44, Math.min(130, x + 4)) };
     });
   }
 
@@ -664,7 +774,7 @@ export class Script {
         for (const syl of syls) {
           const sy = syl.filter((q) => !q.startsWith('#'));
           const vi = sy.findIndex(isVowel);
-          const sign = (k: string, alone: boolean) => (s === 'kana' ? this.brush(k, alone ? 2 : 2 + (hashString(k) % 3)) : s === 'hanzi' ? this.hanzi(k) : s === 'glyphs' ? this.cartouche(k) : this.wedges(k));
+          const sign = (k: string, alone: boolean) => (s === 'kana' ? this.brush(k, alone ? 1 : 2) : s === 'hanzi' ? this.hanzi(k) : s === 'glyphs' ? this.cartouche(k) : this.wedges(k));
           sy.forEach((x, i) => {
             if (i === vi) out.push(sign(`${sy[i - 1] && !isVowel(sy[i - 1]) ? sy[i - 1] : ''}${x}`, false));
             else if (!(i === vi - 1)) out.push(sign(`${x}-`, true));
@@ -696,7 +806,13 @@ export class Script {
     }
     // Syllabaries: the commoner consonants with each vowel.
     const out: { label: string; glyph: Glyph }[] = [];
-    for (const c of ['', ...cons.slice(0, 7)]) for (const v of vows.slice(0, 5)) out.push({ label: `${c ? sp(c) : ''}${sp(v)}`, glyph: this.word(`${c ? sp(c) : ''}${sp(v)}`)[0] ?? { prims: [], w: 100 } });
+    const seen = new Set<string>();
+    for (const c of ['', ...cons.slice(0, 7)]) for (const v of vows.slice(0, 5)) {
+      const label = `${c ? sp(c) : ''}${sp(v)}`;
+      if (seen.has(label)) continue;
+      seen.add(label);
+      out.push({ label, glyph: this.word(label)[0] ?? { prims: [], w: 100 } });
+    }
     return out;
   }
 }
