@@ -37,58 +37,1205 @@ type Theme =
   | 'sky' | 'thunder' | 'sea' | 'sun' | 'moon' | 'star' | 'dead' | 'war' | 'love' | 'harvest' | 'forge' | 'trick' | 'hunt' | 'wisdom' | 'hearth' | 'earth' | 'water'
   | 'wind' | 'mountain' | 'dream' | 'fate' | 'revel' | 'travel' | 'beast' | 'healing' | 'mercy' | 'rain' | 'night' | 'learning' | 'judge' | 'fertility' | 'stone' | 'tomb' | 'gate';
 
-const THEME_WORDS: [Theme, RegExp][] = [
-  ['sky', /all-father|king of the gods|father of all|great spirit|creator|one god|eternal sky|^heaven|jade lord|lady of the stars/i],
-  ['dead', /dead|death|underworld|slain|nine underworld|cold spirits|flayed/i], ['tomb', /tomb/i], ['gate', /gate|bridge/i], ['thunder', /thunder|storm|lightning/i],
-  ['sea', /\bsea\b|ocean|deep waters|sailors|dragon king/i], ['sun', /\bsun\b|dawn|morning star/i], ['moon', /moon/i], ['star', /star/i], ['war', /war|battle|combat|siege|archery|soldiers|bloodshed/i],
-  ['love', /love|beauty|marriage/i], ['harvest', /harvest|maize|rice|fertility|grain/i], ['forge', /forge|smith|craft|mason|builders|stone-hewing/i], ['trick', /trickster|thieves|fox|smoking mirror/i],
-  ['hunt', /hunt|bow/i], ['wisdom', /wisdom|sage|lore|memory/i], ['hearth', /hearth/i], ['earth', /earth|land|mother\b|mother,|the mother/i], ['water', /river|well|spring|cenote|water|lake|streams/i],
-  ['wind', /wind|autumn/i], ['mountain', /mountain|peak|pass/i], ['dream', /dream/i], ['fate', /fate|weaver/i], ['revel', /wine|revel/i], ['travel', /travel|merchant|pilgrim|messenger|rainbow/i],
-  ['beast', /beast|horse|wolf|bear|buffalo|llama|herd|serpent|horned/i], ['healing', /heal/i], ['mercy', /mercy|compassion|charity|poor|lost causes/i], ['rain', /rain/i], ['night', /night/i],
-  ['learning', /learning|scholar|examination|literature|jurist|revelation/i], ['judge', /judg|wrath|last day|mandate/i], ['fertility', /childbearing|children|weav/i], ['stone', /stone|veins|underground/i],
-  ['sky', /sky|heaven|celestial|all-father|king of the gods|father of all|great spirit|creator|one god|jade lord/i],
+export const THEME_WORDS: [Theme, RegExp][] = [
+  ['sky', /all-father|king of the gods|father of all|great spirit|creator|one god|eternal sky|^heaven|jade lord|lady of the stars|high heavens|celestial dome|lord of the azure|sky-father|cloud-weaver/i],
+  ['dead', /dead|death|underworld|slain|nine underworld|cold spirits|flayed|shades|ghosts|nether-realm|lord of bones|phantom|sepulcher|mortem/i],
+  ['tomb', /tomb|mausoleum|crypt|sarcophagus|burial vault|ossuary|death-chamber|resting place/i],
+  ['gate', /gate|bridge|threshold|portals|archway|frontier|boundary|limbo|crossing/i],
+  ['thunder', /thunder|storm|lightning|tempest|storm-bringer|bolt-thrower|rumbling sky|flash-fire|cyclone/i],
+  ['sea', /\bsea\b|ocean|deep waters|sailors|dragon king|tide|abyss|mariner|leviathan|salt-realm|maelstrom|waves/i],
+  ['sun', /\bsun\b|dawn|morning star|solar|golden disc|daylight|noon|radiance|helios|sol invictus|day-bringer/i],
+  ['moon', /moon|lunar|silver bow|night-lamp|crescent|night-queen|selene|hail-night|phase-walker/i],
+  ['star', /star|starlight|constellation|astral|stellar|night-beacon|cosmos|astronomer|stargazer/i],
+  ['war', /war|battle|combat|siege|archery|soldiers|bloodshed|warrior|spear-master|blood-iron|conqueror|slaughter|shield-wall/i],
+  ['love', /love|beauty|marriage|passion|desire|heart|romance|amorous|couple|beloved|venus|aphrodite/i],
+  ['harvest', /harvest|maize|rice|fertility|grain|crop|sow|reap|barley|wheat|fields|bountiful|cornucopia/i],
+  ['forge', /forge|smith|craft|mason|builders|stone-hewing|anvil|hammer|metalwork|foundry|ore-master|artisan/i],
+  ['trick', /trickster|thieves|fox|smoking mirror|mischief|deception|knave|illusionist|slippery|cunning|joke/i],
+  ['hunt', /hunt|bow|stalker|tracker|forest-stride|quarry|arrow|wild-chase|hounds|game-master/i],
+  ['wisdom', /wisdom|sage|lore|memory|knowledge|truth|philosopher|oracle|seer|mind|intellect/i],
+  ['hearth', /hearth|home|fireside|domestic|chimney|family-fire|warmth|house-spirit|flame-tender/i],
+  ['earth', /earth|land|mother\b|mother,|the mother|soil|ground|terra|dirt|roots|gaia|world-body/i],
+  ['water', /river|well|spring|cenote|water|lake|streams|brook|cascade|fountain|aquifer|liquid/i],
+  ['wind', /wind|autumn|gale|breeze|zephyr|tornado|gust|air|breath|tempest-air/i],
+  ['mountain', /mountain|peak|pass|summit|high-tor|crag|cliff|stone-giant|highland|alp/i],
+  ['dream', /dream|vision|somnus|nightmare|slumber|sleeper|moth|illusion|subconscious/i],
+  ['fate', /fate|weaver|destiny|doom|spinning wheel|threads|necessity|moira|inevitable/i],
+  ['revel', /wine|revel|feast|maddness|joy|merry|sexual intercourse|orgy|debauchery|cup-bearer|drinker|jubilee|banquet/i],
+  ['travel', /travel|merchant|pilgrim|messenger|rainbow|wayfarer|roads|crossroads|pathfinder|wanderer/i],
+  ['beast', /beast|horse|wolf|bear|buffalo|llama|herd|serpent|horned|fauna|wildlife|pack|creature/i],
+  ['healing', /heal|medicine|cure|salve|remedy|physician|apothecary|wholeness|soothe|restorative/i],
+  ['mercy', /mercy|compassion|charity|poor|lost causes|pity|grace|forgiveness|kindness|orphans|benevolence/i],
+  ['rain', /rain|shower|downpour|storm-water|precipitation|monsoon|cloud-burst|drizzle/i],
+  ['night', /night|midnight|darkness|shadow|evening|nocturnal|dark-realm|twilight|moon|dreams|mystery|gloaming/i],
+  ['learning', /learning|scholar|examination|literature|jurist|revelation|academy|scripture|reading|scribal/i],
+  ['judge', /judg|wrath|last day|mandate|arbitrator|law-giver|sentence|scales|punishment|verdict/i],
+  ['fertility', /childbearing|children|weav|womb|birth|progeny|nursery|seedling|generation|matron/i],
+  ['stone', /stone|veins|underground|rock|mineral|crystal|gems|bedrock|flint|obsidian|boulder/i],
+  ['sky', /sky|heaven|celestial|all-father|king of the gods|father of all|great spirit|creator|one god|jade lord|firmament/i],
 ];
 function themeOf(domain: string): Theme {
   for (const [t, re] of THEME_WORDS) if (re.test(domain)) return t;
   return 'sky';
 }
 
-/** What each theme's god is known by: a sacred beast or thing, a deed, an offering. */
-const T: Record<Theme, { sign: string[]; deed: string[]; gift: string[]; born: string[] }> = {
-  sky: { sign: ['the eagle', 'the white bull', 'the high throne'], deed: ['set the sky upon four pillars so that it would not fall', 'divided the day from the night and gave each its hours', 'holds the oaths of kings and punishes those who break them'], gift: ['the first fruits of every harvest', 'a white beast at midsummer'], born: ['was the first to wake in the dark', 'rose from the first breath of the world'] },
-  thunder: { sign: ['the hammer', 'the goat', 'the oak struck by lightning'], deed: ['fought the great serpent and drove it into the deep', 'splits the clouds so that the rain may fall on the fields', 'guards the gods’ hall against the giants of frost'], gift: ['ale poured on the stones', 'a goat at the spring storms'], born: ['was born in a clap of thunder', 'sprang from the clash of the sky and the sea'] },
-  sea: { sign: ['the trident', 'the whale', 'the white horse of the waves'], deed: ['raised the islands from the deep and sank those who angered him', 'taught the first sailors to read the waves', 'keeps the drowned in halls of coral beneath the waves'], gift: ['wine poured into the sea before a voyage', 'a horse driven into the surf'], born: ['rose from the foam of the first wave', 'was born in the deep before the land was made'] },
-  sun: { sign: ['the golden disc', 'the falcon', 'the chariot of fire'], deed: ['drives the burning chariot across the sky each day', 'fought the night on the first morning and has fought it every dawn since', 'gave fire to the first people in a hollow reed'], gift: ['gold and honey on the longest day', 'songs at dawn'], born: ['was born from the first fire', 'hatched from a golden egg at the edge of the world'] },
-  moon: { sign: ['the silver bow', 'the hare', 'the white doe'], deed: ['walks the night sky and keeps watch while the sun sleeps', 'counts the months and turns the tides', 'guards travellers and women in childbirth by night'], gift: ['milk and white flowers at the full moon', 'silver left at crossroads'], born: ['was born from a tear of the sun', 'was cut from the sun’s own light'] },
-  star: { sign: ['the silver star', 'the swan', 'the harp'], deed: ['kindled the stars one by one and named each of them', 'sang the paths of the stars so that sailors would never be lost', 'weaves starlight into the dreams of the faithful'], gift: ['songs under the open sky', 'lamps set adrift on still water'], born: ['woke under the first stars', 'was the first light in the dark'] },
-  dead: { sign: ['the raven', 'the black hound', 'the key of the underworld'], deed: ['was the first to die, and so became ruler of all who follow', 'weighs the souls of the dead and sends each to its place', 'keeps the gates of the underworld, which open only inward'], gift: ['bread and salt left at graves', 'black beasts at the turning of the year'], born: ['was born in the dark beneath the roots of the world', 'came out of the first grave'] },
-  war: { sign: ['the spear', 'the wolf', 'the red banner'], deed: ['led the gods to victory in the first war, and was wounded nine times', 'chooses who will fall in each battle', 'taught the first warriors the shield wall'], gift: ['captured arms hung in the temples', 'the blood of a bull before a war'], born: ['sprang full-armed from the head of the sky father', 'was born on a battlefield among the slain'] },
-  love: { sign: ['the dove', 'the rose', 'the mirror'], deed: ['bound the first lovers with a golden thread', 'wept over a dead lover until the first flowers grew from her tears', 'rules the hearts of gods and mortals alike'], gift: ['flowers and sweet cakes', 'doves set free at weddings'], born: ['rose from the foam of the sea', 'was born from the first kiss between the sky and the earth'] },
-  harvest: { sign: ['the sheaf', 'the sickle', 'the sow'], deed: ['taught the first people to sow and reap', 'dies each autumn with the fields and rises again in spring', 'brought the first seed out of the underworld'], gift: ['the last sheaf of the harvest', 'bread baked from the first grain'], born: ['grew from a seed planted by the earth mother', 'was born in a furrow'] },
-  forge: { sign: ['the hammer and anvil', 'the tongs', 'the smoking mountain'], deed: ['forged the weapons of the gods and the chains of the great wolf', 'built the gods’ halls of bronze and gold', 'made the first people from metal, and then from clay when the metal ran short'], gift: ['the first work of every new smith', 'iron nails driven into holy trees'], born: ['was born lame and thrown from the sky, and learned the forge in the deep', 'was born in the fire of a mountain'] },
-  trick: { sign: ['the fox', 'the crow', 'the mask'], deed: ['stole fire from the gods for the first people', 'tricked death into a sack and let it go again for a price', 'shapes himself into any beast, and has fathered strange children'], gift: ['the first cup of every feast, spilled', 'jokes and riddles at the winter feast'], born: ['was born of a giant and a goddess, and belongs to neither', 'was never born, and simply was'] },
-  hunt: { sign: ['the stag', 'the bow', 'the hound'], deed: ['hunts the wild places at night with a pack of white hounds', 'taught the first hunters to give thanks for every kill', 'turned a hunter who spied on her into a stag'], gift: ['the heart of the first kill of the year', 'antlers hung over the door'], born: ['was born in the deep forest', 'was nursed by a she-wolf'] },
-  wisdom: { sign: ['the owl', 'the open book', 'the well of memory'], deed: ['gave an eye for a drink from the well of wisdom', 'hung nine nights on the world tree to learn the runes', 'taught the first sages to write'], gift: ['the first page of every book', 'lamps lit through the night'], born: ['was born from the head of the sky father', 'woke already old and knowing'] },
-  hearth: { sign: ['the flame', 'the cauldron', 'the hearthstone'], deed: ['keeps the fire burning in every home', 'gave up her throne among the gods to tend the hearth', 'guards the bond between host and guest'], gift: ['the first portion of every meal, put in the fire', 'a fire that never goes out'], born: ['was the eldest of the gods, born first and freed last', 'was born from a spark of the first fire'] },
-  earth: { sign: ['the cow', 'the stone', 'the round mound'], deed: ['bore the mountains and the rivers and all that grows', 'sleeps beneath the fields, and her breath is the spring', 'takes back all the dead into her body'], gift: ['milk poured on the ground', 'the first bread of the year, buried'], born: ['was there before all others', 'was the body of the world itself'] },
-  water: { sign: ['the salmon', 'the cup', 'the spring'], deed: ['dwells in every holy spring and heals those who come in faith', 'gave the first river its course', 'drowned the proud king who fouled her well'], gift: ['coins and pins thrown into wells', 'ribbons tied to trees by springs'], born: ['welled up from beneath the roots of the world', 'was born from a mountain’s tears'] },
-  wind: { sign: ['the four horns', 'the falling leaf', 'the kite'], deed: ['carries the souls of the dead beyond the sea', 'scatters the seeds and brings the seasons', 'blows the ships of the faithful safely home'], gift: ['feathers and leaves cast into the wind', 'songs on high places'], born: ['was the first breath of the world', 'was born in the clash of four winds'] },
-  mountain: { sign: ['the peak', 'the ram', 'the white stone'], deed: ['holds up the sky on his shoulders', 'guards the passes and lets through only the worthy', 'hid the first people in the mountain while the flood passed'], gift: ['cairns built on the passes', 'white stones carried to the summit'], born: ['rose from the earth when the world was young', 'was the first mountain'] },
-  dream: { sign: ['the poppy', 'the moth', 'the veiled lamp'], deed: ['walks in the dreams of the faithful and shows them what will be', 'keeps the dreams of the dead', 'gave the first seers their sight'], gift: ['incense burned before sleep', 'dreams told aloud at dawn'], born: ['was dreamed by the first god before the world began', 'was born on the night between two years'] },
-  fate: { sign: ['the spindle', 'the web', 'the three threads'], deed: ['spins the thread of every life, and cuts it when it is done', 'wove the fate of the gods themselves', 'sits at the roots of the world tree and waters it'], gift: ['a thread from every new cloth', 'silence at births'], born: ['was older than the gods, and none know her birth', 'came out of the well of fate'] },
-  revel: { sign: ['the vine', 'the panther', 'the cup'], deed: ['wanders the world with a wild train of revellers', 'taught the first people to make wine', 'died and rose again in the vine'], gift: ['wine poured on the ground', 'dances through the night'], born: ['was born twice, once of his mother and once of his father', 'was born in the vineyards'] },
-  travel: { sign: ['the staff', 'the winged sandal', 'the milestone'], deed: ['carries messages between the gods and mortals', 'guides the souls of the dead on their road', 'watches over every crossroads, market and inn'], gift: ['a coin left at crossroads', 'cairns along the roads'], born: ['was born at a crossroads', 'was born at dawn and stole a herd by noon'] },
-  beast: { sign: ['the horse', 'the wolf', 'the bear'], deed: ['ran before the first people and led them to their land', 'gave the herds to the first people and teaches the young their ways', 'was the forebear of the first of the people’s kings'], gift: ['the first foal of the year', 'skulls hung in holy trees'], born: ['came out of the forest at the beginning of the world', 'was born of the moon and a mare'] },
-  healing: { sign: ['the serpent staff', 'the herb', 'the bear'], deed: ['taught the first healers the herbs of the field', 'raised a dead man, and was punished for it by the sky father', 'sleeps through the winter and wakes the world in spring'], gift: ['wax models of healed limbs', 'herbs hung at the temple door'], born: ['was cut from his dying mother’s womb', 'was born in a cave of healing waters'] },
-  mercy: { sign: ['the open hand', 'the lotus', 'the lamp'], deed: ['hears every prayer of the poor and the suffering', 'refused paradise until every soul could enter', 'gave away all she had and was given back a hundredfold'], gift: ['alms given in her name', 'lamps lit for the sick'], born: ['was born a mortal and raised up for her compassion', 'was born of a tear of the highest god'] },
-  rain: { sign: ['the frog', 'the jar', 'the cloud'], deed: ['pours the rain from great jars when the people are faithful', 'withheld the rain for seven years when the people forgot him', 'sends the storms of the wet season'], gift: ['the blood of children in the old days, now incense and maize', 'songs and drums at planting'], born: ['was born in the clouds over the mountains', 'came out of the sacred well'] },
-  night: { sign: ['the jaguar', 'the obsidian mirror', 'the owl'], deed: ['sees all deeds in his mirror of smoke', 'brings the night and the fears that walk in it', 'tempts the proud and breaks them'], gift: ['obsidian blades', 'offerings at midnight'], born: ['was born of the dark before the first sun', 'was the shadow of the first god'] },
-  learning: { sign: ['the brush and scroll', 'the tablet', 'the lamp'], deed: ['brought writing and the calendar to the first people', 'set the laws in the tablets', 'judges the scholars and rewards the diligent'], gift: ['ink and paper burned at the temple', 'the first copy of every book'], born: ['was born from the first word spoken', 'came down from heaven on a cloud'] },
-  judge: { sign: ['the scales', 'the sword', 'the book of deeds'], deed: ['weighs every soul at the end of days', 'keeps the book in which all deeds are written', 'grants rule to the just and takes it from the wicked'], gift: ['oaths sworn before the altar', 'fasting before great judgments'], born: ['was the first to be made, before the world', 'stands at the right hand of the highest'] },
-  fertility: { sign: ['the spindle', 'the cradle', 'the pomegranate'], deed: ['watches over every birth', 'weaves the bodies of children in the womb', 'taught the first women to spin and weave'], gift: ['the first cloth of a bride', 'small figures of clay left at the shrine'], born: ['was born from a seed in the earth mother’s womb', 'was born under the full moon'] },
-  stone: { sign: ['the pick', 'the vein of gold', 'the deep lamp'], deed: ['runs through the rock like water and shows the miners its veins', 'carved the first halls beneath the mountain', 'knows the name of every stone'], gift: ['the first ore of a new mine', 'lamps left burning in the deeps'], born: ['was carved from the living rock', 'was born in the dark at the mountain’s root'] },
-  tomb: { sign: ['the sealed door', 'the stone eye', 'the lamp of the dead'], deed: ['watches over the tombs of the kings and never sleeps', 'curses those who rob the dead', 'keeps the names of the dead so that they are never forgotten'], gift: ['names carved on the tomb walls', 'lamps kept burning in the tombs'], born: ['was the first king to be laid in the stone', 'was born in silence'] },
-  gate: { sign: ['the bridge', 'the key', 'the horn'], deed: ['guards the bridge between the worlds and will sound his horn at the end', 'keeps the deep gates shut against what lies below', 'lets through only the worthy'], gift: ['keys left at the shrine', 'watch-fires kept on the walls'], born: ['was born of nine mothers', 'was set at the gate when the world was made'] },
+export const T: Record<Theme, { sign: string[]; deed: string[]; gift: string[]; born: string[] }> = {
+  sky: {
+    sign: [
+      'the eagle',
+      'the white bull',
+      'the high throne',
+      'the scepter of light',
+      'the feather of truth',
+      'the soaring falcon'
+    ],
+    deed: [
+      'set the sky upon four pillars so that it would not fall',
+      'divided the day from the night and gave each its hours',
+      'holds the oaths of kings and punishes those who break them',
+      'swallowed the chaos-dragon and bound its bones into the vault of Heaven',
+      'cast down the towering mountain that sought to pierce the highest sphere',
+      'decreed the sacred laws by which both gods and mortals are bound'
+    ],
+    gift: [
+      'the first fruits of every harvest',
+      'a white beast at midsummer',
+      'incense burned upon high hilltops',
+      'a flawless white ram sacrificed under the noon sun',
+      'golden crowns left at the highest altar',
+      'pourings of unmixed wine at the coronation of kings'
+    ],
+    born: [
+      'was the first to wake in the dark',
+      'rose from the first breath of the world',
+      'emerged from the golden primordial egg that split the void',
+      'was carved from the crystal vault of the first sky',
+      'sprang fully grown from the silent thought of the supreme void',
+      'woke when the first beam of light pierced the ancient mist'
+    ]
+  },
+  thunder: {
+    sign: [
+      'the hammer',
+      'the goat',
+      'the oak struck by lightning',
+      'the bronze chariot',
+      'the jagged spear',
+      'the double-headed axe'
+    ],
+    deed: [
+      'fought the great serpent and drove it into the deep',
+      'splits the clouds so that the rain may fall on the fields',
+      'guards the gods’ hall against the giants of frost',
+      'struck the mountain peak in two to let the trapped waters flow',
+      'forged the first bolt of lightning from molten star-iron',
+      'shattered the iron gates of the sky to unleash the spring storm'
+    ],
+    gift: [
+      'ale poured on the stones',
+      'a goat at the spring storms',
+      'iron weapons buried in oak groves',
+      'a red bull slain before the autumn ploughing',
+      'sparks struck from flint over the hearth fire',
+      'a vessel of dark beer buried at the foot of an oak'
+    ],
+    born: [
+      'was born in a clap of thunder',
+      'sprang from the clash of the sky and the sea',
+      'was born from a spark struck when the first iron hit the rock',
+      'hatched from a storm-cloud over the highest peak',
+      'was cut from the heart of a burning oak tree',
+      'leaped from the sky-father’s belt during the first tempest'
+    ]
+  },
+  sea: {
+    sign: [
+      'the trident',
+      'the whale',
+      'the white horse of the waves',
+      'the conch shell',
+      'the iron anchor',
+      'the leviathan'
+    ],
+    deed: [
+      'raised the islands from the deep and sank those who angered him',
+      'taught the first sailors to read the waves',
+      'keeps the drowned in halls of coral beneath the waves',
+      'stirred the primary ocean with his spear to distill the salt of the earth',
+      'bound the sea-monsters in dark trenches until the end of days',
+      'swallowed the fleet of the wicked empire in a single whirlpool'
+    ],
+    gift: [
+      'wine poured into the sea before a voyage',
+      'a horse driven into the surf',
+      'black pearls left upon the tide-line',
+      'silver coins tossed into the deep water',
+      'the first catch of every fishing net cast back into the foam',
+      'a carved wooden hull filled with oil and set ablaze'
+    ],
+    born: [
+      'rose from the foam of the first wave',
+      'was born in the deep before the land was made',
+      'sprang from the tears shed by the earth when the land was torn',
+      'was hatched from a sea-shell cradled in abyssal darkness',
+      'rose from the abyss when the sky first touched the water',
+      'was born in the heart of a ocean storm that lasted a hundred years'
+    ]
+  },
+  sun: {
+    sign: [
+      'the golden disc',
+      'the falcon',
+      'the chariot of fire',
+      'the golden lotus',
+      'the rooster',
+      'the radiant crown'
+    ],
+    deed: [
+      'drives the burning chariot across the sky each day',
+      'fought the night on the first morning and has fought it every dawn since',
+      'gave fire to the first people in a hollow reed',
+      'blinded the shadow-king with a single glance of his golden eye',
+      'melts the winter frost each year to awaken the sleeping fields',
+      'carved the path of the twelve hours across the sky with a sunbeam'
+    ],
+    gift: [
+      'gold and honey on the longest day',
+      'songs at dawn',
+      'sunflowers and golden grain offered at noon',
+      'pure beeswax candles lit on the summer solstice',
+      'a white stallion led to the altar at sunrise',
+      'golden coins melted down in the temple braziers'
+    ],
+    born: [
+      'was born from the first fire',
+      'hatched from a golden egg at the edge of the world',
+      'sprang from the open lotus that floated on the primeval waters',
+      'rose from the glowing heart of the first mountain',
+      'was birthed by the dawn-mother upon the eastern peak',
+      'was forged in the solar furnace before time began'
+    ]
+  },
+  moon: {
+    sign: [
+      'the silver bow',
+      'the hare',
+      'the white doe',
+      'the silver crescent',
+      'the mirror of water',
+      'the owl of midnight'
+    ],
+    deed: [
+      'walks the night sky and keeps watch while the sun sleeps',
+      'counts the months and turns the tides',
+      'guards travellers and women in childbirth by night',
+      'drew the veil of silver light to hide the world from shadow-beasts',
+      'soothed the madness of the first beasts with her gentle light',
+      'wove the silver roads through the night sky for lost souls'
+    ],
+    gift: [
+      'milk and white flowers at the full moon',
+      'silver left at crossroads',
+      'bowls of clear water set out to reflect the moon',
+      'white silk ribbons tied to willow branches',
+      'pearls dropped into silent woodland pools',
+      'cakes of fine white flour baked under the night sky'
+    ],
+    born: [
+      'was born from a tear of the sun',
+      'was cut from the sun’s own light',
+      'rose from the sea when the sun first set beneath the horizon',
+      'was born of a silver thread spun by the fate-weavers',
+      'sprang from the cold mirror held by the night goddess',
+      'woke in a cradle of pearl upon the first midnight'
+    ]
+  },
+  star: {
+    sign: [
+      'the silver star',
+      'the swan',
+      'the harp',
+      'the silver compass',
+      'the constellation banner',
+      'the night-bloom'
+    ],
+    deed: [
+      'kindled the stars one by one and named each of them',
+      'sang the paths of the stars so that sailors would never be lost',
+      'weaves starlight into the dreams of the faithful',
+      'pinned the sky vault to the pole so the world would not tilt',
+      'scattered silver dust across the void to guide wandering spirits',
+      'wrote the fate of empires in constellations across the dark'
+    ],
+    gift: [
+      'songs under the open sky',
+      'lamps set adrift on still water',
+      'silver needles and clear crystal left on high rocks',
+      'hymns sung at the rising of the evening star',
+      'bowls of sweet oils burned under the clear night',
+      'fine linen woven with silver thread left at the sanctuary'
+    ],
+    born: [
+      'woke under the first stars',
+      'was the first light in the dark',
+      'sprang from the sparks struck when the sky-vault was forged',
+      'was born from the silver ashes of a fallen moon',
+      'rose from the quietest thought of the void',
+      'was birthed by the night sky on the coldest winter eve'
+    ]
+  },
+  dead: {
+    sign: [
+      'the raven',
+      'the black hound',
+      'the key of the underworld',
+      'the cypress bough',
+      'the iron coin',
+      'the skull crown'
+    ],
+    deed: [
+      'was the first to die, and so became ruler of all who follow',
+      'weighs the souls of the dead and sends each to its place',
+      'keeps the gates of the underworld, which open only inward',
+      'judges the deeds of kings and serfs with absolute impartiality',
+      'tricked the shadow-demons into building the road of the dead',
+      'bound the unquiet ghosts in chains of cold iron'
+    ],
+    gift: [
+      'bread and salt left at graves',
+      'black beasts at the turning of the year',
+      'silver coins placed upon the eyes of the deceased',
+      'libations of dark wine poured into open grave-trench',
+      'incense of myrrh burned at twilight',
+      'black wool blankets given to the poor in memory of the dead'
+    ],
+    born: [
+      'was born in the dark beneath the roots of the world',
+      'came out of the first grave',
+      'was born when mortality first entered the mortal mind',
+      'sprang from the shadow cast by the first living creature',
+      'woke in the cold earth before the first tree took root',
+      'was birthed by the silent night when the first life ended'
+    ]
+  },
+  war: {
+    sign: [
+      'the spear',
+      'the wolf',
+      'the red banner',
+      'the bronze helm',
+      'the iron gauntlet',
+      'the vulture'
+    ],
+    deed: [
+      'led the gods to victory in the first war, and was wounded nine times',
+      'chooses who will fall in each battle',
+      'taught the first warriors the shield wall',
+      'broke the impenetrable wall of the elder giants with a single blow',
+      'bathed his blade in dragon-fire to make it unbreakable',
+      'turned the tide of ten thousand battles with his war-cry'
+    ],
+    gift: [
+      'captured arms hung in the temples',
+      'the blood of a bull before a war',
+      'trophy banners taken from fallen enemies',
+      'a notched sword buried in red clay',
+      'libations of strong spirits poured on war-drums',
+      'the iron horseshoes of a war-stallion offered after victory'
+    ],
+    born: [
+      'sprang full-armed from the head of the sky father',
+      'was born on a battlefield among the slain',
+      'was forged in the blood and fire of the first murder',
+      'sprang from the thunderclap that ended the age of peace',
+      'was born of a war-goddess who drank the blood of dragons',
+      'woke from the earth when the first bronze spear was cast'
+    ]
+  },
+  love: {
+    sign: [
+      'the dove',
+      'the rose',
+      'the mirror',
+      'the golden apple',
+      'the myrtle wreath',
+      'the pair of swans'
+    ],
+    deed: [
+      'bound the first lovers with a golden thread',
+      'wept over a dead lover until the first flowers grew from her tears',
+      'rules the hearts of gods and mortals alike',
+      'reconciled two warring pantheons with a single smile',
+      'tamed the wild beast of the forest with sweet song and gentle touch',
+      'healed the broken spirit of the earth with the gift of devotion'
+    ],
+    gift: [
+      'flowers and sweet cakes',
+      'doves set free at weddings',
+      'honeycomb and sweet wine placed on private altars',
+      'woven rings of myrtle and wild rose',
+      'perfumed oils burned in alabaster lamps',
+      'silk ribbons inscribed with secret vows'
+    ],
+    born: [
+      'rose from the foam of the sea',
+      'was born from the first kiss between the sky and the earth',
+      'sprang from a blossom that opened under the first morning star',
+      'was born from the laughter of the high goddess',
+      'hatched from a crystal egg cradled in a bed of roses',
+      'emerged from the warm spring dew on the morning of creation'
+    ]
+  },
+  harvest: {
+    sign: [
+      'the sheaf',
+      'the sickle',
+      'the sow',
+      'the cornucopia',
+      'the golden stalk',
+      'the threshing floor'
+    ],
+    deed: [
+      'taught the first people to sow and reap',
+      'dies each autumn with the fields and rises again in spring',
+      'brought the first seed out of the underworld',
+      'blessed the barren soil when the great famine struck',
+      'drove away the locust-swarm with a golden sickle',
+      'stored the life-force of the earth in the first grain kernel'
+    ],
+    gift: [
+      'the last sheaf of the harvest',
+      'bread baked from the first grain',
+      'a fat sow offered at the autumn equinox',
+      'vessels of new beer and sweet cider',
+      'garlands of wheat and poppies hung over granary doors',
+      'the first loaf of winter bread broken and given to strangers'
+    ],
+    born: [
+      'grew from a seed planted by the earth mother',
+      'was born in a furrow',
+      'sprang from the golden dust of the first autumn harvest',
+      'was born when the first rain struck the plowed field',
+      'emerged from a sacred granary guarded by serpents',
+      'was birthed in a golden basket woven from wheat straws'
+    ]
+  },
+  forge: {
+    sign: [
+      'the hammer and anvil',
+      'the tongs',
+      'the smoking mountain',
+      'the crucible',
+      'the bellows',
+      'the iron spark'
+    ],
+    deed: [
+      'forged the weapons of the gods and the chains of the great wolf',
+      'built the gods’ halls of bronze and gold',
+      'made the first people from metal, and then from clay when the metal ran short',
+      'trapped the treacherous god of fire inside an iron cage',
+      'crafted the golden plow that carved the first rivers',
+      'smelted the sky-metal into armor that no blade can pierce'
+    ],
+    gift: [
+      'the first work of every new smith',
+      'iron nails driven into holy trees',
+      'coal and iron ore piled at the forge altar',
+      'a blade quenched in holy spring water',
+      'fine bronze vessel filled with tallow and oil',
+      'the scrap-iron of a broken plow offered in gratitude'
+    ],
+    born: [
+      'was born lame and thrown from the sky, and learned the forge in the deep',
+      'was born in the fire of a mountain',
+      'sprang from the spark struck by the first hammer fall',
+      'was forged from cold iron in the subterranean furnace',
+      'rose from the slag heap of the world’s creation',
+      'was birthed by the volcano-mother amidst ash and flame'
+    ]
+  },
+  trick: {
+    sign: [
+      'the fox',
+      'the crow',
+      'the mask',
+      'the crooked staff',
+      'the double tongue',
+      'the loaded dice'
+    ],
+    deed: [
+      'stole fire from the gods for the first people',
+      'tricked death into a sack and let it go again for a price',
+      'shapes himself into any beast, and has fathered strange children',
+      'stole the moon and hid it in a leather bag to outwit the sun',
+      'fooled the warlord into surrendering his army without a fight',
+      'swapped the holy scriptures with a book of tavern songs'
+    ],
+    gift: [
+      'the first cup of every feast, spilled',
+      'jokes and riddles at the winter feast',
+      'a silver coin with two heads left at the tavern threshold',
+      'stolen sweets left at a hollow tree',
+      'a broken lock or key left at the crossroads',
+      'a mask carved from willow wood buried in autumn'
+    ],
+    born: [
+      'was born of a giant and a goddess, and belongs to neither',
+      'was never born, and simply was',
+      'was born from a lie told by the sky father',
+      'sprang from a shadow that detached itself from a campfire',
+      'was birthed during an eclipse when light and dark were confused',
+      'hatched from a crow’s egg laid in a fox’s den'
+    ]
+  },
+  hunt: {
+    sign: [
+      'the stag',
+      'the bow',
+      'the hound',
+      'the horn',
+      'the silver arrowhead',
+      'the boar spear'
+    ],
+    deed: [
+      'hunts the wild places at night with a pack of white hounds',
+      'taught the first hunters to give thanks for every kill',
+      'turned a hunter who spied on her into a stag',
+      'slain the giant shadow-bear that devoured the high mountain herds',
+      'bound the wild beasts with a cord woven from silver grass',
+      'carved the secret trails through the deep forest that no prey can hide from'
+    ],
+    gift: [
+      'the heart of the first kill of the year',
+      'antlers hung over the door',
+      'the hide of an unblemished stag',
+      'silver arrowheads buried under the roots of an ash tree',
+      'the first draught of water taken from a mountain stream',
+      'feathers of a hunting hawk laid upon the stone altar'
+    ],
+    born: [
+      'was born in the deep forest',
+      'was nursed by a she-wolf',
+      'sprang from the rustle of dry leaves in the primeval woods',
+      'was born under the horn of the hunters’ moon',
+      'was birthed by a mountain nymph beneath an ancient pine',
+      'woke in a lair of moss and deer-bones at the world’s dawn'
+    ]
+  },
+  wisdom: {
+    sign: [
+      'the owl',
+      'the open book',
+      'the well of memory',
+      'the eye of amber',
+      'the scroll of laws',
+      'the silver lamp'
+    ],
+    deed: [
+      'gave an eye for a drink from the well of wisdom',
+      'hung nine nights on the world tree to learn the runes',
+      'taught the first sages to write',
+      'solved the unsolvable riddle of the sphinx to save the city',
+      'counted every leaf upon the world tree and recorded their names',
+      'wove the first alphabet from the pattern of flying cranes'
+    ],
+    gift: [
+      'the first page of every book',
+      'lamps lit through the night',
+      'vessels of ink and polished quill pens',
+      'a silver coin left in a hollow stone at a place of study',
+      'scrolls of philosophy burned as incense in the shrine',
+      'pure spring water poured into a stone basin'
+    ],
+    born: [
+      'was born from the head of the sky father',
+      'woke already old and knowing',
+      'was birthed from the reflection of the stars upon the deep well',
+      'sprang from the first secret whispered between the ancient gods',
+      'rose from the ash of the sacred scroll burned in the first temple',
+      'was born from the silence that followed the world’s creation'
+    ]
+  },
+  hearth: {
+    sign: [
+      'the flame',
+      'the cauldron',
+      'the hearthstone',
+      'the woven blanket',
+      'the iron pot',
+      'the house key'
+    ],
+    deed: [
+      'keeps the fire burning in every home',
+      'gave up her throne among the gods to tend the hearth',
+      'guards the bond between host and guest',
+      'drove the cold winter demon from the first human settlement',
+      'blessed the first hearthstone laid in the wilderness',
+      'curse the host who breaks the law of bread and salt'
+    ],
+    gift: [
+      'the first portion of every meal, put in the fire',
+      'a fire that never goes out',
+      'poured fat and oil upon the domestic hearth',
+      'sweet bread baked with honey placed by the chimney',
+      'a bundle of dried lavender and sage burned in the hearth',
+      'clean water sprinkled upon the floor before the threshold'
+    ],
+    born: [
+      'was the eldest of the gods, born first and freed last',
+      'was born from a spark of the first fire',
+      'sprang from the warm ashes of the world-creator’s hearth',
+      'was birthed in the center of the first house built by mortal hands',
+      'rose from the smoke that ascended from the first sacrifice',
+      'was born when the first family gathered together against the cold'
+    ]
+  },
+  earth: {
+    sign: [
+      'the cow',
+      'the stone',
+      'the round mound',
+      'the clay bowl',
+      'the cavern entrance',
+      'the fertile soil'
+    ],
+    deed: [
+      'bore the mountains and the rivers and all that grows',
+      'sleeps beneath the fields, and her breath is the spring',
+      'takes back all the dead into her body',
+      'swallowed the army of the wicked king in a single fissure',
+      'gave her own flesh to form the clay from which humanity was molded',
+      'anchored the restless continents upon the subterranean ocean'
+    ],
+    gift: [
+      'milk poured on the ground',
+      'the first bread of the year, buried',
+      'vessels of dark wine and honey poured into deep crevices',
+      'smooth river stones painted with sacred red ochre',
+      'unblemished grain buried in clay jars before planting',
+      'the blood of a black heifer poured directly upon the soil'
+    ],
+    born: [
+      'was there before all others',
+      'was the body of the world itself',
+      'rose from the primeval sludge when the waters receded',
+      'was birthed from the great void before the sun took light',
+      'sprang from the deep slumber of the elder cosmos',
+      'emerged fully formed when the sky first embraced the chaos'
+    ]
+  },
+  water: {
+    sign: [
+      'the salmon',
+      'the cup',
+      'the spring',
+      'the lotus blossom',
+      'the water lily',
+      'the silver jar'
+    ],
+    deed: [
+      'dwells in every holy spring and heals those who come in faith',
+      'gave the first river its course',
+      'drowned the proud king who fouled her well',
+      'cleansed the land of ancient filth with a hundred-day flood',
+      'turned a drought-stricken valley into a fertile oasis with her tears',
+      'guarded the cauldron of inspiration in the deep lake'
+    ],
+    gift: [
+      'coins and pins thrown into wells',
+      'ribbons tied to trees by springs',
+      'silver rings dropped into clear mountain streams',
+      'bowls of goat’s milk set floating down the river',
+      'unrefined salt sprinkled over natural water sources',
+      'garlands of fresh wild mint cast into the rapids'
+    ],
+    born: [
+      'welled up from beneath the roots of the world',
+      'was born from a mountain’s tears',
+      'sprang from the mist when the sun first warmed the cold rocks',
+      'was birthed by a cloud that condensed upon the sacred peak',
+      'rose from the subterranean river that flows beneath the underworld',
+      'was born from the first rain drop that struck the dry earth'
+    ]
+  },
+  wind: {
+    sign: [
+      'the four horns',
+      'the falling leaf',
+      { sign: 'the kite' }.sign, // keeping string structure clean
+      'the feather',
+      'the wind-vane',
+      'the howling shell'
+    ],
+    deed: [
+      'carries the souls of the dead beyond the sea',
+      'scatters the seeds and brings the seasons',
+      'blows the ships of the faithful safely home',
+      'drove back the pestilence-cloud with a mighty gale',
+      'stole the voices of the proud and scattered them across the hills',
+      'whispered the secret names of the gods into the ears of the first seers'
+    ],
+    gift: [
+      'feathers and leaves cast into the wind',
+      'songs on high places',
+      'incense burned on open windy ridges',
+      'prayer banners set on high mountain passes to catch the breeze',
+      'flour scattered from the palm into a autumn draft',
+      'chimes hung from high branches that sing in the gale'
+    ],
+    born: [
+      'was the first breath of the world',
+      'was born in the clash of four winds',
+      'sprang from the sigh of the earth when the sky father departed',
+      'was birthed by the gale that tore the first mountain asunder',
+      'woke in the high sky before the birds were given wings',
+      'rose from the rush of air beneath the wings of the celestial eagle'
+    ]
+  },
+  mountain: {
+    sign: [
+      'the peak',
+      'the ram',
+      'the white stone',
+      'the cedar tree',
+      'the granite crag',
+      'the snow cap'
+    ],
+    deed: [
+      'holds up the sky on his shoulders',
+      'guards the passes and lets through only the worthy',
+      'hid the first people in the mountain while the flood passed',
+      'crushed the rebellious titan beneath a million tons of granite',
+      'spat fire and ash to destroy the invading dragon-horde',
+      'turned an invading fleet to stone when they approached his coast'
+    ],
+    gift: [
+      'cairns built on the passes',
+      'white stones carried to the summit',
+      'horns of mountain rams offered at the tree line',
+      'coins buried beneath cairn stones on high tracks',
+      'cups of barley liquor poured upon bare rock',
+      'iron pitons driven into the stone face with prayer'
+    ],
+    born: [
+      'rose from the earth when the world was young',
+      'was the first mountain',
+      'sprang from a bone of the elder giant slain in the primordial war',
+      'was birthed when the earth mother thrust her spine toward the sky',
+      'carved itself out of the deep rock before the valleys were hollowed',
+      'was formed from the frozen throne of the winter king'
+    ]
+  },
+  dream: {
+    sign: [
+      'the poppy',
+      'the moth',
+      'the veiled lamp',
+      'the silver key',
+      'the spider web',
+      'the dark mirror'
+    ],
+    deed: [
+      'walks in the dreams of the faithful and shows them what will be',
+      'keeps the dreams of the dead',
+      'gave the first seers their sight',
+      'trapped the nightmare-demon inside an ivory box',
+      'led the lost king back to his throne through a series of visions',
+      'wove the tapestry of illusions that veils the true world from mortals'
+    ],
+    gift: [
+      'incense burned before sleep',
+      'dreams told aloud at dawn',
+      'dried poppy heads laid beneath the pillow',
+      'silver coins placed in bowls of water beside the bed',
+      'small dream-catchers woven from willow and spider-silk',
+      'cups of warm milk mixed with honey and nightshade'
+    ],
+    born: [
+      'was dreamed by the first god before the world began',
+      'was born on the night between two years',
+      'sprang from the shadow that sits between waking and sleep',
+      'was birthed from the mist that rises over the river of forgetfulness',
+      'rose from the first quiet sigh of a sleeping child',
+      'was born when the moon first cast shadows across the earth'
+    ]
+  },
+  fate: {
+    sign: [
+      'the spindle',
+      'the web',
+      'the three threads',
+      'the shears',
+      'the loom of stone',
+      'the hourglass'
+    ],
+    deed: [
+      'spins the thread of every life, and cuts it when it is done',
+      'wove the fate of the gods themselves',
+      'sits at the roots of the world tree and waters it',
+      'decreed the exact day and hour when the world shall end',
+      'bound the dragon of chaos in a net woven from destiny',
+      'wrote the unalterable book of deeds in letters of starlight'
+    ],
+    gift: [
+      'a thread from every new cloth',
+      'silence at births',
+      'unspun wool and silver needles left at the well',
+      'braided locks of hair offered at the turning of the year',
+      'small iron shears buried beneath the threshold',
+      'a vessel of clean spring water poured at the roots of an ash'
+    ],
+    born: [
+      'was older than the gods, and none know her birth',
+      'came out of the well of fate',
+      'was born before light and dark were separated from the void',
+      'sprang from the first thought of necessity in the cosmos',
+      'was birthed by the silence before the first word was spoken',
+      'emerged from the loom of time when the universe took shape'
+    ]
+  },
+  revel: {
+    sign: [
+      'the vine',
+      'the panther',
+      'the cup',
+      'the ivy crown',
+      'the pine-cone staff',
+      'the bronze cymbal'
+    ],
+    deed: [
+      'wanders the world with a wild train of revellers',
+      'taught the first people to make wine',
+      'died and rose again in the vine',
+      'drove the tyrant mad so that he tore down his own palace',
+      'turned the pirate crew that captured him into leaping dolphins',
+      'unbound the chains of the slaves and set them dancing in the streets'
+    ],
+    gift: [
+      'wine poured on the ground',
+      'dances through the night',
+      'garlands of ivy and wild grapevines hung on shrine posts',
+      'the first bowl of fermented grape-must from the autumn press',
+      'goat-skins filled with sweet wine left at the forest edge',
+      'wild, uninhibited song sung under the full moon'
+    ],
+    born: [
+      'was born twice, once of his mother and once of his father',
+      'was born in the vineyards',
+      'sprang from the thigh of the sky-father amidst lightning-bolts',
+      'was birthed in a cave guarded by dancing nymphs',
+      'rose from the crushed sweet grapes of the first harvest',
+      'was born of a mortal princess consumed by divine fire'
+    ]
+  },
+  travel: {
+    sign: [
+      'the staff',
+      'the winged sandal',
+      'the milestone',
+      'the cloak of grey',
+      'the broad hat',
+      'the crossroads pillar'
+    ],
+    deed: [
+      'carries messages between the gods and mortals',
+      'guides the souls of the dead on their road',
+      'watches over every crossroads, market and inn',
+      'stole the herd of the sun-god while still wrapped in his swaddling clothes',
+      'carved the first road through the wilderness with his staff',
+      'tricked the giant sentry so the heroes could pass the narrow bridge'
+    ],
+    gift: [
+      'a coin left at crossroads',
+      'cairns along the roads',
+      'worn sandals hung on milestone posts',
+      'small iron keys left in hollow stones by the highway',
+      'a cup of clear water left outside the gate for wanderers',
+      'fat and bread shared with strangers at a roadside shrine'
+    ],
+    born: [
+      'was born at a crossroads',
+      'was born at dawn and stole a herd by noon',
+      'sprang from the dust kicked up by the first wanderer',
+      'was birthed in a mountain cave at the meeting of three borders',
+      'rose from the wind that blows across open plains',
+      'was born of a star and a cloud that never stayed in one place'
+    ]
+  },
+  beast: {
+    sign: [
+      'the horse',
+      'the wolf',
+      'the bear',
+      'the horned stag',
+      'the great boar',
+      'the mountain lion'
+    ],
+    deed: [
+      'ran before the first people and led them to their land',
+      'gave the herds to the first people and teaches the young their ways',
+      'was the forebear of the first of the people’s kings',
+      'slain the hunter who killed beasts for pleasure rather than food',
+      'led the wild hunt through the clouds on the winter solstice',
+      'protected the sacred forest from the woodcutter’s axe'
+    ],
+    gift: [
+      'the first foal of the year',
+      'skulls hung in holy trees',
+      'horns and antlers piled at the forest edge',
+      'sweet fats and marrow bones left on wild rocks',
+      'unstripped hides laid before the sacred grove',
+      'bowls of fresh milk placed at the forest border'
+    ],
+    born: [
+      'came out of the forest at the beginning of the world',
+      'was born of the moon and a mare',
+      'sprang from the heart of the primeval wilderness',
+      'was birthed by the great cave-bear in the deep mountain',
+      'rose from the soil where the first beast shed its blood',
+      'was born from the union of the forest god and a wild wolf'
+    ]
+  },
+  healing: {
+    sign: [
+      'the serpent staff',
+      'the herb',
+      'the bear',
+      'the silver bowl',
+      'the alabaster jar',
+      'the golden leaf'
+    ],
+    deed: [
+      'taught the first healers the herbs of the field',
+      'raised a dead man, and was punished for it by the sky father',
+      'sleeps through the winter and wakes the world in spring',
+      'drew the poison of the chaos-serpent out of the earth mother',
+      'cleansed the great plague-city using boiling water and sacred sage',
+      'discovered the elixir of eternal life in the root of a mountain lotus'
+    ],
+    gift: [
+      'wax models of healed limbs',
+      'herbs hung at the temple door',
+      'vessels of clean spring water and sweet honey',
+      'silver pins pushed into sacred wooden shrines',
+      'bundles of dried sage, yarrow, and nightshade burned on the altar',
+      'crutches and bandages left at the holy well by those restored'
+    ],
+    born: [
+      'was cut from his dying mother’s womb',
+      'was born in a cave of healing waters',
+      'sprang from a drop of divine nectar that fell upon a medicinal herb',
+      'was birthed by the sun goddess to soothe the ills of mortal flesh',
+      'rose from the sacred pool when the world was young',
+      'was born of a gentle nymph who knew the speech of plants'
+    ]
+  },
+  mercy: {
+    sign: [
+      'the open hand',
+      'the lotus',
+      'the lamp',
+      'the white veil',
+      'the weeping eye',
+      'the olive branch'
+    ],
+    deed: [
+      'hears every prayer of the poor and the suffering',
+      'refused paradise until every soul could enter',
+      'gave away all she had and was given back a hundredfold',
+      'stepped between the executioner’s blade and the repentant sinner',
+      'poured healing balm into the wounds of enemy warriors',
+      'turned the vengeful judge’s heart to compassion with a single tear'
+    ],
+    gift: [
+      'alms given in her name',
+      'lamps lit for the sick',
+      'vessels of pure oil for shrine lamps',
+      'white cloths laid upon the steps of her sanctuary',
+      'loaves of white bread distributed to widows and orphans',
+      'debts forgiven and captives released on her feast day'
+    ],
+    born: [
+      'was born a mortal and raised up for her compassion',
+      'was born of a tear of the highest god',
+      'sprang from the heart of the first mother who prayed for her child',
+      'was birthed when the first act of forgiveness was shown',
+      'emerged from the white blossom that grew on a battlefield',
+      'rose from the quiet sighs of the innocent and suffering'
+    ]
+  },
+  rain: {
+    sign: [
+      'the frog',
+      'the jar',
+      'the cloud',
+      'the dragon',
+      'the lightning flash',
+      'the rainbow bridge'
+    ],
+    deed: [
+      'pours the rain from great jars when the people are faithful',
+      'withheld the rain for seven years when the people forgot him',
+      'sends the storms of the wet season',
+      'slain the drought-demon that drank up all the rivers of the earth',
+      'rides the storm-dragon across the sky to strike the dry soil',
+      'opened the doors of the sky-reservoir with a bronze key'
+    ],
+    gift: [
+      'the blood of children in the old days, now incense and maize',
+      'songs and drums at planting',
+      'jars of clean spring water buried in dry fields',
+      'clay figures of frogs left at mountain shrines',
+      'maize-cakes soaked in sweet water offered before sowing',
+      'drums struck in unison at the first sign of the thunderhead'
+    ],
+    born: [
+      'was born in the clouds over the mountains',
+      'came out of the sacred well',
+      'sprang from the breath of the sea dragon',
+      'was birthed in the dark vault beneath the lake',
+      'rose from the steam when fire first touched cold water',
+      'was born of a thunder-cloud that broke over the dry plain'
+    ]
+  },
+  night: {
+    sign: [
+      'the jaguar',
+      'the obsidian mirror',
+      'the owl',
+      'the black cloak',
+      'the eclipse',
+      'the smoking mirror'
+    ],
+    deed: [
+      'sees all deeds in his mirror of smoke',
+      'brings the night and the fears that walk in it',
+      'tempts the proud and breaks them',
+      'stole the sun’s warmth and hid it in an obsidian cavern',
+      'prowls the shadow-realm testing the hearts of sleeping men',
+      'draped the velvet mantle of dark across the burning sky'
+    ],
+    gift: [
+      'obsidian blades',
+      'offerings at midnight',
+      'black candles lit at the moonless hour',
+      'bowls of dark soot mixed with water set outside the door',
+      'copal incense burned in dark underground chambers',
+      'sacrifices of black fowl offered before the shadow-altar'
+    ],
+    born: [
+      'was born of the dark before the first sun',
+      'was the shadow of the first god',
+      'sprang from the void when the first fire flickered out',
+      'was birthed by the primordial chaos before light was spoken',
+      'rose from the dark abyss beneath the underworld',
+      'woke in the endless night before the world took shape'
+    ]
+  },
+  learning: {
+    sign: [
+      'the brush and scroll',
+      'the tablet',
+      'the lamp',
+      'the inkstone',
+      'the turtle shell',
+      'the scholar’s cap'
+    ],
+    deed: [
+      'brought writing and the calendar to the first people',
+      'set the laws in the tablets',
+      'judges the scholars and rewards the diligent',
+      'carved the history of the world upon the shell of the great turtle',
+      'compiled the holy dictionary of divine names',
+      'taught the kings how to govern by the wisdom of the ancients'
+    ],
+    gift: [
+      'ink and paper burned at the temple',
+      'the first copy of every book',
+      'polished stones and fine quills left at the shrine',
+      'vessels of pure black ink offered on exam days',
+      'scrolls of philosophy laid upon the stone table',
+      'lamps kept burning with clear oil in the study halls'
+    ],
+    born: [
+      'was born from the first word spoken',
+      'came down from heaven on a cloud',
+      'sprang from the ink that dripped from the divine brush',
+      'was birthed by the sage-goddess in the hall of scrolls',
+      'rose from the ancient turtle-shell carved with holy signs',
+      'woke in the library of the gods before men knew how to read'
+    ]
+  },
+  judge: {
+    sign: [
+      'the scales',
+      'the sword',
+      'the book of deeds',
+      'the iron gavel',
+      'the white pillar',
+      'the blindfold'
+    ],
+    deed: [
+      'weighs every soul at the end of days',
+      'keeps the book in which all deeds are written',
+      'grants rule to the just and takes it from the wicked',
+      'cast the tyrant king into the fiery abyss for his crimes',
+      'cut through the tangled web of lies with her blade of truth',
+      'settled the great quarrel between sky and earth at the dawn of time'
+    ],
+    gift: [
+      'oaths sworn before the altar',
+      'fasting before great judgments',
+      'silver coins placed upon the scales of justice',
+      'white stone tablets inscribed with solemn vows',
+      'vessels of pure water for cleansing hands before trial',
+      'swords laid down in pledge of peace and law'
+    ],
+    born: [
+      'was the first to be made, before the world',
+      'stands at the right hand of the highest',
+      'sprang from the divine mind when law was first established',
+      'was birthed by the sun father and the truth goddess',
+      'rose from the foundation stone of the universe',
+      'was carved from the white marble pillar of justice'
+    ]
+  },
+  fertility: {
+    sign: [
+      'the spindle',
+      'the cradle',
+      'the pomegranate',
+      'the rabbit',
+      'the clay womb',
+      'the green sprout'
+    ],
+    deed: [
+      'watches over every birth',
+      'weaves the bodies of children in the womb',
+      'taught the first women to spin and weave',
+      'lifted the curse of barrenness from the royal house',
+      'blessed the barren soil so that it produced a hundredfold',
+      'guarded the sacred cradle from night-demons and fever'
+    ],
+    gift: [
+      'the first cloth of a bride',
+      'small figures of clay left at the shrine',
+      'pomegranates and figs offered at the temple threshold',
+      'bowls of warm milk and honey left by the birth-bed',
+      'silver cradles and embroidered baby garments',
+      'braided locks of hair from young maidens'
+    ],
+    born: [
+      'was born from a seed in the earth mother’s womb',
+      'was born under the full moon',
+      'sprang from the fruit of the first tree of life',
+      'was birthed in a cave of warm red clay',
+      'rose from the spring-soil when the winter ice broke',
+      'emerged from the golden blossom of the wild lotus'
+    ]
+  },
+  stone: {
+    sign: [
+      'the pick',
+      'the vein of gold',
+      'the deep lamp',
+      'the iron chisel',
+      'the granite hammer',
+      'the geode'
+    ],
+    deed: [
+      'runs through the rock like water and shows the miners its veins',
+      'carved the first halls beneath the mountain',
+      'knows the name of every stone',
+      'sealed the subterranean chasm to stop the fire-demons',
+      'turned the invading army into stone statues',
+      'forged the secret pillars that support the continents'
+    ],
+    gift: [
+      'the first ore of a new mine',
+      'lamps left burning in the deeps',
+      'unrefined gold and silver nuggets laid upon the stone altar',
+      'iron chisels and hammerheads quenched in holy water',
+      'cups of strong dwarf-ale placed in rock niches',
+      'smooth gems left in their rough state as offerings'
+    ],
+    born: [
+      'was carved from the living rock',
+      'was born in the dark at the mountain’s root',
+      'sprang from the spark struck when the first mountain fell',
+      'was birthed in the magma-chamber deep beneath the crust',
+      'rose from the diamond core of the ancient earth',
+      'woke inside a giant geode at the center of the world'
+    ]
+  },
+  tomb: {
+    sign: [
+      'the sealed door',
+      'the stone eye',
+      'the lamp of the dead',
+      'the urn of basalt',
+      'the iron lock',
+      'the scarab of slate'
+    ],
+    deed: [
+      'watches over the tombs of the kings and never sleeps',
+      'curses those who rob the dead',
+      'keeps the names of the dead so that they are never forgotten',
+      'seals the sarcophagus of the righteous against corruption',
+      'drove the grave-hags out of the royal mausoleum',
+      'guides the spirit through the narrow dark hall below'
+    ],
+    gift: [
+      'names carved on the tomb walls',
+      'lamps kept burning in the tombs',
+      'vessels of embalming oils and myrrh',
+      'silver coins and grave-goods left undisturbed',
+      'stone seals carved with protective wards',
+      'loaves of barley bread and cups of water placed in niches'
+    ],
+    born: [
+      'was the first king to be laid in the stone',
+      'was born in silence',
+      'sprang from the cold shadow of the first sarcophagus',
+      'was birthed in the dark subterranean vault beneath the city',
+      'rose from the dust of forgotten ancestors',
+      'woke when the first burial door was locked'
+    ]
+  },
+  gate: {
+    sign: [
+      'the bridge',
+      'the key',
+      'the horn',
+      'the archway',
+      'the double doors',
+      'the threshold stone'
+    ],
+    deed: [
+      'guards the bridge between the worlds and will sound his horn at the end',
+      'keeps the deep gates shut against what lies below',
+      'lets through only the worthy',
+      'held the gate against a million demons for nine days',
+      'turned the key that locked the night-monsters in the abyss',
+      'built the rainbow bridge that links earth to the hall of gods'
+    ],
+    gift: [
+      'keys left at the shrine',
+      'watch-fires kept on the walls',
+      'iron padlocks locked onto the sanctuary grates',
+      'horns blown at sunset and sunrise',
+      'bread and salt placed upon the threshold stone',
+      'libations of wine poured over the gate posts'
+    ],
+    born: [
+      'was born of nine mothers',
+      'was set at the gate when the world was made',
+      'sprang from the archway where sky and earth meet',
+      'was birthed by the horizon goddess at dawn',
+      'rose from the first boundary stone laid by mortal hands',
+      'woke standing vigil at the threshold before time began'
+    ]
+  }
 };
 
 // ---- Creation --------------------------------------------------------------------------------------
