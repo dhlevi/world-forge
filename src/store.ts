@@ -40,6 +40,10 @@ export const store = reactive({
   showPolitical: false,
   /** Faith map: each land washed in the colour of its people's faith (shaded by sect), with holy places. */
   showFaiths: false,
+  /** Culture map: each land washed in the colour of its people, with their names. */
+  showCultures: false,
+  /** Race map: each land washed in the colour of its people's race (shaded by people), with their names. */
+  showRaces: false,
   showWind: false,
   showCurrents: false,
   generating: false,
@@ -79,6 +83,8 @@ export const openCulture = shallowRef<number | null>(null);
 export const openFaith = shallowRef<number | null>(null);
 /** The faith map's key: each faith shown, with its colour. */
 export const faithLegend = shallowRef<{ id: number; name: string; rgb: [number, number, number] }[]>([]);
+/** The culture or race map's key: each people or race shown, with its colour (`culture`: the people a click opens). */
+export const groupLegend = shallowRef<{ title: string; note: string; items: { id: number; name: string; rgb: [number, number, number]; culture?: number; sub?: string }[] }>({ title: '', note: '', items: [] });
 export const client = new WorldClient();
 client.registerProtocol();
 registerPoliticalProtocol();

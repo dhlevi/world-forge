@@ -5,7 +5,7 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { faithLegend, flyTarget, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
+import { faithLegend, flyTarget, groupLegend, openCulture, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
 import { blockEntry, faithEntries, planEntries, themeEntries, worldEntries } from '../search/index';
 import { THEME_LABEL, worldThemes } from '../lore/themes';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
@@ -23,7 +23,9 @@ import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb,
 import type { DungeonSite } from '../dungeons/core';
 import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
 import { ITALIC, PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces, textField } from './label-style';
-import { prepareFaithMap, preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
+import { type GroupKey, prepareFaithMap, prepareGroupMap, preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
+import { CULTURES } from '../names/cultures';
+import { templateFolk } from '../names/bundles';
 import { relationsForMap } from '../lore/realm';
 import { currentLore } from './realm-lore';
 
@@ -85,6 +87,8 @@ function syncWorld(): void {
   updateRelations();
   faithGen = -1;
   updateFaithMap();
+  groupGen = -1;
+  updateGroupMap();
   if (store.labelMode !== 'native') applyLabelMode();
   setVisibility('rivers', store.showRivers);
   (map.getSource('rivers') as GeoJSONSource).setData(world.value.rivers);
@@ -191,6 +195,115 @@ function updateFaithMap(): void {
     map.on('mouseenter', 'holy-dot', () => map && (map.getCanvas().style.cursor = 'pointer'));
     map.on('mouseleave', 'holy-dot', () => map && (map.getCanvas().style.cursor = ''));
   } else hs.setData(data);
+}
+
+let groupGen = -1;
+let groupKind: GroupKey | null = null;
+/** Each race's colour on the race map. */
+const RACE_RGB: Record<string, [number, number, number]> = {
+  Humans: [204, 142, 104], Elves: [88, 150, 96], Dwarves: [112, 124, 150], Halflings: [214, 186, 72], Orcs: [176, 72, 58], Lizardfolk: [52, 140, 140],
+};
+const RACES = Object.keys(RACE_RGB);
+/**
+ * The culture and race maps: each barony washed in the colour of its people (or their race,
+ * shaded by people from zoom 5), with each people's name at the middle of its lands, and a key
+ * (`groupLegend`). Built from the world's politics and cultures alone, so they show at once.
+ */
+function updateGroupMap(): void {
+  if (!map || !ready || !world.value) return;
+  const kind: GroupKey | null = store.showCultures ? 'cultures' : store.showRaces ? 'races' : null;
+  for (const k of ['cultures', 'races'] as const) if (map.getLayer(`${k}map`)) map.setLayoutProperty(`${k}map`, 'visibility', kind === k ? 'visible' : 'none');
+  for (const id of ['group-lbl']) if (map.getLayer(id)) map.setLayoutProperty(id, 'visibility', kind ? 'visible' : 'none');
+  if (!kind) return;
+  const w = world.value;
+  if (groupGen === w.gen && groupKind === kind && map.getLayer(`${kind}map`)) return;
+  groupGen = w.gen;
+  groupKind = kind;
+  const units = w.politics.units;
+  const raceOf = (ci: number) => Math.max(0, RACES.indexOf(templateFolk(CULTURES[ci]?.id ?? '')));
+  const cols = prepareGroupMap(kind, w.gen, (b) => {
+    const u = units[b];
+    if (!u || u.level !== 0 || !CULTURES[u.culture]) return null;
+    return kind === 'cultures' ? [u.culture, 0] : [raceOf(u.culture), u.culture + 1];
+  }, kind === 'races' ? (id) => RACE_RGB[RACES[id]] ?? [150, 150, 150] : undefined);
+  // Each people's lands: their baronies, and the one nearest the middle of them for the name.
+  const lands = new Map<number, { lon: number; lat: number; n: number; x: number; y: number; z: number }[]>();
+  for (const u of units) {
+    if (u.level !== 0 || !CULTURES[u.culture]) continue;
+    (lands.get(u.culture) ?? lands.set(u.culture, []).get(u.culture)!).push({ lon: u.lon, lat: u.lat, n: 1, x: 0, y: 0, z: 0 });
+  }
+  const rad = Math.PI / 180;
+  const features = [...lands].map(([ci, bs]) => {
+    let x = 0, y = 0, z = 0;
+    for (const b of bs) {
+      x += Math.cos(b.lat * rad) * Math.cos(b.lon * rad);
+      y += Math.cos(b.lat * rad) * Math.sin(b.lon * rad);
+      z += Math.sin(b.lat * rad);
+    }
+    const lon = Math.atan2(y, x) / rad, lat = Math.atan2(z, Math.hypot(x, y)) / rad;
+    let best = bs[0], bd = Infinity;
+    for (const b of bs) {
+      const d = Math.hypot(((b.lon - lon + 540) % 360) - 180, b.lat - lat);
+      if (d < bd) {
+        bd = d;
+        best = b;
+      }
+    }
+    const c = CULTURES[ci];
+    return {
+      type: 'Feature' as const, geometry: { type: 'Point' as const, coordinates: [best.lon, best.lat] },
+      properties: { name: kind === 'cultures' ? c.name : `${c.name}`, sub: kind === 'races' ? templateFolk(c.id) : '', culture: ci, size: bs.length },
+    };
+  });
+  if (kind === 'cultures') {
+    groupLegend.value = {
+      title: 'Peoples', note: 'Each people\u2019s lands in its own colour; a click opens the people.',
+      items: [...cols].sort((a, b) => (lands.get(b[0])?.length ?? 0) - (lands.get(a[0])?.length ?? 0)).map(([id, rgb]) => ({ id, name: CULTURES[id].name, rgb, culture: id, sub: templateFolk(CULTURES[id].id) !== 'Humans' ? templateFolk(CULTURES[id].id) : '' })),
+    };
+  } else {
+    groupLegend.value = {
+      title: 'Races', note: 'Lighter and darker shades are the peoples of each race; a click opens the largest of them.',
+      items: [...cols].sort((a, b) => [...lands].filter(([ci]) => raceOf(ci) === b[0]).length - [...lands].filter(([ci]) => raceOf(ci) === a[0]).length).map(([id, rgb]) => {
+        const peoples = [...lands.keys()].filter((ci) => raceOf(ci) === id).sort((a, b) => (lands.get(b)?.length ?? 0) - (lands.get(a)?.length ?? 0));
+        return { id, name: RACES[id], rgb, culture: peoples[0], sub: peoples.length === 1 ? '1 people' : `${peoples.length} peoples` };
+      }),
+    };
+  }
+  const url = `${kind}://${w.gen}/{z}/{x}/{y}`;
+  const layerId = `${kind}map`;
+  const src = map.getSource(layerId) as RasterTileSource | undefined;
+  if (!src) {
+    map.addSource(layerId, { type: 'raster', tiles: [url], tileSize: 256, maxzoom: 9 });
+    map.addLayer(
+      {
+        id: layerId, type: 'raster', source: layerId,
+        paint: { 'raster-fade-duration': 0, 'raster-resampling': 'linear', 'raster-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.85, 4, 0.8, 6.5, 0.55, 9, 0.25, 11.5, 0] },
+      },
+      PLAN_GROUND_LAYERS[0].id,
+    );
+  } else src.setTiles([url]);
+  const data = { type: 'FeatureCollection' as const, features };
+  const gs = map.getSource('grouplbl') as GeoJSONSource | undefined;
+  if (!gs) {
+    map.addSource('grouplbl', { type: 'geojson', data });
+    map.addLayer({
+      id: 'group-lbl', type: 'symbol', source: 'grouplbl', minzoom: 1.5,
+      filter: ['any', ['>=', ['get', 'size'], 6], ['>=', ['zoom'], 4]],
+      layout: {
+        'text-field': ['case', ['!=', ['get', 'sub'], ''], ['format', ['get', 'name'], {}, '\n', {}, ['get', 'sub'], { 'font-scale': 0.75 }], ['get', 'name']],
+        'text-font': [ITALIC], 'text-size': ['interpolate', ['linear'], ['zoom'], 2, ['min', 15, ['+', 10, ['/', ['get', 'size'], 12]]], 6, ['min', 22, ['+', 13, ['/', ['get', 'size'], 8]]]],
+        'text-letter-spacing': 0.08, 'text-max-width': 9, 'symbol-sort-key': ['-', 0, ['get', 'size']], 'text-optional': true,
+      },
+      paint: { 'text-color': '#2b2420', 'text-halo-color': 'rgba(243,234,211,0.9)', 'text-halo-width': 1.6 },
+    });
+    map.on('click', 'group-lbl', (e) => {
+      const f = e.features?.[0];
+      if (f) openCulture.value = Number(f.properties?.culture);
+    });
+    map.on('mouseenter', 'group-lbl', () => map && (map.getCanvas().style.cursor = 'pointer'));
+    map.on('mouseleave', 'group-lbl', () => map && (map.getCanvas().style.cursor = ''));
+  } else gs.setData(data);
+  if (map.getLayer('group-lbl')) map.moveLayer('group-lbl');
 }
 
 function updateRelations(): void {
@@ -779,11 +892,19 @@ watch(() => store.showCurrents, (show) => setVisibility('currents', show));
 watch(() => store.showLabels, (show) => setVisibility('labels', show));
 watch(() => store.showBorders, (show) => setVisibility('borders', show));
 watch(() => store.showFaiths, (show) => {
-  if (show) store.showPolitical = false;
+  if (show) Object.assign(store, { showPolitical: false, showCultures: false, showRaces: false });
   updateFaithMap();
 });
+watch(() => store.showCultures, (show) => {
+  if (show) Object.assign(store, { showPolitical: false, showFaiths: false, showRaces: false });
+  updateGroupMap();
+});
+watch(() => store.showRaces, (show) => {
+  if (show) Object.assign(store, { showPolitical: false, showFaiths: false, showCultures: false });
+  updateGroupMap();
+});
 watch(() => store.showPolitical, (show) => {
-  if (show) store.showFaiths = false;
+  if (show) Object.assign(store, { showFaiths: false, showCultures: false, showRaces: false });
   setVisibility('political', show);
   setVisibility('labels', store.showLabels);
 });

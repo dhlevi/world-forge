@@ -11,6 +11,7 @@ import RealmView from './components/RealmView.vue';
 import CultureView from './components/CultureView.vue';
 import FaithView from './components/FaithView.vue';
 import FaithLegend from './components/FaithLegend.vue';
+import GroupLegend from './components/GroupLegend.vue';
 import RelationsLegend from './components/RelationsLegend.vue';
 import OldWorldLegend from './components/OldWorldLegend.vue';
 import { regenerate } from './store';
@@ -24,6 +25,7 @@ onMounted(regenerate);
   <SearchBar />
   <LocationTitle />
   <FaithLegend />
+  <GroupLegend />
   <RelationsLegend />
   <OldWorldLegend />
   <RealmView />

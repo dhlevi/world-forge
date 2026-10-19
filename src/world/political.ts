@@ -355,16 +355,28 @@ async function renderRelTile(gen: number, ver: number, z: number, x: number, y: 
   return createImageBitmap(img);
 }
 
-// ---- Faiths -----------------------------------------------------------------------------------
+// ---- Faiths, cultures and races ----------------------------------------------------------------
 
-let faithMap: { gen: number; W: number; H: number; bands: { rgb: Uint8Array; edge: Float32Array }[] } | null = null;
+type GroupMap = { gen: number; W: number; H: number; bands: { rgb: Uint8Array; edge: Float32Array }[] };
+export type GroupKey = 'faiths' | 'cultures' | 'races';
+const groupMaps: Record<GroupKey, GroupMap | null> = { faiths: null, cultures: null, races: null };
 
 /**
- * The faith map: each barony washed in the colour of the faith its people keep (neighbouring
- * faiths in different colours), from zoom 5 with lighter and darker shades for sects, and deeper
- * edges between faiths. `of` gives a barony's faith and sect. Returns each faith's colour.
+ * A map of groups (faiths, cultures or races): each barony washed in the colour of its group
+ * (neighbouring groups in different colours, or the colours `fixed` gives), from zoom 5 with
+ * lighter and darker shades for sub-groups (sects, or the peoples of a race), and deeper edges
+ * between groups. `of` gives a barony's group and sub-group (0 for none). Returns each group's colour.
  */
+export function prepareGroupMap(key: GroupKey, gen: number, of: (barony: number) => [number, number] | null, fixed?: (id: number) => [number, number, number]): Map<number, [number, number, number]> {
+  const out = prepareBands(gen, of, fixed, (m) => (groupMaps[key] = m));
+  return out;
+}
+/** The faith map (see `prepareGroupMap`). */
 export function prepareFaithMap(gen: number, of: (barony: number) => [number, number] | null): Map<number, [number, number, number]> {
+  return prepareGroupMap('faiths', gen, of);
+}
+
+function prepareBands(gen: number, of: (barony: number) => [number, number] | null, fixed: ((id: number) => [number, number, number]) | undefined, store: (m: GroupMap) => void): Map<number, [number, number, number]> {
   const P = current;
   const out = new Map<number, [number, number, number]>();
   if (!P || P.gen !== gen) return out;
@@ -400,7 +412,14 @@ export function prepareFaithMap(gen: number, of: (barony: number) => [number, nu
   const dist = (a: number, b: number) => Math.hypot(...PALETTE[a].map((v, q) => v - PALETTE[b][q]));
   const colour = new Map<number, number>();
   const used = new Map<number, number>();
+  const pal: [number, number, number][] = [...PALETTE];
   for (const f of [...size.keys()].sort((a, b) => size.get(b)! - size.get(a)!)) {
+    if (fixed) {
+      colour.set(f, pal.length);
+      pal.push(fixed(f));
+      out.set(f, fixed(f));
+      continue;
+    }
     const near = [...(adj.get(f) ?? [])].map((v) => colour.get(v)).filter((v): v is number => v !== undefined);
     let best = 0, bd = -Infinity;
     for (let k = 0; k < PALETTE.length; k++) {
@@ -419,7 +438,7 @@ export function prepareFaithMap(gen: number, of: (barony: number) => [number, nu
     const shade = new Map<number, number>();
     for (let c = 0; c < N; c++) {
       if (faith[c] < 0) continue;
-      const base = PALETTE[colour.get(faith[c]) ?? 0];
+      const base = pal[colour.get(faith[c]) ?? 0];
       let sh = 0;
       if (sects && sect[c] % 1000 > 0) {
         let v = shade.get(sect[c]);
@@ -445,18 +464,20 @@ export function prepareFaithMap(gen: number, of: (barony: number) => [number, nu
     }
     return { rgb, edge };
   });
-  faithMap = { gen, W, H, bands };
+  store({ gen, W, H, bands });
   return out;
 }
 
 let faithRegistered = false;
-/** Registers the `faiths://` tile protocol (once). */
+/** Registers the `faiths://`, `cultures://` and `races://` tile protocols (once). */
 export function registerFaithProtocol(): void {
   if (faithRegistered) return;
   faithRegistered = true;
-  addProtocol('faiths', async (params) => {
-    const m = /^faiths:\/\/(\d+)\/(\d+)\/(\d+)\/(\d+)/.exec(params.url);
-    if (!m) throw new Error(`Bad faiths tile URL: ${params.url}`);
-    return { data: await renderTile(faithMap, +m[1], +m[2], +m[3], +m[4]) };
-  });
+  for (const key of Object.keys(groupMaps) as GroupKey[]) {
+    addProtocol(key, async (params) => {
+      const m = new RegExp(`^${key}://(\\d+)/(\\d+)/(\\d+)/(\\d+)`).exec(params.url);
+      if (!m) throw new Error(`Bad ${key} tile URL: ${params.url}`);
+      return { data: await renderTile(groupMaps[key], +m[1], +m[2], +m[3], +m[4]) };
+    });
+  }
 }

@@ -125,6 +125,14 @@ function randomize(): void {
           Faith map
         </label>
         <label class="check">
+          <input v-model="store.showCultures" type="checkbox" />
+          Culture map
+        </label>
+        <label class="check">
+          <input v-model="store.showRaces" type="checkbox" />
+          Race map
+        </label>
+        <label class="check">
           <input v-model="store.showWind" type="checkbox" />
           Prevailing winds
         </label>
