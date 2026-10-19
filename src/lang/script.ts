@@ -98,6 +98,27 @@ const C_ = (...p: number[]): Prim => ({ k: 'circ', p });
 const D_ = (...p: number[]): Prim => ({ k: 'dot', p });
 const P_ = (...p: number[]): Prim => ({ k: 'poly', p });
 
+/** Latin-like letter bodies on the x-height (40 to 100), and the marks that tell them apart. */
+const LT_BODIES: Prim[][] = [
+  [C_(28, 72, 24)],
+  [Q_(48, 52, -2, 72, 48, 94)],
+  [Q_(8, 52, 58, 72, 8, 94)],
+  [L_(8, 100, 8, 46), Q_(8, 62, 28, 30, 48, 62), L_(48, 62, 48, 100)],
+  [L_(8, 46, 8, 78), Q_(8, 78, 28, 112, 48, 78), L_(48, 78, 48, 46)],
+  [L_(6, 46, 28, 100, 50, 46)],
+  [L_(6, 100, 28, 46, 50, 100)],
+  [L_(6, 46, 50, 100), L_(50, 46, 6, 100)],
+  [Q_(48, 48, 2, 46, 26, 70), Q_(26, 70, 52, 96, 6, 96)],
+  [L_(8, 46, 48, 46, 8, 100, 48, 100)],
+  [L_(30, 46, 30, 86), Q_(30, 86, 30, 104, 8, 96)],
+  [L_(10, 100, 10, 46, 46, 46)],
+  [L_(10, 100, 10, 46, 44, 60, 10, 74)],
+  [L_(8, 72, 48, 72), Q_(48, 72, 44, 42, 20, 48), Q_(20, 48, 2, 62, 10, 86), Q_(10, 86, 22, 102, 46, 94)],
+];
+/** Bodies round and small enough for vowels. */
+const LT_ROUND = new Set([0, 1, 2, 4, 5, 6, 13]);
+const LT_MARKS: Prim[][] = [[], [L_(8, 6, 8, 50)], [L_(48, 96, 48, 128)], [L_(2, 72, 54, 72)], [D_(28, 26, 4.5)], [Q_(46, 98, 56, 106, 62, 92)]];
+
 /** Abjad skeletons on the joining line (y 80), each drawn about its middle `m`. */
 const AB_SKEL: { w: number; draw: (m: number) => Prim[] }[] = [
   { w: 30, draw: (m) => [L_(m, 80, m, 58)] },
@@ -155,6 +176,46 @@ const DIGIT_FORMS: Record<'abjad' | 'pen', Prim[][]> = {
     [L_(10, 12, 26, 52, 42, 12), L_(26, 52, 26, 90)],
   ],
 };
+
+/**
+ * A pen-written figure that owes nothing to our own digits. Quadrant figures (after the old
+ * monks' ciphers): an upright stem with marks off its top on one side, a bar (1), a lower bar (2),
+ * a falling stroke (3), a rising stroke (4), a side stroke (6), and their sums (5 = 1 + 4, 7 = 6 + 1,
+ * 8 = 6 + 2, 9 = 6 + 1 + 2). Zigzag figures (after a counting of fives and ones): a bar for five
+ * across the top, under it one to four strokes zigzagging down. Elvish figures are drawn curved.
+ */
+function penDigit(d: number, fam: { kind: 'quadrant' | 'zigzag'; left: boolean }, curved: boolean): Prim[] {
+  const out: Prim[] = [];
+  const line = (x0: number, y0: number, x1: number, y1: number) => out.push(curved ? Q_(x0, y0, (x0 + x1) / 2 + (y1 - y0) * 0.12, (y0 + y1) / 2 - (x1 - x0) * 0.12, x1, y1) : L_(x0, y0, x1, y1));
+  if (fam.kind === 'quadrant') {
+    const sx = fam.left ? 40 : 14, s = fam.left ? -1 : 1, ex = sx + s * 26;
+    line(sx, 12, sx, 92);
+    const has = (k: number) => ({ 1: [1], 2: [2], 3: [3], 4: [4], 5: [1, 4], 6: [6], 7: [6, 1], 8: [6, 2], 9: [6, 1, 2] } as Record<number, number[]>)[d]?.includes(k);
+    if (has(1)) line(sx, 12, ex, 12);
+    if (has(2)) line(sx, 38, ex, 38);
+    if (has(3)) line(sx, 12, ex, 38);
+    if (has(4)) line(sx, 38, ex, 12);
+    if (has(6)) line(ex, 12, ex, 38);
+    return out;
+  }
+  const fives = Math.floor(d / 5), ones = d % 5;
+  for (let k = 0; k < fives; k++) line(8, 12 + k * 10, 44, 12 + k * 10);
+  const y0 = 12 + fives * 10 + (fives ? 6 : 0);
+  if (!ones) {
+    if (fives) line(26, y0 - 6, 26, 90);
+    return out;
+  }
+  // The ones zigzag down from the top left: \ then / then \ then /.
+  const n = ones, step = (90 - y0) / n;
+  let x = 10, y = y0;
+  for (let k = 0; k < n; k++) {
+    const nx = k % 2 ? 10 : 42;
+    line(x, y, nx, y + step);
+    x = nx;
+    y += step;
+  }
+  return out;
+}
 
 /** Parts of Phags-pa-like letters, in a box 60 wide: heads, bodies hanging from them, feet. */
 const PH_HEADS: Prim[][] = [
@@ -297,29 +358,44 @@ export class Script {
     return { prims, w: 14 + n * 12 + (extra ? 10 : 0) };
   }
 
+  /**
+   * A Latin-like letter: a body on the x-height (a ring, an open curve either way, an arch, a cup,
+   * a v, a caret, a cross, an s, a z, a hook, an angle, a flag or an e) with a mark of its own
+   * (none, an ascender, a descender, a crossbar, a dot or a tail). Every sound gets its own
+   * combination, dealt from a shuffled order of the script's own; vowels keep to the plainer
+   * marks, so they stay small and round as vowels do.
+   */
+  private latinMap: Map<string, number> | null = null;
   private latin(key: string, vowel: boolean): Glyph {
-    return this.make(`latin:${key}`, (r) => {
-      const prims: Prim[] = [];
-      const top = 40, base = 100, w = 56;
-      const asc = r() < 0.3 ? 5 : top, desc = !vowel && r() < 0.15 ? 125 : base;
-      const t = vowel ? pick(r, ['o', 'bowl', 'arch', 'v', 'curl']) : pick(r, ['stem-bowl', 'arch', 'v', 'stem-arm', 'bowl-stem', 's', 'x', 'stem-hook', 'o-tail']);
-      switch (t) {
-        case 'o': prims.push(C_(28, 72, 22 + r() * 6)); if (r() < 0.4) prims.push(L_(28, 50, 28, 94)); break;
-        case 'bowl': prims.push(Q_(46, 48, 4, 50, 10, 80), Q_(10, 80, 18, 104, 46, 96)); break;
-        case 'arch': prims.push(L_(8, desc, 8, asc), Q_(8, 62, 28, 30, 48, 62), L_(48, 62, 48, base)); break;
-        case 'v': prims.push(L_(6, top, 28, base, 50, top)); if (r() < 0.4) prims.push(L_(28, base, 28, desc + 10)); break;
-        case 'curl': prims.push(Q_(10, 60, 30, 30, 46, 60), Q_(46, 60, 50, 100, 12, 96)); break;
-        case 'stem-bowl': prims.push(L_(8, asc, 8, desc), Q_(8, 46, 58, 50, 8, 96 - (r() < 0.5 ? 26 : 0))); break;
-        case 'bowl-stem': prims.push(L_(48, asc, 48, desc), Q_(48, 46, -6, 70, 48, 96)); break;
-        case 'stem-arm': prims.push(L_(14, asc, 14, desc), L_(14, pick(r, [top, 70]), 48, pick(r, [top, 70, 54]))); if (r() < 0.5) prims.push(L_(14, base, 48, base)); break;
-        case 's': prims.push(Q_(48, 44, 4, 44, 26, 70), Q_(26, 70, 52, 98, 6, 96)); break;
-        case 'x': prims.push(L_(6, top, 50, base), L_(50, top, 6, base)); break;
-        case 'stem-hook': prims.push(L_(28, asc, 28, 84), Q_(28, 84, 28, 102, 8, 96)); if (r() < 0.6) prims.push(L_(12, top + 6, 44, top + 6)); break;
-        default: prims.push(C_(26, 72, 20), L_(46, 80, 54, desc)); break;
+    const hit = this.cache.get(`latin:${key}`);
+    if (hit) return hit;
+    const nm = LT_MARKS.length;
+    if (!this.latinMap) {
+      const r = this.rng('latin-order');
+      const all = Array.from({ length: LT_BODIES.length * nm }, (_, i) => i).sort(() => r() - 0.5);
+      const plain = all.filter((c) => [0, 3, 4].includes(c % nm) && LT_ROUND.has(Math.floor(c / nm)));
+      this.latinMap = new Map();
+      const used = new Set<number>();
+      const vows = this.L.vowels.map((v) => v.ipa).sort(), cons = this.L.consonants.map((c) => c.ipa).sort();
+      for (const v of vows) {
+        const c = plain.find((x) => !used.has(x)) ?? all.find((x) => !used.has(x))!;
+        used.add(c);
+        this.latinMap.set(v, c);
       }
-      return { prims, w };
-    });
+      for (const k of cons) {
+        const c = all.find((x) => !used.has(x))!;
+        used.add(c);
+        this.latinMap.set(k, c);
+      }
+    }
+    let combo = this.latinMap.get(key);
+    if (combo === undefined) combo = hashString(key) % (LT_BODIES.length * nm);
+    void vowel;
+    const g = { prims: [...LT_BODIES[Math.floor(combo / nm)], ...LT_MARKS[combo % nm]], w: 56 };
+    this.cache.set(`latin:${key}`, g);
+    return g;
   }
+
 
   /** Elvish consonant: a stem (short, rising or falling) with one or two bows. */
   /**
@@ -767,10 +843,17 @@ export class Script {
     if (kind === 'additive') note = `Numbers are written with signs for one, ${this.addGroup === 5 ? 'five' : 'ten'} and each power of ${bn}, each repeated as often as needed and the largest first, as Roman numerals are.`;
     else if (kind === 'multiplicative') note = `Numbers are written with a digit for each of one to ${base > 12 ? 'nine' : DIGIT_EN[base - 1]} and a sign for each power of ${bn}: each power's sign follows the digit that counts it, and empty places are left out.`;
     else if (composite) note = `Numbers are written by place, in powers of ${bn}. Each digit is built ${st === 'cuneiform' ? `of wedges: ${group ? 'a corner wedge for each ten and ' : ''}an upright wedge for each one` : `of dots and bars: a dot for each one and a bar for each ${group}`}, and ${st === 'cuneiform' ? 'a pair of slanting wedges' : st === 'glyphs' ? 'a shell' : st === 'abjad' ? 'a dot' : 'a ring'} marks an empty place.`;
+    else if (pen && st !== 'abjad' && this.digitFamily.kind === 'zigzag') note = `Numbers are written by place, in powers of ${bn}. Each figure counts its fives as bars across the top and its ones as strokes zigzagging down beneath them, and a ring marks an empty place${base > 20 ? '; a place worth more than nineteen is written as two figures under a bar' : ''}.`;
+    else if (pen && st !== 'abjad') note = `Numbers are written by place, in powers of ${bn}. Each figure is an upright stem with marks off its top: a bar, a lower bar, a falling or a rising stroke, a side stroke, or two or three of these together; a ring marks an empty place${base > 12 ? ', and a place worth more than nine is written as two figures under a bar' : ''}.`;
     else if (pen && base > 12) note = `Numbers are written by place, in powers of ${bn}, with ten figures, one of them a sign for an empty place (zero); a place worth more than nine is written as two figures under a bar.`;
     else note = `Numbers are written by place, in powers of ${bn}, with ${base} digits, one of them a sign for an empty place (zero).`;
     this.numInfo = { kind, base, group, note };
     return this.numInfo;
+  }
+  /** How the pen-written alphabets make their figures (see `penDigit`). */
+  private get digitFamily(): { kind: 'quadrant' | 'zigzag'; left: boolean } {
+    const r = this.rng('digit-family');
+    return { kind: r() < 0.55 ? 'quadrant' : 'zigzag', left: r() < 0.5 };
   }
   private get addGroup(): number {
     return numberSystem(this.L).base === 60 ? 10 : 5;
@@ -863,12 +946,14 @@ export class Script {
     if (d === 0) return [this.zero()];
     // Alphabets write their digits with a set of forms of their own (one is always a stroke).
     if (nm.kind === 'positional' && ALPHA_DIGITS.has(st)) {
-      const set = DIGIT_FORMS[st === 'abjad' ? 'abjad' : 'pen'];
+      const set = DIGIT_FORMS.abjad;
       const r = this.rng('digit-forms');
       const order = [0, ...Array.from({ length: set.length - 1 }, (_, i) => i + 1).sort(() => r() - 0.5)];
-      const form = (x: number): Prim[] => (x === 0 ? this.zero().prims.filter((p) => !(p.k === 'line' && p.p[1] === 20)) : set[order[x - 1]]);
+      const fam = this.digitFamily;
+      const form = (x: number): Prim[] => (x === 0 ? this.zero().prims.filter((p) => !(p.k === 'line' && p.p[1] === 20)) : st === 'abjad' ? set[order[x - 1]] : penDigit(x, fam, st === 'elvish'));
       const head = st === 'devanagari' ? [L_(4, 20, 50, 20)] : [];
-      if (d < 10 || (nm.base === 12 && d < 12)) return [{ prims: [...form(d), ...head], w: 52 }];
+      // Zigzag figures count fives as bars, so they write up to nineteen as one figure.
+      if (d < 10 || (nm.base === 12 && d < 12) || (st !== 'abjad' && fam.kind === 'zigzag' && d < 20)) return [{ prims: [...form(d), ...head], w: 52 }];
       // A place worth more than nine: two figures, smaller, under a bar.
       const q = Math.floor(d / 10), u = d % 10;
       return [{ prims: [L_(2, 4, 70, 4), ...tf(form(q), 0.62, 0.8, 2, 18), ...tf(form(u), 0.62, 0.8, 38, 18)], w: 72 }];
@@ -1036,7 +1121,10 @@ export class Script {
     const s = this.info.style;
     const cons = L.consonants.map((c) => c.ipa), vows = L.vowels.map((v) => v.ipa);
     const sp = (ipa: string) => L.spelling.get(ipa) ?? ipa;
-    if (s === 'runes' || s === 'ogham' || s === 'latin') return [...vows, ...cons].map((x) => ({ label: sp(x), glyph: s === 'runes' ? this.rune(x, isVowel(x)) : s === 'ogham' ? this.ogham(x, isVowel(x)) : this.latin(x, isVowel(x)) }));
+    // Two sounds spelled alike are told apart by their IPA.
+    const twice = new Set([...vows, ...cons].map(sp).filter((x, i, a) => a.indexOf(x) !== i));
+    const lab = (x: string) => (twice.has(sp(x)) ? `${sp(x)} /${x}/` : sp(x));
+    if (s === 'runes' || s === 'ogham' || s === 'latin') return [...vows, ...cons].map((x) => ({ label: lab(x), glyph: s === 'runes' ? this.rune(x, isVowel(x)) : s === 'ogham' ? this.ogham(x, isVowel(x)) : this.latin(x, isVowel(x)) }));
     if (s === 'abjad') return [...cons.map((x) => ({ label: sp(x), glyph: this.abjadLetter(x, false) })), ...vows.filter((v) => /ː/.test(v)).map((x) => ({ label: sp(x), glyph: this.abjadLetter(x, true) })), { label: 'carrier', glyph: this.abjadLetter('carrier', true) }];
     if (s === 'elvish') {
       // Letters in their series and grades (by place, then manner), then the vowels.
