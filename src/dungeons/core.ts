@@ -28,6 +28,12 @@ export interface DungeonSite {
   culture: number;
   /** The town it lies under or beside, if any. */
   town?: string;
+  /** A story told of the place (an abandoned village's fate, a curse), used as the key's hook. */
+  story?: string;
+  /** Its map icon, where not its kind's own (an abandoned village's). */
+  icon?: string;
+  /** The abandoned village it stands in. */
+  village?: string;
   /** Sewers: street centre lines around the grate (local metres, x east, y north, grate at 0,0). */
   streets?: number[][][];
   /** Sewers: where the nearest river or shore lies (local metres), for the outfall. */

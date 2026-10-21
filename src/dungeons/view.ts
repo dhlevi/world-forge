@@ -22,6 +22,7 @@ export function dungeonFromFeature(p: Record<string, unknown>, coords: number[])
     tags: String(p.tags ?? '').split(',').filter(Boolean), culture: Number(p.culture ?? 0),
   };
   if (typeof p.sid === 'string') site.town = p.sid;
+  if (typeof p.story === 'string' && p.story) site.story = p.story;
   if (typeof p.streets === 'string') site.streets = unpackLines(p.streets);
   if (typeof p.outfall === 'string' && p.outfall) site.outfall = p.outfall.split(',').map(Number);
   if (p.scale !== undefined && Number(p.scale) > 0) site.scale = Number(p.scale);

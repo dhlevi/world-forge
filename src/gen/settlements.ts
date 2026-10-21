@@ -10,7 +10,9 @@ import type { DetailSampler } from './detail';
 import { chaikin, riverVertex, riverWidthM } from './rivers';
 
 export type Tier = 'city' | 'town' | 'village';
-export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal' | 'camp' | 'shrine';
+export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal' | 'camp' | 'shrine' | 'abandoned';
+/** Why a village stands empty. */
+export type AbandonCause = 'plague' | 'war' | 'famine' | 'raiders' | 'flood' | 'ash' | 'curse' | 'dragon' | 'drought';
 /** A New World town founded by an Old World realm. */
 export type ColonyKind = 'colony' | 'fort' | 'post';
 
@@ -57,6 +59,10 @@ export interface Settlement {
    * a mining town by a volcano or a canyon, or an ashen town in an ash land (with fewer people).
    */
   special?: 'spa' | 'mining' | 'ashen';
+  /** Cities with a mage's tower (a college of magic in a university city), named (gen/special.ts). */
+  tower?: { name: string; en: string; college: boolean };
+  /** Abandoned villages: why they were left, what they were, when, and the story told of it. */
+  abandoned?: { cause: AbandonCause; was: VillageKind; ago: string; story: string; curse?: string };
   /** The feature it is known by (the geysers, the volcano). */
   specialNear?: string;
 }

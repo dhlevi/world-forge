@@ -32,6 +32,7 @@ export function drawLair(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   g.rect(0, 0, m.W, m.H);
   g.clip();
   if (m.site.kind === 'cave' || m.interior) drawCave(g, m, o);
+  else if (m.site.kind === 'pass') drawPass(g, m, o);
   else drawGlade(g, m, o);
   if (o.labels) drawRooms(g, m);
   g.restore();
@@ -326,14 +327,22 @@ function drawRooms(g: Ctx2D, m: LairMap): void {
 
 const CANOPY = ['#6f8a4a', '#7d9752', '#64803f', '#86a05a'];
 const CANOPY_DRY = ['#8a8c4c', '#97934f', '#7f8242', '#a19c5a'];
+/** Giant mushroom caps, for groves in a mushroom forest. */
+const CAPS = ['#7d6a8c', '#6a7f86', '#86707c', '#72688c', '#64796f', '#7a6f86'];
+/** Now and then a brighter cap among the muted ones. */
+const CAPS_BRIGHT = ['#9a62ab', '#4c9a8c', '#c47c52', '#ad5a72'];
+/** Dead and dying crowns, for groves in cursed land. */
+const CANOPY_CURSED = ['#6d6a58', '#5f5c4c', '#77705a', '#585a4d'];
 
 function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   const dry = m.site.tags.includes('dry');
+  const fungal = m.site.tags.includes('fungal') || m.site.tags.includes('mushrooms');
+  const cursed = m.site.tags.includes('cursed');
   const rnd = mulberry32(m.site.seed ^ 0x61ade);
-  // Forest floor, then the clearing.
-  g.fillStyle = dry ? '#a9a76f' : '#93a86b';
+  // Forest floor, then the clearing: mossy violet under the fungi, grey and sickly in cursed woods.
+  g.fillStyle = fungal ? '#6f6a7e' : cursed ? '#7c7a66' : dry ? '#a9a76f' : '#93a86b';
   g.fillRect(0, 0, m.W, m.H);
-  g.fillStyle = dry ? '#e4d9a6' : '#d6dfa3';
+  g.fillStyle = fungal ? '#c9c6b4' : cursed ? '#bdb89a' : dry ? '#e4d9a6' : '#d6dfa3';
   path(g, m.outlines);
   g.fill('evenodd');
   g.strokeStyle = dry ? 'rgba(120,100,50,0.35)' : 'rgba(70,90,40,0.35)';
@@ -349,7 +358,7 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
     g.stroke();
   }
   // Grass tufts.
-  g.strokeStyle = dry ? 'rgba(125,105,55,0.7)' : 'rgba(80,105,50,0.7)';
+  g.strokeStyle = fungal ? 'rgba(95,80,110,0.6)' : cursed ? 'rgba(95,90,60,0.65)' : dry ? 'rgba(125,105,55,0.7)' : 'rgba(80,105,50,0.7)';
   g.lineWidth = 0.08;
   g.beginPath();
   for (const p of m.tufts) {
@@ -448,8 +457,8 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   }
   // Canopies: shadows, then a merged ink outline (every crown stroked wide, then filled), then highlights.
   const crowns = [...m.trees.map((t) => ({ ...t, big: false })), ...(m.bigTree ? [{ p: m.bigTree.p, r: m.bigTree.r, shade: 0.5, big: true }] : [])];
-  const palette = dry ? CANOPY_DRY : CANOPY;
-  g.fillStyle = 'rgba(30,40,20,0.28)';
+  const palette = fungal ? CAPS : cursed ? CANOPY_CURSED : dry ? CANOPY_DRY : CANOPY;
+  g.fillStyle = fungal ? 'rgba(30,20,40,0.32)' : 'rgba(30,40,20,0.28)';
   for (const t of crowns) {
     g.beginPath();
     g.arc(t.p[0] + t.r * 0.18, t.p[1] + t.r * 0.25, t.r, 0, Math.PI * 2);
@@ -471,22 +480,79 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   };
   g.strokeStyle = INK;
   g.lineWidth = 0.5;
-  for (const t of crowns) {
-    bumpy(t, t.r);
-    g.stroke();
+  if (fungal) {
+    // Mushroom caps seen from above: smooth rounds, a darker rim, pale spots and a sheen.
+    const round = (t: { p: Pt }, r: number) => {
+      g.beginPath();
+      g.arc(t.p[0], t.p[1], r, 0, Math.PI * 2);
+    };
+    for (const t of crowns) {
+      round(t, t.r);
+      g.stroke();
+    }
+    for (const t of crowns) {
+      const h = Math.floor(t.shade * 997);
+      g.fillStyle = t.big || h % 9 === 0 ? CAPS_BRIGHT[h % CAPS_BRIGHT.length] : palette[h % palette.length];
+      round(t, t.r);
+      g.fill();
+    }
+    g.strokeStyle = 'rgba(40,25,45,0.35)';
+    g.lineWidth = 0.18;
+    for (const t of crowns) {
+      round(t, t.r * 0.82);
+      g.stroke();
+    }
+    g.fillStyle = 'rgba(244,238,222,0.55)';
+    for (const t of crowns) {
+      if (!t.big && Math.floor(t.shade * 997) % 3) continue;
+      const n = 3 + Math.floor(t.shade * 3), a0 = t.shade * 40;
+      for (let q = 0; q < n; q++) {
+        const a = a0 + q * 2.4, d = t.r * (0.25 + 0.4 * ((q * 0.37 + t.shade) % 1));
+        g.beginPath();
+        g.arc(t.p[0] + Math.cos(a) * d, t.p[1] + Math.sin(a) * d, t.r * (0.09 + 0.05 * (q % 2)), 0, Math.PI * 2);
+        g.fill();
+      }
+    }
+    g.fillStyle = 'rgba(255,255,240,0.16)';
+    for (const t of crowns) {
+      g.beginPath();
+      g.arc(t.p[0] - t.r * 0.3, t.p[1] - t.r * 0.32, t.r * 0.42, 0, Math.PI * 2);
+      g.fill();
+    }
+  } else {
+    for (const t of crowns) {
+      bumpy(t, t.r * (cursed ? 0.92 : 1));
+      g.stroke();
+    }
+    for (const t of crowns) {
+      g.fillStyle = palette[Math.floor(t.shade * palette.length) % palette.length];
+      bumpy(t, t.r * (cursed ? 0.92 : 1));
+      g.fill();
+    }
+    if (cursed) {
+      // Bare limbs showing through the thin, dying leaves.
+      g.strokeStyle = 'rgba(45,38,30,0.65)';
+      g.lineWidth = 0.16;
+      for (const t of crowns) {
+        const n = 4 + Math.floor(t.shade * 3);
+        for (let q = 0; q < n; q++) {
+          const a = t.shade * 20 + (q / n) * Math.PI * 2;
+          g.beginPath();
+          g.moveTo(t.p[0], t.p[1]);
+          g.quadraticCurveTo(t.p[0] + Math.cos(a + 0.4) * t.r * 0.5, t.p[1] + Math.sin(a + 0.4) * t.r * 0.5, t.p[0] + Math.cos(a) * t.r * 0.95, t.p[1] + Math.sin(a) * t.r * 0.95);
+          g.stroke();
+        }
+      }
+    } else {
+      g.fillStyle = 'rgba(255,255,220,0.18)';
+      for (const t of crowns) {
+        g.beginPath();
+        g.arc(t.p[0] - t.r * 0.25, t.p[1] - t.r * 0.3, t.r * 0.5, 0, Math.PI * 2);
+        g.fill();
+      }
+    }
   }
-  for (const t of crowns) {
-    g.fillStyle = palette[Math.floor(t.shade * palette.length) % palette.length];
-    bumpy(t, t.r);
-    g.fill();
-  }
-  g.fillStyle = 'rgba(255,255,220,0.18)';
-  for (const t of crowns) {
-    g.beginPath();
-    g.arc(t.p[0] - t.r * 0.25, t.p[1] - t.r * 0.3, t.r * 0.5, 0, Math.PI * 2);
-    g.fill();
-  }
-  if (m.bigTree && !m.links.length) {
+  if (m.bigTree && !m.links.length && !fungal) {
     // The great tree's limbs, seen through its crown.
     const t = m.bigTree;
     g.strokeStyle = 'rgba(60,45,25,0.55)';
@@ -514,6 +580,306 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   if (o.labels) {
     for (const mo of m.mouths) {
       const p: Pt = [mo.p[0] + Math.cos(mo.dir) * 2.5, mo.p[1] + Math.sin(mo.dir) * 2.5];
+      g.save();
+      g.translate(p[0], p[1]);
+      g.rotate(mo.dir);
+      g.fillStyle = INK;
+      g.beginPath();
+      g.moveTo(1.1, 0);
+      g.lineTo(-0.5, -0.7);
+      g.lineTo(-0.5, 0.7);
+      g.closePath();
+      g.fill();
+      g.restore();
+    }
+  }
+}
+
+/**
+ * A mountain pass: hatched mountainside, the trail's shelf of pale stony ground with ragged edges,
+ * scree and boulders, snow fields, the stream in its gorge, the trail itself, a rope bridge or a
+ * ford, a tunnel through a spur, the cairn, the waystation or shrine, and the lookout's walls.
+ */
+function drawPass(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
+  const rnd = mulberry32(m.site.seed ^ 0x9a55);
+  const MOUNT = '#d6cbb3', SHELF = '#efe7d3';
+  if (!o.overlay) {
+    g.fillStyle = MOUNT;
+    g.fillRect(0, 0, m.W, m.H);
+  }
+  // The mountainside: hachures falling toward the shelf, thick and long by the cliffs at its edge,
+  // thinning out up the slopes; and faint strata across the high rock.
+  const tr0 = m.trail ?? [];
+  const nearest = (p: Pt): [number, Pt] => {
+    let bd = Infinity, bq: Pt = p;
+    for (let k = 1; k < tr0.length; k++) {
+      const a = tr0[k - 1], b = tr0[k], dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy || 1;
+      const t = Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2));
+      const q: Pt = [a[0] + dx * t, a[1] + dy * t], d = Math.hypot(p[0] - q[0], p[1] - q[1]);
+      if (d < bd) {
+        bd = d;
+        bq = q;
+      }
+    }
+    return [bd, bq];
+  };
+  g.strokeStyle = 'rgba(70,58,44,0.6)';
+  g.lineWidth = Math.max(px(o, 1), 0.13);
+  g.beginPath();
+  for (let t = 0; t < (m.W * m.H) / 1.6; t++) {
+    const p: Pt = [rnd() * m.W, rnd() * m.H];
+    if (m.open(p)) continue;
+    const [d, q] = nearest(p);
+    const edge = Math.max(0, d - 4);
+    if (rnd() > Math.exp(-edge / 7) * 0.9 + 0.04) continue;
+    const L = 0.5 + 1.6 * Math.exp(-edge / 4), ux = (q[0] - p[0]) / (d || 1), uy = (q[1] - p[1]) / (d || 1);
+    g.moveTo(p[0], p[1]);
+    g.lineTo(p[0] + ux * L, p[1] + uy * L);
+  }
+  g.stroke();
+  g.strokeStyle = 'rgba(90,76,58,0.18)';
+  g.lineWidth = Math.max(px(o, 0.8), 0.06);
+  g.beginPath();
+  for (let t = 0; t < (m.W * m.H) / 40; t++) {
+    const p: Pt = [rnd() * m.W, rnd() * m.H];
+    if (m.open(p) || nearest(p)[0] < 10) continue;
+    const a = 0.4 * Math.sin(p[0] * 0.07 + p[1] * 0.05), L = 2 + 3 * rnd();
+    g.moveTo(p[0], p[1]);
+    g.lineTo(p[0] + Math.cos(a) * L, p[1] + Math.sin(a) * L);
+  }
+  g.stroke();
+  // A wooded pass: the slopes under trees (conifers high up, round crowns lower down).
+  if (m.site.tags.includes('wooded')) {
+    const conifer = m.site.tags.includes('large') || m.site.tags.includes('medium');
+    const crowns: { p: Pt; r: number; k: number }[] = [];
+    for (let t = 0; t < (m.W * m.H) / 5; t++) {
+      const p: Pt = [rnd() * m.W, rnd() * m.H];
+      if (m.open(p) || nearest(p)[0] < 4.5 || rnd() < 0.35) continue;
+      crowns.push({ p, r: 1.3 + 1.1 * rnd(), k: Math.floor(rnd() * 4) });
+    }
+    crowns.sort((a, b) => a.p[1] - b.p[1]);
+    for (const c of crowns) {
+      g.fillStyle = 'rgba(30,40,20,0.25)';
+      g.beginPath();
+      g.arc(c.p[0] + c.r * 0.2, c.p[1] + c.r * 0.3, c.r, 0, Math.PI * 2);
+      g.fill();
+      g.fillStyle = (conifer ? ['#5f7d56', '#56734d', '#6a8860', '#4f6b47'] : CANOPY)[c.k];
+      g.strokeStyle = INK;
+      g.lineWidth = 0.12;
+      g.beginPath();
+      if (conifer) {
+        // A conifer seen from above: a star of needles.
+        for (let q = 0; q < 14; q++) {
+          const a = (q / 14) * Math.PI * 2, rr = q % 2 ? c.r * 0.6 : c.r;
+          q ? g.lineTo(c.p[0] + Math.cos(a) * rr, c.p[1] + Math.sin(a) * rr) : g.moveTo(c.p[0] + rr, c.p[1]);
+        }
+        g.closePath();
+      } else g.arc(c.p[0], c.p[1], c.r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    }
+  }
+  // A rock band along the shelf's edge, hatched as in the caves.
+  g.strokeStyle = '#c4b89e';
+  g.lineWidth = 3.4;
+  path(g, m.outlines);
+  g.stroke();
+  g.fillStyle = SHELF;
+  path(g, m.outlines);
+  g.fill('evenodd');
+  if (o.grid) {
+    g.save();
+    path(g, m.outlines);
+    g.clip('evenodd');
+    gridLines(g, m, o, 'rgba(43,36,32,0.14)');
+    g.restore();
+  }
+  // Snow, over shelf and rock alike.
+  if (m.snow?.length) {
+    // Smooth drifts: each blob drawn through the midpoints of its corners.
+    const soft = (s: Pt[]) => {
+      g.beginPath();
+      const mid = (a: Pt, b: Pt): Pt => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      const m0 = mid(s[s.length - 1], s[0]);
+      g.moveTo(m0[0], m0[1]);
+      for (let k = 0; k < s.length; k++) {
+        const c = s[k], n = mid(c, s[(k + 1) % s.length]);
+        g.quadraticCurveTo(c[0], c[1], n[0], n[1]);
+      }
+      g.closePath();
+    };
+    g.fillStyle = 'rgba(250,252,255,0.72)';
+    for (const s of m.snow) {
+      soft(s);
+      g.fill();
+    }
+    g.strokeStyle = 'rgba(120,150,175,0.45)';
+    g.lineWidth = 0.1;
+    for (const s of m.snow) {
+      soft(s);
+      g.stroke();
+    }
+  }
+  // Scree and boulders.
+  g.fillStyle = '#7a7062';
+  for (const d of m.dots) {
+    g.beginPath();
+    g.arc(d.p[0], d.p[1], d.r, 0, Math.PI * 2);
+    g.fill();
+  }
+  g.fillStyle = '#b8ae9c';
+  g.strokeStyle = INK;
+  g.lineWidth = 0.09;
+  for (const r of m.rocks) {
+    path(g, [r]);
+    g.fill();
+    g.stroke();
+  }
+  // The edge of the shelf: an inked line, broken where the trail runs off the map.
+  g.strokeStyle = INK;
+  g.lineWidth = 0.28;
+  g.beginPath();
+  for (const l of m.outlines) {
+    for (let k = 0; k < l.length; k++) {
+      const a = l[k], b = l[(k + 1) % l.length];
+      if (m.onEdge(a) && m.onEdge(b)) continue;
+      g.moveTo(a[0], a[1]);
+      g.lineTo(b[0], b[1]);
+    }
+  }
+  g.stroke();
+  // The stream, cut into a gorge where it runs through the rock.
+  if (m.stream) {
+    const s = m.stream;
+    g.strokeStyle = 'rgba(60,50,40,0.45)';
+    g.lineWidth = s.w * 2 + 1.6;
+    g.beginPath();
+    s.pts.forEach((p, k) => (k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+    g.stroke();
+  }
+  drawWater(g, m, o);
+  // The trail: a worn track along the shelf (dashed through the tunnel).
+  const tr = tr0;
+  const inTunnel = (p: Pt) => (m.tunnels ?? []).some((t) => {
+    const dx = t[1][0] - t[0][0], dy = t[1][1] - t[0][1], l2 = dx * dx + dy * dy || 1;
+    const u = ((p[0] - t[0][0]) * dx + (p[1] - t[0][1]) * dy) / l2;
+    return u > 0.02 && u < 0.98 && Math.abs((p[0] - t[0][0]) * dy - (p[1] - t[0][1]) * dx) / Math.sqrt(l2) < 2;
+  });
+  g.strokeStyle = 'rgba(160,132,92,0.65)';
+  g.lineWidth = 1.5;
+  g.beginPath();
+  let pen = false;
+  for (const p of tr) {
+    if (inTunnel(p)) {
+      pen = false;
+      continue;
+    }
+    if (pen) g.lineTo(p[0], p[1]);
+    else g.moveTo(p[0], p[1]);
+    pen = true;
+  }
+  g.stroke();
+  for (const t of m.tunnels ?? []) {
+    // Through the rock: two dashed walls, and the dark mouths at each end.
+    const [a, b] = t, dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, w = 1.3;
+    g.strokeStyle = INK;
+    g.lineWidth = 0.14;
+    g.setLineDash?.([0.6, 0.45]);
+    g.beginPath();
+    for (const s of [-w, w]) {
+      g.moveTo(a[0] + nx * s, a[1] + ny * s);
+      g.lineTo(b[0] + nx * s, b[1] + ny * s);
+    }
+    g.stroke();
+    g.setLineDash?.([]);
+    g.fillStyle = '#2b2420';
+    for (const [p, sgn] of [[a, 1], [b, -1]] as [Pt, number][]) {
+      g.beginPath();
+      g.arc(p[0], p[1], w, Math.atan2(ny, nx) + (sgn > 0 ? 0 : Math.PI), Math.atan2(ny, nx) + (sgn > 0 ? Math.PI : 2 * Math.PI));
+      g.closePath();
+      g.fill();
+    }
+  }
+  for (const br of m.bridges ?? []) {
+    const dx = br.b[0] - br.a[0], dy = br.b[1] - br.a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l, w = 0.9;
+    g.fillStyle = '#b79a6a';
+    g.strokeStyle = INK;
+    g.lineWidth = 0.07;
+    for (let s = 0.15; s < l; s += 0.42) {
+      if (rnd() < 0.1) continue;
+      const cx = br.a[0] + (dx / l) * s, cy = br.a[1] + (dy / l) * s;
+      g.beginPath();
+      g.moveTo(cx - nx * w, cy - ny * w);
+      g.lineTo(cx + nx * w + (dx / l) * 0.3, cy + ny * w + (dy / l) * 0.3);
+      g.lineTo(cx + nx * w + (dx / l) * 0.3, cy + ny * w + (dy / l) * 0.3);
+      g.lineTo(cx - nx * w + (dx / l) * 0.3, cy - ny * w + (dy / l) * 0.3);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    }
+    g.strokeStyle = '#6b5233';
+    g.lineWidth = 0.1;
+    g.beginPath();
+    for (const s of [-w - 0.1, w + 0.1]) {
+      g.moveTo(br.a[0] + nx * s - (dx / l) * 0.6, br.a[1] + ny * s - (dy / l) * 0.6);
+      g.lineTo(br.b[0] + nx * s + (dx / l) * 0.6, br.b[1] + ny * s + (dy / l) * 0.6);
+    }
+    g.stroke();
+  }
+  for (const f of m.fords ?? []) {
+    g.fillStyle = '#c4bcab';
+    g.strokeStyle = INK;
+    g.lineWidth = 0.07;
+    for (let q = -2; q <= 2; q++) {
+      g.beginPath();
+      g.arc(f[0] + q * 0.7 + (rnd() - 0.5) * 0.3, f[1] + q * 0.5 + (rnd() - 0.5) * 0.3, 0.32, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    }
+  }
+  // The lookout's broken walls.
+  g.strokeStyle = '#7b7266';
+  g.lineWidth = 0.7;
+  for (const w of m.ruins) {
+    g.beginPath();
+    g.moveTo(w[0][0], w[0][1]);
+    g.lineTo(w[1][0], w[1][1]);
+    g.stroke();
+  }
+  // Cairns: a heap of stones.
+  for (const c of m.cairns ?? []) {
+    g.fillStyle = 'rgba(40,35,25,0.25)';
+    g.beginPath();
+    g.arc(c[0] + 0.3, c[1] + 0.35, 1.2, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#b5ad9c';
+    g.strokeStyle = INK;
+    g.lineWidth = 0.07;
+    for (const [dx, dy, r] of [[-0.5, 0.3, 0.55], [0.5, 0.35, 0.5], [0, -0.2, 0.55], [0.1, 0.55, 0.4], [-0.1, -0.7, 0.35]]) {
+      g.beginPath();
+      g.arc(c[0] + dx, c[1] + dy, r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    }
+  }
+  for (const t of m.things) drawThing(g, t);
+  if (m.camp) {
+    const f = m.camp.fire;
+    g.fillStyle = '#8c8070';
+    for (let q = 0; q < 8; q++) {
+      const a = (q / 8) * Math.PI * 2;
+      g.beginPath();
+      g.arc(f[0] + Math.cos(a) * 0.7, f[1] + Math.sin(a) * 0.7, 0.18, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = '#d4683a';
+    g.beginPath();
+    g.arc(f[0], f[1], 0.38, 0, Math.PI * 2);
+    g.fill();
+  }
+  if (o.labels) {
+    for (const mo of m.mouths) {
+      const p: Pt = [mo.p[0] + Math.cos(mo.dir) * 3, mo.p[1] + Math.sin(mo.dir) * 3];
       g.save();
       g.translate(p[0], p[1]);
       g.rotate(mo.dir);

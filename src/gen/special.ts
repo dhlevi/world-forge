@@ -5,8 +5,8 @@ import type { FlowRouting } from './hydrology';
 import type { RiverCollection } from './rivers';
 import type { Settlement } from './settlements';
 import type { LabelFeature } from './features';
-import type { NameBank, Named } from '../names/names';
-import type { FeatureKind } from '../names/cultures';
+import { type NameBank, type Named, dungeonName } from '../names/names';
+import { CULTURES, type FeatureKind } from '../names/cultures';
 
 /**
  * Special features of the land, found after the world is made (on random streams of their own,
@@ -22,13 +22,34 @@ import type { FeatureKind } from '../names/cultures';
  * - **Mushroom forests** (in fantasy worlds) in warm, wet country, best of all on volcanic soil.
  * - **Canyons** where large rivers cut through dry uplands, and **cliffs** along high coasts and
  *   great escarpments.
+ * - **Cursed lands** (in fantasy worlds): a few woods and mires blighted by an old curse, each
+ *   with an abandoned village, a ruin or a crypt at its heart and a story of how it came about.
+ * - **Mages' towers** in some cities: a college of magic in about half the university cities and,
+ *   in fantasy worlds, a tower in some other great cities.
  *
  * Each cell gets one special value (for the map tiles and the probe); named features become
  * labels; volcanoes are kept as vents for the map's icons; and towns near them take note.
  */
 
-export const SP = { none: 0, ash: 1, lava: 2, glacier: 3, fungal: 4, canyon: 5, cliff: 6, volcanic: 7, geothermal: 8 } as const;
-export const SP_NAMES = ['', 'Ash land', 'Lava field', 'Glacier', 'Mushroom forest', 'Canyon', 'Cliffs', 'Volcanic ground', 'Geothermal field'];
+export const SP = { none: 0, ash: 1, lava: 2, glacier: 3, fungal: 4, canyon: 5, cliff: 6, volcanic: 7, geothermal: 8, cursed: 9 } as const;
+export const SP_NAMES = ['', 'Ash land', 'Lava field', 'Glacier', 'Mushroom forest', 'Canyon', 'Cliffs', 'Volcanic ground', 'Geothermal field', 'Cursed land'];
+
+/** The heart of a cursed land: what stands there, its name, and the story of the curse. */
+export interface CurseHeart {
+  lon: number;
+  lat: number;
+  kind: 'village' | 'ruin' | 'crypt';
+  name: string;
+  en: string;
+  /** The cursed land's name. */
+  region: string;
+  regionEn: string;
+  /** A cursed mire (else a wood). */
+  mire: boolean;
+  /** How the curse came about and what it does now (English). */
+  story: string;
+  culture: number;
+}
 
 export interface SpecialInputs {
   height: Float32Array;
@@ -42,6 +63,8 @@ export interface SpecialInputs {
   culture: Uint8Array;
   volcanic: Float32Array;
   flow: FlowRouting;
+  /** 1 where the land is New World. */
+  newWorld?: Uint8Array;
 }
 
 /** A volcano: where, how high, and how active (2 active, 1 dormant, 0 extinct). */
@@ -58,6 +81,7 @@ export interface SpecialResult {
   special: Uint8Array;
   vents: Vent[];
   labels: LabelFeature[];
+  curses: CurseHeart[];
 }
 
 const ACTIVITY = ['extinct', 'dormant', 'active'];
@@ -482,6 +506,95 @@ export function specialFeatures(
     });
   }
 
+  // ---- Cursed lands (fantasy) -----------------------------------------------------------------------
+  const curses: CurseHeart[] = [];
+  if (fantasy) {
+    const rc = rng('curse');
+    const WOOD = new Set([Biome.BorealForest, Biome.TemperateForest, Biome.TemperateRainforest, Biome.TropicalDryForest, Biome.TropicalRainforest, Biome.MontaneForest]);
+    const MIRE = new Set([Biome.Wetland, Biome.Mangrove, Biome.Riparian]);
+    // Cursed lands begin far from cities and towns (the people left them long ago), and spread
+    // round the towns' own fields.
+    const nearTown = new Uint8Array(N), farTown = new Uint8Array(N);
+    for (const s of settlements) {
+      if (s.tier !== 'city' && s.tier !== 'town') continue;
+      const c0 = cellAt(s.lon, s.lat);
+      disc(c0, s.tier === 'city' ? 70 : 45, (c) => (farTown[c] = 1));
+      disc(c0, s.tier === 'city' ? 25 : 12, (c) => (nearTown[c] = 1));
+    }
+    const free = (c: number) => land(c) && !nearTown[c] && sp[c] !== SP.lava && sp[c] !== SP.glacier && sp[c] !== SP.fungal && sp[c] !== SP.ash;
+    const seeds: { c: number; s: number; mire: boolean }[] = [];
+    for (let c = 0; c < N; c++) {
+      const b = f.biome[c] as Biome;
+      if (!free(c) || farTown[c] || !(WOOD.has(b) || MIRE.has(b))) continue;
+      seeds.push({ c, s: rc() + (f.newWorld?.[c] ? 0 : 0.6), mire: MIRE.has(b) });
+    }
+    seeds.sort((a, b) => b.s - a.s);
+    const n = Math.min(6, Math.max(2, Math.round(landArea / 2.5e7)) + Math.floor(rc() * 2.5));
+    // About a third are mires, the rest woods.
+    const picked: { c: number; mire: boolean }[] = [];
+    for (let k = 0; k < n; k++) {
+      const mire = rc() < 0.35;
+      const s = seeds.find((q) => q.mire === mire && !picked.some((p) => distKm(lon(p.c), lat(p.c), lon(q.c), lat(q.c)) < 1200))
+        ?? seeds.find((q) => !picked.some((p) => distKm(lon(p.c), lat(p.c), lon(q.c), lat(q.c)) < 1200));
+      if (s) picked.push(s);
+    }
+    picked.forEach(({ c: c0, mire }, id) => {
+      const target = 15000 + 35000 * rc();
+      const cells = [c0];
+      const seen = new Set([c0]);
+      let a = 0;
+      const mine: number[] = [];
+      for (let q = 0; q < cells.length && a < target; q++) {
+        const c = cells[q];
+        if (sp[c] === SP.none || sp[c] === SP.volcanic || sp[c] === SP.canyon || sp[c] === SP.cliff) {
+          sp[c] = SP.cursed;
+          mine.push(c);
+          a += area(c);
+        }
+        const i = c % W, j = (c / W) | 0;
+        for (let k = 0; k < 8; k++) {
+          const nb = neighbor(g, i, j, k);
+          if (nb < 0 || seen.has(nb) || !free(nb)) continue;
+          seen.add(nb);
+          const b = f.biome[nb] as Biome;
+          // A cursed wood spreads through the woods; a cursed mire through wet, low ground.
+          const ok = mire ? MIRE.has(b) || (f.height[nb] < 400 && f.precip[nb] > 600 && b !== Biome.HotDesert) : WOOD.has(b);
+          if (!ok || rc() < 0.15) continue;
+          cells.push(nb);
+        }
+      }
+      if (!mine.length) return;
+      const at = middle(mine);
+      const cul = f.culture[at];
+      const region = bank.featureNamed(mire ? 'cursedMire' : 'cursedWood', cul, `curse${id}`);
+      push(mire ? 'cursedMire' : 'cursedWood', region, pt(at), 1, 4.8, 11);
+      const r = rc();
+      const kind: CurseHeart['kind'] = r < 0.45 ? 'village' : r < 0.72 ? 'ruin' : 'crypt';
+      const hr = mulberry32(hashString(`${seed}#special#curseheart${id}`));
+      const heart = kind === 'village' ? bank.opaque(CULTURES[cul] ?? CULTURES[0], hr, true) : dungeonName(bank, kind, cul, `curseheart${id}`);
+      const story = curseStory(hr, { heart: heart.name, region: region.name, kind, mire });
+      curses.push({ lon: lon(at), lat: lat(at), kind, name: heart.name, en: heart.en, region: region.name, regionEn: region.en, mire, story, culture: cul });
+    });
+  }
+
+  // ---- Mages' towers ----------------------------------------------------------------------------------
+  {
+    const rt = rng('towers');
+    const ADJ = ['Violet', 'Silver', 'Azure', 'Grey', 'Star', 'Moon', 'High', 'Black', 'White', 'Crystal', 'Amber', 'Twilight', 'Seventh', 'Sapphire'];
+    for (const s of settlements) {
+      if (s.tier !== 'city') continue;
+      const x = rt(), pick = rt(), k = rt();
+      const want = s.university ? x < 0.55 : fantasy && s.population >= 20000 && x < 0.12;
+      if (!want) continue;
+      const c = cellAt(s.lon, s.lat);
+      const tpl = s.university && k < 0.5
+        ? (pick < 0.4 ? "the Astronomers' Tower" : pick < 0.75 ? 'the Tower of the Magi' : `the ${ADJ[Math.floor(pick * ADJ.length) % ADJ.length]} College`)
+        : `the ${ADJ[Math.floor(pick * ADJ.length) % ADJ.length]} Tower`;
+      const n = bank.named(s.culture ?? f.culture[c], tpl);
+      s.tower = { name: n.name, en: n.en, college: !!s.university };
+    }
+  }
+
   // ---- Towns take note ------------------------------------------------------------------------------
   const named = labels.map((l) => ({ kind: l.properties.kind, name: l.properties.name, coords: l.geometry.type === 'Point' ? [l.geometry.coordinates] : l.geometry.coordinates }));
   const near = (s: Settlement, kinds: string[], km: number) => named.find((n) => kinds.includes(n.kind) && n.coords.some((p) => distKm(s.lon, s.lat, p[0], p[1]) < km));
@@ -505,5 +618,37 @@ export function specialFeatures(
     if (s.specialNear) s.specialNear = s.specialNear.replace(/\s*\(.*\)$/, '');
   }
 
-  return { special: sp, vents, labels };
+  return { special: sp, vents, labels, curses };
+}
+
+/** The tale of a curse: how it came about at its heart, and what it does to the land now. */
+function curseStory(r: Rng, o: { heart: string; region: string; kind: CurseHeart['kind']; mire: boolean }): string {
+  const pick = <T,>(a: T[]): T => a[Math.floor(r() * a.length)];
+  const when = pick(['Three hundred years ago', 'In the days of the old kings', 'Within the memory of the oldest folk', 'Long ago', 'Before the last great war', 'A hundred winters past']);
+  const land = o.mire ? 'fens' : 'woods';
+  const place = o.kind === 'village' ? `the village of ${o.heart}` : o.heart;
+  const causes = [
+    `${when}, the people of ${o.kind === 'village' ? o.heart : 'the country round'} burned a woman they called a witch. Before she died she cursed them and all the ${land} about`,
+    `${when}, a necromancer came to ${place} and worked a great spell there that went wrong`,
+    `${when}, the lord of ${place} broke an oath sworn on the altar of the old gods, and the gods turned their faces from the ${land}`,
+    `${when}, a great wyrm was slain at ${place}, and its black blood soaked into the ground`,
+    `${when}, a star fell into the ${land} near ${place} on a winter night; those who went to see it came back changed`,
+    `${when}, when the plague came to ${place}, the priest bargained with something below the earth to spare its people. They were spared, for a while`,
+    `${when}, a hag of the ${land} was cheated of the firstborn she was promised at ${place}`,
+  ];
+  const fate = o.kind === 'village'
+    ? pick(['Within a year the village stood empty', 'The villagers fled, and the houses have stood empty ever since', 'One by one the families left or died, and no one has lived there since'])
+    : o.kind === 'ruin'
+      ? pick(['The hall burned, and its ruins were never rebuilt', 'The house fell into ruin, and no one will live in it', 'Its walls stand roofless still, and no one will go near them'])
+      : pick(['The dead in its crypt do not rest', 'Since then the crypt has been sealed, but the seals do not hold', 'The tomb stands open, and something walks out of it on moonless nights']);
+  const now = o.mire
+    ? pick(['The water turned black and the reeds died', 'Lights move over the water at night and lead travellers into the deep pools', 'The mist never lifts, and voices call from it in the voices of the drowned'])
+    : pick(['The trees died where they stood and never fell', 'Nothing green grows there now, and no bird sings', 'The paths twist back on themselves, and travellers lose their way among the dead trees']);
+  const end = pick([
+    `The curse spreads a little every year, and no one has found the way to lift it.`,
+    `It is said the curse will lift only when what was taken at ${o.heart} is given back.`,
+    `Some say the curse could be broken at its heart, but those who went to try did not return.`,
+    `The folk of the nearest villages leave offerings at the edge of ${o.region}, and do not go further.`,
+  ]);
+  return `${pick(causes)}. ${fate}. ${now}. ${end}`;
 }

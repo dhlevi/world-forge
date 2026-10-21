@@ -266,6 +266,11 @@ export function drawIcons(
     // Mushroom forests grow giant fungi; ash, lava and ice grow nothing.
     if (spv === 4) return r < 0.7 / (grow * grow) ? () => drawMushroom(out, w, h, x, y, (2.4 + 1.4 * r2) * grow, r2) : null;
     if (spv === 1 || spv === 2 || spv === 3) return null;
+    // Cursed land: dead trees in the woods, withered tufts in the mires.
+    if (spv === 9) {
+      if (b === Biome.Wetland || b === Biome.Mangrove) return r < 0.4 / grow ? () => drawTuft(out, w, h, x, y, DEAD) : null;
+      return r < 0.55 / (grow * grow) ? () => drawDeadTree(out, w, h, x, y, (3.2 + 1.2 * r2) * grow, r2) : null;
+    }
     if (nearVent(x, y, 10)) return null;
     if (b === Biome.Wetland) {
       return r < 0.45 / grow ? () => drawTuft(out, w, h, x, y) : null;
@@ -433,17 +438,49 @@ function drawMushroom(out: Uint8ClampedArray, w: number, h: number, cx: number, 
   }
 }
 
-function drawTuft(out: Uint8ClampedArray, w: number, h: number, cx: number, cy: number): void {
+function drawTuft(out: Uint8ClampedArray, w: number, h: number, cx: number, cy: number, col: RGB = MARSH): void {
   const x = Math.round(cx), y = Math.round(cy);
   for (const dx of [-2, 0, 2]) {
     const len = dx === 0 ? 3 : 2;
-    for (let k = 0; k < len; k++) blend(out, w, h, x + dx, y - k, MARSH, 0.75);
+    for (let k = 0; k < len; k++) blend(out, w, h, x + dx, y - k, col, 0.75);
   }
-  for (let dx = -3; dx <= 3; dx++) blend(out, w, h, x + dx, y + 1, MARSH, 0.45);
+  for (let dx = -3; dx <= 3; dx++) blend(out, w, h, x + dx, y + 1, col, 0.45);
+}
+
+const DEAD: RGB = [92, 84, 66];
+
+/** A dead tree: a bare trunk forking into three or four crooked limbs. */
+function drawDeadTree(out: Uint8ClampedArray, w: number, h: number, cx: number, cy: number, size: number, seed: number): void {
+  const line = (x0: number, y0: number, x1: number, y1: number, wd: number, a: number) => {
+    const n = Math.ceil(Math.hypot(x1 - x0, y1 - y0) * 2) + 1;
+    for (let k = 0; k <= n; k++) {
+      const t = k / n, x = x0 + (x1 - x0) * t, y = y0 + (y1 - y0) * t;
+      for (let dy = -1; dy <= 1; dy++) {
+        for (let dx = -1; dx <= 1; dx++) {
+          const px = Math.round(x + dx), py = Math.round(y + dy);
+          const d = Math.hypot(px + 0.5 - x - 0.5, py + 0.5 - y - 0.5);
+          blend(out, w, h, px, py, DEAD, a * clamp01(wd / 2 + 0.5 - d));
+        }
+      }
+    }
+  };
+  const top = cy - size * 1.5;
+  line(cx, cy, cx, top + size * 0.4, Math.max(0.9, size * 0.28), 0.9);
+  const n = 3 + Math.floor(seed * 2);
+  for (let k = 0; k < n; k++) {
+    const a = -Math.PI / 2 + (k / (n - 1) - 0.5) * 1.9 + (seed - 0.5) * 0.4;
+    const y0 = top + size * (0.4 + 0.25 * (k % 2));
+    const L = size * (0.55 + 0.25 * ((k * 7 + seed * 10) % 3) / 3);
+    const x1 = cx + Math.cos(a) * L, y1 = y0 + Math.sin(a) * L;
+    line(cx, y0, x1, y1, 0.75, 0.8);
+    // A twig off the end.
+    line(x1, y1, x1 + Math.cos(a + 0.6) * L * 0.35, y1 + Math.sin(a + 0.6) * L * 0.35, 0.6, 0.6);
+  }
+  for (let dx = -2; dx <= 2; dx++) blend(out, w, h, Math.round(cx) + dx, Math.round(cy) + 1, DEAD, 0.3);
 }
 
 /** The map symbols the key explains. */
-export type KeySymbol = 'mountain' | 'snowMountain' | 'hill' | 'forest' | 'conifer' | 'marsh' | 'mushroom' | 'volcano2' | 'volcano1' | 'volcano0';
+export type KeySymbol = 'mountain' | 'snowMountain' | 'hill' | 'forest' | 'conifer' | 'marsh' | 'mushroom' | 'deadTree' | 'volcano2' | 'volcano1' | 'volcano0';
 
 /**
  * One map symbol for the map key, drawn by the same code as the fantasy tiles on a patch of
@@ -487,6 +524,9 @@ export function keySymbol(kind: KeySymbol, w: number, h: number, s = 1): Uint8Cl
       }
       break;
     }
+    case 'deadTree':
+      for (const [dx, dy, sd] of [[-7, -4, 0.2], [6, -5, 0.7], [0, 0, 0.45]]) drawDeadTree(out, w, h, cx + dx * s, by + dy * s, 3.6 * s, sd);
+      break;
     case 'mushroom':
       for (const [dx, dy, r, sd] of [[-7, -5, 2.8, 0.1], [6, -6, 3.2, 0.4], [0, 0, 3.6, 0.7]]) drawMushroom(out, w, h, cx + dx * s, by + dy * s, r * s, sd);
       break;

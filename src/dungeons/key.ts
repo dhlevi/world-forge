@@ -143,6 +143,8 @@ export function writeKey(d: Dungeon, rnd: Rng): void {
   const kind = (d.site.kind === 'well' ? 'cave' : d.site.kind) as SiteKind;
   d.title = d.site.name;
   d.hook = [pick(rnd, HOOKS[d.site.kind] ?? HOOKS.crypt), hookTail(rnd)].filter(Boolean).join(' ');
+  // A place with a story of its own (an abandoned village, a cursed land's heart) tells it first.
+  if (d.site.story) d.hook = `${d.site.story} ${d.hook}`;
   const used = new Set<string>();
   d.levels.forEach((L, k) => {
     for (const r of L.rooms) {

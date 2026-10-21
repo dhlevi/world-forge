@@ -2,7 +2,7 @@ import { type Grid, makeGrid, areaQuantile } from './grid';
 import { type Rng, hashString, mulberry32 } from './rng';
 import { Simplex3 } from './noise';
 import { buildTectonics, drainInlandSeas } from './tectonics';
-import { specialFeatures } from './special';
+import { type CurseHeart, specialFeatures } from './special';
 import { computeClimate } from './climate';
 import { accumulate, erode, fillShallowPits, precipWeight, routeFlow } from './hydrology';
 import { classifyBiomes } from './biomes';
@@ -82,6 +82,8 @@ export interface RasterWorld {
   special: Uint8Array;
   /** Volcanoes: lon, lat, height (m) and activity (2 active, 1 dormant, 0 extinct), four numbers each. */
   vents: Float32Array;
+  /** Fantasy worlds: the hearts of the cursed lands (gen/special.ts). */
+  curses?: CurseHeart[];
 }
 
 export interface WorldSummary {
@@ -242,7 +244,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   markUniversities(politics.units, settlements);
   // Special features: volcanoes, ash lands, geysers, glaciers, mushroom forests, canyons, cliffs.
   const sf = specialFeatures(g, {
-    height, lakeDepth, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, windU: climate.windU, windV: climate.windV, biome, culture, volcanic, flow,
+    height, lakeDepth, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, windU: climate.windU, windV: climate.windV, biome, culture, volcanic, flow, newWorld,
   }, rivers, settlements, bank, params.seed, params.races !== false);
   labels.features.push(...sf.labels);
   const vents = Float32Array.from(sf.vents.flatMap((v) => [v.lon, v.lat, v.h, v.activity]));
@@ -286,6 +288,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       spread,
       special: sf.special,
       vents,
+      curses: sf.curses,
     },
     rivers,
     wind,

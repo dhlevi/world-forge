@@ -58,6 +58,7 @@ const LABEL_TYPE: Record<string, [string, SearchCat]> = {
   mountains: ['Mountain range', 'region'], hills: ['Hills', 'region'], peak: ['Peak', 'region'], forest: ['Forest', 'region'],
   volcano: ['Volcano', 'region'], ashland: ['Ash land', 'region'], geysers: ['Geysers', 'region'], hotLake: ['Rainbow pools', 'region'], glacier: ['Glacier', 'region'],
   fungalForest: ['Mushroom forest', 'region'], canyon: ['Canyon', 'region'], cliffs: ['Cliffs', 'region'],
+  cursedWood: ['Cursed wood', 'region'], cursedMire: ['Cursed mire', 'region'],
   desert: ['Desert', 'region'], marsh: ['Marsh', 'region'], plains: ['Plains', 'region'],
   ocean: ['Ocean', 'water'], sea: ['Sea', 'water'], inlandSea: ['Inland sea', 'water'], gulf: ['Gulf', 'water'], bay: ['Bay', 'water'],
   bight: ['Bight', 'water'], strait: ['Strait', 'water'], channel: ['Channel', 'water'], lake: ['Lake', 'water'],
@@ -65,7 +66,7 @@ const LABEL_TYPE: Record<string, [string, SearchCat]> = {
 
 const VILLAGE_TYPE: Record<string, string> = {
   farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village',
-  camp: 'Army camp', shrine: 'Shrine',
+  camp: 'Army camp', shrine: 'Shrine', abandoned: 'Abandoned village',
 };
 
 const mid = (c: number[][]) => c[c.length >> 1];
@@ -90,6 +91,13 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
       zoom: s.tier === 'city' ? 12.4 : 13, rank: 0.5 + 0.5 * Math.sqrt(s.population / maxPop),
       info: `${s.population.toLocaleString('en')} people${s.layout ? ` · ${LAYOUT_LABEL[s.layout]}` : ''}${s.university ? ' · university' : ''}${s.nameOld ? ' · an old name' : ''}`,
     });
+    // A mage's tower, at the city until its plan is drawn and gives the tower's spot.
+    if (s.tower) {
+      out.push({
+        id: `tw${s.id}`, name: cap(s.tower.name), ...(s.tower.en !== s.tower.name ? { alt: cap(s.tower.en) } : {}), type: s.tower.college ? 'College of magic' : "Mage's tower", cat: 'place',
+        lon: s.lon, lat: s.lat, zoom: 14.6, rank: 0.45, info: `in ${s.name}`,
+      });
+    }
     // Sewers and catacombs, at the town until its plan is drawn and gives the entrance's spot.
     const ci = s.culture ?? cultureAt(s.lon, s.lat);
     for (const u of townUnderground(s, (tpl) => namePhrase(ci, tpl, [{ name: s.name ?? '', en: s.nameEn ?? s.name ?? '' }]))) {
@@ -175,7 +183,7 @@ export function blockEntry(o: { id: string; name: string; tier: string; kind: st
 }
 
 const LAIR_TYPE: Record<string, string> = {
-  cave: 'Cave', glade: 'Glade', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', mine: 'Mine', sewer: 'Sewers', catacomb: 'Catacombs', delve: 'Delve',
+  cave: 'Cave', glade: 'Glade', pass: 'Mountain pass', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', mine: 'Mine', sewer: 'Sewers', catacomb: 'Catacombs', delve: 'Delve',
 };
 
 const PLAN_TYPE: Record<string, string> = { qlabel: 'Quarter', dlabel: 'District', blabel: 'Building' };

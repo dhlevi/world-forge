@@ -116,7 +116,7 @@ const info = computed<Line | null>(() => {
       const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
         ...pair(s.name ?? '', s.nameEn), old: s.nameOld,
-        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' && !s.delve ? LAYOUT_LABEL[s.layout] : '', s.delve ? `a delve: its halls lie under the mountain` : '', s.special === 'spa' ? `a spa town by ${s.specialNear ?? 'its hot springs'}` : s.special === 'mining' ? `a mining town by ${s.specialNear ?? 'the fire mountain'}` : s.special === 'ashen' ? `under the ash of ${s.specialNear ?? 'a volcano'}` : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
+        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' && !s.delve ? LAYOUT_LABEL[s.layout] : '', s.delve ? `a delve: its halls lie under the mountain` : '', s.special === 'spa' ? `a spa town by ${s.specialNear ?? 'its hot springs'}` : s.special === 'mining' ? `a mining town by ${s.specialNear ?? 'the fire mountain'}` : s.special === 'ashen' ? `under the ash of ${s.specialNear ?? 'a volcano'}` : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', s.tower ? (s.tower.college ? `its college of magic, ${s.tower.en}` : `home of ${s.tower.en}`) : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
       };
     }
@@ -128,6 +128,16 @@ const info = computed<Line | null>(() => {
       if (h.kind === 'shrine') {
         return {
           ...pair(h.name, h.en), sub: ['Shrine', h.what, h.faith ? `holy to ${h.faith}` : ''].filter(Boolean).join(' · '),
+          arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
+        };
+      }
+      if (h.kind === 'abandoned') {
+        const why: Record<string, string> = {
+          plague: 'emptied by plague', war: 'burned in a war', famine: 'left in a famine', raiders: 'emptied by raiders', flood: 'drowned by a flood',
+          ash: 'buried under ash', drought: 'left when its wells ran dry', dragon: 'laid waste by a dragon', curse: `emptied by the curse${h.curse ? ` on ${h.curse}` : ''}`,
+        };
+        return {
+          ...pair(h.name, h.en), sub: ['Abandoned village', h.cause ? why[h.cause] : '', h.ago].filter(Boolean).join(' · '),
           arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
         };
       }

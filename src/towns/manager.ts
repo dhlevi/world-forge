@@ -6,7 +6,7 @@ import { Biome } from '../gen/biomes';
 import { chaikin } from '../gen/rivers';
 import { RiverIndex } from '../gen/river-index';
 import {
-  type RoadClass, type RoadFeature, type Settlement, type VillageKind, habitability, makeSettlement, trimEnds,
+  type AbandonCause, type RoadClass, type RoadFeature, type Settlement, type VillageKind, habitability, makeSettlement, trimEnds,
 } from '../gen/settlements';
 import type { GeneratedWorld } from '../gen/world';
 import type { Pt } from './geom';
@@ -34,6 +34,41 @@ const FOREST_BIOMES = new Set([
 ]);
 
 const wrapLon = (lon: number) => ((((lon + 180) % 360) + 360) % 360) - 180;
+/** Is a point in the 1° block whose south-west corner is (lon0, lat0)? */
+const inBlock = (lon: number, lat: number, lon0: number, lat0: number) => ((((lon - lon0) % 360) + 360) % 360) < 1 && lat >= lat0 && lat < lat0 + 1;
+
+/** A pass where a road crosses a range: its highest point, the road's bearing there, and its height. */
+interface PassSpot {
+  lon: number;
+  lat: number;
+  h: number;
+  /** The road's way over the saddle in map terms (radians, x east, y south). */
+  dir: number;
+}
+
+const AGO: Record<AbandonCause, [number, number]> = {
+  plague: [40, 300], war: [15, 200], famine: [30, 200], raiders: [10, 120], flood: [20, 150], ash: [5, 120], curse: [60, 400], dragon: [20, 250], drought: [20, 200],
+};
+/** The tale told of an abandoned village. */
+function abandonStory(cause: AbandonCause, n: string, ago: string, r: () => number, region?: string): string {
+  const pick = <T,>(a: T[]): T => a[Math.floor(r() * a.length) % a.length];
+  const tale: Record<AbandonCause, string[]> = {
+    plague: [`The plague came to ${n} ${ago}. The dead were buried in a pit beyond the chapel, and the living fled; no one has wanted the houses since.`, `${ago[0].toUpperCase()}${ago.slice(1)} a sickness came to ${n} with a pedlar's pack. Within a season half the village was dead, and the rest burned their houses and left.`],
+    war: [`${n} was burned in a war ${ago}, when two lords' armies crossed here. The survivors never came back to rebuild.`, `Soldiers quartered in ${n} ${ago} took its grain and its young men; by spring the village was empty.`],
+    famine: [`Three harvests failed in a row ${ago}. The people of ${n} ate their seed corn, then their animals, then left.`],
+    raiders: [`Raiders came to ${n} ${ago}, at night, and carried off everyone they could take. The rest moved to safer country.`],
+    flood: [`The river rose over ${n} ${ago} and did not go down for a month. The people moved to higher ground and left their houses to the silt.`],
+    ash: [`Ash fell on ${n} ${ago} for nine days without stopping. The fields were buried, the roofs gave way, and the people fled.`],
+    drought: [`The wells of ${n} ran dry ${ago} and did not fill again. Its people took what they could carry and went to find water.`],
+    dragon: [`A dragon took ${n}'s herds ${ago}, then its granary, then its people. Scorched bones still lie in the lanes.`],
+    curse: [`${n} lies within ${region ?? 'a cursed land'}. When the curse fell ${ago}, its people sickened and fled, and the houses have stood empty since.`],
+  };
+  const tail = pick([
+    'Travellers do not stop there.', 'Shepherds say lights are seen in the houses on some nights.', 'Something has been living in the old houses since.',
+    'Its people buried their valuables before they left, and never came back for them.', 'The nearest village will not speak of it.', '',
+  ]);
+  return [pick(tale[cause]), tail].filter(Boolean).join(' ');
+}
 
 /** Lon/lat point bins for radius queries in km (wraps east-west). */
 class PointIndex<T> {
@@ -191,7 +226,12 @@ export class TownManager {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [l.lon, l.lat] },
-          properties: { id: l.id, tier: 'lair', kind: l.kind, name: l.name, ...(l.en && l.en !== l.name ? { en: l.en } : {}), seed: l.seed, tags: l.tags.join(',') },
+          properties: {
+            id: l.id, tier: 'lair', kind: l.kind, name: l.name, ...(l.en && l.en !== l.name ? { en: l.en } : {}), seed: l.seed, tags: l.tags.join(','),
+            ...(l.dir !== undefined ? { dir: l.dir } : {}),
+            // Groves in a mushroom forest or a cursed wood have icons of their own.
+            ...(l.kind === 'glade' && l.tags.includes('mushrooms') ? { icon: 'lair-glade-fungal' } : l.kind === 'glade' && l.tags.includes('cursed') ? { icon: 'lair-glade-cursed' } : {}),
+          },
         });
       }
       for (const d of b.dungeons) {
@@ -200,7 +240,10 @@ export class TownManager {
         features.push({
           type: 'Feature',
           geometry: { type: 'Point', coordinates: [d.lon, d.lat] },
-          properties: { id: d.id, tier: 'lair', kind: d.kind, name: d.name, ...(d.en && d.en !== d.name ? { en: d.en } : {}), seed: d.seed, tags: d.tags.join(','), culture: d.culture },
+          properties: {
+            id: d.id, tier: 'lair', kind: d.kind, name: d.name, ...(d.en && d.en !== d.name ? { en: d.en } : {}), seed: d.seed, tags: d.tags.join(','), culture: d.culture,
+            ...(d.story ? { story: d.story } : {}), ...(d.icon ? { icon: d.icon } : {}),
+          },
         });
       }
       for (const v of b.villages) {
@@ -211,6 +254,7 @@ export class TownManager {
             id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '', ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}),
             ...(v.army ? { realm: v.army.realm, war: v.army.war } : {}),
             ...(v.shrine ? { faith: v.shrine.faith, what: v.shrine.what } : {}),
+            ...(v.abandoned ? { cause: v.abandoned.cause, ago: v.abandoned.ago, ...(v.abandoned.curse ? { curse: v.abandoned.curse } : {}) } : {}),
           },
         });
       }
@@ -312,7 +356,8 @@ export class TownManager {
       const key = this.blockKey(bx + 180, by + 90);
       const blk = this.blocks.get(key) ?? this.generateBlock(wrapLon(bx + 0.5) - 0.5, by, key, false);
       for (const v of blk.villages) {
-        const info = v.army ? `${v.population.toLocaleString('en')} soldiers of ${v.army.realm}` : v.shrine ? `holy to ${v.shrine.faith}` : `${v.population.toLocaleString('en')} people`;
+        const info = v.army ? `${v.population.toLocaleString('en')} soldiers of ${v.army.realm}` : v.shrine ? `holy to ${v.shrine.faith}`
+          : v.abandoned ? `${v.abandoned.cause} · ${v.abandoned.ago}` : `${v.population.toLocaleString('en')} people`;
         entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info, ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) });
       }
       for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · '), ...(l.en && l.en !== l.name ? { en: l.en } : {}) });
@@ -412,7 +457,7 @@ export class TownManager {
         const biome = raster.biome[c] as Biome;
         // Few live in ash lands or on lava, none on the glaciers (gen/special.ts); miners go to the volcanoes and canyons.
         const spv = raster.special?.[c] ?? 0;
-        if (spv === 3 || ((spv === 1 || spv === 2) && rr(13) < 0.8)) continue;
+        if (spv === 3 || spv === 9 || ((spv === 1 || spv === 2) && rr(13) < 0.8)) continue;
         const base = habitability(tMean, tWarm, sample(raster.precip, lon, lat), h, Math.hypot(gx, gy), biome);
         const road = this.roadPts.nearest(lon, lat, S.villageLinkKm);
         const riverHit = this.sampler.riverBank(lon, lat, 12000);
@@ -565,7 +610,16 @@ export class TownManager {
       if (track) tracks.push(track);
     }
     const lairs = this.lairs(lon0, lat0, key, seed, villages, sample, cellOf, used);
-    return { villages, tracks, lairs, dungeons: this.dungeons(lon0, lat0, key, seed, villages, lairs, cellOf, used) };
+    // Abandoned villages, and the village at the heart of a cursed land (after the caves and
+    // glades, so those keep their places and names; the ruins keep clear of them).
+    for (const v of this.abandonedIn(lon0, lat0, key, seed, villages, lairs, sample, cellOf, used)) {
+      villages.push(v);
+      const track = withTracks ? this.track(v, this.roadPts.nearest(v.lon, v.lat, S.villageLinkKm), villages, hash32(v.seed ^ 0xab4) / 4294967296) : null;
+      if (track) tracks.push(track);
+    }
+    const dungeons = this.dungeons(lon0, lat0, key, seed, villages, lairs, cellOf, used);
+    lairs.push(...this.passesIn(lon0, lat0, key, cellOf, used));
+    return { villages, tracks, lairs, dungeons };
   }
 
   /**
@@ -578,12 +632,12 @@ export class TownManager {
   ): DungeonSite[] {
     const { raster } = this.world;
     const out: DungeonSite[] = [];
-    const add = (kind: DungeonSite['kind'], lon: number, lat: number, h0: number, tags: string[], near?: Named) => {
+    const add = (kind: DungeonSite['kind'], lon: number, lat: number, h0: number, tags: string[], near?: Named, named?: Named) => {
       const c = cellOf(lon, lat);
       const culture = raster.culture[c] ?? 0;
       const id = `d${key}_${out.length}`;
-      let nm: Named = { name: '', en: '' };
-      for (let t = 0; t < 6 && (!nm.name || used.has(nm.name)); t++) nm = dungeonName(this.names, kind, culture, t ? `${id}#${t}` : id, t ? undefined : near);
+      let nm: Named = named ?? { name: '', en: '' };
+      for (let t = 0; t < 6 && (!nm.name || (!named && used.has(nm.name))); t++) nm = dungeonName(this.names, kind, culture, t ? `${id}#${t}` : id, t ? undefined : near);
       used.add(nm.name);
       out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0xd0d0), tags, lon, lat, culture });
     };
@@ -630,7 +684,7 @@ export class TownManager {
         this.sites.forEach(lon, lat, 15, (s, d) => {
           if (d < s.radiusM / 1000 + 1.5) blocked = true;
         });
-        if (blocked || villages.some((v) => distKm(lon, lat, v.lon, v.lat) < 2) || lairs.some((l) => distKm(lon, lat, l.lon, l.lat) < 3)) continue;
+        if (blocked || villages.some((v) => v.kind !== 'abandoned' && distKm(lon, lat, v.lon, v.lat) < 2) || lairs.some((l) => distKm(lon, lat, l.lon, l.lat) < 3)) continue;
         // Towers on a rise; crypts and ruins on gentle ground.
         const [x, y] = kind === 'tower'
           ? this.bestNear(lon, lat, 1200, (_x, _y, hh, sl) => hh * 0.002 - 2 * Math.max(0, sl - 0.3))
@@ -652,6 +706,31 @@ export class TownManager {
         }
         add(kind, x, y, h0, tags);
       }
+    }
+    // (After the rest, so the other sites keep their ids and names.)
+    // An abandoned village: the ruin of its manor or chapel, with cellars or a crypt below, told
+    // with the village's story (so the map icon opens the place and its key).
+    for (const v of villages) {
+      if (v.kind !== 'abandoned' || !v.abandoned) continue;
+      const h0 = hash32(v.seed ^ 0xaba7);
+      const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
+      const crypt = v.abandoned.cause === 'curse' || (v.abandoned.cause === 'plague' && rr(1) < 0.5);
+      const levels = rr(2) < 0.5 ? 1 : 2;
+      const tags = [rr(3) < 0.5 ? 'small' : 'medium', 'abandoned village', ...(v.abandoned.cause === 'curse' ? ['cursed'] : []), ...(levels > 1 ? [`${levels} levels`, ...(crypt ? [] : ['cellars'])] : [])];
+      add(crypt ? 'crypt' : 'ruin', v.lon, v.lat, h0, tags, undefined, { name: v.name ?? '', en: v.nameEn ?? v.name ?? '' });
+      const d = out[out.length - 1];
+      d.story = v.abandoned.story;
+      d.icon = 'dun-abandoned';
+      d.village = v.id;
+    }
+    // A ruin or crypt at the heart of a cursed land.
+    for (const hc of raster.curses ?? []) {
+      if (hc.kind === 'village' || !inBlock(hc.lon, hc.lat, lon0, lat0)) continue;
+      const [x, y] = this.bestNear(hc.lon, hc.lat, 4000, (_x, _y, _h, sl) => -sl);
+      if (this.sampler.isWater(x, y)) continue;
+      const h0 = hash32(hashString(`${hc.lon},${hc.lat}`));
+      add(hc.kind, x, y, h0, ['large', 'cursed', '2 levels', ...(hc.kind === 'ruin' ? ['cellars'] : [])], undefined, { name: hc.name, en: hc.en });
+      out[out.length - 1].story = hc.story;
     }
     return out;
   }
@@ -705,6 +784,7 @@ export class TownManager {
         const size = rr(6) < 0.42 ? 'small' : rr(6) < 0.86 ? 'medium' : 'large';
         const tags = [size];
         const dry = precip < (kind === 'cave' ? 350 : 450) || tWarm > 30;
+        if (spv === 9) tags.push('cursed');
         if (kind === 'cave') {
           if (spv === 1 || spv === 2 || spv === 7) tags.push('volcanic');
           else if (spv === 5) tags.push('canyon');
@@ -738,6 +818,167 @@ export class TownManager {
         used.add(nm.name);
         out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0x1a17), tags, lon, lat });
       }
+    }
+    return out;
+  }
+
+  /**
+   * Abandoned villages of a block: about one block in four has one, on habitable land away from
+   * other places, emptied by plague, war, famine, raiders, flood, ash, drought, a dragon or a curse
+   * (by its surroundings); and the village at the heart of a cursed land, if one lies here.
+   */
+  private abandonedIn(
+    lon0: number, lat0: number, key: number, seed: number, villages: Settlement[], lairs: LairSite[],
+    sample: (f: Float32Array, lon: number, lat: number) => number, cellOf: (lon: number, lat: number) => number, used: Set<string>,
+  ): Settlement[] {
+    const { raster } = this.world;
+    const out: Settlement[] = [];
+    const fantasy = (raster.curses?.length ?? 0) > 0;
+    const clear = (lon: number, lat: number) => {
+      let blocked = false;
+      this.sites.forEach(lon, lat, 15, (s, d) => {
+        if (d < s.radiusM / 1000 + 3) blocked = true;
+      });
+      return !blocked && !villages.some((v) => distKm(lon, lat, v.lon, v.lat) < 4) && !lairs.some((l) => distKm(lon, lat, l.lon, l.lat) < 2.5);
+    };
+    const make = (id: string, lon: number, lat: number, h0: number, cause: AbandonCause, was: VillageKind, named?: Named, curse?: { story: string; region: string }) => {
+      const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
+      const pos = this.bestNear(lon, lat, 1500, (_x, _y, _hh, sl) => -sl);
+      if (this.sampler.isWater(pos[0], pos[1]) || this.slopeAt(pos[0], pos[1]) > 0.2) return;
+      const river = this.sampler.riverBank(pos[0], pos[1], 3000);
+      const v = makeSettlement('village', id, pos[0], pos[1], 0.3 + 0.6 * rr(1), hash32(h0 ^ 7), false, !!river && river.bankM < 1500, 'abandoned');
+      const nm = named ?? this.villageName({ ...v, kind: was }, cellOf(lon, lat), used);
+      if (named) used.add(named.name);
+      v.name = nm.name;
+      v.nameEn = nm.en;
+      const [y0, y1] = AGO[cause];
+      const years = Math.round((y0 + (y1 - y0) * rr(2)) / 5) * 5;
+      const ago = years >= 100 ? `${years >= 200 ? `${Math.round(years / 100)} hundred years` : 'a hundred years'} ago` : `${years} years ago`;
+      const story = curse?.story || abandonStory(cause, nm.name, ago, mulberry32(h0 ^ 0x57), curse?.region);
+      v.abandoned = { cause, was, ago, story, ...(curse ? { curse: curse.region } : {}) };
+      out.push(v);
+    };
+    for (const hc of raster.curses ?? []) {
+      if (hc.kind !== 'village' || !inBlock(hc.lon, hc.lat, lon0, lat0)) continue;
+      make(`a${key}_h`, hc.lon, hc.lat, hash32(hashString(`${hc.lon},${hc.lat}`)), 'curse', 'farming', { name: hc.name, en: hc.en }, { story: hc.story, region: hc.region });
+    }
+    const h0 = hash32(seed ^ 0xa5a0d0e1);
+    const rr = (k: number) => hash32(h0 ^ k) / 4294967296;
+    if (rr(0) > 0.28) return out;
+    const lon = lon0 + 0.15 + 0.7 * rr(1), lat = lat0 + 0.15 + 0.7 * rr(2);
+    const c = cellOf(lon, lat);
+    if (raster.height[c] <= 0 || raster.lakeDepth[c] > 0 || raster.newWorld?.[c] === 1 || !clear(lon, lat)) return out;
+    const h = this.sampler.height(lon, lat, 2);
+    if (h <= 0 || this.sampler.isWater(lon, lat)) return out;
+    const biome = raster.biome[c] as Biome;
+    const precip = sample(raster.precip, lon, lat);
+    const tMean = sample(raster.tempSea, lon, lat) - LAPSE * Math.max(0, h);
+    const tWarm = sample(raster.tempWarm, lon, lat) - LAPSE * (h - Math.max(0, raster.height[c]));
+    if (habitability(tMean, tWarm, precip, h, 0, biome) <= 0.05 && raster.special?.[c] !== 1 && raster.special?.[c] !== 9) return out;
+    const spv = raster.special?.[c] ?? 0;
+    if (spv === 3) return out;
+    const river = this.sampler.riverBank(lon, lat, 2000);
+    let cause: AbandonCause;
+    let curse: { story: string; region: string } | undefined;
+    if (spv === 1 || spv === 2 || spv === 7) cause = 'ash';
+    else if (spv === 9) {
+      cause = 'curse';
+      const near = (raster.curses ?? []).reduce<{ d: number; r: string } | null>((b, q) => {
+        const d = distKm(lon, lat, q.lon, q.lat);
+        return !b || d < b.d ? { d, r: q.region } : b;
+      }, null);
+      curse = near ? { story: '', region: near.r } : undefined;
+    } else if (river && river.bankM < 1500 && rr(3) < 0.4) cause = 'flood';
+    else if (precip > 250 && precip < 450 && rr(4) < 0.35) cause = 'drought';
+    else {
+      const opts: [AbandonCause, number][] = [['plague', 3], ['war', 2], ['famine', 1.5], ['raiders', 1.5], ...(fantasy ? [['dragon', 0.8]] as [AbandonCause, number][] : [])];
+      let t = rr(5) * opts.reduce((a, [, w]) => a + w, 0);
+      cause = opts.find(([, w]) => (t -= w) < 0)?.[0] ?? 'plague';
+    }
+    const was: VillageKind = smoothstep(800, 2000, h) > 0.4 && rr(6) < 0.6 ? 'mining' : FOREST_BIOMES.has(biome) && rr(6) < 0.3 ? 'logging' : 'farming';
+    make(`a${key}_0`, lon, lat, h0, cause, was, undefined, curse);
+    return out;
+  }
+
+  /** Mountain passes where the roads cross the ranges, by block (found once, from the road lines). */
+  private passList: Map<number, PassSpot[]> | null = null;
+  private passSpots(): Map<number, PassSpot[]> {
+    if (this.passList) return this.passList;
+    const { raster } = this.world;
+    const { W, H } = raster;
+    const height = (lon: number, lat: number) => {
+      const fx = ((lon + 180) / 360) * W - 0.5, fy = Math.min(H - 1.001, Math.max(0, ((90 - lat) / 180) * H - 0.5));
+      const i0 = Math.floor(fx), j0 = Math.floor(fy), tx = fx - i0, ty = fy - j0;
+      const a = ((i0 % W) + W) % W, b = (a + 1) % W, r0 = j0 * W, r1 = Math.min(H - 1, j0 + 1) * W;
+      const f = raster.height;
+      return (f[r0 + a] * (1 - tx) + f[r0 + b] * tx) * (1 - ty) + (f[r1 + a] * (1 - tx) + f[r1 + b] * tx) * ty;
+    };
+    const all: PassSpot[] = [];
+    for (const f of this.world.roads.features) {
+      const c = f.geometry.coordinates;
+      // Points every ~3 km along the road.
+      const pts: { lon: number; lat: number; h: number; d: number }[] = [];
+      let acc = 0, d = 0;
+      for (let k = 0; k < c.length; k++) {
+        if (k) {
+          const s = distKm(c[k - 1][0], c[k - 1][1], c[k][0], c[k][1]);
+          acc += s;
+          d += s;
+        }
+        if (k === 0 || acc >= 3 || k === c.length - 1) {
+          pts.push({ lon: c[k][0], lat: c[k][1], h: height(c[k][0], c[k][1]), d });
+          acc = 0;
+        }
+      }
+      for (let k = 1; k < pts.length - 1; k++) {
+        const p = pts[k];
+        if (p.h < 1100) continue;
+        // The highest point for 15 km either way, with a climb of 300 m or more on both sides within 50 km.
+        let top = true, lo0 = p.h, lo1 = p.h;
+        for (let q = k - 1; q >= 0 && p.d - pts[q].d < 50; q--) {
+          if (p.d - pts[q].d < 15 && pts[q].h > p.h) top = false;
+          lo0 = Math.min(lo0, pts[q].h);
+        }
+        for (let q = k + 1; q < pts.length && pts[q].d - p.d < 50; q++) {
+          if (pts[q].d - p.d < 15 && pts[q].h > p.h) top = false;
+          lo1 = Math.min(lo1, pts[q].h);
+        }
+        if (!top || p.h - lo0 < 300 || p.h - lo1 < 300) continue;
+        const a = pts[k - 1], b = pts[k + 1];
+        const dir = Math.atan2(-(b.lat - a.lat), (b.lon - a.lon) * Math.cos((p.lat * Math.PI) / 180));
+        all.push({ lon: p.lon, lat: p.lat, h: p.h, dir });
+      }
+    }
+    all.sort((a, b) => b.h - a.h);
+    const kept: PassSpot[] = [];
+    for (const p of all) if (!kept.some((q) => distKm(p.lon, p.lat, q.lon, q.lat) < 30)) kept.push(p);
+    this.passList = new Map();
+    for (const p of kept) {
+      const k = this.blockKey(Math.floor(p.lon) + 180, Math.floor(p.lat) + 90);
+      const list = this.passList.get(k);
+      if (list) list.push(p);
+      else this.passList.set(k, [p]);
+    }
+    return this.passList;
+  }
+
+  /** The block's mountain passes, as lair sites (a pass map with a key). */
+  private passesIn(lon0: number, lat0: number, key: number, cellOf: (lon: number, lat: number) => number, used: Set<string>): LairSite[] {
+    const { raster } = this.world;
+    const out: LairSite[] = [];
+    for (const [k, p] of (this.passSpots().get(key) ?? []).entries()) {
+      if (!inBlock(p.lon, p.lat, lon0, lat0)) continue;
+      const c = cellOf(p.lon, p.lat);
+      const id = `p${key}_${k}`;
+      const h0 = hash32(hashString(`${raster.seed}#pass#${id}`));
+      const tWarm = raster.tempWarm[c] - LAPSE * Math.max(0, p.h - Math.max(0, raster.height[c]));
+      const snow = p.h > 2600 || tWarm < 9;
+      const wooded = !snow && FOREST_BIOMES.has(raster.biome[c] as Biome);
+      const tags = [p.h > 2500 ? 'large' : p.h < 1500 ? 'small' : 'medium', ...(snow ? ['snow'] : wooded ? ['wooded'] : []), `${Math.round(p.h / 10) * 10} m`];
+      let nm: Named = { name: '', en: '' };
+      for (let t = 0; t < 6 && (!nm.name || used.has(nm.name)); t++) nm = dungeonName(this.names, 'pass', raster.culture[c] ?? 0, t ? `${id}#${t}` : id);
+      used.add(nm.name);
+      out.push({ id, kind: 'pass', name: nm.name, en: nm.en, seed: h0, tags, lon: p.lon, lat: p.lat, dir: p.dir });
     }
     return out;
   }

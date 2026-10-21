@@ -312,7 +312,8 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
 export const MARKER_LAYERS: LayerSpecification[] = [
   {
     id: 'village-markers', type: 'circle', source: 'regional', minzoom: VILLAGE_ZOOM, maxzoom: 13.5,
-    filter: e(['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'tier'], 'village']]) as FilterSpecification,
+    // Abandoned villages are marked by their ruin's icon instead.
+    filter: e(['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'tier'], 'village'], ['!=', ['get', 'kind'], 'abandoned']]) as FilterSpecification,
     paint: {
       // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
       'circle-color': e(['match', ['get', 'kind'],
@@ -378,7 +379,7 @@ export const LAIR_LAYERS: LayerSpecification[] = [
     id: 'lair-icons', type: 'symbol', source: 'regional', minzoom: LAIR_ZOOM,
     filter: e(['==', ['get', 'tier'], 'lair']) as FilterSpecification,
     layout: {
-      'icon-image': e(['match', ['get', 'kind'], 'cave', 'lair-cave', 'glade', 'lair-glade', ['concat', 'dun-', ['get', 'kind']]]),
+      'icon-image': e(['coalesce', ['get', 'icon'], ['match', ['get', 'kind'], 'cave', 'lair-cave', 'glade', 'lair-glade', 'pass', 'lair-pass', ['concat', 'dun-', ['get', 'kind']]]]),
       'icon-size': e(['interpolate', ['linear'], ['zoom'], LAIR_ZOOM, 0.45, 12, 0.75, 16, 1]),
       'icon-allow-overlap': true,
       'icon-padding': 2,
@@ -541,6 +542,127 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
       g.fill();
       g.stroke();
     }
+  });
+  // Groves in a mushroom forest (a ring of caps) and in a cursed wood (bare, grey crowns).
+  const ringGrove = (fill: (q: number) => string, cap: boolean, bare: boolean) => make((g) => {
+    g.fillStyle = 'rgba(244,236,216,0.9)';
+    g.beginPath();
+    g.arc(15, 15, 13.5, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = bare ? '#cfc9ae' : '#d9d4c2';
+    g.beginPath();
+    g.arc(15, 15, 6, 0, Math.PI * 2);
+    g.fill();
+    for (let q = 0; q < 7; q++) {
+      const a = (q / 7) * Math.PI * 2 - Math.PI / 2;
+      const x = 15 + Math.cos(a) * 8.6, y = 15 + Math.sin(a) * 8.6;
+      g.fillStyle = fill(q);
+      g.strokeStyle = INK;
+      g.lineWidth = 1;
+      g.beginPath();
+      g.arc(x, y, 3.6, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      if (cap) {
+        g.fillStyle = 'rgba(244,238,222,0.85)';
+        g.beginPath();
+        g.arc(x - 1, y - 1, 0.9, 0, Math.PI * 2);
+        g.arc(x + 1.2, y + 0.6, 0.7, 0, Math.PI * 2);
+        g.fill();
+      }
+      if (bare) {
+        g.strokeStyle = 'rgba(43,36,32,0.8)';
+        g.lineWidth = 0.7;
+        g.beginPath();
+        for (const t of [0, 2.1, 4.2]) {
+          g.moveTo(x, y);
+          g.lineTo(x + Math.cos(t + q) * 3, y + Math.sin(t + q) * 3);
+        }
+        g.stroke();
+      }
+    }
+  });
+  const gladeFungal = ringGrove((q) => ['#8f5fa4', '#4c9a8c', '#7d6a8c', '#c47c52', '#72688c', '#6a7f86', '#a8566e'][q], true, false);
+  const gladeCursed = ringGrove((q) => (q % 2 ? '#6d6a58' : '#5f5c4c'), false, true);
+  // A mountain pass: two peaks and the road over the saddle between them.
+  const pass = make((g) => {
+    g.fillStyle = 'rgba(244,236,216,0.92)';
+    g.strokeStyle = INK;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(15, 15, 13.5, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#d8cfbd';
+    g.lineWidth = 1.3;
+    g.beginPath();
+    g.moveTo(3.5, 23);
+    g.lineTo(9.5, 8.5);
+    g.lineTo(15, 16);
+    g.lineTo(20.5, 7.5);
+    g.lineTo(26.5, 23);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#f7f3ea';
+    for (const [x, y] of [[9.5, 8.5], [20.5, 7.5]]) {
+      g.beginPath();
+      g.moveTo(x - 2.4, y + 4.2);
+      g.lineTo(x, y);
+      g.lineTo(x + 2.4, y + 4.2);
+      g.closePath();
+      g.fill();
+    }
+    g.strokeStyle = '#8a6a3e';
+    g.lineWidth = 1.4;
+    g.setLineDash([1.6, 1.2]);
+    g.beginPath();
+    g.moveTo(11, 24);
+    g.lineTo(16.5, 20);
+    g.lineTo(13, 18.5);
+    g.lineTo(15, 16.2);
+    g.stroke();
+    g.setLineDash([]);
+  });
+  // An abandoned village: roofless houses with broken gables.
+  const abandoned = make((g) => {
+    g.fillStyle = 'rgba(244,236,216,0.92)';
+    g.strokeStyle = INK;
+    g.lineWidth = 1;
+    g.beginPath();
+    g.arc(15, 15, 13.5, 0, Math.PI * 2);
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#d8cfbd';
+    g.lineWidth = 1.2;
+    for (const [x, w, h] of [[5.5, 8, 8], [15.5, 9, 10]]) {
+      g.beginPath();
+      g.moveTo(x, 23);
+      g.lineTo(x, 23 - h * 0.6);
+      g.lineTo(x + w * 0.35, 23 - h);
+      g.lineTo(x + w * 0.5, 23 - h * 0.8);
+      g.lineTo(x + w * 0.62, 23 - h * 0.95);
+      g.lineTo(x + w, 23 - h * 0.5);
+      g.lineTo(x + w, 23);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.fillStyle = '#1f1a16';
+      g.fillRect(x + w * 0.35, 23 - h * 0.45, w * 0.28, h * 0.45);
+      g.fillStyle = '#d8cfbd';
+    }
+    g.strokeStyle = '#6f8a4a';
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(14.5, 23);
+    g.quadraticCurveTo(13.5, 18, 15.5, 15);
+    g.stroke();
+    g.strokeStyle = INK;
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(3.5, 23);
+    g.lineTo(26.5, 23);
+    g.stroke();
   });
   const disc = (g: CanvasRenderingContext2D) => {
     g.fillStyle = 'rgba(244,236,216,0.92)';
@@ -718,6 +840,8 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
     { id: 'dun-delve', image: delve, pixelRatio: pr },
     { id: 'dun-well', image: well, pixelRatio: pr },
     { id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr },
+    { id: 'lair-glade-fungal', image: gladeFungal, pixelRatio: pr }, { id: 'lair-glade-cursed', image: gladeCursed, pixelRatio: pr },
+    { id: 'lair-pass', image: pass, pixelRatio: pr }, { id: 'dun-abandoned', image: abandoned, pixelRatio: pr },
     { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },
     { id: 'dun-mine', image: mine, pixelRatio: pr }, { id: 'dun-sewer', image: sewer, pixelRatio: pr }, { id: 'dun-catacomb', image: catacomb, pixelRatio: pr },
   ];

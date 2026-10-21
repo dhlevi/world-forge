@@ -5,7 +5,7 @@ import type { Rng } from '../gen/rng';
  * it, what lies hidden there, and a detail for the senses, by kind of site. Shared by
  * `dungeons/key.ts` and `lairs/lair.ts`. Every table is plain data, so it is easy to extend.
  */
-export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve';
+export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve' | 'pass';
 
 export interface KeyNote {
   /** "Creature", "Trap", "Treasure" or "Hazard". */
@@ -332,6 +332,18 @@ export const CREATURES: Record<SiteKind, string[]> = {
     'A band of elven rangers watch from the canopy, bowstrings pulled taut.',
     'A corrupted korred dances wildly around a heap of bleached animal skulls.'
   ],
+  pass: [
+    'A pair of griffons circles the saddle, watching the road for horses to carry off.',
+    'A mountain troll sits under the rope bridge and demands a toll of meat.',
+    'A band of goat-herders, wary and well armed, drives its flock across the path.',
+    'A snow leopard lies on a ledge above the trail, perfectly still.',
+    'Bandits wait behind the cairn, their bows strung, for a traveller alone.',
+    'An ice wraith drifts along the path in the twilight, singing in a dead man\u2019s voice.',
+    'A frost giant\u2019s scout watches the pass from the heights, then is gone.',
+    'A lost pilgrim, half frozen, begs to be guided over the saddle.',
+    'Ravens follow anyone who crosses, cawing whenever they stop to rest.',
+    'A wyvern nests on the cliff above the switchbacks and swoops on anything that moves.',
+  ],
 };
 
 const TRAPS: Record<SiteKind, string[]> = {
@@ -485,6 +497,15 @@ const TRAPS: Record<SiteKind, string[]> = {
     'A boggy hollow that acts as quicksand, swallowing heavy gear and travelers.',
     'An old druidic ward causes iron weapons to become impossibly heavy while in the grove.',
     'A stream crossing covered in slick, algae-coated stones hides a swift, under-cutting current.'
+  ],
+  pass: [
+    'Loose scree slides underfoot; a fall here carries a body thirty feet down the slope.',
+    'A cornice of snow overhangs the path and will break under any loud noise.',
+    'The rope bridge\u2019s planks are rotten in places; one in five gives way under weight.',
+    'A sudden fog rolls over the saddle; those who leave the path lose it in moments.',
+    'Rocks fall from the cliffs above when the morning sun warms them.',
+    'Thin, cold air: anyone climbing in armour tires twice as fast.',
+    'A cleft in the ice is hidden by a crust of fresh snow.',
   ],
 };
 
@@ -789,6 +810,13 @@ const TREASURE: Record<SiteKind, string[]> = {
     'A jar of bear grease mixed with wintergreen, effective for soothing joint pain.',
     'A small wooden chest holding three rare orchid bulbs preserved in damp moss.',
     'A pendant made from a wolf’s canine tooth bound in silver wire.'
+  ],
+  pass: [
+    'A frozen traveller\u2019s pack, still full: rations, a fine knife and a purse of silver.',
+    'Coins left on the cairn by generations of travellers, some of them very old.',
+    'A courier\u2019s satchel wedged in the rocks below the bridge, its seal unbroken.',
+    'A lost merchant\u2019s mule skeleton, its packs holding bolts of silk.',
+    'Votive offerings at the shrine: copper rings, a silver bell and a jade bead.',
   ],
 };
 
@@ -1104,6 +1132,14 @@ export const SENSES: Record<SiteKind, string[]> = {
     'Old carved runes in a heart-tree trunk bleed sweet, amber sap.',
     'A sudden wind carries the wild scent of fox fur and wet pine.',
     'Twigs overhead intertwine so tightly they form a natural wooden roof.'
+  ],
+  pass: [
+    'The wind howls through the cleft and never quite stops.',
+    'Prayer flags crack in the wind like whips.',
+    'The air is thin and sharp, and every breath smokes.',
+    'Far below, the valley lies hazy and blue.',
+    'An eagle\u2019s cry echoes off the cliffs, again and again.',
+    'Meltwater trickles everywhere under the stones.',
   ],
 };
 

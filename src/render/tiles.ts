@@ -52,11 +52,11 @@ function bilerp(f: ArrayLike<number>, o0: number, o1: number, a: number, b: numb
 }
 
 /** Special ground (gen/special.ts SP values): its colour on the map, and on the biome layer. */
-const SP_RGB: number[][] = [[0, 0, 0], hexToRgb('#6f6a64'), hexToRgb('#3a312c'), hexToRgb('#e9f1f5'), hexToRgb('#8a6f9b'), hexToRgb('#b8693f'), [0, 0, 0], hexToRgb('#6b625a'), hexToRgb('#ddd59e')];
-const SP_ALPHA = [0, 0.78, 0.85, 0.9, 0.62, 0.55, 0, 0.28, 0.8];
-export const SP_LEGEND: [string, string][] = [['', ''], ['Ash land', '#77716b'], ['Lava field', '#3d302a'], ['Glacier', '#dfeaf2'], ['Mushroom forest', '#8b5fa0'], ['Canyon', '#b8693f'], ['Cliffs', '#5b4a3d'], ['Volcanic ground', '#857a70'], ['Geothermal field', '#e1d27a']];
+const SP_RGB: number[][] = [[0, 0, 0], hexToRgb('#6f6a64'), hexToRgb('#3a312c'), hexToRgb('#e9f1f5'), hexToRgb('#8a6f9b'), hexToRgb('#b8693f'), [0, 0, 0], hexToRgb('#6b625a'), hexToRgb('#ddd59e'), hexToRgb('#66654a')];
+const SP_ALPHA = [0, 0.78, 0.85, 0.9, 0.62, 0.55, 0, 0.28, 0.8, 0.68];
+export const SP_LEGEND: [string, string][] = [['', ''], ['Ash land', '#77716b'], ['Lava field', '#3d302a'], ['Glacier', '#dfeaf2'], ['Mushroom forest', '#8b5fa0'], ['Canyon', '#b8693f'], ['Cliffs', '#5b4a3d'], ['Volcanic ground', '#857a70'], ['Geothermal field', '#e1d27a'], ['Cursed land', '#5e5c46']];
 const SP_LEGEND_RGB = SP_LEGEND.map(([, c]) => (c ? hexToRgb(c) : [0, 0, 0]));
-const LAVA_GLOW = hexToRgb('#d4541f'), CREVASSE = hexToRgb('#9ab9cf'), ASH_SPECK = hexToRgb('#3c3835'), FUNGAL_SPOT = hexToRgb('#4c9a8c'), FUNGAL_CAP = hexToRgb('#c97d54'), STRATA = hexToRgb('#e2b07a');
+const BLIGHT = hexToRgb('#4f5a3a'), BLIGHT_PALE = hexToRgb('#9a9478'), LAVA_GLOW = hexToRgb('#d4541f'), CREVASSE = hexToRgb('#9ab9cf'), ASH_SPECK = hexToRgb('#3c3835'), FUNGAL_SPOT = hexToRgb('#4c9a8c'), FUNGAL_CAP = hexToRgb('#c97d54'), STRATA = hexToRgb('#e2b07a');
 
 /**
  * Special ground over the biome colour: blended from the four surrounding cells (`sp`, weights
@@ -64,9 +64,9 @@ const LAVA_GLOW = hexToRgb('#d4541f'), CREVASSE = hexToRgb('#9ab9cf'), ASH_SPECK
  * ash, lava with glowing veins, glacier ice with crevasses, mottled mushroom forest, banded canyon walls.
  */
 function paintSpecial(col: Float64Array, sp: number[], wt: number[], lon: number, lat: number, hh: number, gx: number, gy: number): void {
-  const acc = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  const acc = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0];
   for (let k = 0; k < 4; k++) if (sp[k]) acc[sp[k]] += wt[k];
-  for (let t = 1; t < 9; t++) {
+  for (let t = 1; t < 10; t++) {
     const a = acc[t];
     if (a <= 0.02 || !SP_ALPHA[t]) continue;
     mix(col, SP_RGB[t], a * SP_ALPHA[t]);
@@ -85,6 +85,11 @@ function paintSpecial(col: Float64Array, sp: number[], wt: number[], lon: number
       else if (v < -0.85) mix(col, FUNGAL_CAP, a * 0.5);
     } else if (t === 5) {
       mix(col, STRATA, a * 0.45 * (0.5 + 0.5 * Math.sin(hh / 45)));
+    } else if (t === 9) {
+      // Blight: sickly mottling, dark and pale by turns.
+      const v = Math.sin(lon * 37 + Math.sin(lat * 29)) * Math.sin(lat * 41 + Math.sin(lon * 19));
+      if (v > 0.45) mix(col, BLIGHT, a * 0.45);
+      else if (v < -0.55) mix(col, BLIGHT_PALE, a * 0.35);
     }
   }
 }

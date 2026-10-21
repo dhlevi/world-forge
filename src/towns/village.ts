@@ -29,7 +29,8 @@ export const secretWell = (s: Pick<Settlement, 'kind' | 'newWorld' | 'seed'>): b
  */
 export function buildVillage(inp: PlanInput): void {
   const k = new Kit(inp);
-  switch (inp.s.delve ? 'delve' : inp.s.kind) {
+  // An abandoned village is laid out as what it was, then left to fall down.
+  switch (inp.s.delve ? 'delve' : inp.s.abandoned ? inp.s.abandoned.was : inp.s.kind) {
     case 'delve': delveGate(k); break;
     case 'fishing': fishing(k); break;
     case 'logging': logging(k); break;
@@ -42,7 +43,45 @@ export function buildVillage(inp: PlanInput): void {
     default: farming(k);
   }
   villageLabels(k);
+  if (inp.s.abandoned) age(k);
 }
+
+/**
+ * An abandoned village: roofless shells and collapsed heaps for houses (burnt in a war or by a
+ * dragon, buried under ash), its fields gone back to the wild, its stalls and boats gone, and trees
+ * growing up among the houses. Its notable buildings keep their names, as ruins.
+ */
+function age(k: Kit): void {
+  const { inp, rnd } = k;
+  const cause = inp.s.abandoned!.cause;
+  const fallen = cause === 'ash' || cause === 'war' || cause === 'dragon' ? 0.5 : cause === 'flood' ? 0.35 : 0.2;
+  // Fields go back to the wild (only their hedgerows still show where they were).
+  const GONE = new Set(['stall', 'tent', 'wagon', 'boat', 'horse', 'furrow', 'picket', 'logs', 'sails', 'field']);
+  const feats = inp.out.features;
+  for (let i = feats.length - 1; i >= 0; i--) {
+    const p = feats[i].properties;
+    if (GONE.has(String(p.kind))) feats.splice(i, 1);
+    else if (p.kind === 'building') {
+      // No roofs, and no way in: what is left is ruin (named ones keep their labels).
+      p.kind = rnd() < fallen && !p.label ? 'spoil' : 'ruin';
+      delete p.bid;
+    } else if (p.kind === 'blabel') p.name = ruinLabel(String(p.name), cause);
+  }
+  // Trees have grown up in the gardens and lanes.
+  for (const h of k.houses) {
+    if (rnd() < 0.45) {
+      const a = rnd() * Math.PI * 2, d = h.r + 1.5 + rnd() * 3;
+      inp.out.point('tree', [h.c[0] + Math.cos(a) * d, h.c[1] + Math.sin(a) * d], { r: 1.6 + rnd() * 1.8 });
+    }
+  }
+}
+
+const ruinLabel = (name: string, cause: string) => {
+  const burnt = cause === 'war' || cause === 'dragon' || cause === 'ash';
+  if (/^Chapel of /.test(name)) return `the ${burnt ? 'Burnt' : 'Ruined'} ${name}`;
+  if (/Mill$/.test(name)) return `the Old ${name.replace(/^the /, '')}`;
+  return name;
+};
 
 /** The village's name over the plan, and its notable buildings: chapel, inn, smithy, mill. */
 function villageLabels(k: Kit): void {

@@ -126,7 +126,8 @@ export class NameBank {
     for (let t = 0; t < 8; t++) {
       const pat = pick(rnd, pats);
       const adjs = KIND_ADJ[kind] ?? [];
-      const adj = rnd() < 0.55 && adjs.length ? pick(rnd, adjs) : pick(rnd, ADJECTIVES).toLowerCase();
+      // Cursed lands take only their own grim adjectives.
+      const adj = (rnd() < 0.55 || kind === 'cursedWood' || kind === 'cursedMire') && adjs.length ? pick(rnd, adjs) : pick(rnd, ADJECTIVES).toLowerCase();
       const motif = pick(rnd, MOTIFS).toLowerCase();
       const propers: Named[] = [];
       let tpl = pat.replace('{A}', cap(adj)).replace('{M}', cap(motif));
@@ -335,6 +336,8 @@ const FEATURE_PATTERNS: Partial<Record<FeatureKind, string[]>> = {
   fungalForest: ['the {N} Mushroom Forest', 'the {A} Fungal Wood', 'the Spore Forest of {N}', 'the {A} Mushroom Wood'],
   canyon: ['the {N} Canyon', 'the {N} Gorge', 'the {A} Canyon', 'the {A} Gorge'],
   cliffs: ['the {N} Cliffs', 'the {A} Cliffs', 'the {N} Scarp', 'the {A} Escarpment'],
+  cursedWood: ['the {A} Wood', 'the {A} Forest', 'the Cursed Wood of {N}', 'the {A} Woods', 'the Witchwood of {N}'],
+  cursedMire: ['the {A} Mire', 'the {A} Fens', 'the Cursed Fens of {N}', 'the {A} Marsh', 'the Drowned Mire of {N}'],
 };
 /** Adjectives that suit each kind of feature (mixed with the general poetic ones). */
 const KIND_ADJ: Partial<Record<FeatureKind, string[]>> = {
@@ -365,6 +368,8 @@ const KIND_ADJ: Partial<Record<FeatureKind, string[]>> = {
   fungalForest: ['glowing', 'giant', 'purple', 'whispering', 'spore', 'pale', 'luminous'],
   canyon: ['red', 'deep', 'great', 'painted', 'echoing', 'narrow', 'winding'],
   cliffs: ['white', 'black', 'red', 'high', 'sheer', 'grey', 'windy'],
+  cursedWood: ['blighted', 'cursed', 'dead', 'withered', 'haunted', 'black', 'silent', 'hollow', 'weeping', 'grey', 'rotting', 'forsaken'],
+  cursedMire: ['weeping', 'cursed', 'drowned', 'haunted', 'black', 'rotting', 'blighted', 'forsaken', 'whispering', 'still'],
 };
 
 const INN_ADJ = ['Whistling', 'Merry', 'Wandering', 'Drunken', 'Golden', 'Black', 'Red', 'Silver', 'Copper', 'Green', 'Prancing', 'Drunken', 'Rusty', 'Laughing', 'Sleeping', 'Crooked', 'Jolly', 'Wandering', 'Blind', 'Merry', 'Leaping', 'Gilded', 'Busty', 'Weary', 'Salty', 'Three-Legged', 'Horned', 'Dead', 'Broken', 'Dancing', 'Winking', 'Blind', 'Greedy', 'Wandering', 'Thirsty', 'Two-Headed'];
@@ -484,6 +489,7 @@ const DUNGEON_NOUNS: Record<string, string[]> = {
   ruin: ['Ruins', 'Manor', 'Hall', 'Priory', 'Steading', 'Grange'],
   mine: ['Mine', 'Workings', 'Diggings', 'Delvings', 'Pits', 'Shafts'],
   well: ['Well', 'Wellspring', 'Hollow', 'Deep', 'Sump'],
+  pass: ['Pass', 'Gap', 'Col', 'Saddle', 'Notch', 'Gate', 'Stair', 'Pass'],
 };
 const DUNGEON_ADJ: Record<string, string[]> = {
   tower: ['Crooked', 'Lonely', 'Black', 'Broken', 'Grey', 'Leaning', 'Silent', 'Burnt', 'Wizard\'s', 'Old'],
@@ -491,6 +497,7 @@ const DUNGEON_ADJ: Record<string, string[]> = {
   ruin: ['Burnt', 'Fallen', 'Old', 'Abandoned', 'Overgrown', 'Ruined', 'Haunted', 'Shattered'],
   mine: ['Old', 'Deep', 'Drowned', 'Lost', 'Silver', 'Copper', 'Iron', 'Abandoned', 'Collapsed'],
   well: ['Old', 'Bottomless', 'Whispering', 'Dry', 'Drowned', 'Black', 'Wishing', 'Sunken'],
+  pass: ['High', 'Windy', 'Frozen', 'Narrow', 'Iron', 'Bitter', 'White', 'Eagle', 'Wolf', 'Cloud', 'Lonely', 'Broken'],
 };
 const DUNGEON_WHO = ['Witch', 'Baron', 'Hermit', 'Sorcerer', 'Abbot', 'Saint', 'King', 'Giant', 'Necromancer', 'Knight', 'Widow', 'Alchemist'];
 

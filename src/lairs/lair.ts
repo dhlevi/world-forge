@@ -1,18 +1,20 @@
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import { Simplex3, fbm } from '../gen/noise';
 import { type KeyNote, hookTail, roomNotes, senseDetail } from '../keys/flavour';
+import { buildPass } from './pass';
 
 /**
  * Caves and glades in the manner of Watabou's Cave / Glade Generator: a cave is a set of
  * chambers joined by winding passages, carved from a noisy field and traced as smooth walls,
  * with pools, boulders and stalagmites; a glade is a clearing in the forest ringed by tree
  * canopies, with a feature or two at its heart (a great tree, a pond, standing stones, a
- * stream, a camp, ruins). Both are deterministic from their seed and drawn on a 5 ft grid.
+ * stream, a camp, ruins); a mountain pass (pass.ts) is a trail climbing by switchbacks to a
+ * saddle between cliffs. All are deterministic from their seed and drawn on a 5 ft grid.
  *
  * Coordinates are local metres with x east and y south (canvas order), origin at the top-left
  * corner of the map.
  */
-export type LairKind = 'cave' | 'glade';
+export type LairKind = 'cave' | 'glade' | 'pass';
 export type Pt = [number, number];
 
 export interface LairSite {
@@ -26,6 +28,8 @@ export interface LairSite {
   tags: string[];
   lon: number;
   lat: number;
+  /** Passes: the way the road runs over the saddle (radians, map x east and y south). */
+  dir?: number;
 }
 
 export interface LairMap {
@@ -68,6 +72,14 @@ export interface LairMap {
   rooms: LairRoom[];
   /** Groves: the adventure hook printed above the key. */
   hook?: string;
+  /** Passes: bridges and fords over the stream, tunnels through a spur, snow fields and cairns. */
+  bridges?: { a: Pt; b: Pt; rope: boolean }[];
+  fords?: Pt[];
+  tunnels?: Pt[][];
+  snow?: Pt[][];
+  cairns?: Pt[];
+  /** Passes: the trail's centre line (drawn as a worn track). */
+  trail?: Pt[];
 }
 
 export interface LairRoom {
@@ -105,6 +117,7 @@ const STEP = 0.75;
 const SIZES: Record<LairKind, Record<string, [number, number]>> = {
   cave: { small: [54, 42], medium: [78, 60], large: [114, 84] },
   glade: { small: [60, 45], medium: [84, 63], large: [114, 84] },
+  pass: { small: [84, 84], medium: [108, 102], large: [132, 120] },
 };
 
 const cache = new Map<string, LairMap>();
@@ -114,7 +127,7 @@ export function lairMap(site: LairSite): LairMap {
   const key = `${site.id}:${site.seed}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const m = site.kind === 'cave' ? buildCave(site) : buildGlade(site);
+  const m = site.kind === 'cave' ? buildCave(site) : site.kind === 'pass' ? buildPass(site) : buildGlade(site);
   cache.set(key, m);
   if (cache.size > 60) cache.delete(cache.keys().next().value!);
   return m;
@@ -127,7 +140,7 @@ export function lairSize(site: LairSite): [number, number] {
 
 // ---- Scalar fields and contours --------------------------------------------------------------
 
-class Field {
+export class Field {
   readonly nx: number;
   readonly ny: number;
   readonly v: Float32Array;
@@ -251,7 +264,7 @@ class Field {
 }
 
 /** One pass of Chaikin smoothing on a closed loop, keeping points on the map edge in place. */
-function smoothLoop(p: Pt[]): Pt[] {
+export function smoothLoop(p: Pt[]): Pt[] {
   const out: Pt[] = [];
   for (let k = 0; k < p.length; k++) {
     const a = p[k], b = p[(k + 1) % p.length];
@@ -260,14 +273,14 @@ function smoothLoop(p: Pt[]): Pt[] {
   return out;
 }
 
-function distSeg(p: Pt, a: Pt, b: Pt): number {
+export function distSeg(p: Pt, a: Pt, b: Pt): number {
   const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
   const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
   return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
 }
 
 /** A wandering line from a to b (midpoint displacement). */
-function wander(a: Pt, b: Pt, rnd: Rng, amount: number, levels = 3): Pt[] {
+export function wander(a: Pt, b: Pt, rnd: Rng, amount: number, levels = 3): Pt[] {
   let pts: Pt[] = [a, b];
   let amp = amount;
   for (let l = 0; l < levels; l++) {
@@ -285,7 +298,7 @@ function wander(a: Pt, b: Pt, rnd: Rng, amount: number, levels = 3): Pt[] {
   return pts;
 }
 
-function blob(c: Pt, r: number, rnd: Rng, n = 7, rough = 0.35): Pt[] {
+export function blob(c: Pt, r: number, rnd: Rng, n = 7, rough = 0.35): Pt[] {
   const a0 = rnd() * Math.PI * 2;
   const out: Pt[] = [];
   for (let k = 0; k < n; k++) {
@@ -295,7 +308,7 @@ function blob(c: Pt, r: number, rnd: Rng, n = 7, rough = 0.35): Pt[] {
   return out;
 }
 
-const empty = (site: LairSite, W: number, H: number): Omit<LairMap, 'outlines' | 'onEdge' | 'open'> => ({
+export const empty = (site: LairSite, W: number, H: number): Omit<LairMap, 'outlines' | 'onEdge' | 'open'> => ({
   site, W, H, water: [], mouths: [], rocks: [], dots: [], trees: [], bigTree: null, stones: [], stream: null, camp: null, ruins: [], tufts: [], flowers: [],
   level: 0, levels: [], links: [], paths: [], things: [], rooms: [],
 });
@@ -445,7 +458,7 @@ function caveKey(site: LairSite, levels: LairMap[], chambers: { c: Pt; r: number
 }
 
 /** Creatures, hazards, treasure and a detail for the senses, for every numbered place on every level. */
-function annotate(levels: LairMap[], kind: 'cave' | 'grove', rnd: Rng): void {
+export function annotate(levels: LairMap[], kind: 'cave' | 'grove' | 'pass', rnd: Rng): void {
   const used = new Set<string>();
   levels.forEach((m, L) => {
     for (const r of m.rooms) {
@@ -610,6 +623,38 @@ const GROVE_KEY: Record<GroveFeat, [string, string[]]> = {
   clearing: ['Clearing', ['A quiet clearing carpeted in moss and bracken.', 'An open glade where deer graze at dusk.']],
 };
 
+/** Groves in a mushroom forest: the same places, grown of fungus. */
+const FUNGAL_KEY: Partial<Record<GroveFeat, [string, string[]]>> = {
+  tree: ['The great mushroom', ['A mushroom as tall as a tower spreads its cap over the clearing; spores drift down from its gills like slow snow.', 'An ancient fungus, its stalk wider than a house, ringed by smaller caps like courtiers.']],
+  hollow: ['The hollow stalk', ['The stalk of a giant mushroom has rotted hollow. A gap in it opens on darkness, and a rope hangs down inside.', 'The great mushroom is hollow at the root; spongy handholds lead down into the dark.']],
+  flowers: ['Toadstool ring', ['Toadstools of every colour grow in rings here, and the air tastes of earth and honey.', 'A carpet of small bright caps; those who sit among them dream deeply and wake late.']],
+  clearing: ['Clearing', ['A quiet clearing carpeted in pale moss, lit by the soft glow of the caps around it.', 'Open ground where puffballs burst underfoot in clouds of yellow spores.']],
+  hut: ["Spore-witch's hut", ['A hut built inside a fallen cap, its door cut through the gills. Strings of dried fungi hang from the eaves.', 'A low hut of mushroom-flesh and mud, warm and sweet-smelling; jars of spores line its shelves.']],
+  pond: ['Pool', ['A still pool, faintly luminous; tiny glowing caps grow along its rim.', 'Dark water under a canopy of caps; the reflections glow even at noon.']],
+  shrine: ['Shrine', ['A stone shrine half swallowed by fungus, its offerings sprouting with mould.', 'A carved figure stands in a ring of violet caps; its eyes have been filled with spores.']],
+};
+/** Groves in cursed land: dying trees, and an air of wrongness. */
+const CURSED_KEY: Partial<Record<GroveFeat, [string, string[]]>> = {
+  tree: ['The dead tree', ['A vast tree, long dead, its bark black and its boughs bare. Nothing nests in it.', 'A blasted oak at the heart of the curse; things are nailed to its trunk, and some of them still move.']],
+  hollow: ['The hollow tree', ['A dead giant split by lightning. A gap in the trunk breathes cold air, and a rope hangs down inside.', 'The trunk of the black tree is hollow; claw marks lead down among its roots.']],
+  flowers: ['Withered meadow', ['A meadow of grey grass and flowers that wilted the day they opened.', 'Flowers grow here in rings, pale as bone, and smell of the grave.']],
+  clearing: ['Clearing', ['A silent clearing; no birds sing here, and the moss is grey.', 'Open ground where the grass has died in the shape of a figure lying down.']],
+  pond: ['Black pool', ['A pool of still, black water that shows no reflection.', 'A stagnant pond, oily and cold; the frogs that live in it have too many eyes.']],
+  spring: ['Bitter spring', ['A spring that once healed now runs brackish and red.', 'The holy spring is fouled; a broken cup lies beside it.']],
+  shrine: ['Defiled shrine', ['A forest shrine overturned and smeared with soot; its carved face has been gouged out.', 'An old shrine heaped with offerings that have all rotted at once.']],
+};
+const FUNGAL_HOOKS = [
+  'Pickers who gather the rare caps of the grove have begun to sleep for days, and wake speaking a language no one knows.',
+  'A spore-witch trades potions at the forest edge, but her prices have changed: she now asks for names.',
+  'The glowing caps have spread to the nearest village\u2019s granary, and the bread tastes of earth.',
+  'Something vast moves beneath the mycelium; the ground of the grove rises and falls like breathing.',
+];
+const CURSED_HOOKS = [
+  'Since the curse fell, the woods have crept toward the village by a field each year, and the trees they take do not grow back green.',
+  'A hermit swears the curse can be broken at the heart of the grove, but no one who has tried has come back.',
+  'Lights are seen in the dead grove on moonless nights, and the dogs of the village will not stop howling.',
+  'A knight sworn to lift the curse rode into the woods a month ago; his horse came back alone, its coat turned white.',
+];
 const GROVE_HOOKS = [
   'Woodcutters will not work near the grove since one of them came back unable to speak.',
   'A druid who tends the grove has asked for help: something is poisoning its spring.',
@@ -842,8 +887,10 @@ function buildGlade(site: LairSite): LairMap {
   // The key: one entry per clearing, numbered from the way in; the ford if a stream crosses a path.
   const entry = pathLines[pathLines.length - 1][pathLines[pathLines.length - 1].length - 1];
   const order = cl.map((_, i) => i).sort((a, b) => Math.hypot(cl[a].c[0] - entry[0], cl[a].c[1] - entry[1]) - Math.hypot(cl[b].c[0] - entry[0], cl[b].c[1] - entry[1]));
+  const fungal = has('fungal') || has('mushrooms'), cursed = has('cursed');
+  const keyFor = (f: GroveFeat) => (fungal ? FUNGAL_KEY[f] : cursed ? CURSED_KEY[f] : undefined) ?? GROVE_KEY[f];
   for (const i of order) {
-    const [name, texts] = GROVE_KEY[feats[i]];
+    const [name, texts] = keyFor(feats[i]);
     const q = cl[i];
     // The number sits off the feature, toward the clearing's rim, on dry open ground.
     let lp: Pt = q.c;
@@ -869,7 +916,8 @@ function buildGlade(site: LairSite): LairMap {
     }
   }
   m.mouths = [{ p: [Math.max(0, Math.min(W, entry[0])), Math.max(0, Math.min(H, entry[1]))], dir: Math.atan2(cl[order[0]].c[1] - entry[1], cl[order[0]].c[0] - entry[0]) }];
-  m.hook = GROVE_HOOKS[Math.floor(rnd() * GROVE_HOOKS.length)];
+  const hooks = fungal ? FUNGAL_HOOKS : cursed ? CURSED_HOOKS : GROVE_HOOKS;
+  m.hook = hooks[Math.floor(rnd() * hooks.length)];
 
   if (hollowAt) {
     const inside = buildHollow(site, rnd, m.rooms.length + 1);

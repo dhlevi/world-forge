@@ -126,7 +126,7 @@ const sections = computed<Section[]>(() => {
         sym('forest', 'Broadleaf forest', [0, FANTASY.maxTreeZoom]),
         sym('conifer', 'Conifer forest', [0, FANTASY.maxTreeZoom]),
         sym('marsh', 'Marsh', [0, FANTASY.maxTreeZoom]),
-        ...(races ? [sym('mushroom', 'Giant mushrooms', [0, FANTASY.maxTreeZoom])] : []),
+        ...(races ? [sym('mushroom', 'Giant mushrooms', [0, FANTASY.maxTreeZoom]), sym('deadTree', 'Dead trees', [0, FANTASY.maxTreeZoom], 'in cursed lands')] : []),
         sym('volcano2', 'Active volcano', [0, FANTASY.maxTreeZoom], 'smoking, with lava'),
         sym('volcano1', 'Dormant volcano', [0, FANTASY.maxTreeZoom], 'a thin plume'),
         sym('volcano0', 'Extinct volcano', [0, FANTASY.maxTreeZoom]),
@@ -141,7 +141,7 @@ const sections = computed<Section[]>(() => {
       gr(SP.volcanic, 'Volcanic ground'),
       gr(SP.geothermal, 'Geothermal field'),
       gr(SP.glacier, 'Glacier'),
-      ...(races ? [gr(SP.fungal, 'Mushroom forest')] : []),
+      ...(races ? [gr(SP.fungal, 'Mushroom forest'), gr(SP.cursed, 'Cursed land', 'blighted woods and mires')] : []),
       gr(SP.canyon, 'Canyon walls'),
     ];
     if (store.showLabels) {
@@ -161,6 +161,12 @@ const sections = computed<Section[]>(() => {
       items: [
         { id: 'cave', label: 'Cave', draw: { t: 'icon', id: 'lair-cave' }, z: [LAIR_ZOOM, 24] },
         { id: 'glade', label: 'Glade', draw: { t: 'icon', id: 'lair-glade' }, z: [LAIR_ZOOM, 24] },
+        ...(races ? [
+          { id: 'glade-f', label: 'Mushroom grove', draw: { t: 'icon', id: 'lair-glade-fungal' }, z: [LAIR_ZOOM, 24] } as Item,
+          { id: 'glade-c', label: 'Cursed grove', draw: { t: 'icon', id: 'lair-glade-cursed' }, z: [LAIR_ZOOM, 24] } as Item,
+        ] : []),
+        { id: 'pass', label: 'Mountain pass', draw: { t: 'icon', id: 'lair-pass' }, z: [LAIR_ZOOM, 24], note: 'where a road crosses a range' },
+        { id: 'abandoned', label: 'Abandoned village', draw: { t: 'icon', id: 'dun-abandoned' }, z: [LAIR_ZOOM, 24] },
         dun('mine', [LAIR_ZOOM, 24]), dun('tower', [LAIR_ZOOM, 24]), dun('crypt', [LAIR_ZOOM, 24]), dun('ruin', [LAIR_ZOOM, 24]),
         dun('catacomb', [13.6, 24]), dun('sewer', [13.6, 24]), dun('delve', [13.6, 24]), dun('well', [13.6, 24]),
       ],

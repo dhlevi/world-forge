@@ -218,6 +218,7 @@ export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   layer({ id: 'lbl-volcano', source: 'labels', filter: [kindIs('volcano')], z: [4.2, 12.5], size: [10, 12.5], font: ITALIC, color: '#6b2a17', sortKey: 21, maxWidth: 8, anchor: 'top', offset: [0, 0.4] }),
   layer({ id: 'lbl-ashland', source: 'labels', filter: [kindIs('ashland')], z: [4.4, 10], size: [10, 15], font: CAPS, color: '#3e3934', spacing: 0.35, sortKey: 17 }),
   layer({ id: 'lbl-fungal', source: 'labels', filter: [kindIs('fungalForest')], z: [4.6, 10.5], size: [10, 15], font: CAPS, color: '#5d3a6e', spacing: 0.3, sortKey: 16 }),
+  layer({ id: 'lbl-cursed', source: 'labels', filter: [kindIs('cursedWood', 'cursedMire')], z: [4.8, 11], size: [10, 15], font: CAPS, color: '#3f4330', spacing: 0.3, sortKey: 16 }),
   layer({ id: 'lbl-glacier', source: 'labels', filter: [kindIs('glacier')], z: [4.8, 11], size: [10, 13.5], font: ITALIC, color: '#3e6178', sortKey: 19, maxWidth: 8 }),
   layer({ id: 'lbl-canyon', source: 'labels', filter: [kindIs('canyon'), isLine], z: [4.8, 12], size: [10, 14], font: CAPS, color: '#7c3a1c', spacing: 0.25, line: 'repeat', sortKey: 18 }),
   layer({ id: 'lbl-cliffs', source: 'labels', filter: [kindIs('cliffs'), isLine], z: [5.2, 12], size: [10, 13], font: ITALIC, color: '#4d3a2b', line: 'repeat', sortKey: 20 }),

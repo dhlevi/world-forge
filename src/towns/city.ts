@@ -507,6 +507,11 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     }
   }
   themeWards();
+  // A mage's tower or a university's college of magic (gen/special.ts), on the high ground.
+  if (s.tower && theme !== 'mages') {
+    const c = offMarket();
+    if (c.length) patches[highest(c)].kind = 'tower';
+  }
   if (!town || s.population > 2000) {
     const parks = inner.filter((i) => patches[i].kind === 'park');
     const pc = patches[plaza].c;
@@ -861,7 +866,8 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         const oct: Pt[] = [];
         for (let k = 0; k < 8; k++) oct.push([c[0] + r * Math.cos((k + 0.5) * Math.PI / 4), c[1] + r * Math.sin((k + 0.5) * Math.PI / 4)]);
         if (ground.allOk(oct, BUILD_GROUND)) {
-          const name = `the ${pick(['Violet', 'Silver', 'Azure', 'Grey', 'Star', 'Moon', 'High', 'Black', 'White', 'Crystal', 'Amber'])} Tower`;
+          const picked = `the ${pick(['Violet', 'Silver', 'Azure', 'Grey', 'Star', 'Moon', 'High', 'Black', 'White', 'Crystal', 'Amber'])} Tower`;
+          const name = s.tower?.name ?? picked;
           out.poly('building', oct, { role: 'magetower', label: name, ctx: 'rich' });
           out.point('blabel', c, { name, role: 'magetower' });
         }

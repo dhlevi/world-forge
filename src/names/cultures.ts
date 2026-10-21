@@ -13,7 +13,7 @@ export type FeatureKind =
   | 'settlement' | 'river' | 'lake' | 'inlandSea' | 'sea' | 'ocean' | 'gulf' | 'bay' | 'bight' | 'strait' | 'channel'
   | 'island' | 'isles' | 'continent' | 'mountains' | 'hills' | 'peak' | 'forest' | 'desert' | 'marsh' | 'plains'
   | 'realm' | 'road'
-  | 'volcano' | 'ashland' | 'geysers' | 'hotLake' | 'glacier' | 'fungalForest' | 'canyon' | 'cliffs';
+  | 'volcano' | 'ashland' | 'geysers' | 'hotLake' | 'glacier' | 'fungalForest' | 'canyon' | 'cliffs' | 'cursedWood' | 'cursedMire';
 
 export interface Culture {
   id: string;
@@ -133,6 +133,8 @@ export const DEFAULT_TERMS: Record<FeatureKind, string[]> = {
   fungalForest: ['the {N} Mushroom Forest', 'the {A} Fungal Wood'],
   canyon: ['the {N} Canyon', 'the {N} Gorge', 'the {A} Canyon'],
   cliffs: ['the {N} Cliffs', 'the {A} Cliffs', 'the {N} Scarp'],
+  cursedWood: ['the {A} Wood', 'the Cursed Wood of {N}'],
+  cursedMire: ['the {A} Mire', 'the Cursed Fens of {N}'],
 };
 
 export const ADJECTIVES = [
