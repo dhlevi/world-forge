@@ -1,7 +1,7 @@
 import { Simplex3 } from '../gen/noise';
 import { hashString, mulberry32 } from '../gen/rng';
 import { EARTH_RADIUS_KM, smoothstep } from '../gen/grid';
-import { BIOME_COLORS } from '../gen/biomes';
+import { Biome, BIOME_COLORS } from '../gen/biomes';
 import { KOPPEN_CLASSES } from '../gen/koppen';
 import { CLIMATE, RENDER as RC } from '../gen/config';
 import type { RasterWorld } from '../gen/world';
@@ -87,6 +87,30 @@ function paintSpecial(col: Float64Array, sp: number[], wt: number[], lon: number
       mix(col, STRATA, a * 0.45 * (0.5 + 0.5 * Math.sin(hh / 45)));
     }
   }
+}
+
+/**
+ * A patch of special ground `t` for the map key, painted over grassland as the `layer` paints it
+ * (the textures run at the scale of zoom 7); RGBA, `w` × `h` pixels.
+ */
+export function specialSwatch(t: number, w: number, h: number, layer: 'fantasy' | 'terrain' | 'biomes'): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(w * h * 4);
+  const col = new Float64Array(3);
+  const tbl = layer === 'fantasy' ? FANTASY_BIOME_RGB : BIOME_RGB;
+  const b = Biome.Grassland * 3;
+  for (let y = 0; y < h; y++) {
+    for (let x = 0; x < w; x++) {
+      col[0] = tbl[b]; col[1] = tbl[b + 1]; col[2] = tbl[b + 2];
+      if (layer === 'biomes') {
+        if (SP_LEGEND[t]?.[1] && t !== 6) mix(col, SP_LEGEND_RGB[t], t === 7 ? 0.5 : 1);
+      } else {
+        paintSpecial(col, [t, 0, 0, 0], [1, 0, 0, 0], 20 + x * 0.011, 10 - y * 0.011, 300 + y * 9, x, y);
+      }
+      const o = (y * w + x) * 4;
+      out[o] = col[0]; out[o + 1] = col[1]; out[o + 2] = col[2]; out[o + 3] = 255;
+    }
+  }
+  return out;
 }
 
 function mix(col: Float64Array, rgb: ArrayLike<number>, t: number, offset = 0): void {

@@ -14,6 +14,7 @@ import FaithLegend from './components/FaithLegend.vue';
 import GroupLegend from './components/GroupLegend.vue';
 import RelationsLegend from './components/RelationsLegend.vue';
 import OldWorldLegend from './components/OldWorldLegend.vue';
+import MapKey from './components/MapKey.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -28,6 +29,7 @@ onMounted(regenerate);
   <GroupLegend />
   <RelationsLegend />
   <OldWorldLegend />
+  <MapKey />
   <RealmView />
   <CultureView />
   <FaithView />

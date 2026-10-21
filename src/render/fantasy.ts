@@ -222,8 +222,10 @@ export function drawIcons(
     }
   }
   const nearVent = (x: number, y: number, r: number) => ventPx.some((v) => Math.hypot(v.x - x, v.y - y) < r);
+  // Small on the globe, the size of a great mountain from zoom 7, and larger past the mountain zooms.
+  const ventScale = (0.42 + 0.58 * smoothstep(2, 7, ctx.z)) * Math.min(2.2, grow * grow);
   for (const v of ventPx) {
-    const vw = (26 + 12 * smoothstep(1500, 5000, v.h)) * Math.min(2.2, grow * grow), vh = vw * 0.62;
+    const vw = (22 + 10 * smoothstep(1500, 5000, v.h)) * ventScale, vh = vw * 0.62;
     icons.push({ y: ctx.originY + v.y, draw: () => drawVolcano(out, w, h, v.x, v.y, vw, vh, v.act) });
   }
 
@@ -393,9 +395,9 @@ function drawVolcano(out: Uint8ClampedArray, w: number, h: number, cx: number, c
     for (let k = 0; k < vh * 0.6; k++) blend(out, w, h, Math.round(cx - k * 0.18), Math.round(top + 2 + k), GLOW, 0.75);
   }
   if (act > 0) {
-    const n = act === 2 ? 4 : 2;
+    const n = act === 2 ? 4 : 2, s = Math.max(0.55, Math.min(1.4, vw / 26));
     for (let k = 0; k < n; k++) {
-      const r = (act === 2 ? 2.4 : 1.6) + k * 0.7, sx = cx + k * 2.2, sy = top - 3 - k * 3.6;
+      const r = ((act === 2 ? 2.4 : 1.6) + k * 0.7) * s, sx = cx + k * 2.2 * s, sy = top - (3 + k * 3.6) * s;
       for (let py = Math.floor(sy - r - 1); py <= Math.ceil(sy + r + 1); py++) {
         for (let px = Math.floor(sx - r - 1); px <= Math.ceil(sx + r + 1); px++) {
           const d = Math.hypot(px + 0.5 - sx, py + 0.5 - sy);
@@ -438,4 +440,61 @@ function drawTuft(out: Uint8ClampedArray, w: number, h: number, cx: number, cy: 
     for (let k = 0; k < len; k++) blend(out, w, h, x + dx, y - k, MARSH, 0.75);
   }
   for (let dx = -3; dx <= 3; dx++) blend(out, w, h, x + dx, y + 1, MARSH, 0.45);
+}
+
+/** The map symbols the key explains. */
+export type KeySymbol = 'mountain' | 'snowMountain' | 'hill' | 'forest' | 'conifer' | 'marsh' | 'mushroom' | 'volcano2' | 'volcano1' | 'volcano0';
+
+/**
+ * One map symbol for the map key, drawn by the same code as the fantasy tiles on a patch of
+ * parchment (grassland): `w` × `h` pixels at scale `s` (2 for a sharp key on high-density screens).
+ */
+export function keySymbol(kind: KeySymbol, w: number, h: number, s = 1): Uint8ClampedArray {
+  const out = new Uint8ClampedArray(w * h * 4);
+  const b = Biome.Grassland * 3;
+  for (let i = 0; i < w * h; i++) {
+    out[i * 4] = FANTASY_BIOME_RGB[b];
+    out[i * 4 + 1] = FANTASY_BIOME_RGB[b + 1];
+    out[i * 4 + 2] = FANTASY_BIOME_RGB[b + 2];
+    out[i * 4 + 3] = 255;
+  }
+  const cx = w / 2, by = h - 3 * s;
+  switch (kind) {
+    case 'mountain':
+    case 'snowMountain':
+      drawMountain(out, w, h, cx, by, 20 * s, 15 * s, kind === 'snowMountain');
+      break;
+    case 'hill':
+      drawHill(out, w, h, cx - 5 * s, by, 5.5 * s, 3.2 * s);
+      drawHill(out, w, h, cx + 6 * s, by - 4 * s, 5.5 * s, 3.2 * s);
+      break;
+    case 'forest':
+      for (const [dx, dy, r] of [[-7, -5, 2.9], [5, -6, 3.1], [-1, 0, 3.2], [9, 0, 2.7]]) drawTree(out, w, h, cx + dx * s, by + dy * s, r * s);
+      break;
+    case 'conifer':
+      for (const [dx, dy] of [[-7, -5], [5, -6], [-1, 0], [9, 0]]) drawTriangle(out, w, h, cx + dx * s, by + dy * s, 5.2 * s, 7.5 * s, CONIFER, CONIFER_SHADE, false);
+      break;
+    case 'marsh': {
+      // Tufts as the tiles draw them (three blades over a short base line), scaled up pixel for pixel.
+      const S = Math.max(1, Math.round(s));
+      const px = (x: number, y: number, a: number) => {
+        for (let i = 0; i < S; i++) for (let j = 0; j < S; j++) blend(out, w, h, x * S + i, y * S + j, MARSH, a);
+      };
+      for (const [dx, dy] of [[-7, -6], [6, -5], [0, 0]]) {
+        const x = Math.round(cx / S + dx), y = Math.round(by / S + dy);
+        for (const bx of [-2, 0, 2]) for (let k = 0; k < (bx === 0 ? 3 : 2); k++) px(x + bx, y - k, 0.75);
+        for (let bx = -3; bx <= 3; bx++) px(x + bx, y + 1, 0.45);
+      }
+      break;
+    }
+    case 'mushroom':
+      for (const [dx, dy, r, sd] of [[-7, -5, 2.8, 0.1], [6, -6, 3.2, 0.4], [0, 0, 3.6, 0.7]]) drawMushroom(out, w, h, cx + dx * s, by + dy * s, r * s, sd);
+      break;
+    default: {
+      const act = Number(kind.slice(-1));
+      const vw = 20 * s;
+      drawVolcano(out, w, h, cx, by, vw, vw * 0.62, act);
+    }
+  }
+  return out;
 }
