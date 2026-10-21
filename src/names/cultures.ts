@@ -12,7 +12,8 @@ import { BUNDLES } from './bundles';
 export type FeatureKind =
   | 'settlement' | 'river' | 'lake' | 'inlandSea' | 'sea' | 'ocean' | 'gulf' | 'bay' | 'bight' | 'strait' | 'channel'
   | 'island' | 'isles' | 'continent' | 'mountains' | 'hills' | 'peak' | 'forest' | 'desert' | 'marsh' | 'plains'
-  | 'realm' | 'road';
+  | 'realm' | 'road'
+  | 'volcano' | 'ashland' | 'geysers' | 'hotLake' | 'glacier' | 'fungalForest' | 'canyon' | 'cliffs';
 
 export interface Culture {
   id: string;
@@ -124,6 +125,14 @@ export const DEFAULT_TERMS: Record<FeatureKind, string[]> = {
   plains: ['the {N} Plains', 'the {A} Plains'],
   realm: ['Kingdom of {N}', 'Archduchy of {N}'],
   road: ['the {N} Road', 'the {N} Way', 'the Old {N} Road', 'the {A} Road', 'the {A} Way', 'the Old {A} Road'],
+  volcano: ['Mount {N}', '{N} Volcano', 'the {A} Mountain'],
+  ashland: ['the {N} Ashes', 'the {A} Ashlands', 'the {A} Waste'],
+  geysers: ['the {N} Geysers', 'the {A} Springs'],
+  hotLake: ['the {N} Pools', 'the {A} Pools', 'Lake {N}'],
+  glacier: ['the {N} Glacier', 'the {A} Ice'],
+  fungalForest: ['the {N} Mushroom Forest', 'the {A} Fungal Wood'],
+  canyon: ['the {N} Canyon', 'the {N} Gorge', 'the {A} Canyon'],
+  cliffs: ['the {N} Cliffs', 'the {A} Cliffs', 'the {N} Scarp'],
 };
 
 export const ADJECTIVES = [

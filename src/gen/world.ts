@@ -2,6 +2,7 @@ import { type Grid, makeGrid, areaQuantile } from './grid';
 import { type Rng, hashString, mulberry32 } from './rng';
 import { Simplex3 } from './noise';
 import { buildTectonics, drainInlandSeas } from './tectonics';
+import { specialFeatures } from './special';
 import { computeClimate } from './climate';
 import { accumulate, erode, fillShallowPits, precipWeight, routeFlow } from './hydrology';
 import { classifyBiomes } from './biomes';
@@ -77,6 +78,10 @@ export interface RasterWorld {
   newWorld: Uint8Array;
   /** How the Old World spread from its heartland (for the Old & New World layer; see `SpreadTrace`). */
   spread: SpreadTrace;
+  /** Special ground on each cell (an `SP` value: ash, lava, glacier, mushroom forest, canyon, cliffs; gen/special.ts). */
+  special: Uint8Array;
+  /** Volcanoes: lon, lat, height (m) and activity (2 active, 1 dormant, 0 extinct), four numbers each. */
+  vents: Float32Array;
 }
 
 export interface WorldSummary {
@@ -115,7 +120,7 @@ function buildTerrain(
   g: Grid, rng: Rng, climateNoise: Simplex3, params: WorldParams, landFraction: number, progress: ProgressFn,
 ) {
   progress('Tectonic plates', 0.05);
-  const { height, plate } = buildTectonics(g, rng, params.plates, landFraction);
+  const { height, plate, volcanic } = buildTectonics(g, rng, params.plates, landFraction);
   const seaLevel = areaQuantile(g, height, 1 - landFraction);
   for (let c = 0; c < g.N; c++) height[c] -= seaLevel;
   drainInlandSeas(g, height);
@@ -136,7 +141,7 @@ function buildTerrain(
       ? h + HYDROLOGY.coastStepLandM + HYDROLOGY.coastLiftM * (1 - Math.exp(-h / HYDROLOGY.coastScaleM))
       : h - HYDROLOGY.coastStepSeaM - HYDROLOGY.coastDropM * (1 - Math.exp(h / HYDROLOGY.coastScaleM));
   }
-  return { height, plate, sedimentFill };
+  return { height, plate, sedimentFill, volcanic };
 }
 
 export function generateWorld(params: WorldParams, progress: ProgressFn = () => {}): GeneratedWorld {
@@ -149,14 +154,15 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   const climateNoise = new Simplex3(rng);
   const landFraction = Math.min(0.95, Math.max(0.02, params.landFraction));
 
-  let height: Float32Array, plate: Uint8Array, sedimentFill: Float32Array;
+  let height: Float32Array, plate: Uint8Array, sedimentFill: Float32Array, volcanic: Float32Array;
   if (params.heightmap) {
     if (params.heightmap.length !== g.N) throw new Error(`heightmap must be ${W}×${H}`);
     height = Float32Array.from(params.heightmap);
     plate = new Uint8Array(g.N);
     sedimentFill = new Float32Array(g.N);
+    volcanic = new Float32Array(g.N);
   } else {
-    ({ height, plate, sedimentFill } = buildTerrain(g, rng, climateNoise, params, landFraction, progress));
+    ({ height, plate, sedimentFill, volcanic } = buildTerrain(g, rng, climateNoise, params, landFraction, progress));
   }
 
   progress('Climate', 0.75);
@@ -234,6 +240,12 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   const { politics, labels: realmLabels } = buildPolitics(pg, pf, settlements, rivers, bank, params.seed);
   labels.features.push(...realmLabels);
   markUniversities(politics.units, settlements);
+  // Special features: volcanoes, ash lands, geysers, glaciers, mushroom forests, canyons, cliffs.
+  const sf = specialFeatures(g, {
+    height, lakeDepth, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, windU: climate.windU, windV: climate.windV, biome, culture, volcanic, flow,
+  }, rivers, settlements, bank, params.seed, params.races !== false);
+  labels.features.push(...sf.labels);
+  const vents = Float32Array.from(sf.vents.flatMap((v) => [v.lon, v.lat, v.h, v.activity]));
 
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;
   for (let j = 0, c = 0; j < H; j++) {
@@ -272,6 +284,8 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       cultures,
       newWorld,
       spread,
+      special: sf.special,
+      vents,
     },
     rivers,
     wind,

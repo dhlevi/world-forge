@@ -552,7 +552,7 @@ function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng):
   const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge: (p) => p[0] < 0.05 || p[1] < 0.05 || p[0] > W - 0.05 || p[1] > H - 0.05, mouths, level };
 
   // Pools: low noise hollows well inside the floor (more of them the deeper the level).
-  const wetLevel = has('wet') || has('flooded') || (level > 0 && rnd() < 0.3 * level && !has('dry'));
+  const wetLevel = has('wet') || has('flooded') || has('volcanic') || (level > 0 && rnd() < 0.3 * level && !has('dry'));
   if (wetLevel) {
     const lvl = has('flooded') ? 0.05 : Math.max(0.12, 0.32 - 0.06 * level);
     const wf = new Field(W, H, (x, y) => Math.min(fbm(noise, x / 13 + 40, y / 13, 1.7, 2) - lvl, field.at([x, y]) - 0.18));

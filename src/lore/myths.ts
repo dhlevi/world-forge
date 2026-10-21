@@ -1469,7 +1469,19 @@ function legends(c: Ctx): Myth[] {
     const w = s.what;
     let P: string[] | null = null;
     let title = s.name;
-    if (/mountain|peak/.test(w)) {
+    if (/fire mountain|burning mountain|mountain whose fire/.test(w)) {
+      P = [`${s.name} is ${w.replace(/^a |^the /, 'the ')}. ${pick(r, [`When ${g()} is angry the mountain roars, and the priests climb to the rim to sing until it sleeps again.`, `Its fire has never gone out since ${g()} first struck the anvil there.`, `Once in a lifetime it wakes, and the ash that falls is gathered and kept as holy.`])}`];
+    } else if (/springs|breath/.test(w)) {
+      P = [`At ${s.name} the earth breathes: ${pick(r, ['the springs rise in towers of steam at every hour', 'the boiling water speaks, and the oracles read its voice', 'the springs leap higher on holy days, the faithful say'])}. ${pick(r, ['No one may drink of them but the priests.', 'Pilgrims leave coins at the rim and pray for health.', 'A shrine of white stone stands beside the greatest of them.'])}`];
+    } else if (/pools|painted waters/.test(w)) {
+      P = [`The pools of ${s.name} are ${pick(r, ['blue at the heart, then green, then gold, then red at the edge', 'every colour of the rainbow, and change with the seasons', 'yellow with sulphur and green as jade'])}. ${pick(r, [`The faithful say that ${g()} bathed there and left the colours behind.`, 'Whoever bathes there on the holy day is cured of fevers.', 'Those who sleep beside them see visions of what will be.'])}`];
+    } else if (/eternal ice|ice river/.test(w)) {
+      P = [`${s.name} is ${w.replace(/^a |^the /, 'the ')}. ${pick(r, [`The ice moves, slowly, and the faithful say it carries the dead to ${g()}.`, 'Things frozen in it long ago are found at its foot, and are kept as relics.', 'A bell is rung at its edge each midwinter, so that the sleepers do not wake.'])}`];
+    } else if (/gorge/.test(w)) {
+      P = [`${s.name} is ${w.replace(/^a |^the /, 'the ')}. ${pick(r, ['Its walls are carved with the stories of the first people, older than any temple.', 'Hermits live in caves along its walls, and are fed by pilgrims who lower baskets on ropes.', `The river at its bottom was cut by the sword of ${g()}.`])}`];
+    } else if (/mushrooms|spore wood/.test(w)) {
+      P = [`In ${s.name} the mushrooms grow taller than trees. ${pick(r, ['The dreamers who sleep beneath them wake with the words of the gods.', 'Their glowing caps light the way of the dead on the last night of the year.', 'No one cuts them; those who do lose their way and are never found.'])}`];
+    } else if (/mountain|peak/.test(w)) {
       P = [`On the summit of ${s.name}, ${MONO.has(f.family) ? pick(r, [`${f.prophet || 'the prophet'} fasted for forty days and was given the law`, 'a hermit saint lived alone for forty years, fed by ravens', 'an angel appeared to the shepherds']) : pick(r, [`${g()} first set foot upon the world`, `${f.missionary ? f.prophet : g()} fasted for forty days and was given the law`, 'the gods hold their council, hidden in the clouds'])}. ${pick(r, ['No one may climb the last slope but the high priest, once a year.', 'Pilgrims climb it barefoot, carrying a stone to leave at the top.', 'A light is seen on the summit on holy nights.'])}`];
     } else if (/lake/.test(w)) {
       P = [`${s.name} is ${w.replace(/^a |^the /, 'the ')}. ${pick(r, [`It is said that a sword lies beneath its waters, waiting for a ruler worthy of it.`, MONO.has(f.family) ? 'A saint walked upon its waters to reach a drowning child.' : `${g()} rose from its waters when the world began.`, `Offerings of gold and weapons are sunk in it, and none dare fish there.`, `Its waters cure the sick who bathe at dawn on the holy day.`])}`];

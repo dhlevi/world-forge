@@ -106,6 +106,34 @@ function layer(s: Spec): LayerSpecification {
   };
 }
 
+/** Adds a small icon (an image the map registers) above a point label. */
+function withIcon(l: LayerSpecification, image: string): LayerSpecification {
+  const ly = (l as { layout: Record<string, unknown> }).layout;
+  ly['icon-image'] = image;
+  ly['icon-size'] = e(['interpolate', ['linear'], ['zoom'], 5.6, 0.6, 10, 0.9]);
+  ly['icon-anchor'] = 'bottom';
+  ly['text-anchor'] = 'top';
+  ly['text-offset'] = [0, 0.15];
+  ly['text-optional'] = true;
+  const pt = (l as { paint: Record<string, unknown> }).paint;
+  pt['icon-opacity'] = pt['text-opacity'];
+  return l;
+}
+
+/** Canyons (a rust wash along the river) and cliffs (a line with ticks on its face), drawn from the `labels` source under the lettering. */
+export const SPECIAL_LINE_LAYERS: LayerSpecification[] = [
+  {
+    id: 'sp-canyon', type: 'line', source: 'labels', minzoom: 3.6, filter: ['all', ['==', ['get', 'kind'], 'canyon'], ['==', ['geometry-type'], 'LineString']] as unknown as FilterSpecification,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-color': '#8e4a26', 'line-width': e(['interpolate', ['linear'], ['zoom'], 3.6, 2, 6, 6, 9, 12]), 'line-blur': e(['interpolate', ['linear'], ['zoom'], 3.6, 1, 9, 5]), 'line-opacity': e(['interpolate', ['linear'], ['zoom'], 3.6, 0, 4.4, 0.5, 10, 0.4, 12, 0]) },
+  },
+  {
+    id: 'sp-cliffs', type: 'line', source: 'labels', minzoom: 4.4, filter: ['all', ['==', ['get', 'kind'], 'cliffs'], ['==', ['geometry-type'], 'LineString']] as unknown as FilterSpecification,
+    layout: { 'line-cap': 'round', 'line-join': 'round' },
+    paint: { 'line-pattern': 'cliff-ticks', 'line-width': e(['interpolate', ['linear'], ['zoom'], 4.4, 4, 9, 8]), 'line-opacity': e(['interpolate', ['linear'], ['zoom'], 4.4, 0, 5, 0.75, 11, 0.6, 12.5, 0]) },
+  },
+];
+
 /** Adds the realm's arms (image `arms-<unit>`, registered by the map) above a label. */
 function withArms(l: LayerSpecification): LayerSpecification {
   const ly = (l as { layout: Record<string, unknown> }).layout;
@@ -185,6 +213,16 @@ export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   layer({ id: 'lbl-marsh', source: 'labels', filter: [kindIs('marsh'), isPoint], z: [5.2, 10.6], size: [10, 14], font: ITALIC, color: '#4a6150', spacing: 0.12, sortKey: 19 }),
   layer({ id: 'lbl-marsh-l', source: 'labels', filter: [kindIs('marsh'), isLine], z: [5.2, 10.6], size: [10, 14], font: ITALIC, color: '#4a6150', spacing: 0.12, line: 'center', sortKey: 19 }),
   layer({ id: 'lbl-peak', source: 'labels', filter: [kindIs('peak')], z: [6.2, 12.5], size: [10, 12.5], font: ITALIC, color: '#4f3d2c', sortKey: 22, maxWidth: 7 }),
+  // Special features (gen/special.ts): volcanoes (their icons are drawn in the tiles), ash lands,
+  // mushroom forests and glaciers, canyons and cliffs along their lines, geysers and pools with icons.
+  layer({ id: 'lbl-volcano', source: 'labels', filter: [kindIs('volcano')], z: [4.2, 12.5], size: [10, 12.5], font: ITALIC, color: '#6b2a17', sortKey: 21, maxWidth: 8, anchor: 'top', offset: [0, 0.4] }),
+  layer({ id: 'lbl-ashland', source: 'labels', filter: [kindIs('ashland')], z: [4.4, 10], size: [10, 15], font: CAPS, color: '#3e3934', spacing: 0.35, sortKey: 17 }),
+  layer({ id: 'lbl-fungal', source: 'labels', filter: [kindIs('fungalForest')], z: [4.6, 10.5], size: [10, 15], font: CAPS, color: '#5d3a6e', spacing: 0.3, sortKey: 16 }),
+  layer({ id: 'lbl-glacier', source: 'labels', filter: [kindIs('glacier')], z: [4.8, 11], size: [10, 13.5], font: ITALIC, color: '#3e6178', sortKey: 19, maxWidth: 8 }),
+  layer({ id: 'lbl-canyon', source: 'labels', filter: [kindIs('canyon'), isLine], z: [4.8, 12], size: [10, 14], font: CAPS, color: '#7c3a1c', spacing: 0.25, line: 'repeat', sortKey: 18 }),
+  layer({ id: 'lbl-cliffs', source: 'labels', filter: [kindIs('cliffs'), isLine], z: [5.2, 12], size: [10, 13], font: ITALIC, color: '#4d3a2b', line: 'repeat', sortKey: 20 }),
+  withIcon(layer({ id: 'lbl-geysers', source: 'labels', filter: [kindIs('geysers')], z: [5.6, 13], size: [10, 12.5], font: ITALIC, color: '#2f5468', sortKey: 23, maxWidth: 8 }), 'poi-geyser'),
+  withIcon(layer({ id: 'lbl-hotlake', source: 'labels', filter: [kindIs('hotLake')], z: [5.6, 13], size: [10, 12.5], font: ITALIC, color: '#6a4a1f', sortKey: 23, maxWidth: 8 }), 'poi-pool'),
   // Islands.
   layer({ id: 'lbl-island-big', source: 'labels', filter: [kindIs('island'), rankIn(0, 1)], z: [3, 10.2], size: [11, 16], font: ROMAN, spacing: 0.1, sortKey: 13 }),
   layer({ id: 'lbl-island', source: 'labels', filter: [kindIs('island'), rankIn(2, 3)], z: [5, 11.2], size: [10, 14], font: ROMAN, sortKey: 21 }),

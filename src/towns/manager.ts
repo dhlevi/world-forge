@@ -410,6 +410,9 @@ export class TownManager {
         const tMean = sample(raster.tempSea, lon, lat) - LAPSE * Math.max(0, h);
         const tWarm = sample(raster.tempWarm, lon, lat) - LAPSE * (h - Math.max(0, hGrid));
         const biome = raster.biome[c] as Biome;
+        // Few live in ash lands or on lava, none on the glaciers (gen/special.ts); miners go to the volcanoes and canyons.
+        const spv = raster.special?.[c] ?? 0;
+        if (spv === 3 || ((spv === 1 || spv === 2) && rr(13) < 0.8)) continue;
         const base = habitability(tMean, tWarm, sample(raster.precip, lon, lat), h, Math.hypot(gx, gy), biome);
         const road = this.roadPts.nearest(lon, lat, S.villageLinkKm);
         const riverHit = this.sampler.riverBank(lon, lat, 12000);
@@ -439,7 +442,7 @@ export class TownManager {
           score = base * (1 + 0.4 * Math.exp(-(river?.d ?? 99) / 4)) * (coastal ? 1.3 : 1);
           if (rr(3) > smoothstep(S.villageMinScore, S.villageMinScore + 0.5, score)) continue;
           kind = 'tribal';
-        } else if (mountain > 0 && rr(5) < 0.35 * mountain && (minePos = this.mineSite(lon, lat))) kind = 'mining';
+        } else if (((mountain > 0 && rr(5) < 0.35 * mountain) || ((spv === 7 || spv === 5) && rr(14) < 0.3)) && (minePos = this.mineSite(lon, lat))) kind = 'mining';
         else if (FOREST_BIOMES.has(biome) && base > 0.05 && rr(5) < 0.3) kind = 'logging';
         else {
           if (base <= 0) continue;
@@ -677,6 +680,7 @@ export class TownManager {
         const h = this.sampler.height(lon, lat, 2);
         if (h <= 0) continue;
         const biome = raster.biome[c] as Biome;
+        const spv = raster.special?.[c] ?? 0;
         const precip = sample(raster.precip, lon, lat);
         const tWarm = sample(raster.tempWarm, lon, lat) - LAPSE * Math.max(0, h - Math.max(0, raster.height[c]));
         const forest = FOREST_BIOMES.has(biome);
@@ -684,8 +688,9 @@ export class TownManager {
         // Woods along rivers and in scrub and savanna hold the odd glade too.
         const woods = forest ? 0.75 : biome === Biome.Riparian || biome === Biome.Shrubland || biome === Biome.Savanna ? 0.2 : 0;
         let kind: 'cave' | 'glade';
-        if (rr(3) < woods) kind = 'glade';
-        else if (biome !== Biome.IceSheet && rr(4) < 0.15 + 0.7 * hilly) kind = 'cave';
+        // Mushroom forests are full of glades; volcanic country of caves (lava tubes).
+        if (rr(3) < (spv === 4 ? 0.85 : woods)) kind = 'glade';
+        else if (biome !== Biome.IceSheet && spv !== 3 && rr(4) < 0.15 + 0.7 * hilly + (spv === 1 || spv === 2 || spv === 7 || spv === 5 ? 0.35 : 0)) kind = 'cave';
         else continue;
         let blocked = false;
         this.sites.forEach(lon, lat, 15, (s, d) => {
@@ -701,6 +706,9 @@ export class TownManager {
         const tags = [size];
         const dry = precip < (kind === 'cave' ? 350 : 450) || tWarm > 30;
         if (kind === 'cave') {
+          if (spv === 1 || spv === 2 || spv === 7) tags.push('volcanic');
+          else if (spv === 5) tags.push('canyon');
+          if (spv === 4) tags.push('fungal');
           if (rr(7) < 0.15) tags.push('sealed');
           if (!dry && precip > 600 && rr(8) < 0.6) tags.push(rr(9) < 0.15 ? 'flooded' : 'wet');
           if (dry) tags.push('dry');
@@ -722,6 +730,7 @@ export class TownManager {
             if (k >= 0) tags.push(options.splice(k, 1)[0][0]);
           }
           if (dry) tags.push('dry');
+          if (spv === 4) tags.push('mushrooms', ...(tags.includes('flowers') ? [] : ['flowers']));
         }
         const id = `l${key}_${out.length}`;
         let nm: Named = { name: '', en: '' };

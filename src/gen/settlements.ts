@@ -52,6 +52,13 @@ export interface Settlement {
   delve?: boolean;
   /** Town plan layout (cities and towns), chosen once cultures are known. */
   layout?: CityLayout;
+  /**
+   * What the land about a city or town makes of it (gen/special.ts): a spa by geysers or hot pools,
+   * a mining town by a volcano or a canyon, or an ashen town in an ash land (with fewer people).
+   */
+  special?: 'spa' | 'mining' | 'ashen';
+  /** The feature it is known by (the geysers, the volcano). */
+  specialNear?: string;
 }
 
 export type RoadClass = 'major' | 'minor' | 'track';

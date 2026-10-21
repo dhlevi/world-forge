@@ -56,6 +56,8 @@ export function norm(s: string): string {
 const LABEL_TYPE: Record<string, [string, SearchCat]> = {
   continent: ['Continent', 'region'], island: ['Island', 'region'], isles: ['Isles', 'region'],
   mountains: ['Mountain range', 'region'], hills: ['Hills', 'region'], peak: ['Peak', 'region'], forest: ['Forest', 'region'],
+  volcano: ['Volcano', 'region'], ashland: ['Ash land', 'region'], geysers: ['Geysers', 'region'], hotLake: ['Rainbow pools', 'region'], glacier: ['Glacier', 'region'],
+  fungalForest: ['Mushroom forest', 'region'], canyon: ['Canyon', 'region'], cliffs: ['Cliffs', 'region'],
   desert: ['Desert', 'region'], marsh: ['Marsh', 'region'], plains: ['Plains', 'region'],
   ocean: ['Ocean', 'water'], sea: ['Sea', 'water'], inlandSea: ['Inland sea', 'water'], gulf: ['Gulf', 'water'], bay: ['Bay', 'water'],
   bight: ['Bight', 'water'], strait: ['Strait', 'water'], channel: ['Channel', 'water'], lake: ['Lake', 'water'],
@@ -105,11 +107,11 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
     if (!t) return;
     const c = f.geometry.type === 'Point' ? f.geometry.coordinates : mid(f.geometry.coordinates);
     // Realms are lettered in capitals on the map; search lists them in title case.
-    const name = p.kind === 'peak' ? p.name.replace(/\s*\(\d+ m\)$/, '') : p.kind === 'realm' ? titleCase(p.name) : p.name;
+    const name = p.kind === 'peak' || p.kind === 'volcano' ? p.name.replace(/\s*\(\d+ m[^)]*\)$/, '') : p.kind === 'realm' ? titleCase(p.name) : p.name;
     out.push({
-      id: `f${k}`, name: name.charAt(0) === name.charAt(0).toUpperCase() ? name : cap(name), ...(p.en ? { alt: cap(p.en.replace(/\s*\(\d+ m\)$/, '')) } : {}), type: t[0], cat: t[1], lon: c[0], lat: c[1],
+      id: `f${k}`, name: name.charAt(0) === name.charAt(0).toUpperCase() ? name : cap(name), ...(p.en ? { alt: cap(p.en.replace(/\s*\(\d+ m[^)]*\)$/, '')) } : {}), type: t[0], cat: t[1], lon: c[0], lat: c[1],
       zoom: Math.min(12, Math.max(2.5, (p.minz ?? 4) + 1.4)), rank: 0.9 - 0.15 * (p.rank ?? 2),
-      info: p.kind === 'peak' ? p.name.match(/\((\d+ m)\)/)?.[1] : undefined,
+      info: p.kind === 'peak' || p.kind === 'volcano' ? p.name.match(/\((\d+ m[^)]*)\)/)?.[1] : undefined,
     });
   });
   // Realms: every empire, kingdom, duchy and county, at its seat.

@@ -51,6 +51,44 @@ function bilerp(f: ArrayLike<number>, o0: number, o1: number, a: number, b: numb
   return (f[o0 + a] * (1 - tx) + f[o0 + b] * tx) * (1 - ty) + (f[o1 + a] * (1 - tx) + f[o1 + b] * tx) * ty;
 }
 
+/** Special ground (gen/special.ts SP values): its colour on the map, and on the biome layer. */
+const SP_RGB: number[][] = [[0, 0, 0], hexToRgb('#6f6a64'), hexToRgb('#3a312c'), hexToRgb('#e9f1f5'), hexToRgb('#8a6f9b'), hexToRgb('#b8693f'), [0, 0, 0], hexToRgb('#6b625a'), hexToRgb('#ddd59e')];
+const SP_ALPHA = [0, 0.78, 0.85, 0.9, 0.62, 0.55, 0, 0.28, 0.8];
+export const SP_LEGEND: [string, string][] = [['', ''], ['Ash land', '#77716b'], ['Lava field', '#3d302a'], ['Glacier', '#dfeaf2'], ['Mushroom forest', '#8b5fa0'], ['Canyon', '#b8693f'], ['Cliffs', '#5b4a3d'], ['Volcanic ground', '#857a70'], ['Geothermal field', '#e1d27a']];
+const SP_LEGEND_RGB = SP_LEGEND.map(([, c]) => (c ? hexToRgb(c) : [0, 0, 0]));
+const LAVA_GLOW = hexToRgb('#d4541f'), CREVASSE = hexToRgb('#9ab9cf'), ASH_SPECK = hexToRgb('#3c3835'), FUNGAL_SPOT = hexToRgb('#4c9a8c'), FUNGAL_CAP = hexToRgb('#c97d54'), STRATA = hexToRgb('#e2b07a');
+
+/**
+ * Special ground over the biome colour: blended from the four surrounding cells (`sp`, weights
+ * `wt`), with a texture of its own drawn in world coordinates (so it runs on across tiles): speckled
+ * ash, lava with glowing veins, glacier ice with crevasses, mottled mushroom forest, banded canyon walls.
+ */
+function paintSpecial(col: Float64Array, sp: number[], wt: number[], lon: number, lat: number, hh: number, gx: number, gy: number): void {
+  const acc = [0, 0, 0, 0, 0, 0, 0, 0, 0];
+  for (let k = 0; k < 4; k++) if (sp[k]) acc[sp[k]] += wt[k];
+  for (let t = 1; t < 9; t++) {
+    const a = acc[t];
+    if (a <= 0.02 || !SP_ALPHA[t]) continue;
+    mix(col, SP_RGB[t], a * SP_ALPHA[t]);
+    if (t === 1) {
+      const n = Math.sin(gx * 12.9898 + gy * 78.233) * 43758.5453;
+      if (n - Math.floor(n) > 0.82) mix(col, ASH_SPECK, 0.45 * a);
+    } else if (t === 2) {
+      const v = Math.abs(Math.sin(lon * 23 + 2 * Math.sin(lat * 31) + Math.sin(lon * 7 + lat * 11)));
+      mix(col, LAVA_GLOW, a * 0.85 * Math.max(0, 1 - v / 0.09));
+    } else if (t === 3) {
+      const v = Math.abs(Math.sin(lon * 61 + lat * 17 + Math.sin(lat * 23)));
+      mix(col, CREVASSE, a * 0.6 * Math.max(0, 1 - v / 0.07));
+    } else if (t === 4) {
+      const v = Math.sin(lon * 47) * Math.sin(lat * 53) + 0.5 * Math.sin(lon * 131 + lat * 97);
+      if (v > 0.75) mix(col, FUNGAL_SPOT, a * 0.55);
+      else if (v < -0.85) mix(col, FUNGAL_CAP, a * 0.5);
+    } else if (t === 5) {
+      mix(col, STRATA, a * 0.45 * (0.5 + 0.5 * Math.sin(hh / 45)));
+    }
+  }
+}
+
 function mix(col: Float64Array, rgb: ArrayLike<number>, t: number, offset = 0): void {
   col[0] += (rgb[offset] - col[0]) * t;
   col[1] += (rgb[offset + 1] - col[1]) * t;
@@ -149,6 +187,7 @@ export class TileRenderer {
     proj: (lon: number, lat: number) => [number, number], zEff: number, opts: RenderOptions,
   ) {
     const { W, H, height, tempSea, precip, biome, plate, lakeDepth, waterLevel, koppen, newWorld } = this.world;
+    const special = this.world.special as Uint8Array | undefined;
     const SW = w + 2 * B, SH = h + 2 * B;
     const fantasy = layer === 'fantasy';
     const reach = this.world.spread.reach;
@@ -311,6 +350,9 @@ export class TileRenderer {
                 col[ch] = FANTASY_BIOME_RGB[b00 + ch] * w00 + FANTASY_BIOME_RGB[b10 + ch] * w10 +
                   FANTASY_BIOME_RGB[b01 + ch] * w01 + FANTASY_BIOME_RGB[b11 + ch] * w11;
               }
+              if (special && (special[ja + ia] | special[ja + ib] | special[jb + ia] | special[jb + ib])) {
+                paintSpecial(col, [special[ja + ia], special[ja + ib], special[jb + ia], special[jb + ib]], [w00, w10, w01, w11], lons[c], lats[r], hh, (icons ? icons.originX : 0) + c, (icons ? icons.originY : 0) + r);
+              }
               const snowSupply = smoothstep(RC.snowMinPrecipMm, RC.snowFullPrecipMm, bilerp(precip, o0, o1, a, b, tx, ty));
               mix(col, FANTASY_SNOW, snowSupply * smoothstep(RC.snowStartC, RC.snowFullC, ts - LAPSE * hh));
               // Soft sepia hillshade rather than realistic lighting.
@@ -350,6 +392,9 @@ export class TileRenderer {
               for (let ch = 0; ch < 3; ch++) {
                 col[ch] = BIOME_RGB[b00 + ch] * w00 + BIOME_RGB[b10 + ch] * w10 + BIOME_RGB[b01 + ch] * w01 + BIOME_RGB[b11 + ch] * w11;
               }
+              if (special && (special[ja + ia] | special[ja + ib] | special[jb + ia] | special[jb + ib])) {
+                paintSpecial(col, [special[ja + ia], special[ja + ib], special[jb + ia], special[jb + ib]], [w00, w10, w01, w11], lons[c], lats[r], hh, c, r);
+              }
               mix(col, ROCK_RGB, 0.7 * smoothstep(RC.rockStartM, RC.rockFullM, hh));
               const snowSupply = smoothstep(RC.snowMinPrecipMm, RC.snowFullPrecipMm, bilerp(precip, o0, o1, a, b, tx, ty));
               mix(col, SNOW_RGB, snowSupply * smoothstep(RC.snowStartC, RC.snowFullC, ts - LAPSE * hh));
@@ -370,6 +415,8 @@ export class TileRenderer {
             } else {
               const bi = biome[nearest![s]] * 3;
               col[0] = BIOME_RGB[bi]; col[1] = BIOME_RGB[bi + 1]; col[2] = BIOME_RGB[bi + 2];
+              const spv = special ? special[nearest![s]] : 0;
+              if (spv && spv !== 6) mix(col, SP_LEGEND_RGB[spv], spv === 7 ? 0.5 : 1);
               light = Math.min(1.25, Math.max(0.6, 1 + 0.35 * (rel - 1)));
             }
             break;

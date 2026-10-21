@@ -8,6 +8,12 @@ export interface TectonicResult {
   /** Elevation in metres, before sea level is normalised. */
   height: Float32Array;
   plate: Uint8Array;
+  /**
+   * Volcanism, about 0 to 1: high along the volcanic arcs behind subduction zones (on continents
+   * and island arcs), lower along continental rifts and mid-ocean ridges. Derived from the same
+   * plate model as the heights, without drawing on the random stream (so heights are unchanged).
+   */
+  volcanic: Float32Array;
 }
 
 const gauss = (u: number) => Math.exp(-u * u);
@@ -171,6 +177,7 @@ export function buildTectonics(g: Grid, rng: Rng, numPlates: number, landFractio
   // Where two oceanic plates converge, the denser one subducts; derived from the plate seed so no rng is consumed.
   const density = Float64Array.from({ length: P }, (_, k) => hash32(Math.floor((sx[k] + 2) * 1e6) ^ Math.floor((sy[k] + 2) * 1e6) * 31));
   const height = new Float32Array(N);
+  const volcanic = new Float32Array(N);
   for (let j = 0, c = 0; j < H; j++) {
     const cl = g.cosLat[j], z = g.sinLat[j];
     for (let i = 0; i < W; i++, c++) {
@@ -199,6 +206,8 @@ export function buildTectonics(g: Grid, rng: Rng, numPlates: number, landFractio
             const segment = 0.15 + 0.85 * smoothstep(-0.25, 0.3, fbm(nSeg, x * sf, y * sf, z * sf, 3));
             up = s * T.mountainHeight * boost * segment *
               (gauss((d - offset) / w) + T.foothillShare * gauss(d / (T.foothillWidthFactor * w)));
+            // A volcanic arc rides on the subduction range, not on a collision's suture.
+            if (!otherCont) volcanic[c] = s * segment * gauss((d - offset) / (w * 0.7));
           } else if (otherCont || density[plate[c]] > density[otherPlate[s0]]) {
             up = -s * T.trenchDepth * gauss(d / T.trenchWidthKm);
           } else {
@@ -206,11 +215,13 @@ export function buildTectonics(g: Grid, rng: Rng, numPlates: number, landFractio
             const af = T.arcSegmentFreq;
             const segment = smoothstep(T.arcSegmentThreshold, T.arcSegmentThreshold + 0.4, fbm(nArc, x * af, y * af, z * af, 3));
             up = T.arcHeight * (0.5 + 0.5 * s) * segment * gauss((d - T.arcOffsetKm) / T.arcWidthKm);
+            volcanic[c] = (0.5 + 0.5 * s) * segment * gauss((d - T.arcOffsetKm) / T.arcWidthKm);
           }
         } else if (s < 0) {
           up = ownCont
             ? s * T.riftDepth * gauss(d / T.riftWidthKm)
             : -s * T.ridgeHeight * gauss(d / T.ridgeWidthKm);
+          volcanic[c] = -s * (ownCont ? 0.6 * gauss(d / (T.riftWidthKm * 1.5)) : 0.45 * gauss(d / T.ridgeWidthKm));
         }
       }
       if (v > 0) up += suturedRange(sutures, nSuture, nSeg, x, y, z) * smoothstep(0.02, 0.15, v);
@@ -227,7 +238,7 @@ export function buildTectonics(g: Grid, rng: Rng, numPlates: number, landFractio
     }
   }
 
-  return { height, plate };
+  return { height, plate, volcanic };
 }
 
 /**

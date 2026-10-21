@@ -15,14 +15,14 @@ import { siteFeatures } from '../towns/manager';
 import { LAYOUT_LABEL } from '../towns/layout';
 import type { TownsRequest, TownsResponse } from '../worker/protocol';
 import {
-  BORDER_LAYERS, LAIR_LAYERS, MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES, lairIcons,
+  BORDER_LAYERS, LAIR_LAYERS, MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES, lairIcons, specialIcons,
 } from './map-style';
 import type { LairSite } from '../lairs/lair';
 import { armsImageData } from '../heraldry/draw';
 import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb, onLair } from '../lairs/view';
 import type { DungeonSite } from '../dungeons/core';
 import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
-import { ITALIC, PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, WORLD_LABEL_LAYERS, fontFaces, textField } from './label-style';
+import { ITALIC, PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, SPECIAL_LINE_LAYERS, WORLD_LABEL_LAYERS, fontFaces, textField } from './label-style';
 import { type GroupKey, prepareFaithMap, prepareGroupMap, preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
 import { CULTURES } from '../names/cultures';
 import { templateFolk } from '../names/bundles';
@@ -746,6 +746,7 @@ onMounted(() => {
           layout: { 'line-cap': 'round' },
           paint: { 'line-color': '#7a5418', 'line-width': ['interpolate', ['linear'], ['zoom'], 1, 1.2, 6, 2.4], 'line-dasharray': [2, 2], 'line-opacity': ['interpolate', ['linear'], ['zoom'], 1, 0.85, 8, 0.6, 10, 0] },
         },
+        ...SPECIAL_LINE_LAYERS,
         ...MARKER_LAYERS,
         ...LAIR_LAYERS,
         // The place chosen in search: a ring that pulses for a few seconds.
@@ -776,7 +777,7 @@ onMounted(() => {
     ready = true;
     if (map) store.center = [map.getCenter().lng, map.getCenter().lat];
     // Cave and glade icons are drawn on a canvas, not fetched.
-    for (const icon of lairIcons()) if (map && !map.hasImage(icon.id)) map.addImage(icon.id, icon.image, { pixelRatio: icon.pixelRatio });
+    for (const icon of [...lairIcons(), ...specialIcons()]) if (map && !map.hasImage(icon.id)) map.addImage(icon.id, icon.image, { pixelRatio: icon.pixelRatio });
     setVisibility('rivers', store.showRivers);
     setVisibility('wind', store.showWind);
     setVisibility('currents', store.showCurrents);

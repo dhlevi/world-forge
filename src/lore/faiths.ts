@@ -268,7 +268,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { monogamy: 6 } 
     },
     tenets: ['pilgrimage', 'charity', 'monasticism', 'holyWar', 'endTimes', 'mendicants', 'asceticism', 'communion', 'ecclesiarchy', 'filialPiety'], 
-    places: ['island', 'peak'],
+    places: ['island', 'peak', 'hotLake', 'canyon'],
   },
   crescent: {
     kind: 'faith of the prophets',
@@ -374,7 +374,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { polygamy: 3, concubines: 1 } 
     },
     tenets: ['pilgrimage', 'charity', 'sacredLaw', 'aniconism', 'holyWar', 'purity', 'communion', 'ecclesiarchy', 'filialPiety', 'sacredLearning'], 
-    places: ['peak'],
+    places: ['peak', 'canyon', 'hotLake'],
   },
   pantheon: {
     kind: 'pantheon of gods',
@@ -483,7 +483,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { monogamy: 2, concubines: 2 } 
     },
     tenets: ['ritualSacrifice', 'divination', 'feastDays', 'hospitality', 'astrology', 'carnalism', 'ecclesiarchy', 'hedonism'], 
-    places: ['peak', 'island'],
+    places: ['peak', 'island', 'volcano'],
   },
   oldgods: {
     kind: 'the old gods',
@@ -589,7 +589,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { concubines: 2, monogamy: 1, polygamy: 1 } 
     },
     tenets: ['warriorCult', 'ritualSacrifice', 'divination', 'feastDays', 'sacredGroves', 'carnalism', 'adorcism', 'witchcraft', 'suicide'], 
-    places: ['forest', 'peak', 'island'],
+    places: ['forest', 'peak', 'island', 'geysers', 'volcano', 'glacier'],
   },
   druid: {
     kind: 'druidic nature faith',
@@ -692,7 +692,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { monogamy: 1, concubines: 1 } 
     },
     tenets: ['sacredGroves', 'rebirth', 'sacredWaters', 'divination', 'nature', 'witchcraft'], 
-    places: ['forest', 'lake', 'island'],
+    places: ['forest', 'lake', 'island', 'hotLake'],
   },
   stars: {
     kind: 'worship of the stars',
@@ -797,7 +797,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { monogamy: 4 } 
     },
     tenets: ['astrology', 'nature', 'pacifism', 'rebirth', 'sacredGroves', 'witchcraft'], 
-    places: ['forest', 'island', 'lake'],
+    places: ['forest', 'island', 'lake', 'hotLake', 'fungalForest'],
   },
   ancestors: {
     kind: 'worship of the ancestors',
@@ -902,7 +902,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { monogamy: 3 } 
     },
     tenets: ['ancestors', 'craft', 'sacredLaw', 'asceticism', 'adorcism', 'suicide', 'filialPiety'], 
-    places: ['peak'],
+    places: ['peak', 'volcano', 'glacier'],
   },
   sky: {
     kind: 'cult of the eternal sky',
@@ -1005,7 +1005,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { polygamy: 2, concubines: 2 } 
     },
     tenets: ['nature', 'sacredWaters', 'divination', 'warriorCult', 'adorcism', 'suicide', 'takamine'], 
-    places: ['peak', 'lake'],
+    places: ['peak', 'lake', 'hotLake', 'glacier'],
   },
   heaven: {
     kind: 'way of heaven',
@@ -1112,7 +1112,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { concubines: 3, monogamy: 1 } 
     },
     tenets: ['ancestors', 'monasticism', 'asceticism', 'kingship', 'pacifism', 'rebirth', 'filialPiety'], 
-    places: ['peak', 'lake'],
+    places: ['peak', 'lake', 'hotLake', 'canyon'],
   },
   kami: {
     kind: 'way of the spirits',
@@ -1216,7 +1216,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { concubines: 2, monogamy: 2 } 
     },
     tenets: ['purity', 'kingship', 'nature', 'feastDays', 'adorcism', 'takamine'], 
-    places: ['peak', 'forest', 'island'],
+    places: ['peak', 'forest', 'island', 'volcano', 'hotLake'],
   },
   spirits: {
     kind: 'faith of the great spirit',
@@ -1323,7 +1323,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { monogamy: 2, polygamy: 1 } 
     },
     tenets: ['nature', 'divination', 'ancestors', 'rebirth', 'hospitality', 'carnalism', 'adorcism', 'witchcraft', 'takamine'], 
-    places: ['lake', 'peak', 'forest'],
+    places: ['lake', 'peak', 'forest', 'geysers', 'hotLake', 'canyon'],
   },
   sun: {
     kind: 'cult of the sun',
@@ -1424,7 +1424,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { polygamy: 2, concubines: 2 } 
     },
     tenets: ['kingship', 'ancestors', 'ritualSacrifice', 'astrology', 'sacredWaters', 'hedonism', 'suicide'], 
-    places: ['peak', 'lake'],
+    places: ['peak', 'lake', 'volcano', 'geysers'],
   },
   serpent: {
     kind: 'cult of the feathered serpent',
@@ -1533,7 +1533,7 @@ const A: Record<FaithFamily, Archetype> = {
       marriage: { polygamy: 2, monogamy: 1 } 
     },
     tenets: ['ritualSacrifice', 'astrology', 'kingship', 'feastDays', 'dualism', 'carnalism', 'witchcraft', 'suicide'], 
-    places: ['peak', 'lake'],
+    places: ['peak', 'lake', 'volcano', 'hotLake'],
 } ,
 };
 export const ARCHETYPE_LABEL: Record<FaithFamily, string> = {
@@ -1915,12 +1915,20 @@ export function buildFaiths(seed: string, year: number, bank: NameBank, units: P
       lake: ['a sacred lake, where offerings are sunk', 'the lake from which the world was made', 'a holy lake of healing'],
       forest: ['the sacred grove', 'a holy forest, where no tree may be cut', 'the forest where the gods walk'],
       island: ['the holy isle, where the honoured dead are laid', 'an island of hermits and monks', 'the isle of the dead'],
+      volcano: ['the fire mountain, where the gods\u2019 forge burns', 'the burning mountain, fed with offerings', 'the mountain whose fire gave birth to the world'],
+      geysers: ['the breathing springs, where the earth speaks', 'springs where the gods\u2019 breath rises', 'the boiling springs, where oracles are heard'],
+      hotLake: ['the many-coloured pools, holy to the gods', 'pools of healing, where pilgrims bathe', 'the painted waters, where visions come'],
+      glacier: ['the eternal ice, where the gods sleep', 'the ice river, where the old dead are given'],
+      canyon: ['the sacred gorge, where the first people walked', 'the gorge of hermits', 'the deep gorge, where the gods cut the earth'],
+      fungalForest: ['the forest of giant mushrooms, where the dreamers go', 'the spore wood, where visions grow'],
     };
     const mono = f.family === 'church' || f.family === 'crescent';
     if (mono) {
       WHAT.peak = ['the mountain where the prophet fasted', 'a mountain of hermits', 'where the prophet received the word'];
       WHAT.lake = ['a lake of healing, blessed by a saint'];
       WHAT.forest = ['a forest of hermits'];
+      WHAT.canyon = ['the gorge where the prophet hid', 'a gorge of hermits'];
+      WHAT.hotLake = ['springs of healing, blessed by a saint'];
     }
     let natural = 0;
     for (const n of near.slice(0, 6)) {
@@ -1928,7 +1936,7 @@ export function buildFaiths(seed: string, year: number, bank: NameBank, units: P
       const k = n.x.properties.kind;
       const opts = (WHAT[k] ?? WHAT.peak).filter((w) => !sites.some((h) => h.what === w));
       if (!opts.length) continue;
-      add({ name: cap(n.x.properties.name.replace(/\s*\(\d+ m\)$/, '')), lon: n.lon, lat: n.lat, what: pick(r, opts) });
+      add({ name: cap(n.x.properties.name.replace(/\s*\(\d+ m[^)]*\)$/, '')), lon: n.lon, lat: n.lat, what: pick(r, opts) });
       natural++;
     }
     const pool = holders.flatMap((c) => seatsOf.get(c)?.slice(0, 12) ?? []);

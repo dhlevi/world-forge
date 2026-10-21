@@ -7,8 +7,8 @@ const PAPER = '#f3ead3';
 const INK = '#2b2420';
 const FLOOR = '#f7f1e1';
 const ROCK = '#d8cfbd';
-const WATER = '#a8c4cc';
-const WATER_INK = '#4b6b78';
+const WATER_C = '#a8c4cc';
+const WATER_INK_C = '#4b6b78';
 
 export interface LairDrawOpts {
   /** Pixels per metre and the map's top-left corner on the canvas. */
@@ -263,6 +263,9 @@ function drawLink(g: Ctx2D, l: LairLink, caption: boolean, a0: number): void {
 }
 
 function drawWater(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
+  // In a volcanic cave (a lava tube) the pools are lava.
+  const lava = m.site.tags.includes('volcanic');
+  const WATER = lava ? '#e0662c' : WATER_C, WATER_INK = lava ? '#6b2a12' : WATER_INK_C;
   if (m.water.length) {
     g.fillStyle = WATER;
     path(g, m.water);
@@ -356,10 +359,12 @@ function drawGlade(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
     }
   }
   g.stroke();
+  // In a mushroom forest the meadow's flowers are toadstools.
+  const shrooms = m.site.tags.includes('mushrooms');
   for (const f of m.flowers) {
-    g.fillStyle = ['#c9534a', '#e2c84f', '#f4f0e6'][f.c];
+    g.fillStyle = shrooms ? ['#8f5fa4', '#4c9a8c', '#c97d54'][f.c] : ['#c9534a', '#e2c84f', '#f4f0e6'][f.c];
     g.beginPath();
-    g.arc(f.p[0], f.p[1], 0.14, 0, Math.PI * 2);
+    g.arc(f.p[0], f.p[1], shrooms ? 0.26 : 0.14, 0, Math.PI * 2);
     g.fill();
   }
   drawWater(g, m, o);

@@ -327,6 +327,14 @@ const FEATURE_PATTERNS: Partial<Record<FeatureKind, string[]>> = {
   desert: ['the {N} Desert', 'the {A} Waste', 'the {N} Sands', 'the {A} Sands'],
   marsh: ['the {N} Marshes', 'the {A} Fens', '{N} Mire', 'the Marshes of {M}'],
   plains: ['the {N} Plains', 'the {A} Plains', 'the {A} Fields'],
+  volcano: ['Mount {N}', '{N} Volcano', 'the {A} Mountain', 'the Mountain of {M}', 'Mount {N}'],
+  ashland: ['the {N} Ashes', 'the {A} Ashlands', 'the {A} Waste', 'the {N} Cinderlands'],
+  geysers: ['the {N} Geysers', 'the {A} Geysers', 'the {A} Springs', 'the Springs of {M}'],
+  hotLake: ['the {N} Pools', 'the {A} Pools', 'Lake {N}', 'the {A} Lake', 'the Pools of {M}'],
+  glacier: ['the {N} Glacier', 'the {A} Glacier', 'the {A} Ice', 'the {N} Icefield'],
+  fungalForest: ['the {N} Mushroom Forest', 'the {A} Fungal Wood', 'the Spore Forest of {N}', 'the {A} Mushroom Wood'],
+  canyon: ['the {N} Canyon', 'the {N} Gorge', 'the {A} Canyon', 'the {A} Gorge'],
+  cliffs: ['the {N} Cliffs', 'the {A} Cliffs', 'the {N} Scarp', 'the {A} Escarpment'],
 };
 /** Adjectives that suit each kind of feature (mixed with the general poetic ones). */
 const KIND_ADJ: Partial<Record<FeatureKind, string[]>> = {
@@ -349,6 +357,14 @@ const KIND_ADJ: Partial<Record<FeatureKind, string[]>> = {
   desert: ['red', 'burning', 'endless', 'salt', 'white', 'golden', 'empty', 'bitter', 'shimmering'],
   marsh: ['black', 'misty', 'sunken', 'grey', 'drowned', 'still', 'green', 'reedy'],
   plains: ['golden', 'green', 'wide', 'windy', 'endless', 'yellow', 'grassy'],
+  volcano: ['smoking', 'burning', 'black', 'red', 'sleeping', 'angry', 'ashen', 'thundering'],
+  ashland: ['grey', 'black', 'ashen', 'burnt', 'smoking', 'dead', 'cinder'],
+  geysers: ['roaring', 'steaming', 'boiling', 'whistling', 'thundering', 'hot'],
+  hotLake: ['rainbow', 'painted', 'sulphur', 'emerald', 'crimson', 'prismatic', 'boiling', 'many-coloured'],
+  glacier: ['white', 'blue', 'great', 'creeping', 'cold', 'frozen', 'grinding'],
+  fungalForest: ['glowing', 'giant', 'purple', 'whispering', 'spore', 'pale', 'luminous'],
+  canyon: ['red', 'deep', 'great', 'painted', 'echoing', 'narrow', 'winding'],
+  cliffs: ['white', 'black', 'red', 'high', 'sheer', 'grey', 'windy'],
 };
 
 const INN_ADJ = ['Whistling', 'Merry', 'Wandering', 'Drunken', 'Golden', 'Black', 'Red', 'Silver', 'Copper', 'Green', 'Prancing', 'Drunken', 'Rusty', 'Laughing', 'Sleeping', 'Crooked', 'Jolly', 'Wandering', 'Blind', 'Merry', 'Leaping', 'Gilded', 'Busty', 'Weary', 'Salty', 'Three-Legged', 'Horned', 'Dead', 'Broken', 'Dancing', 'Winking', 'Blind', 'Greedy', 'Wandering', 'Thirsty', 'Two-Headed'];
@@ -383,6 +399,8 @@ const CAVE_NOUNS: Record<string, string[]> = {
   medium: ['Cave', 'Caves', 'Grotto', 'Lair', 'Cavern', 'Warren'],
   large: ['Caverns', 'Catacombs', 'Deeps', 'Halls', 'Labyrinth', 'Warrens'],
   wet: ['Grotto', 'Pools', 'Sinks', 'Wellsprings'],
+  volcanic: ['Lava Tube', 'Fire Caves', 'Smoking Cavern', 'Burning Deeps', 'Cinder Hollow'],
+  fungal: ['Spore Cave', 'Mushroom Grotto', 'Mould Halls'],
 };
 const CAVE_ADJ = ['Echoing', 'Dripping', 'Sunless', 'Deep', 'Gloomy', 'Weeping', 'Crystal', 'Whispering', 'Black', 'Hollow', 'Drowned', 'Forgotten', 'Howling', 'Cold', 'Silent', 'Twisting', 'Glittering', 'Shrouded'];
 const CAVE_BEAST = ['Wolf', 'Bear', 'Troll', 'Goblin', 'Wyrm', 'Bat', 'Spider', 'Ogre', 'Hermit', 'Witch', 'Dragon', 'Serpent', 'Kobold', 'Giant', 'Ghoul'];
@@ -393,6 +411,7 @@ const GLADE_NOUNS: Record<string, string[]> = {
   tree: ['Oak', 'Glade', 'Tree'],
   camp: ['Camp', 'Clearing'],
   ruins: ['Ruins', 'Glade'],
+  mushrooms: ['Mushroom Ring', 'Fairy Ring', 'Spore Glade', 'Toadstool Dell'],
 };
 const GLADE_ADJ = ['Mossy', 'Sunlit', 'Whispering', 'Fey', 'Dappled', 'Quiet', 'Green', 'Hidden', 'Moonlit', 'Fallow', 'Golden', 'Thorny', 'Silver', 'Misty', 'Singing', 'Lost', 'Hallowed', 'Cursed'];
 const GLADE_BEAST = ['Stag', 'Hart', 'Fox', 'Owl', 'Unicorn', 'Dryad', 'Fawn', 'Hare', 'Boar', 'Raven', 'Wolf', 'Satyr', 'Badger', 'Sprite'];
@@ -439,9 +458,10 @@ export function lairName(bank: NameBank, kind: 'cave' | 'glade', cultureIdx: num
   const size = tags.find((t) => t === 'small' || t === 'medium' || t === 'large') ?? 'medium';
   let nouns: string[];
   if (kind === 'cave') {
-    nouns = [...CAVE_NOUNS[size], ...(tags.includes('wet') || tags.includes('flooded') ? CAVE_NOUNS.wet : []), ...(BUNDLE.get(cul.id)?.caveNouns ?? [])];
+    nouns = tags.includes('volcanic') ? CAVE_NOUNS.volcanic : tags.includes('fungal') ? CAVE_NOUNS.fungal
+      : [...CAVE_NOUNS[size], ...(tags.includes('wet') || tags.includes('flooded') ? CAVE_NOUNS.wet : []), ...(BUNDLE.get(cul.id)?.caveNouns ?? [])];
   } else {
-    const feat = tags.find((t) => t in GLADE_NOUNS && t !== 'any');
+    const feat = tags.includes('mushrooms') ? 'mushrooms' : tags.find((t) => t in GLADE_NOUNS && t !== 'any');
     nouns = [...GLADE_NOUNS.any, ...(feat ? GLADE_NOUNS[feat] : []), ...(BUNDLE.get(cul.id)?.gladeNouns ?? [])];
   }
   const noun = pick(rnd, nouns);

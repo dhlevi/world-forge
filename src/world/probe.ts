@@ -1,4 +1,5 @@
 import { BIOME_NAMES, Biome } from '../gen/biomes';
+import { SP_NAMES } from '../gen/special';
 import { KOPPEN_CLASSES } from '../gen/koppen';
 import { CLIMATE } from '../gen/config';
 import type { RasterWorld } from '../gen/world';
@@ -67,6 +68,21 @@ export function probeWorld(w: RasterWorld, lon: number, lat: number): ProbeInfo 
   if (h <= 0) terrain = h > -200 ? 'Shallow sea' : 'Ocean';
   else if (w.lakeDepth[c] > 0) terrain = 'Lake';
   else terrain = BIOME_NAMES[w.biome[c] as Biome];
+  // Special ground (gen/special.ts): ash, lava, glacier, mushroom forest, canyon, cliffs...
+  const spv = w.special?.[c] ?? 0;
+  if (spv && h > 0 && w.lakeDepth[c] <= 0) terrain = `${SP_NAMES[spv]} (${terrain.charAt(0).toLowerCase()}${terrain.slice(1)})`;
+  // The nearest volcano within about 150 km.
+  const v = w.vents;
+  if (v && h > 0) {
+    for (let k = 0; k < v.length; k += 4) {
+      const dlo = ((((v[k] - wrapped) % 360) + 540) % 360) - 180;
+      const d = Math.hypot(dlo * 111.2 * Math.cos((lat * Math.PI) / 180), (v[k + 1] - lat) * 111.2);
+      if (d < 150) {
+        terrain += ` · ${['extinct', 'dormant', 'active'][v[k + 3]]} volcano ${Math.round(d)} km away`;
+        break;
+      }
+    }
+  }
   return {
     lon: wrapped,
     lat,

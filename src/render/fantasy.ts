@@ -208,6 +208,25 @@ export function drawIcons(
     }
   };
 
+  // Volcanoes: where they fall in this tile (mountain icons keep clear of them).
+  const ventPx: { x: number; y: number; h: number; act: number }[] = [];
+  const vents = world.vents;
+  if (vents) {
+    for (let k = 0; k < vents.length; k += 4) {
+      let px = ((vents[k] + 180) / 360) * worldPx - ctx.originX;
+      if (px < -worldPx / 2) px += worldPx;
+      if (px > worldPx / 2) px -= worldPx;
+      const py = ((1 - Math.log(Math.tan(Math.PI / 4 + (vents[k + 1] * DEG) / 2)) / Math.PI) / 2) * worldPx - ctx.originY;
+      if (px < -margin || py < -margin || px > w + margin || py > h + margin + 30) continue;
+      ventPx.push({ x: px, y: py, h: vents[k + 2], act: vents[k + 3] });
+    }
+  }
+  const nearVent = (x: number, y: number, r: number) => ventPx.some((v) => Math.hypot(v.x - x, v.y - y) < r);
+  for (const v of ventPx) {
+    const vw = (26 + 12 * smoothstep(1500, 5000, v.h)) * Math.min(2.2, grow * grow), vh = vw * 0.62;
+    icons.push({ y: ctx.originY + v.y, draw: () => drawVolcano(out, w, h, v.x, v.y, vw, vh, v.act) });
+  }
+
   const landAt = (lon: number, lat: number) => {
     const c = sampler.nearest(lon, lat);
     return world.lakeDepth[c] > 0 ? -1 : sampler.bilinear(world.height, lon, lat);
@@ -219,7 +238,7 @@ export function drawIcons(
     const mw = 12 + 10 * smoothstep(1800, 4500, hgt) + 3 * r2;
     const mh = mw * (0.62 + 0.3 * r2);
     const snowy = sampler.bilinear(world.tempSea, lon, lat) - LAPSE * (hgt + 900) < -2;
-    if (!clear(x, y - mh * 0.3, mw * 0.35)) return null;
+    if (!clear(x, y - mh * 0.3, mw * 0.35) || nearVent(x, y, 22)) return null;
     return () => drawMountain(out, w, h, x, y, mw, mh, snowy);
   });
 
@@ -241,6 +260,11 @@ export function drawIcons(
       lat + (frac(r * 4271.3) - 0.5) * 1.4 * (180 / world.H),
     );
     const b = world.biome[c] as Biome;
+    const spv = world.special?.[c] ?? 0;
+    // Mushroom forests grow giant fungi; ash, lava and ice grow nothing.
+    if (spv === 4) return r < 0.7 / (grow * grow) ? () => drawMushroom(out, w, h, x, y, (2.4 + 1.4 * r2) * grow, r2) : null;
+    if (spv === 1 || spv === 2 || spv === 3) return null;
+    if (nearVent(x, y, 10)) return null;
     if (b === Biome.Wetland) {
       return r < 0.45 / grow ? () => drawTuft(out, w, h, x, y) : null;
     }
@@ -327,6 +351,82 @@ function drawTree(out: Uint8ClampedArray, w: number, h: number, cx: number, cy: 
       blend(out, w, h, px, py, INK, 0.7 * clamp01(1 - Math.abs(d - r) * 1.2));
       // Short trunk below the canopy.
       if (Math.abs(X - cx) < 0.6 && Y > ccy + r && Y < cy + 1) blend(out, w, h, px, py, INK, 0.7);
+    }
+  }
+}
+
+const VOLC_LIGHT: RGB = [178, 152, 124], VOLC_SHADE: RGB = [126, 102, 84], SMOKE: RGB = [168, 160, 152], GLOW: RGB = [214, 84, 31];
+const MUSH_CAPS: RGB[] = [[146, 96, 160], [74, 150, 138], [201, 125, 84], [178, 92, 112]];
+const STALK: RGB = [232, 222, 200];
+
+/** A volcano: a cut-off cone with a crater, lava in the crater and smoke above it if it is active (a wisp if dormant). */
+function drawVolcano(out: Uint8ClampedArray, w: number, h: number, cx: number, cy: number, vw: number, vh: number, act: number): void {
+  const top = cy - vh, rim = vw * 0.16;
+  // A pale halo, so the cone stands clear of dark lava and ash.
+  for (let py = Math.floor(top - 3); py <= Math.ceil(cy + 2); py++) {
+    const t = Math.max(0, (py + 0.5 - top) / vh);
+    const half = rim + (vw / 2 - rim) * Math.min(1, t) + 2.5;
+    for (let px = Math.floor(cx - half - 1); px <= Math.ceil(cx + half + 1); px++) {
+      blend(out, w, h, px, py, PARCHMENT, 0.55 * clamp01(half - Math.abs(px + 0.5 - cx)) * clamp01(cy + 2 - py));
+    }
+  }
+  for (let py = Math.floor(top - 1); py <= Math.ceil(cy + 0.5); py++) {
+    const t = (py + 0.5 - top) / vh;
+    if (t < 0) continue;
+    const half = rim + (vw / 2 - rim) * Math.min(1, t);
+    for (let px = Math.floor(cx - half - 1); px <= Math.ceil(cx + half + 1); px++) {
+      const X = px + 0.5;
+      const inside = half - Math.abs(X - cx);
+      const fill = clamp01(inside + 0.5) * clamp01(cy - (py + 0.5) + 0.5);
+      blend(out, w, h, px, py, X > cx + rim * 0.3 ? VOLC_SHADE : VOLC_LIGHT, fill);
+      if (X > cx && fill > 0.5 && ((X * 0.7 + py) % 2.6) < 0.7) blend(out, w, h, px, py, INK, 0.25 * fill);
+      blend(out, w, h, px, py, INK, 0.8 * clamp01(1.1 - Math.abs(inside)) * (py <= cy ? 1 : 0));
+    }
+  }
+  // The crater rim, and lava in it.
+  for (let px = Math.floor(cx - rim); px <= Math.ceil(cx + rim); px++) {
+    blend(out, w, h, px, Math.round(top), INK, 0.85);
+    if (act === 2 && Math.abs(px + 0.5 - cx) < rim * 0.7) blend(out, w, h, px, Math.round(top) + 1, GLOW, 0.9);
+  }
+  if (act === 2) {
+    // A tongue of lava down the flank.
+    for (let k = 0; k < vh * 0.6; k++) blend(out, w, h, Math.round(cx - k * 0.18), Math.round(top + 2 + k), GLOW, 0.75);
+  }
+  if (act > 0) {
+    const n = act === 2 ? 4 : 2;
+    for (let k = 0; k < n; k++) {
+      const r = (act === 2 ? 2.4 : 1.6) + k * 0.7, sx = cx + k * 2.2, sy = top - 3 - k * 3.6;
+      for (let py = Math.floor(sy - r - 1); py <= Math.ceil(sy + r + 1); py++) {
+        for (let px = Math.floor(sx - r - 1); px <= Math.ceil(sx + r + 1); px++) {
+          const d = Math.hypot(px + 0.5 - sx, py + 0.5 - sy);
+          blend(out, w, h, px, py, SMOKE, 0.7 * clamp01(r - d + 0.5));
+          blend(out, w, h, px, py, INK, 0.35 * clamp01(1 - Math.abs(d - r) * 1.3));
+        }
+      }
+    }
+  }
+}
+
+/** A giant mushroom: a pale stalk under a coloured cap with a few light spots. */
+function drawMushroom(out: Uint8ClampedArray, w: number, h: number, cx: number, cy: number, r: number, seed: number): void {
+  const cap = MUSH_CAPS[Math.floor(seed * MUSH_CAPS.length) % MUSH_CAPS.length];
+  const capY = cy - r * 1.4;
+  for (let py = Math.floor(capY - r - 1); py <= Math.ceil(cy + 1); py++) {
+    for (let px = Math.floor(cx - r - 1); px <= Math.ceil(cx + r + 1); px++) {
+      const X = px + 0.5, Y = py + 0.5;
+      // Stalk.
+      if (Y > capY && Y < cy + 0.5 && Math.abs(X - cx) < Math.max(0.6, r * 0.22)) {
+        blend(out, w, h, px, py, STALK, 0.95);
+        if (Math.abs(Math.abs(X - cx) - r * 0.22) < 0.6) blend(out, w, h, px, py, INK, 0.5);
+      }
+      // Cap: the top half of an ellipse.
+      if (Y <= capY + 0.5) {
+        const e = Math.hypot((X - cx) / r, (Y - capY) / (r * 0.75));
+        blend(out, w, h, px, py, cap, clamp01((1 - e) * r + 0.5));
+        blend(out, w, h, px, py, INK, 0.75 * clamp01(1 - Math.abs(e - 1) * r));
+        if (e < 0.6 && ((Math.floor(X * 1.3) + Math.floor(Y * 1.7)) % 4 === 0)) blend(out, w, h, px, py, STALK, 0.5);
+      }
+      if (Math.abs(Y - capY - 0.5) < 0.6 && Math.abs(X - cx) <= r) blend(out, w, h, px, py, INK, 0.6);
     }
   }
 }

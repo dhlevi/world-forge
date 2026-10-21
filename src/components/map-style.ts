@@ -403,6 +403,79 @@ export const LAIR_LAYERS: LayerSpecification[] = [
  * Map icons for caves and glades, in the hand-drawn style of the fantasy map: a dark cave
  * mouth under a hatched hillock, and a ring of little trees round a clearing.
  */
+/** Icons for the special features: geysers (a plume of steam), rainbow pools (rings of colour) and the cliff line's tick pattern. */
+export function specialIcons(): { id: string; image: ImageData; pixelRatio: number }[] {
+  const pr = 2;
+  const make = (w: number, h: number, draw: (g: CanvasRenderingContext2D) => void) => {
+    const c = document.createElement('canvas');
+    c.width = w * pr;
+    c.height = h * pr;
+    const g = c.getContext('2d')!;
+    g.scale(pr, pr);
+    g.lineJoin = 'round';
+    g.lineCap = 'round';
+    draw(g);
+    return g.getImageData(0, 0, w * pr, h * pr);
+  };
+  const disc = (g: CanvasRenderingContext2D) => {
+    g.fillStyle = 'rgba(244,236,216,0.9)';
+    g.beginPath();
+    g.arc(13, 13, 11.5, 0, Math.PI * 2);
+    g.fill();
+  };
+  const geyser = make(26, 26, (g) => {
+    disc(g);
+    g.strokeStyle = '#3f3126';
+    g.lineWidth = 1.3;
+    g.beginPath();
+    g.moveTo(6, 21);
+    g.lineTo(20, 21);
+    g.stroke();
+    g.fillStyle = '#ffffff';
+    g.strokeStyle = '#4f7e96';
+    for (const [x, y, r] of [[13, 15, 3], [11, 10.5, 2.6], [15, 7, 2.4], [12, 4.5, 1.8]]) {
+      g.beginPath();
+      g.arc(x, y, r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+    }
+    g.beginPath();
+    g.moveTo(13, 21);
+    g.lineTo(13, 16);
+    g.stroke();
+  });
+  const pool = make(26, 26, (g) => {
+    disc(g);
+    for (const [r, col] of [[9, '#c9602b'], [7, '#e2b13c'], [5, '#8fbf6a'], [3, '#2f8fa6']] as [number, string][]) {
+      g.fillStyle = col;
+      g.beginPath();
+      g.ellipse(13, 14, r * 1.1, r * 0.8, 0, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.strokeStyle = '#3f3126';
+    g.lineWidth = 1.1;
+    g.beginPath();
+    g.ellipse(13, 14, 9.9, 7.2, 0, 0, Math.PI * 2);
+    g.stroke();
+  });
+  const ticks = make(12, 10, (g) => {
+    g.strokeStyle = '#4a3a2c';
+    g.lineWidth = 1.6;
+    g.beginPath();
+    g.moveTo(0, 3);
+    g.lineTo(12, 3);
+    g.stroke();
+    g.lineWidth = 1.2;
+    g.beginPath();
+    g.moveTo(3, 3);
+    g.lineTo(5, 9);
+    g.moveTo(9, 3);
+    g.lineTo(10, 7);
+    g.stroke();
+  });
+  return [{ id: 'poi-geyser', image: geyser, pixelRatio: pr }, { id: 'poi-pool', image: pool, pixelRatio: pr }, { id: 'cliff-ticks', image: ticks, pixelRatio: pr }];
+}
+
 export function lairIcons(): { id: string; image: ImageData; pixelRatio: number }[] {
   const pr = 2, S = 30 * pr;
   const make = (draw: (g: CanvasRenderingContext2D) => void) => {
