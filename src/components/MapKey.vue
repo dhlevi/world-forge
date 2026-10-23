@@ -7,6 +7,8 @@ import { SP } from '../gen/special';
 import { KIND_NAME, type DungeonKind } from '../dungeons/core';
 import { VILLAGE_ZOOM } from '../towns/manager';
 import { LAIR_ZOOM, lairIcons, specialIcons } from './map-style';
+import { DEEP_GLOW, DEEP_RGB, TUNNEL_STYLE } from './under-style';
+import { DEEP_LABEL, type DeepKind } from '../gen/underworld';
 
 /**
  * The map key: a button under the zoom controls that opens a list of the symbols the map is showing,
@@ -74,9 +76,46 @@ const cliffLine = (g: CanvasRenderingContext2D) => {
 const fantasy = computed(() => store.layer === 'fantasy');
 const groundLayer = computed(() => (store.layer === 'fantasy' || store.layer === 'terrain' || store.layer === 'biomes' ? store.layer : null));
 
+/** A cavern of the Underworld: a glowing shape in its kind's colour. */
+const cave = (kind: DeepKind) => (g: CanvasRenderingContext2D) => {
+  g.beginPath();
+  for (let k = 0; k <= 24; k++) {
+    const a = (k / 24) * Math.PI * 2, r = 7 + 1.6 * Math.sin(3 * a + 1) + Math.sin(5 * a);
+    const x = W / 2 + Math.cos(a) * r * 1.5, y = H / 2 + Math.sin(a) * r * 0.85;
+    k ? g.lineTo(x, y) : g.moveTo(x, y);
+  }
+  g.closePath();
+  g.shadowColor = DEEP_GLOW[kind];
+  g.shadowBlur = 6;
+  g.fillStyle = DEEP_RGB[kind];
+  g.fill();
+  g.shadowBlur = 0;
+  g.strokeStyle = DEEP_GLOW[kind];
+  g.lineWidth = 0.8;
+  g.stroke();
+};
+
 const sections = computed<Section[]>(() => {
   const out: Section[] = [];
   const races = store.params.races !== false;
+  if (store.layer === 'underworld') {
+    const kinds = (tier: 0 | 1): DeepKind[] => (tier ? ['sea', 'rift', 'ruins', 'fungal', 'abyss'] : ['cavern', 'fungal', 'lake', 'hall', 'chasm']);
+    out.push(
+      { title: 'The upper deep', items: kinds(0).map((k) => ({ id: `u0${k}`, label: DEEP_LABEL[k], draw: { t: 'paint', f: cave(k) } }) as Item) },
+      { title: 'The lower deep', items: kinds(1).map((k) => ({ id: `u1${k}`, label: DEEP_LABEL[k], draw: { t: 'paint', f: cave(k) } }) as Item) },
+      {
+        title: 'Ways through the deep',
+        items: [
+          { id: 'uw-road', label: TUNNEL_STYLE.road.label, draw: { t: 'paint', f: (g) => { line('#15110e', 4.4)(g); line(TUNNEL_STYLE.road.color, 2.4)(g); } }, note: 'from the delves and between the dwarven halls' },
+          { id: 'uw-tun', label: TUNNEL_STYLE.upper.label, draw: { t: 'paint', f: line(TUNNEL_STYLE.upper.color, 2, [3, 1.6]) } },
+          { id: 'uw-tun1', label: TUNNEL_STYLE.lower.label, draw: { t: 'paint', f: line(TUNNEL_STYLE.lower.color, 2, [2, 1]) } },
+          { id: 'uw-shaft', label: TUNNEL_STYLE.shaft.label, draw: { t: 'paint', f: (g) => { line(TUNNEL_STYLE.shaft.color, 1.2, [1, 1.6])(g); for (const x of [3, W - 3]) { g.beginPath(); g.arc(x, x < W / 2 ? H / 2 + 3 : H / 2 - 3, 3, 0, Math.PI * 2); g.fillStyle = '#15110e'; g.fill(); g.strokeStyle = TUNNEL_STYLE.shaft.color; g.lineWidth = 1.3; g.stroke(); } } } },
+          { id: 'uw-in', label: 'Way in from the surface', draw: { t: 'paint', f: dot('#f4ecd8', 4, '#e0a040', 2) }, note: 'a delve, a lava tube or a sinkhole' },
+        ],
+      },
+    );
+    return out;
+  }
   if (store.showSettlements) {
     const vil = (kind: string, label: string, fill: string, big = false, stroke = PAPER, sw = 0.8): Item =>
       ({ id: `v-${kind}`, label, draw: { t: 'paint', f: dot(fill, big ? 3.4 : 2.6, stroke, sw) }, z: [VILLAGE_ZOOM, 13.3] });
@@ -148,6 +187,7 @@ const sections = computed<Section[]>(() => {
       items.push(
         { id: 'geyser', label: 'Geysers', draw: { t: 'icon', id: 'poi-geyser' }, z: [5.6, 13] },
         { id: 'pool', label: 'Rainbow pools', draw: { t: 'icon', id: 'poi-pool' }, z: [5.6, 13], note: 'hot, mineral-coloured springs' },
+        ...(races ? [{ id: 'sink', label: 'Sinkhole', draw: { t: 'icon', id: 'poi-sinkhole' }, z: [6.2, 13], note: 'a way down to the Underworld' } as Item] : []),
         { id: 'canyon', label: 'Canyon', draw: { t: 'paint', f: line('rgba(142,74,38,0.55)', 5, [], undefined, 1.5) }, z: [3.6, 12] },
         { id: 'cliffs', label: 'Cliffs or escarpment', draw: { t: 'paint', f: cliffLine }, z: [4.4, 12.5], note: 'ticks on the lower side' },
       );
@@ -214,7 +254,7 @@ function paint(el: unknown, it: Item): void {
     g.drawImage(c, 0, 0, W * PR, H * PR);
     return;
   }
-  g.fillStyle = store.layer === 'fantasy' ? '#e6dbb5' : '#ece4cf';
+  g.fillStyle = store.layer === 'fantasy' ? '#e6dbb5' : store.layer === 'underworld' ? '#2b2622' : '#ece4cf';
   g.fillRect(0, 0, el.width, el.height);
   g.scale(PR, PR);
   if (d.t === 'icon') {

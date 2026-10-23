@@ -28,6 +28,7 @@ import { CULTURES } from '../names/cultures';
 import { templateFolk } from '../names/bundles';
 import { relationsForMap } from '../lore/realm';
 import { currentLore } from './realm-lore';
+import { UNDER_LAYERS, UNDER_SOURCES, deepSite, underFeatures } from './under-style';
 
 const container = ref<HTMLDivElement>();
 let map: MapLibreMap | null = null;
@@ -97,6 +98,7 @@ function syncWorld(): void {
   registerArms();
   (map.getSource('labels') as GeoJSONSource).setData(world.value.labels);
   (map.getSource('borders') as GeoJSONSource).setData(world.value.politics.borders);
+  updateUnderworld();
   if (townsGen !== world.value.gen) {
     townsGen = world.value.gen;
     const { raster, settlements, roads, rivers, politics, labels } = world.value;
@@ -357,6 +359,37 @@ function applyLabelMode(): void {
   }
 }
 
+/** The Underworld layer: its drawing and lettering, and the surface's overlays hidden while it is shown. */
+let underGen = -1;
+function updateUnderworld(): void {
+  if (!map || !ready || !world.value) return;
+  const u = world.value.raster.underworld;
+  if (u && underGen !== world.value.gen) {
+    underGen = world.value.gen;
+    const f = underFeatures(u);
+    (map.getSource('uw-areas') as GeoJSONSource).setData(f.areas as never);
+    (map.getSource('uw-lines') as GeoJSONSource).setData(f.lines as never);
+    (map.getSource('uw-points') as GeoJSONSource).setData(f.points as never);
+  }
+  const show = store.layer === 'underworld' && !!u;
+  for (const l of UNDER_LAYERS) if (map.getLayer(l.id)) map.setLayoutProperty(l.id, 'visibility', show ? 'visible' : 'none');
+  for (const k of ['settlements', 'labels', 'borders', 'political', 'wind', 'currents', 'rivers'] as const) {
+    const on = { settlements: store.showSettlements, labels: store.showLabels, borders: store.showBorders, political: store.showPolitical, wind: store.showWind, currents: store.showCurrents, rivers: store.showRivers }[k];
+    setVisibility(k, on);
+  }
+}
+
+/** The cavern of the Underworld under a screen point, when that layer is shown. */
+function deepAt(point: { x: number; y: number }): LairSite | null {
+  const u = world.value?.raster.underworld;
+  if (!map || !u || store.layer !== 'underworld' || !map.getLayer('uw-fill')) return null;
+  const hits = map.queryRenderedFeatures([point.x, point.y], { layers: ['uw-fill'] });
+  // The upper deep before the lower, where both are under the point.
+  hits.sort((a, b) => Number(a.properties?.tier) - Number(b.properties?.tier));
+  const id = hits[0]?.properties?.id;
+  return id === undefined ? null : deepSite(u, Number(id));
+}
+
 /** The realm whose label or arms is under a screen point. */
 function realmLabelAt(point: { x: number; y: number }): number | null {
   if (!map || !ready) return null;
@@ -458,6 +491,8 @@ function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): voi
   }
   if (overlay === 'political' && show) registerBigArms();
   if (overlay === 'rivers' && rasterRivers()) show = false;
+  // The Underworld layer shows the deep alone: everything of the surface is hidden.
+  if (store.layer === 'underworld') show = false;
   for (const id of OVERLAY_LAYERS[overlay]) {
     let vis = show;
     // Name layers also follow the overlay they belong to.
@@ -522,7 +557,7 @@ function onHover(e: MapMouseEvent): void {
     const f = buildingAt(e.point);
     const l = f ? null : lairAt(e.point, e.lngLat);
     const dn = f || l ? null : dungeonAt(e.point);
-    if (map) map.getCanvas().style.cursor = f || l || dn || realmLabelAt(e.point) !== null ? 'pointer' : '';
+    if (map) map.getCanvas().style.cursor = f || l || dn || realmLabelAt(e.point) !== null || deepAt(e.point) ? 'pointer' : '';
     showPreview(f);
     showLair(l, e.point);
     if (!l) showDungeon(dn, e.point);
@@ -671,6 +706,7 @@ onMounted(() => {
         'realm-links': { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         borders: { type: 'geojson', data: { type: 'FeatureCollection', features: [] } },
         ...SETTLEMENT_SOURCES,
+        ...UNDER_SOURCES,
       },
       layers: [
         { id: 'background', type: 'background', paint: { 'background-color': '#0b1626' } },
@@ -757,6 +793,7 @@ onMounted(() => {
             'circle-stroke-color': '#a8321e', 'circle-stroke-width': 2.5, 'circle-stroke-opacity': ['get', 'a'],
           },
         },
+        ...UNDER_LAYERS,
         ...PLAN_LABEL_LAYERS,
         ...WORLD_LABEL_LAYERS,
         ...POLITICAL_LABEL_LAYERS.map((l) => ({ ...l, layout: { ...(l as { layout: object }).layout, visibility: 'none' } }) as typeof l),
@@ -802,6 +839,12 @@ onMounted(() => {
   });
   map.on('click', (e) => {
     scheduleProbe(e.lngLat);
+    // In the Underworld, a click on a cavern opens its map.
+    const deep = deepAt(e.point);
+    if (deep) {
+      openLair.value = deep;
+      return;
+    }
     // Touch: the first tap on a building, cave or glade previews it, a second tap opens it.
     const f = buildingAt(e.point);
     if (f && touchOnly && String(f.properties.bid) === hoverBid) openInterior(f);
@@ -931,6 +974,7 @@ watch(() => store.showSettlements, (show) => {
       <div v-if="store.probe.place" class="probe-place">{{ store.probe.place }}</div>
       <div v-if="store.probe.climate">{{ store.probe.climate }}</div>
       <div v-if="store.layer === 'oldworld' && store.probe.settledWorld">{{ store.probe.settledWorld }}</div>
+      <div v-if="store.layer === 'underworld'">{{ store.probe.under ? `Below: ${store.probe.under}` : 'Solid rock below' }}</div>
       <div>{{ store.probe.lat.toFixed(2) }}°, {{ store.probe.lon.toFixed(2) }}°</div>
       <div>Elevation {{ Math.round(store.probe.elevation) }} m</div>
       <div>Temperature {{ store.probe.temperature.toFixed(1) }} °C</div>

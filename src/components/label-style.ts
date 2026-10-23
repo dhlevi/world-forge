@@ -223,6 +223,7 @@ export const WORLD_LABEL_LAYERS: LayerSpecification[] = [
   layer({ id: 'lbl-canyon', source: 'labels', filter: [kindIs('canyon'), isLine], z: [4.8, 12], size: [10, 14], font: CAPS, color: '#7c3a1c', spacing: 0.25, line: 'repeat', sortKey: 18 }),
   layer({ id: 'lbl-cliffs', source: 'labels', filter: [kindIs('cliffs'), isLine], z: [5.2, 12], size: [10, 13], font: ITALIC, color: '#4d3a2b', line: 'repeat', sortKey: 20 }),
   withIcon(layer({ id: 'lbl-geysers', source: 'labels', filter: [kindIs('geysers')], z: [5.6, 13], size: [10, 12.5], font: ITALIC, color: '#2f5468', sortKey: 23, maxWidth: 8 }), 'poi-geyser'),
+  withIcon(layer({ id: 'lbl-sinkhole', source: 'labels', filter: [kindIs('sinkhole')], z: [6.2, 13], size: [10, 12.5], font: ITALIC, color: '#3a2f26', sortKey: 23, maxWidth: 8 }), 'poi-sinkhole'),
   withIcon(layer({ id: 'lbl-hotlake', source: 'labels', filter: [kindIs('hotLake')], z: [5.6, 13], size: [10, 12.5], font: ITALIC, color: '#6a4a1f', sortKey: 23, maxWidth: 8 }), 'poi-pool'),
   // Islands.
   layer({ id: 'lbl-island-big', source: 'labels', filter: [kindIs('island'), rankIn(0, 1)], z: [3, 10.2], size: [11, 16], font: ROMAN, spacing: 0.1, sortKey: 13 }),

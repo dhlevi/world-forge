@@ -20,7 +20,7 @@ export function randomSeed(): string {
 export const store = reactive({
   params: {
     seed: randomSeed(),
-    landFraction: 0.35,
+    landFraction: 0.30,
     settled: 0.6,
     drift: 0.3,
     races: true,
@@ -107,6 +107,8 @@ export async function regenerate(): Promise<void> {
     if (result.gen !== client.latestGen) return;
     // The world's cultures and languages, rebuilt on this thread for names and lore.
     setWorldCultures(result.raster.cultures);
+    // A world without fantasy races has no Underworld to show.
+    if (store.layer === 'underworld' && !result.raster.underworld) store.layer = 'fantasy';
     world.value = result;
     store.summary = result.summary;
     store.generating = false;

@@ -474,7 +474,32 @@ export function specialIcons(): { id: string; image: ImageData; pixelRatio: numb
     g.lineTo(10, 7);
     g.stroke();
   });
-  return [{ id: 'poi-geyser', image: geyser, pixelRatio: pr }, { id: 'poi-pool', image: pool, pixelRatio: pr }, { id: 'cliff-ticks', image: ticks, pixelRatio: pr }];
+  // A sinkhole: a dark hole with hatched sides, falling away into the ground.
+  const sink = make(26, 26, (g) => {
+    disc(g);
+    g.fillStyle = '#c9bea6';
+    g.beginPath();
+    g.ellipse(13, 14, 9, 6.5, 0, 0, Math.PI * 2);
+    g.fill();
+    g.fillStyle = '#1f1a16';
+    g.beginPath();
+    g.ellipse(13, 15, 5.5, 3.8, 0, 0, Math.PI * 2);
+    g.fill();
+    g.strokeStyle = '#3f3126';
+    g.lineWidth = 1;
+    for (let k = 0; k < 10; k++) {
+      const a = (k / 10) * Math.PI * 2;
+      g.beginPath();
+      g.moveTo(13 + Math.cos(a) * 8.6, 14 + Math.sin(a) * 6.2);
+      g.lineTo(13 + Math.cos(a) * 6.2, 15 + Math.sin(a) * 4.4);
+      g.stroke();
+    }
+    g.lineWidth = 1.1;
+    g.beginPath();
+    g.ellipse(13, 14, 9, 6.5, 0, 0, Math.PI * 2);
+    g.stroke();
+  });
+  return [{ id: 'poi-geyser', image: geyser, pixelRatio: pr }, { id: 'poi-pool', image: pool, pixelRatio: pr }, { id: 'cliff-ticks', image: ticks, pixelRatio: pr }, { id: 'poi-sinkhole', image: sink, pixelRatio: pr }];
 }
 
 export function lairIcons(): { id: string; image: ImageData; pixelRatio: number }[] {

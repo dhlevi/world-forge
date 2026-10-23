@@ -228,7 +228,7 @@ export class TownManager {
           geometry: { type: 'Point', coordinates: [l.lon, l.lat] },
           properties: {
             id: l.id, tier: 'lair', kind: l.kind, name: l.name, ...(l.en && l.en !== l.name ? { en: l.en } : {}), seed: l.seed, tags: l.tags.join(','),
-            ...(l.dir !== undefined ? { dir: l.dir } : {}),
+            ...(l.dir !== undefined ? { dir: l.dir } : {}), ...(l.deepTo ? { deepTo: l.deepTo } : {}),
             // Groves in a mushroom forest or a cursed wood have icons of their own.
             ...(l.kind === 'glade' && l.tags.includes('mushrooms') ? { icon: 'lair-glade-fungal' } : l.kind === 'glade' && l.tags.includes('cursed') ? { icon: 'lair-glade-cursed' } : {}),
           },
@@ -783,6 +783,7 @@ export class TownManager {
         if (this.sampler.isWater(lon, lat)) continue;
         const size = rr(6) < 0.42 ? 'small' : rr(6) < 0.86 ? 'medium' : 'large';
         const tags = [size];
+        let deepTo: string | undefined;
         const dry = precip < (kind === 'cave' ? 350 : 450) || tWarm > 30;
         if (spv === 9) tags.push('cursed');
         if (kind === 'cave') {
@@ -796,6 +797,14 @@ export class TownManager {
           const r = rr(12);
           const levels = size === 'small' ? (r < 0.7 ? 1 : 2) : size === 'medium' ? (r < 0.4 ? 1 : r < 0.8 ? 2 : 3) : r < 0.35 ? 2 : r < 0.75 ? 3 : 4;
           if (levels > 1) tags.push(`${levels} levels`);
+          // A deep cave near a cavern of the Underworld goes down to it.
+          if (levels >= 3 && raster.underworld && rr(16) < 0.5) {
+            const near = raster.underworld.nodes.find((n) => n.tier === 0 && distKm(lon, lat, n.lon, n.lat) < 150);
+            if (near) {
+              tags.push('deep way');
+              deepTo = near.name;
+            }
+          }
         } else {
           const river = this.sampler.riverBank(lon, lat, 3000);
           const options: [string, number][] = [
@@ -816,7 +825,7 @@ export class TownManager {
         let nm: Named = { name: '', en: '' };
         for (let t = 0; t < 6 && (!nm.name || used.has(nm.name)); t++) nm = lairName(this.names, kind, raster.culture[c] ?? 0, t ? `${id}#${t}` : id, tags);
         used.add(nm.name);
-        out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0x1a17), tags, lon, lat });
+        out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0x1a17), tags, lon, lat, ...(deepTo ? { deepTo } : {}) });
       }
     }
     return out;

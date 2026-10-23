@@ -52,6 +52,8 @@ export interface Settlement {
   seed: number;
   /** A delve: a city or town of an underground people (dwarves), its halls under the mountain behind a gate. */
   delve?: boolean;
+  /** A delve's deep road: the cavern of the Underworld it leads down to (gen/underworld.ts). */
+  deepTo?: { name: string; en: string };
   /** Town plan layout (cities and towns), chosen once cultures are known. */
   layout?: CityLayout;
   /**

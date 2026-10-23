@@ -13,7 +13,8 @@ export type FeatureKind =
   | 'settlement' | 'river' | 'lake' | 'inlandSea' | 'sea' | 'ocean' | 'gulf' | 'bay' | 'bight' | 'strait' | 'channel'
   | 'island' | 'isles' | 'continent' | 'mountains' | 'hills' | 'peak' | 'forest' | 'desert' | 'marsh' | 'plains'
   | 'realm' | 'road'
-  | 'volcano' | 'ashland' | 'geysers' | 'hotLake' | 'glacier' | 'fungalForest' | 'canyon' | 'cliffs' | 'cursedWood' | 'cursedMire';
+  | 'volcano' | 'ashland' | 'geysers' | 'hotLake' | 'glacier' | 'fungalForest' | 'canyon' | 'cliffs' | 'cursedWood' | 'cursedMire'
+  | 'deepCavern' | 'deepFungal' | 'deepLake' | 'deepHall' | 'deepChasm' | 'deepSea' | 'deepRift' | 'deepRuins' | 'deepAbyss' | 'deepRoad' | 'sinkhole';
 
 export interface Culture {
   id: string;
@@ -135,6 +136,17 @@ export const DEFAULT_TERMS: Record<FeatureKind, string[]> = {
   cliffs: ['the {N} Cliffs', 'the {A} Cliffs', 'the {N} Scarp'],
   cursedWood: ['the {A} Wood', 'the Cursed Wood of {N}'],
   cursedMire: ['the {A} Mire', 'the Cursed Fens of {N}'],
+  deepCavern: ['the {A} Cavern', 'the Caverns of {N}'],
+  deepFungal: ['the {A} Mycelium', 'the Fungal Forest of {N}'],
+  deepLake: ['the {A} Lake', 'the Still Water of {N}'],
+  deepHall: ['{N}'],
+  deepChasm: ['the {A} Chasm', 'the Rift of {N}'],
+  deepSea: ['the {A} Sea Below', 'the Sunless Sea of {N}'],
+  deepRift: ['the {A} Rift', 'the Burning Deep of {N}'],
+  deepRuins: ['the Ruins of {N}', 'the Fallen City of {N}'],
+  deepAbyss: ['the {A} Abyss', 'the Pit of {N}'],
+  deepRoad: ['the Deep Road of {N}', 'the {A} Road Below'],
+  sinkhole: ['the {A} Sinkhole', 'the Pit of {N}'],
 };
 
 export const ADJECTIVES = [

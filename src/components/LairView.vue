@@ -27,7 +27,7 @@ const subtitle = computed(() => {
   const m = map.value;
   if (!m) return '';
   const lv = m.levels.length > 1 ? ` · ${m.levelName ?? `level ${m.level + 1} of ${m.levels.length}`}` : '';
-  const kind = m.site.kind === 'glade' && keyed.value ? 'Grove' : KIND_LABEL[m.site.kind];
+  const kind = m.site.kind === 'glade' && keyed.value ? 'Grove' : m.site.kind === 'deep' ? 'The Underworld' : KIND_LABEL[m.site.kind];
   return `${kind} · ${lairTags(m.site)}${lv} · ${m.W} × ${m.H} m · grid squares 5 ft (${LAIR_CELL} m)`;
 });
 
@@ -167,7 +167,7 @@ watch(stage, (el, old) => {
         <label class="chip"><input v-model="grid" type="checkbox" /> Grid</label>
         <label class="chip"><input v-model="marks" type="checkbox" /> Labels</label>
         <button @click="download">Download PNG</button>
-        <button class="leave" @click="leave">Leave {{ site.kind === 'glade' ? 'grove' : site.kind }}</button>
+        <button class="leave" @click="leave">Leave {{ site.kind === 'glade' ? 'grove' : site.kind === 'deep' ? 'cavern' : site.kind }}</button>
       </div>
     </header>
     <nav v-if="levelTabs.length" class="tabs" aria-label="Levels">

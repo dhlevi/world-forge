@@ -2,6 +2,7 @@ import { hashString, mulberry32, type Rng } from '../gen/rng';
 import { Simplex3, fbm } from '../gen/noise';
 import { type KeyNote, hookTail, roomNotes, senseDetail } from '../keys/flavour';
 import { buildPass } from './pass';
+import { buildDeep } from './deep';
 
 /**
  * Caves and glades in the manner of Watabou's Cave / Glade Generator: a cave is a set of
@@ -14,7 +15,7 @@ import { buildPass } from './pass';
  * Coordinates are local metres with x east and y south (canvas order), origin at the top-left
  * corner of the map.
  */
-export type LairKind = 'cave' | 'glade' | 'pass';
+export type LairKind = 'cave' | 'glade' | 'pass' | 'deep';
 export type Pt = [number, number];
 
 export interface LairSite {
@@ -30,6 +31,10 @@ export interface LairSite {
   lat: number;
   /** Passes: the way the road runs over the saddle (radians, map x east and y south). */
   dir?: number;
+  /** Deep caves: the cavern of the Underworld their deepest passage leads down to. */
+  deepTo?: string;
+  /** Caverns of the Underworld: what kind, which tier, where its tunnels lead, and its shafts. */
+  deep?: { kind: string; tier: 0 | 1; exits: string[]; up?: string; down?: string };
 }
 
 export interface LairMap {
@@ -80,6 +85,10 @@ export interface LairMap {
   cairns?: Pt[];
   /** Passes: the trail's centre line (drawn as a worn track). */
   trail?: Pt[];
+  /** Caverns: chasms (dark pits), crystal clusters, and lava in place of water. */
+  chasms?: Pt[][];
+  crystals?: Pt[][];
+  lava?: boolean;
 }
 
 export interface LairRoom {
@@ -98,6 +107,8 @@ export interface LairLink {
   /** The level it leads to. */
   to: number;
   style: LinkStyle;
+  /** Its caption, where not "Down to level n" (a cavern's shafts name where they lead). */
+  caption?: string;
 }
 
 /** Number of cave levels, from the site's tags ("3 levels"); 1 when not tagged. */
@@ -118,6 +129,7 @@ const SIZES: Record<LairKind, Record<string, [number, number]>> = {
   cave: { small: [54, 42], medium: [78, 60], large: [114, 84] },
   glade: { small: [60, 45], medium: [84, 63], large: [114, 84] },
   pass: { small: [84, 84], medium: [108, 102], large: [132, 120] },
+  deep: { small: [120, 90], medium: [138, 104], large: [156, 118] },
 };
 
 const cache = new Map<string, LairMap>();
@@ -127,7 +139,7 @@ export function lairMap(site: LairSite): LairMap {
   const key = `${site.id}:${site.seed}`;
   const hit = cache.get(key);
   if (hit) return hit;
-  const m = site.kind === 'cave' ? buildCave(site) : site.kind === 'pass' ? buildPass(site) : buildGlade(site);
+  const m = site.kind === 'cave' ? buildCave(site) : site.kind === 'pass' ? buildPass(site) : site.kind === 'deep' ? buildDeep(site) : buildGlade(site);
   cache.set(key, m);
   if (cache.size > 60) cache.delete(cache.keys().next().value!);
   return m;
@@ -360,6 +372,16 @@ function buildCave(site: LairSite): LairMap {
   for (const m of levels) m.levels = levels;
   caveKey(site, levels, allChambers);
   annotate(levels, 'cave', mulberry32(site.seed ^ 0xf1a));
+  // A deep cave: its last chamber opens on the way down to the Underworld.
+  if (site.deepTo) {
+    const last = levels[levels.length - 1].rooms;
+    const r = last[last.length - 1];
+    if (r) {
+      r.name = 'The way into the deep';
+      r.text += ` In the floor a crack opens on a stair of natural rock that goes down and down, beyond any light: the way to ${site.deepTo}. Cold air rises from it, smelling of fungus.`;
+    }
+    levels[0].hook = `${levels[0].hook ?? ''} Its deepest passage is said to lead down to ${site.deepTo}.`.trim();
+  }
   return levels[0];
 }
 
@@ -458,7 +480,7 @@ function caveKey(site: LairSite, levels: LairMap[], chambers: { c: Pt; r: number
 }
 
 /** Creatures, hazards, treasure and a detail for the senses, for every numbered place on every level. */
-export function annotate(levels: LairMap[], kind: 'cave' | 'grove' | 'pass', rnd: Rng): void {
+export function annotate(levels: LairMap[], kind: 'cave' | 'grove' | 'pass' | 'deep', rnd: Rng): void {
   const used = new Set<string>();
   levels.forEach((m, L) => {
     for (const r of m.rooms) {
@@ -591,7 +613,7 @@ function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng):
   return { map: m, chambers: ch };
 }
 
-function inLoops(loops: Pt[][], p: Pt): boolean {
+export function inLoops(loops: Pt[][], p: Pt): boolean {
   let inside = false;
   for (const poly of loops) {
     for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {

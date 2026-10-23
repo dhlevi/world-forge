@@ -1,5 +1,6 @@
 import { BIOME_NAMES, Biome } from '../gen/biomes';
 import { SP_NAMES } from '../gen/special';
+import { DEEP_LABEL } from '../gen/underworld';
 import { KOPPEN_CLASSES } from '../gen/koppen';
 import { CLIMATE } from '../gen/config';
 import type { RasterWorld } from '../gen/world';
@@ -25,6 +26,8 @@ export interface ProbeInfo {
   summerRainShare: number;
   /** Land only: Old or New World, and when the Old World's spread reached it (shown with the Old & New World layer). */
   settledWorld: string;
+  /** Fantasy worlds: the cavern of the Underworld below, if any (shown with the Underworld layer). */
+  under?: string;
 }
 
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
@@ -55,6 +58,22 @@ function settledWorld(w: RasterWorld, c: number): string {
   if (w.newWorld[c]) return r > 0 ? `New World (${at}, but its landmass went New)` : 'New World';
   if (w.spread.heartland < 0) return 'Old World';
   return r > 0 ? `Old World, ${at}` : 'Old World (not reached; its landmass went Old)';
+}
+
+/** The caverns of the Underworld under a point: their names, kinds and tiers. */
+function underAt(w: RasterWorld, lon: number, lat: number): string {
+  const out: string[] = [];
+  for (const n of w.underworld?.nodes ?? []) {
+    if (Math.abs(n.lat - lat) > 4) continue;
+    // Point in the cavern's outline (longitudes unwrapped about the point).
+    let inside = false;
+    const ring = n.ring.map((p) => [p[0] + (p[0] - lon > 180 ? -360 : p[0] - lon < -180 ? 360 : 0), p[1]]);
+    for (let a = 0, b = ring.length - 1; a < ring.length; b = a++) {
+      if (ring[a][1] > lat !== ring[b][1] > lat && lon < ((ring[b][0] - ring[a][0]) * (lat - ring[a][1])) / (ring[b][1] - ring[a][1]) + ring[a][0]) inside = !inside;
+    }
+    if (inside) out.push(`${n.name} (${DEEP_LABEL[n.kind].toLowerCase()}, ${n.tier ? 'lower' : 'upper'} deep)`);
+  }
+  return out.join(' · ');
 }
 
 export function probeWorld(w: RasterWorld, lon: number, lat: number): ProbeInfo | null {
@@ -98,5 +117,6 @@ export function probeWorld(w: RasterWorld, lon: number, lat: number): ProbeInfo 
     tempCold: w.tempCold[c],
     summerRainShare: w.precipSummer[c] / Math.max(1e-6, w.precipSummer[c] + w.precipWinter[c]),
     settledWorld: h > 0 ? settledWorld(w, c) : '',
+    ...(w.underworld ? { under: underAt(w, wrapped, lat) } : {}),
   };
 }

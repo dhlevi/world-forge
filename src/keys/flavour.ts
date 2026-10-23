@@ -5,7 +5,7 @@ import type { Rng } from '../gen/rng';
  * it, what lies hidden there, and a detail for the senses, by kind of site. Shared by
  * `dungeons/key.ts` and `lairs/lair.ts`. Every table is plain data, so it is easy to extend.
  */
-export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve' | 'pass';
+export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve' | 'pass' | 'deep';
 
 export interface KeyNote {
   /** "Creature", "Trap", "Treasure" or "Hazard". */
@@ -332,6 +332,18 @@ export const CREATURES: Record<SiteKind, string[]> = {
     'A band of elven rangers watch from the canopy, bowstrings pulled taut.',
     'A corrupted korred dances wildly around a heap of bleached animal skulls.'
   ],
+  deep: [
+    'A patrol of the pale deep folk, silent and grey-skinned, watches from the dark with eyes that shine in lamplight.',
+    'Giant cave spiders have strung their webs between the columns, thick as ship\u2019s rope.',
+    'A herd of blind, white lizards the size of oxen grazes on the fungus, tended by a deep gnome drover.',
+    'Fungus folk shuffle between the stalks, speaking to one another in puffs of coloured spores.',
+    'A grey ooze lies across the path, so still it looks like a puddle of wet stone.',
+    'A cave troll sleeps against a column, a gnawed bone in its fist.',
+    'Glowing eels the length of a boat coil in the dark water.',
+    'A hunting party of deep gnomes, their faces painted with luminous moss, offers to trade for news of the surface.',
+    'Something enormous with too many limbs clings to the cavern roof, waiting.',
+    'A lost dwarven prospector, half mad with the dark, begs for a light and a way home.',
+  ],
   pass: [
     'A pair of griffons circles the saddle, watching the road for horses to carry off.',
     'A mountain troll sits under the rope bridge and demands a toll of meat.',
@@ -497,6 +509,15 @@ const TRAPS: Record<SiteKind, string[]> = {
     'A boggy hollow that acts as quicksand, swallowing heavy gear and travelers.',
     'An old druidic ward causes iron weapons to become impossibly heavy while in the grove.',
     'A stream crossing covered in slick, algae-coated stones hides a swift, under-cutting current.'
+  ],
+  deep: [
+    'Bad air pools in a hollow of the floor; a lamp gutters out there, and so does breath.',
+    'A floor of thin crust over a void gives way under anyone heavier than a child.',
+    'Spores drifting from the fungi bring on waking dreams to anyone who breathes them for long.',
+    'A tripwire of fine gut, strung by the deep folk, brings down a fall of rocks.',
+    'The way is marked with false glowing signs, leading into a dead end of sheer rock.',
+    'A sudden flood of black water roars through the low tunnel once an hour.',
+    'Heat from below makes the stone too hot to touch; metal armour burns.',
   ],
   pass: [
     'Loose scree slides underfoot; a fall here carries a body thirty feet down the slope.',
@@ -810,6 +831,13 @@ const TREASURE: Record<SiteKind, string[]> = {
     'A jar of bear grease mixed with wintergreen, effective for soothing joint pain.',
     'A small wooden chest holding three rare orchid bulbs preserved in damp moss.',
     'A pendant made from a wolf’s canine tooth bound in silver wire.'
+  ],
+  deep: [
+    'A cache of the deep folk: ingots of a pale metal that is lighter than silver and harder than steel.',
+    'A cluster of glowing crystal, worth a fortune to any wizard on the surface.',
+    'The bones of a surface explorer, with a map case holding a chart of the tunnels.',
+    'A dwarven warhammer, its haft rotted away, its head still bright with runes.',
+    'A jar of luminous spores that will light a room for a year.',
   ],
   pass: [
     'A frozen traveller\u2019s pack, still full: rations, a fine knife and a purse of silver.',
@@ -1132,6 +1160,14 @@ export const SENSES: Record<SiteKind, string[]> = {
     'Old carved runes in a heart-tree trunk bleed sweet, amber sap.',
     'A sudden wind carries the wild scent of fox fur and wet pine.',
     'Twigs overhead intertwine so tightly they form a natural wooden roof.'
+  ],
+  deep: [
+    'Water drips somewhere in the dark, endlessly.',
+    'The silence is so complete that hearts can be heard beating.',
+    'A faint glow comes from the fungus on the walls, enough to see shapes but not colours.',
+    'The air is warm and smells of wet stone and mushrooms.',
+    'Far away, something vast moves, and the floor trembles.',
+    'Every sound echoes, and some echoes come back changed.',
   ],
   pass: [
     'The wind howls through the cleft and never quite stops.',

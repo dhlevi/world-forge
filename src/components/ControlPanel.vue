@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import { LAYERS } from '../render/tiles';
-import { randomSeed, regenerate, settingsChanged, store } from '../store';
+import { randomSeed, regenerate, settingsChanged, store, world } from '../store';
 import RangeField from './RangeField.vue';
 
 const collapsed = ref(false);
@@ -87,7 +87,7 @@ function randomize(): void {
       <section>
         <h2>Map layer</h2>
         <div class="layers">
-          <label v-for="l in LAYERS" :key="l.id" class="layer" :class="{ active: store.layer === l.id }">
+          <label v-for="l in LAYERS.filter((q) => q.id !== 'underworld' || world?.raster.underworld)" :key="l.id" class="layer" :class="{ active: store.layer === l.id }">
             <input v-model="store.layer" type="radio" name="layer" :value="l.id" />
             {{ l.label }}
           </label>

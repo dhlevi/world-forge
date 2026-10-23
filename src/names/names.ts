@@ -338,6 +338,17 @@ const FEATURE_PATTERNS: Partial<Record<FeatureKind, string[]>> = {
   cliffs: ['the {N} Cliffs', 'the {A} Cliffs', 'the {N} Scarp', 'the {A} Escarpment'],
   cursedWood: ['the {A} Wood', 'the {A} Forest', 'the Cursed Wood of {N}', 'the {A} Woods', 'the Witchwood of {N}'],
   cursedMire: ['the {A} Mire', 'the {A} Fens', 'the Cursed Fens of {N}', 'the {A} Marsh', 'the Drowned Mire of {N}'],
+  deepCavern: ['the {A} Cavern', 'the Caverns of {N}', 'the {N} Deep', 'the {A} Vault', 'the Hollow of {M}'],
+  deepFungal: ['the {A} Mycelium', 'the Fungal Forest of {N}', 'the {A} Spore Halls', 'the Glowing Wood of {N}'],
+  deepLake: ['the {A} Lake', 'the Still Water of {N}', 'the {A} Mere', 'the Lake of {M}'],
+  deepHall: ['{N}'],
+  deepChasm: ['the {A} Chasm', 'the Rift of {N}', 'the {A} Gulf', 'the Chasm of {M}'],
+  deepSea: ['the {A} Sea Below', 'the Sunless Sea of {N}', 'the {A} Dark Water', 'the Night Sea of {M}'],
+  deepRift: ['the {A} Rift', 'the Burning Deep of {N}', 'the Fire Halls of {N}', 'the {A} Furnace'],
+  deepRuins: ['the Ruins of {N}', 'the Fallen City of {N}', 'the {A} City', 'the Lost City of {N}'],
+  deepAbyss: ['the {A} Abyss', 'the Pit of {N}', 'the {A} Maw', 'the Abyss of {M}'],
+  deepRoad: ['the Deep Road of {N}', 'the {A} Road Below', 'the Old Deep Road of {N}'],
+  sinkhole: ['the {A} Sinkhole', 'the {N} Swallow', 'the Pit of {N}', 'the {A} Hole'],
 };
 /** Adjectives that suit each kind of feature (mixed with the general poetic ones). */
 const KIND_ADJ: Partial<Record<FeatureKind, string[]>> = {
@@ -370,6 +381,17 @@ const KIND_ADJ: Partial<Record<FeatureKind, string[]>> = {
   cliffs: ['white', 'black', 'red', 'high', 'sheer', 'grey', 'windy'],
   cursedWood: ['blighted', 'cursed', 'dead', 'withered', 'haunted', 'black', 'silent', 'hollow', 'weeping', 'grey', 'rotting', 'forsaken'],
   cursedMire: ['weeping', 'cursed', 'drowned', 'haunted', 'black', 'rotting', 'blighted', 'forsaken', 'whispering', 'still'],
+  deepCavern: ['echoing', 'silent', 'glittering', 'endless', 'dripping', 'crystal', 'black', 'hollow', 'vast', 'starless'],
+  deepFungal: ['glowing', 'pale', 'whispering', 'luminous', 'spore', 'violet', 'dreaming'],
+  deepLake: ['still', 'black', 'silent', 'mirror', 'cold', 'glowing', 'nameless'],
+  deepHall: ['lost', 'forgotten', 'golden', 'sealed', 'silent', 'ancient', 'broken'],
+  deepChasm: ['endless', 'black', 'howling', 'bottomless', 'yawning', 'great'],
+  deepSea: ['sunless', 'black', 'silent', 'endless', 'starless', 'still', 'cold'],
+  deepRift: ['burning', 'molten', 'red', 'smoking', 'roaring', 'black'],
+  deepRuins: ['fallen', 'drowned', 'silent', 'nameless', 'forgotten', 'pale', 'broken'],
+  deepAbyss: ['endless', 'howling', 'black', 'hungry', 'bottomless', 'screaming', 'nameless'],
+  deepRoad: ['old', 'long', 'broken', 'iron', 'forgotten', 'great'],
+  sinkhole: ['black', 'bottomless', 'devil\'s', 'yawning', 'howling', 'hollow'],
 };
 
 const INN_ADJ = ['Whistling', 'Merry', 'Wandering', 'Drunken', 'Golden', 'Black', 'Red', 'Silver', 'Copper', 'Green', 'Prancing', 'Drunken', 'Rusty', 'Laughing', 'Sleeping', 'Crooked', 'Jolly', 'Wandering', 'Blind', 'Merry', 'Leaping', 'Gilded', 'Busty', 'Weary', 'Salty', 'Three-Legged', 'Horned', 'Dead', 'Broken', 'Dancing', 'Winking', 'Blind', 'Greedy', 'Wandering', 'Thirsty', 'Two-Headed'];

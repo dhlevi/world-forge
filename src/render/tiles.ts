@@ -17,7 +17,7 @@ import {
   SEPIA, WATER, WATER_DEEP, contourInterval, drawIcons, grain, maskDistance, riverMinWidthPx, riverVisibility, type IconContext,
 } from './fantasy';
 
-export type LayerId = 'fantasy' | 'terrain' | 'biomes' | 'climate' | 'elevation' | 'temperature' | 'precipitation' | 'plates' | 'oldworld';
+export type LayerId = 'fantasy' | 'terrain' | 'biomes' | 'climate' | 'elevation' | 'temperature' | 'precipitation' | 'plates' | 'oldworld' | 'underworld';
 
 export const LAYERS: { id: LayerId; label: string }[] = [
   { id: 'fantasy', label: 'Fantasy map' },
@@ -29,7 +29,11 @@ export const LAYERS: { id: LayerId; label: string }[] = [
   { id: 'precipitation', label: 'Precipitation' },
   { id: 'plates', label: 'Tectonic plates' },
   { id: 'oldworld', label: 'Old & New World' },
+  { id: 'underworld', label: 'Underworld' },
 ];
+
+/** Underworld layer: the surface drawn dark and faint, for the caverns and tunnels above it. */
+const UNDER_LOW = hexToRgb('#25211d'), UNDER_HIGH = hexToRgb('#4a4037'), UNDER_SEA = hexToRgb('#0b1016');
 
 /**
  * Old & New World layer: Old World land shaded by when the spread from the heartland reached it
@@ -457,6 +461,18 @@ export class TileRenderer {
               const ki = koppen[nearest![s]] * 3;
               col[0] = KOPPEN_RGB[ki]; col[1] = KOPPEN_RGB[ki + 1]; col[2] = KOPPEN_RGB[ki + 2];
               light = Math.min(1.2, Math.max(0.65, 1 + 0.3 * (rel - 1)));
+            }
+            break;
+          }
+          case 'underworld': {
+            if (!isLand) {
+              col[0] = UNDER_SEA[0]; col[1] = UNDER_SEA[1]; col[2] = UNDER_SEA[2];
+            } else {
+              const k = Math.min(1, Math.max(0, hh / 3500));
+              col[0] = UNDER_LOW[0] + (UNDER_HIGH[0] - UNDER_LOW[0]) * k;
+              col[1] = UNDER_LOW[1] + (UNDER_HIGH[1] - UNDER_LOW[1]) * k;
+              col[2] = UNDER_LOW[2] + (UNDER_HIGH[2] - UNDER_LOW[2]) * k;
+              light = Math.min(1.3, Math.max(0.6, 0.7 + 0.4 * rel));
             }
             break;
           }

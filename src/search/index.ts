@@ -7,6 +7,7 @@ import { CULTURES } from '../names/cultures';
 import { namePhrase } from '../names/names';
 import { LAYOUT_LABEL } from '../towns/layout';
 import { townUnderground } from '../dungeons/core';
+import { DEEP_LABEL, type Underworld } from '../gen/underworld';
 
 /**
  * Place-name search. Entries come from the world (settlements, named features, rivers, roads),
@@ -40,6 +41,8 @@ export interface SearchEntry {
   alt?: string;
   /** Replaces an entry with the same id (a drawn plan's exact spot for one listed at the town). */
   upgrade?: boolean;
+  /** The map layer to show it on (the Underworld's caverns and roads). */
+  layer?: 'underworld';
 }
 
 export interface SearchHit {
@@ -58,7 +61,7 @@ const LABEL_TYPE: Record<string, [string, SearchCat]> = {
   mountains: ['Mountain range', 'region'], hills: ['Hills', 'region'], peak: ['Peak', 'region'], forest: ['Forest', 'region'],
   volcano: ['Volcano', 'region'], ashland: ['Ash land', 'region'], geysers: ['Geysers', 'region'], hotLake: ['Rainbow pools', 'region'], glacier: ['Glacier', 'region'],
   fungalForest: ['Mushroom forest', 'region'], canyon: ['Canyon', 'region'], cliffs: ['Cliffs', 'region'],
-  cursedWood: ['Cursed wood', 'region'], cursedMire: ['Cursed mire', 'region'],
+  cursedWood: ['Cursed wood', 'region'], cursedMire: ['Cursed mire', 'region'], sinkhole: ['Sinkhole', 'region'],
   desert: ['Desert', 'region'], marsh: ['Marsh', 'region'], plains: ['Plains', 'region'],
   ocean: ['Ocean', 'water'], sea: ['Sea', 'water'], inlandSea: ['Inland sea', 'water'], gulf: ['Gulf', 'water'], bay: ['Bay', 'water'],
   bight: ['Bight', 'water'], strait: ['Strait', 'water'], channel: ['Channel', 'water'], lake: ['Lake', 'water'],
@@ -75,7 +78,7 @@ const titleCase = (s: string) => s.toLowerCase().split(' ').map((w, i) => (i > 0
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
 /** Entries for everything the world generator named. */
-export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollection; rivers: RiverCollection; roads: RoadCollection; politics: Politics; raster?: { W: number; H: number; culture: Uint8Array } }): SearchEntry[] {
+export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollection; rivers: RiverCollection; roads: RoadCollection; politics: Politics; raster?: { W: number; H: number; culture: Uint8Array; underworld?: Underworld } }): SearchEntry[] {
   const cultureAt = (lon: number, lat: number) => {
     const r = w.raster;
     if (!r) return 0;
@@ -122,6 +125,21 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
       info: p.kind === 'peak' || p.kind === 'volcano' ? p.name.match(/\((\d+ m[^)]*)\)/)?.[1] : undefined,
     });
   });
+  // The Underworld: its caverns and deep roads, shown on that layer.
+  const u = w.raster?.underworld;
+  if (u) {
+    for (const n of u.nodes) {
+      out.push({
+        id: `deep${n.id}`, name: cap(n.name), ...(n.en !== n.name ? { alt: cap(n.en) } : {}), type: DEEP_LABEL[n.kind], cat: 'region', lon: n.lon, lat: n.lat,
+        zoom: n.tier ? 4.6 : 5.6, rank: 0.45, info: n.tier ? 'the lower deep' : 'the upper deep', layer: 'underworld',
+      });
+    }
+    u.tunnels.forEach((t, k) => {
+      if (!t.name) return;
+      const p = t.pts[Math.floor(t.pts.length / 2)];
+      out.push({ id: `deeproad${k}`, name: cap(t.name), ...(t.en ? { alt: cap(t.en) } : {}), type: 'Deep road', cat: 'road', lon: p[0], lat: p[1], zoom: 5.4, rank: 0.3, info: `${Math.round(t.km)} km`, layer: 'underworld' });
+    });
+  }
   // Realms: every empire, kingdom, duchy and county, at its seat.
   for (const u of w.politics.units) {
     out.push({

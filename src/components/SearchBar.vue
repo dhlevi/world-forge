@@ -46,6 +46,8 @@ function detail(h: SearchHit): string {
 function choose(h: SearchHit | undefined): void {
   if (!h) return;
   flyTarget.value = { lon: h.e.lon, lat: h.e.lat, zoom: h.e.zoom, name: h.e.name, t: performance.now() };
+  // The Underworld's places are shown on their own layer.
+  if (h.e.layer) store.layer = h.e.layer;
   // A realm also opens its details.
   if (/^pol\d+$/.test(h.e.id)) openRealm.value = Number(h.e.id.slice(3));
   if (/^cul\d+$/.test(h.e.id)) openCulture.value = Number(h.e.id.slice(3));

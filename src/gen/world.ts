@@ -3,6 +3,7 @@ import { type Rng, hashString, mulberry32 } from './rng';
 import { Simplex3 } from './noise';
 import { buildTectonics, drainInlandSeas } from './tectonics';
 import { type CurseHeart, specialFeatures } from './special';
+import { type Underworld, underworld } from './underworld';
 import { computeClimate } from './climate';
 import { accumulate, erode, fillShallowPits, precipWeight, routeFlow } from './hydrology';
 import { classifyBiomes } from './biomes';
@@ -84,6 +85,8 @@ export interface RasterWorld {
   vents: Float32Array;
   /** Fantasy worlds: the hearts of the cursed lands (gen/special.ts). */
   curses?: CurseHeart[];
+  /** Fantasy worlds: the caverns, tunnels and ways down of the Underworld (gen/underworld.ts). */
+  underworld?: Underworld;
 }
 
 export interface WorldSummary {
@@ -247,6 +250,11 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
     height, lakeDepth, temp: climate.temp, tempWarm: climate.tempWarm, precip: climate.precip, windU: climate.windU, windV: climate.windV, biome, culture, volcanic, flow, newWorld,
   }, rivers, settlements, bank, params.seed, params.races !== false);
   labels.features.push(...sf.labels);
+  // The Underworld (fantasy worlds): caverns and tunnels below, and the ways down to them.
+  const uw = params.races !== false
+    ? underworld(g, { height, lakeDepth, temp: climate.temp, precip: climate.precip, biome, culture, special: sf.special }, settlements, sf.vents, bank, params.seed)
+    : null;
+  if (uw) labels.features.push(...uw.labels);
   const vents = Float32Array.from(sf.vents.flatMap((v) => [v.lon, v.lat, v.h, v.activity]));
 
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;
@@ -289,6 +297,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       special: sf.special,
       vents,
       curses: sf.curses,
+      ...(uw ? { underworld: uw.world } : {}),
     },
     rivers,
     wind,

@@ -31,7 +31,8 @@ export function drawLair(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   g.beginPath();
   g.rect(0, 0, m.W, m.H);
   g.clip();
-  if (m.site.kind === 'cave' || m.interior) drawCave(g, m, o);
+  if (m.site.kind === 'deep') drawDeep(g, m, o);
+  else if (m.site.kind === 'cave' || m.interior) drawCave(g, m, o);
   else if (m.site.kind === 'pass') drawPass(g, m, o);
   else drawGlade(g, m, o);
   if (o.labels) drawRooms(g, m);
@@ -249,7 +250,7 @@ function drawLink(g: Ctx2D, l: LairLink, caption: boolean, a0: number): void {
   }
   g.restore();
   if (caption) {
-    const text = `${down ? 'Down' : 'Up'} to level ${l.to + 1}`;
+    const text = l.caption ?? `${down ? 'Down' : 'Up'} to level ${l.to + 1}`;
     g.save();
     g.font = "italic 1.15px 'IM Fell English', Georgia, serif";
     g.textAlign = 'center';
@@ -265,7 +266,7 @@ function drawLink(g: Ctx2D, l: LairLink, caption: boolean, a0: number): void {
 
 function drawWater(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   // In a volcanic cave (a lava tube) the pools are lava.
-  const lava = m.site.tags.includes('volcanic');
+  const lava = m.site.tags.includes('volcanic') || !!m.lava;
   const WATER = lava ? '#e0662c' : WATER_C, WATER_INK = lava ? '#6b2a12' : WATER_INK_C;
   if (m.water.length) {
     g.fillStyle = WATER;
@@ -287,6 +288,12 @@ function drawWater(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
   }
   if (m.stream) {
     const s = m.stream;
+    // A cavern's river stays within the cavern.
+    g.save();
+    if (m.site.kind === 'deep') {
+      path(g, m.outlines);
+      g.clip('evenodd');
+    }
     g.strokeStyle = WATER_INK;
     g.lineWidth = s.w * 2 + 0.3;
     g.beginPath();
@@ -300,6 +307,7 @@ function drawWater(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
     g.setLineDash?.([0.8, 1.4]);
     g.stroke();
     g.setLineDash?.([]);
+    g.restore();
   }
 }
 
@@ -893,6 +901,182 @@ function drawPass(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
       g.restore();
     }
   }
+}
+
+/**
+ * A cavern of the Underworld: drawn as a cave, then what fills it: chasms (dark, with hatched
+ * lips), the streets and walls of a fallen city, crystal clusters, giant fungi, stone or rope
+ * bridges, and the shafts' markers again on top.
+ */
+function drawDeep(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
+  const rnd = mulberry32(m.site.seed ^ 0xdee9);
+  drawCave(g, m, o);
+  if (m.site.deep?.kind === 'fungal') {
+    g.fillStyle = 'rgba(110,90,140,0.12)';
+    path(g, m.outlines);
+    g.fill('evenodd');
+  }
+  if (m.chasms?.length) {
+    g.fillStyle = '#1b1714';
+    path(g, m.chasms);
+    g.fill('evenodd');
+    g.save();
+    path(g, m.chasms);
+    g.clip('evenodd');
+    // The lip falling away: shading just inside the edge.
+    g.strokeStyle = 'rgba(120,105,90,0.55)';
+    g.lineWidth = 1.6;
+    path(g, m.chasms);
+    g.stroke();
+    g.restore();
+    g.strokeStyle = INK;
+    g.lineWidth = 0.3;
+    path(g, m.chasms);
+    g.stroke();
+  }
+  // What stands on the floor stays within the cavern's walls.
+  g.save();
+  path(g, m.outlines);
+  g.clip('evenodd');
+  // Streets: paved strips; then the city's broken walls.
+  g.strokeStyle = 'rgba(150,135,110,0.55)';
+  g.lineWidth = 2.2;
+  for (const l of m.paths) {
+    g.beginPath();
+    l.forEach((p, k) => (k ? g.lineTo(p[0], p[1]) : g.moveTo(p[0], p[1])));
+    g.stroke();
+  }
+  g.strokeStyle = '#6d6458';
+  g.lineWidth = 0.55;
+  for (const w of m.ruins) {
+    g.beginPath();
+    g.moveTo(w[0][0], w[0][1]);
+    g.lineTo(w[1][0], w[1][1]);
+    g.stroke();
+  }
+  // Crystals: pale blue points with an inked edge.
+  g.fillStyle = 'rgba(170,205,230,0.9)';
+  g.strokeStyle = '#38546a';
+  g.lineWidth = 0.07;
+  for (const c of m.crystals ?? []) {
+    for (let k = 0; k + 2 < c.length; k += 3) {
+      g.beginPath();
+      g.moveTo(c[k][0], c[k][1]);
+      g.lineTo(c[k + 1][0], c[k + 1][1]);
+      g.lineTo(c[k + 2][0], c[k + 2][1]);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    }
+  }
+  for (const t of m.things) drawThing(g, t);
+  if (m.camp) {
+    const f = m.camp.fire;
+    g.fillStyle = '#8c8070';
+    for (let q = 0; q < 8; q++) {
+      const a = (q / 8) * Math.PI * 2;
+      g.beginPath();
+      g.arc(f[0] + Math.cos(a) * 0.9, f[1] + Math.sin(a) * 0.9, 0.22, 0, Math.PI * 2);
+      g.fill();
+    }
+    g.fillStyle = '#d4683a';
+    g.beginPath();
+    g.arc(f[0], f[1], 0.5, 0, Math.PI * 2);
+    g.fill();
+  }
+  // Giant fungi: shadowed caps with a dark rim, pale spots and a soft glow.
+  if (m.trees.length) {
+    const CAP = ['#7d6a8c', '#6a7f86', '#86707c', '#72688c', '#64796f'], BRIGHT = ['#9a62ab', '#4c9a8c', '#5f8fb8', '#ad5a72'];
+    for (const t of m.trees) {
+      const glow = g.createRadialGradient(t.p[0], t.p[1], t.r * 0.5, t.p[0], t.p[1], t.r * 2);
+      glow.addColorStop(0, 'rgba(140,200,210,0.25)');
+      glow.addColorStop(1, 'rgba(140,200,210,0)');
+      g.fillStyle = glow;
+      g.beginPath();
+      g.arc(t.p[0], t.p[1], t.r * 2, 0, Math.PI * 2);
+      g.fill();
+    }
+    for (const t of m.trees) {
+      g.fillStyle = 'rgba(30,20,40,0.3)';
+      g.beginPath();
+      g.arc(t.p[0] + t.r * 0.2, t.p[1] + t.r * 0.28, t.r, 0, Math.PI * 2);
+      g.fill();
+      const h = Math.floor(t.shade * 997);
+      g.fillStyle = h % 7 === 0 ? BRIGHT[h % BRIGHT.length] : CAP[h % CAP.length];
+      g.strokeStyle = INK;
+      g.lineWidth = 0.14;
+      g.beginPath();
+      g.arc(t.p[0], t.p[1], t.r, 0, Math.PI * 2);
+      g.fill();
+      g.stroke();
+      g.strokeStyle = 'rgba(40,25,45,0.35)';
+      g.beginPath();
+      g.arc(t.p[0], t.p[1], t.r * 0.8, 0, Math.PI * 2);
+      g.stroke();
+      if (t.r > 1.6) {
+        g.fillStyle = 'rgba(244,238,222,0.6)';
+        for (let q = 0; q < 4; q++) {
+          const a = t.shade * 30 + q * 2.4, d = t.r * (0.3 + 0.35 * ((q * 0.37 + t.shade) % 1));
+          g.beginPath();
+          g.arc(t.p[0] + Math.cos(a) * d, t.p[1] + Math.sin(a) * d, t.r * 0.1, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
+    }
+  }
+  g.restore();
+  // Bridges: planks between ropes, or a span of stone.
+  for (const br of m.bridges ?? []) {
+    const dx = br.b[0] - br.a[0], dy = br.b[1] - br.a[1], l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+    if (!br.rope) {
+      const w = 1.4;
+      g.fillStyle = '#bdb3a0';
+      g.strokeStyle = INK;
+      g.lineWidth = 0.14;
+      g.beginPath();
+      g.moveTo(br.a[0] + nx * w, br.a[1] + ny * w);
+      g.lineTo(br.b[0] + nx * w, br.b[1] + ny * w);
+      g.lineTo(br.b[0] - nx * w, br.b[1] - ny * w);
+      g.lineTo(br.a[0] - nx * w, br.a[1] - ny * w);
+      g.closePath();
+      g.fill();
+      g.stroke();
+      g.strokeStyle = 'rgba(43,36,32,0.4)';
+      g.lineWidth = 0.06;
+      g.beginPath();
+      for (let s = 0.8; s < l; s += 0.8) {
+        g.moveTo(br.a[0] + (dx / l) * s + nx * w, br.a[1] + (dy / l) * s + ny * w);
+        g.lineTo(br.a[0] + (dx / l) * s - nx * w, br.a[1] + (dy / l) * s - ny * w);
+      }
+      g.stroke();
+      continue;
+    }
+    const w = 0.9;
+    g.fillStyle = '#b79a6a';
+    g.strokeStyle = INK;
+    g.lineWidth = 0.07;
+    for (let s = 0.15; s < l; s += 0.42) {
+      if (rnd() < 0.1) continue;
+      const cx = br.a[0] + (dx / l) * s, cy = br.a[1] + (dy / l) * s;
+      g.beginPath();
+      g.moveTo(cx - nx * w, cy - ny * w);
+      g.lineTo(cx + nx * w, cy + ny * w);
+      g.lineTo(cx + nx * w + (dx / l) * 0.3, cy + ny * w + (dy / l) * 0.3);
+      g.lineTo(cx - nx * w + (dx / l) * 0.3, cy - ny * w + (dy / l) * 0.3);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    }
+    g.strokeStyle = '#6b5233';
+    g.lineWidth = 0.1;
+    g.beginPath();
+    for (const s of [-w - 0.1, w + 0.1]) {
+      g.moveTo(br.a[0] + nx * s - (dx / l) * 0.6, br.a[1] + ny * s - (dy / l) * 0.6);
+      g.lineTo(br.b[0] + nx * s + (dx / l) * 0.6, br.b[1] + ny * s + (dy / l) * 0.6);
+    }
+    g.stroke();
+  }
+  for (const l of m.links) drawLink(g, l, o.labels, (m.site.seed % 628) / 100);
 }
 
 function drawThing(g: Ctx2D, t: LairMap['things'][number]): void {
