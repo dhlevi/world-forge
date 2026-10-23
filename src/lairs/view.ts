@@ -9,7 +9,7 @@ export function lairFromFeature(p: Record<string, unknown>, coords: number[]): L
     id: p.id, kind: p.kind as LairKind, name: String(p.name ?? ''), ...(p.en ? { en: String(p.en) } : {}), seed: Number(p.seed), lon: coords[0], lat: coords[1],
     tags: String(p.tags ?? '').split(',').filter(Boolean),
     ...(p.dir !== undefined && p.dir !== null ? { dir: Number(p.dir) } : {}),
-    ...(typeof p.deepTo === 'string' && p.deepTo ? { deepTo: p.deepTo } : {}),
+    ...(typeof p.deepTo === 'string' && p.deepTo ? { deepTo: p.deepTo, ...(p.deepNode !== undefined ? { deepNode: Number(p.deepNode) } : {}) } : {}),
   };
 }
 

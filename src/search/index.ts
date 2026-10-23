@@ -134,6 +134,17 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
         zoom: n.tier ? 4.6 : 5.6, rank: 0.45, info: n.tier ? 'the lower deep' : 'the upper deep', layer: 'underworld',
       });
     }
+    for (const n of u.nodes) {
+      if (!n.city) continue;
+      out.push({
+        id: `deepcity${n.id}`, name: cap(n.city.name), ...(n.city.en !== n.city.name ? { alt: cap(n.city.en) } : {}), type: `${cap(n.city.kind)} of the deep`, cat: 'settlement', lon: n.lon, lat: n.lat,
+        zoom: 6.5, rank: n.city.capital ? 0.5 : 0.4, info: `about ${n.city.pop.toLocaleString('en')} ${n.people !== undefined ? CULTURES[n.people]?.name ?? '' : ''} in ${n.name}`, layer: 'underworld',
+      });
+    }
+    for (const rm of u.realms ?? []) {
+      const c = u.nodes[rm.capital];
+      out.push({ id: `deeprealm${rm.id}`, name: cap(rm.name), ...(rm.en !== rm.name ? { alt: cap(rm.en) } : {}), type: 'Realm of the deep', cat: 'region', lon: c.lon, lat: c.lat, zoom: 5.5, rank: 0.5, info: `${rm.title} ${rm.ruler}`, layer: 'underworld' });
+    }
     u.tunnels.forEach((t, k) => {
       if (!t.name) return;
       const p = t.pts[Math.floor(t.pts.length / 2)];
@@ -150,7 +161,7 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
   // Cultures, at their hearth.
   for (const c of CULTURES) {
     if (!c.language) continue;
-    out.push({ id: `cul${c.index}`, name: c.name, type: 'Culture', cat: 'region', lon: c.hearth[0], lat: c.hearth[1], zoom: 4, rank: 0.6, info: `their own name: ${c.endonym}` });
+    out.push({ id: `cul${c.index}`, name: c.name, type: c.deep ? 'People of the deep' : 'Culture', cat: 'region', lon: c.hearth[0], lat: c.hearth[1], zoom: c.deep ? 5 : 4, rank: 0.6, info: `their own name: ${c.endonym}`, ...(c.deep ? { layer: 'underworld' as const } : {}) });
   }
   // Rivers: one entry per name, at the middle of its largest stretch.
   const rivers = new Map<string, { c: number[]; order: number; en?: string; old?: string }>();

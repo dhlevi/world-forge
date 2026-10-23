@@ -576,7 +576,7 @@ const TREASURE_ANY = [
   'A vial of potent wolfsbane tincture, wrapped in thick cloth for safety.',
   'A pouch of dried meat rations that seem to stay fresh indefinitely.',
   'A silver censer small enough to carry, smelling of old frankincense.',
-  'A sturdy leather backpack holding 50 feet of fine hemp rope and a iron grapple.',
+  'A sturdy leather backpack holding 50 feet of fine hemp rope and an iron grapple.',
   'A small wooden chest holding 45 silver coins and a brass trade token.',
   'An ivory comb carved with intricate vine patterns, missing two teeth.',
   'A leather pouch holding four vials of pure alchemical alcohol.',

@@ -969,6 +969,7 @@ function drawDeep(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
       g.stroke();
     }
   }
+  for (const b of m.blds ?? []) drawBuilding(g, b);
   for (const t of m.things) drawThing(g, t);
   if (m.camp) {
     const f = m.camp.fire;
@@ -1077,6 +1078,227 @@ function drawDeep(g: Ctx2D, m: LairMap, o: LairDrawOpts): void {
     g.stroke();
   }
   for (const l of m.links) drawLink(g, l, o.labels, (m.site.seed % 628) / 100);
+}
+
+/** A building of a city of the deep, seen from above. */
+function drawBuilding(g: Ctx2D, b: NonNullable<LairMap['blds']>[number]): void {
+  const [x, y] = b.p;
+  g.save();
+  g.translate(x, y);
+  g.rotate(b.a);
+  g.strokeStyle = INK;
+  g.lineWidth = 0.12;
+  const shadow = (draw: () => void) => {
+    g.save();
+    g.translate(0.35, 0.45);
+    g.fillStyle = 'rgba(30,25,20,0.3)';
+    draw();
+    g.fill();
+    g.restore();
+  };
+  const circle = (r: number) => () => {
+    g.beginPath();
+    g.arc(0, 0, r, 0, Math.PI * 2);
+  };
+  const rect = (w: number, h: number) => () => {
+    g.beginPath();
+    g.rect(-w / 2, -h / 2, w, h);
+  };
+  const poly = (n: number, r: number) => () => {
+    g.beginPath();
+    for (let k = 0; k < n; k++) {
+      const a = (k / n) * Math.PI * 2 + Math.PI / n;
+      k ? g.lineTo(Math.cos(a) * r, Math.sin(a) * r) : g.moveTo(Math.cos(a) * r, Math.sin(a) * r);
+    }
+    g.closePath();
+  };
+  const r = b.w / 2;
+  switch (b.kind) {
+    case 'spire': {
+      // A hollowed stalagmite: a dark round tower, ribbed, lit within.
+      shadow(circle(r));
+      circle(r)();
+      g.fillStyle = '#5c5468';
+      g.fill();
+      g.stroke();
+      g.strokeStyle = 'rgba(200,185,230,0.55)';
+      g.lineWidth = 0.08;
+      g.beginPath();
+      for (let k = 0; k < 6; k++) {
+        const a = (k / 6) * Math.PI * 2;
+        g.moveTo(Math.cos(a) * r * 0.3, Math.sin(a) * r * 0.3);
+        g.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
+      }
+      g.stroke();
+      g.fillStyle = '#b48ee0';
+      circle(r * 0.22)();
+      g.fill();
+      break;
+    }
+    case 'compound': {
+      // A noble house: a wall round a court, a tower at each corner, the house within.
+      g.fillStyle = '#ddd3c0';
+      rect(b.w, b.h)();
+      g.fill();
+      g.lineWidth = 0.45;
+      g.strokeStyle = '#3b3440';
+      g.stroke();
+      g.lineWidth = 0.12;
+      g.strokeStyle = INK;
+      shadow(rect(b.w * 0.5, b.h * 0.5));
+      g.fillStyle = '#5c5468';
+      rect(b.w * 0.5, b.h * 0.5)();
+      g.fill();
+      g.stroke();
+      for (const [sx, sy] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
+        g.beginPath();
+        g.arc((sx * b.w) / 2, (sy * b.h) / 2, 0.9, 0, Math.PI * 2);
+        g.fillStyle = '#5c5468';
+        g.fill();
+        g.stroke();
+      }
+      break;
+    }
+    case 'temple': {
+      // The temple of the Veiled Mother: an octagon hung with a silver web.
+      shadow(poly(8, r));
+      poly(8, r)();
+      g.fillStyle = '#3a3040';
+      g.fill();
+      g.stroke();
+      g.strokeStyle = 'rgba(220,215,235,0.75)';
+      g.lineWidth = 0.08;
+      g.beginPath();
+      for (let k = 0; k < 8; k++) {
+        const a = (k / 8) * Math.PI * 2;
+        g.moveTo(0, 0);
+        g.lineTo(Math.cos(a) * r * 0.9, Math.sin(a) * r * 0.9);
+      }
+      g.stroke();
+      for (const k of [0.3, 0.55, 0.8]) {
+        poly(8, r * k)();
+        g.stroke();
+      }
+      break;
+    }
+    case 'burrow': {
+      // A gnome's round house cut into the rock, with its little door.
+      shadow(circle(r));
+      circle(r)();
+      g.fillStyle = '#b9a98a';
+      g.fill();
+      g.stroke();
+      g.fillStyle = '#3d3020';
+      g.beginPath();
+      g.arc(0, r * 0.55, r * 0.3, Math.PI, 0);
+      g.fill();
+      break;
+    }
+    case 'workshop': {
+      shadow(rect(b.w, b.h));
+      rect(b.w, b.h)();
+      g.fillStyle = '#a89878';
+      g.fill();
+      g.stroke();
+      g.fillStyle = 'rgba(170,205,230,0.9)';
+      for (const dx of [-1, 0.2, 1.2]) {
+        g.beginPath();
+        g.arc(dx, 0, 0.25, 0, Math.PI * 2);
+        g.fill();
+      }
+      break;
+    }
+    case 'farm': {
+      g.fillStyle = '#c9c0a8';
+      rect(b.w, b.h)();
+      g.fill();
+      g.strokeStyle = 'rgba(43,36,32,0.4)';
+      g.stroke();
+      g.fillStyle = '#86707c';
+      for (let fx = -b.w / 2 + 0.6; fx < b.w / 2; fx += 0.9) {
+        for (let fy = -b.h / 2 + 0.6; fy < b.h / 2; fy += 1.1) {
+          g.beginPath();
+          g.arc(fx, fy, 0.22, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
+      break;
+    }
+    case 'tower':
+    case 'ring': {
+      // The fungus folk's living towers: great caps; the eldest's ring, caps round a pool.
+      const caps: [number, number, number][] = b.kind === 'tower' ? [[0, 0, r]] : Array.from({ length: 9 }, (_, k) => [Math.cos((k / 9) * Math.PI * 2) * r * 0.75, Math.sin((k / 9) * Math.PI * 2) * r * 0.75, r * 0.24] as [number, number, number]);
+      if (b.kind === 'ring') {
+        g.fillStyle = WATER_C;
+        circle(r * 0.35)();
+        g.fill();
+      }
+      for (const [cx, cy, cr] of caps) {
+        g.fillStyle = 'rgba(30,20,40,0.3)';
+        g.beginPath();
+        g.arc(cx + cr * 0.2, cy + cr * 0.25, cr, 0, Math.PI * 2);
+        g.fill();
+        g.fillStyle = ['#8f5fa4', '#4c9a8c', '#7d6a8c', '#c47c52'][Math.abs(Math.round(cx * 7 + cy * 3)) % 4];
+        g.beginPath();
+        g.arc(cx, cy, cr, 0, Math.PI * 2);
+        g.fill();
+        g.stroke();
+        g.fillStyle = 'rgba(244,238,222,0.6)';
+        for (let q = 0; q < 3; q++) {
+          g.beginPath();
+          g.arc(cx + Math.cos(q * 2.1) * cr * 0.45, cy + Math.sin(q * 2.1) * cr * 0.45, cr * 0.12, 0, Math.PI * 2);
+          g.fill();
+        }
+      }
+      break;
+    }
+    case 'hall':
+    case 'forge':
+    case 'pen': {
+      shadow(rect(b.w, b.h));
+      rect(b.w, b.h)();
+      g.fillStyle = b.kind === 'forge' ? '#5a524c' : b.kind === 'pen' ? '#cfc6b4' : '#6d6a64';
+      g.fill();
+      g.lineWidth = 0.18;
+      g.stroke();
+      g.lineWidth = 0.08;
+      if (b.kind === 'hall') {
+        g.strokeStyle = 'rgba(230,225,215,0.4)';
+        rect(b.w - 1.2, b.h - 1.2)();
+        g.stroke();
+      } else if (b.kind === 'forge') {
+        const glow = g.createRadialGradient(0, 0, 0, 0, 0, b.w * 0.45);
+        glow.addColorStop(0, 'rgba(255,140,60,0.95)');
+        glow.addColorStop(1, 'rgba(255,90,30,0)');
+        g.fillStyle = glow;
+        circle(b.w * 0.45)();
+        g.fill();
+      } else {
+        g.beginPath();
+        for (let px = -b.w / 2 + 0.5; px < b.w / 2; px += 0.5) {
+          g.moveTo(px, -b.h / 2);
+          g.lineTo(px, b.h / 2);
+        }
+        g.stroke();
+      }
+      break;
+    }
+    case 'gate': {
+      g.fillStyle = '#2b2622';
+      rect(b.w, b.h)();
+      g.fill();
+      g.strokeStyle = '#8a8070';
+      g.lineWidth = 0.1;
+      g.beginPath();
+      for (let px = -b.w / 2 + 0.4; px < b.w / 2; px += 0.6) {
+        g.moveTo(px, -b.h / 2 - 0.4);
+        g.lineTo(px, b.h / 2 + 0.4);
+      }
+      g.stroke();
+      break;
+    }
+  }
+  g.restore();
 }
 
 function drawThing(g: Ctx2D, t: LairMap['things'][number]): void {

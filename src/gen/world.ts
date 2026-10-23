@@ -4,6 +4,7 @@ import { Simplex3 } from './noise';
 import { buildTectonics, drainInlandSeas } from './tectonics';
 import { type CurseHeart, specialFeatures } from './special';
 import { type Underworld, underworld } from './underworld';
+import { deepPeoples } from './deep-peoples';
 import { computeClimate } from './climate';
 import { accumulate, erode, fillShallowPits, precipWeight, routeFlow } from './hydrology';
 import { classifyBiomes } from './biomes';
@@ -254,7 +255,13 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
   const uw = params.races !== false
     ? underworld(g, { height, lakeDepth, temp: climate.temp, precip: climate.precip, biome, culture, special: sf.special }, settlements, sf.vents, bank, params.seed)
     : null;
-  if (uw) labels.features.push(...uw.labels);
+  if (uw) {
+    labels.features.push(...uw.labels);
+    // The peoples and realms of the deep (their cultures added after the surface's).
+    const dp = deepPeoples(uw.world, cultures, settlements, bank, params.seed);
+    uw.world.peoples = dp.peoples;
+    uw.world.realms = dp.realms;
+  }
   const vents = Float32Array.from(sf.vents.flatMap((v) => [v.lon, v.lat, v.h, v.activity]));
 
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;

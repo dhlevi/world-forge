@@ -34,7 +34,7 @@ function weighted<T>(rnd: Rng, a: [T, number][]): T {
 }
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
-export type FaithFamily = 'church' | 'crescent' | 'pantheon' | 'oldgods' | 'druid' | 'stars' | 'ancestors' | 'sky' | 'heaven' | 'kami' | 'spirits' | 'sun' | 'serpent';
+export type FaithFamily = 'church' | 'crescent' | 'pantheon' | 'oldgods' | 'druid' | 'stars' | 'ancestors' | 'sky' | 'heaven' | 'kami' | 'spirits' | 'sun' | 'serpent' | 'veiled' | 'mycelium';
 
 // ---- Doctrines and tenets --------------------------------------------------------------------
 
@@ -1535,10 +1535,63 @@ const A: Record<FaithFamily, Archetype> = {
     tenets: ['ritualSacrifice', 'astrology', 'kingship', 'feastDays', 'dualism', 'carnalism', 'witchcraft', 'suicide'], 
     places: ['peak', 'lake', 'volcano', 'hotLake'],
 } ,
+  // ---- The faiths of the Underworld ----
+  veiled: {
+    kind: 'cult of the Veiled Mother',
+    names: ['the Veiled Mother', 'the Web of {H}', 'the Black Web', 'the Silken Way', 'the Mother of Shadows', 'the Way of the Veil'],
+    adherents: ['the Daughters of the Web', 'the Veiled', 'the Children of the Mother', 'the Threads'],
+    head: ['High Mother', 'Mother of the Web', 'First Daughter of the Veil', 'Voice of the Mother'],
+    clergy: ['priestesses and web-readers', 'veiled priestesses and their sworn blades', 'daughters of the web and keepers of venoms'],
+    temple: ['web-hung temples in the highest spires', 'black temples veiled in spider-silk', 'sanctums of silk and silver at the heart of each city'],
+    scripture: ['the Threads of the Mother', 'the silk scrolls of the web', 'the whispered litanies of the veil', 'the Book of Shadows'],
+    symbols: [['a spider', 'mullet'], ['a black web', 'estoile'], ['a veiled face', 'crescent'], ['a silver dagger', 'sword'], ['an eight-pointed star', 'mullet']],
+    domains: [
+      'the Veiled Mother, weaver of fate and queen of spiders', 'the Spinner of Lies', 'the Lord of Venoms', 'the Hunter in the Dark',
+      'the Silent One, keeper of secrets', 'the Dark Moon', 'the Queen of the Dead Below',
+    ],
+    gods: [1, 4],
+    age: [2000, 4000],
+    beliefs: [
+      'Every life is a thread in the Mother\u2019s web; she alone sees the pattern',
+      'The weak are the prey of the strong, and so it is right',
+      'The surface is a place of exile and burning light',
+      'The Mother speaks through her daughters, never through her sons',
+      'Treachery that succeeds is the Mother\u2019s favour; treachery that fails is her judgement',
+    ],
+    sect: ['the Cult of {N}', 'the Silken Hand', 'the Daughters of the Eighth Thread', 'the House of Whispers'],
+    doctrines: { head: { pontiff: 3, ruler: 1 }, clergy: { priestesses: 4, hereditary: 1 }, conversion: { closed: 2, sword: 1 }, others: { fundamentalist: 2, righteous: 1 }, death: { burial: 1, tombs: 2 }, marriage: { polygamy: 1, concubines: 2 } },
+    tenets: ['ritualSacrifice', 'witchcraft', 'divination', 'carnalism', 'dualism'],
+    places: ['sinkhole', 'canyon'],
+  },
+  mycelium: {
+    kind: 'the dream of the great mycelium',
+    names: ['the Great Mycelium', 'the Dreaming Threads', 'the Song of Spores', 'the Way of the Rot', 'the One Root'],
+    adherents: ['the Dreamers', 'the Joined', 'the Threads', 'the Sleepers'],
+    head: ['Eldest Dreamer', 'Root of the Circle', 'First Spore'],
+    clergy: ['dreamers and spore-singers', 'listeners in the threads', 'eldest caps and their sleepers'],
+    temple: ['dream-rings of the oldest caps', 'great fungal domes where the threads meet', 'sleeping-pools in the heart of the forest'],
+    scripture: ['the dreams shared in the threads', 'the spore-songs', 'the memory of the mycelium'],
+    symbols: [['a mushroom', 'tree'], ['a ring of caps', 'roundel'], ['a drifting spore', 'mullet'], ['a web of roots', 'estoile'], ['a sleeping eye', 'crescent']],
+    domains: ['the Great Mycelium, in which all dreams are one', 'the Rot, which returns all things', 'the Spore, which carries the dream on', 'the Deep Root'],
+    gods: [1, 2],
+    age: [5000, 12000],
+    beliefs: [
+      'All living things are threads of one dream',
+      'What dies is not lost, but eaten and remembered',
+      'Haste is a sickness of the surface',
+      'The eldest dream the longest, and so see the furthest',
+      'The dark is not empty; it is full of growing things',
+    ],
+    sect: ['the {N} Ring', 'the Slow Circle', 'the Dreamers of the Deep Root'],
+    doctrines: { head: { none: 3 }, clergy: { open: 2 }, conversion: { closed: 3 }, others: { pluralist: 3 }, death: { burial: 3 }, marriage: { monogamy: 1 } },
+    tenets: ['divination', 'pacifism', 'communion', 'rebirth', 'nature'],
+    places: ['fungalForest', 'sinkhole'],
+  },
 };
 export const ARCHETYPE_LABEL: Record<FaithFamily, string> = {
   church: 'a church', crescent: 'the faith of the prophets', pantheon: 'a pantheon', oldgods: 'the old gods', druid: 'a druid faith', stars: 'the stars', ancestors: 'the ancestors',
   sky: 'the eternal sky', heaven: 'the way of heaven', kami: 'the spirits of place', spirits: 'the great spirit', sun: 'the sun', serpent: 'the feathered serpent',
+  veiled: 'the Veiled Mother', mycelium: 'the great mycelium',
 };
 
 /** Each template's native faith, and the faith its people found when they found a missionary one. */
@@ -1726,9 +1779,12 @@ export function faithPlan(seed: string): FaithPlan {
     return faiths.length - 1;
   };
 
-  // Native faiths: one per language family (one per culture without a family).
+  // Native faiths: one per language family (one per culture without a family). The peoples of the
+  // Underworld come after the surface's (their faiths last), so the surface's faiths stay as they were.
   const nativeOfFamily = new Map<number, number>();
+  const natives = (deep: boolean) => {
   for (const ci of cultures) {
+    if (!!CULTURES[ci].deep !== deep) continue;
     const lf = famOf(ci);
     if (lf < 0) {
       ofCulture[ci] = make(NATIVE[CULTURES[ci].id] ?? 'spirits', ci, -1, false, `native#c${ci}`);
@@ -1740,8 +1796,10 @@ export function faithPlan(seed: string): FaithPlan {
     }
     ofCulture[ci] = nativeOfFamily.get(lf)!;
   }
+  };
+  natives(false);
   // Missionary faiths, born among Old World peoples well apart from each other.
-  const oldWorld = cultures.filter((ci) => !CULTURES[ci].nw);
+  const oldWorld = cultures.filter((ci) => !CULTURES[ci].nw && !CULTURES[ci].deep);
   const nMiss = oldWorld.length < 3 ? (oldWorld.length ? 1 : 0) : Math.max(1, Math.min(3, Math.round(oldWorld.length / 6)));
   const founders: number[] = [];
   for (let t = 0; t < 40 && founders.length < nMiss; t++) {
@@ -1772,6 +1830,7 @@ export function faithPlan(seed: string): FaithPlan {
       break;
     }
   }
+  natives(true);
   const plan = { year, faiths, ofCulture, converted, formerOf };
   planCache = { key: ckey, plan };
   return plan;
@@ -1893,6 +1952,11 @@ export function buildFaiths(seed: string, year: number, bank: NameBank, units: P
     else if (origin) f.head = { ...f.head, seatName: origin.originName, lon: origin.lon, lat: origin.lat };
     const r = mulberry32(hashString(`${seed}#holy#${f.id}`));
     const sites: HolySite[] = [];
+    // The faiths of the Underworld have their holy places below, not on the surface map.
+    if (holders.length && holders.every((c) => CULTURES[c]?.deep)) {
+      f.holySites = sites;
+      continue;
+    }
     const add = (s: HolySite) => {
       if (s.name && !sites.some((h) => h.name === s.name)) sites.push(s);
     };

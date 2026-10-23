@@ -81,6 +81,8 @@ export const openRealm = shallowRef<number | null>(null);
 export const openCulture = shallowRef<number | null>(null);
 /** The faith (id in the world lore's faiths) open in the faith window, if any. */
 export const openFaith = shallowRef<number | null>(null);
+/** The realm of the Underworld whose window is open (an index into `underworld.realms`). */
+export const openDeepRealm = shallowRef<number | null>(null);
 /** The faith map's key: each faith shown, with its colour. */
 export const faithLegend = shallowRef<{ id: number; name: string; rgb: [number, number, number] }[]>([]);
 /** The culture or race map's key: each people or race shown, with its colour (`culture`: the people a click opens). */

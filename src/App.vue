@@ -15,6 +15,7 @@ import GroupLegend from './components/GroupLegend.vue';
 import RelationsLegend from './components/RelationsLegend.vue';
 import OldWorldLegend from './components/OldWorldLegend.vue';
 import MapKey from './components/MapKey.vue';
+import DeepRealmView from './components/DeepRealmView.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -33,6 +34,7 @@ onMounted(regenerate);
   <RealmView />
   <CultureView />
   <FaithView />
+  <DeepRealmView />
   <DwellingView />
   <LairView />
   <DungeonView />

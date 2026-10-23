@@ -23,6 +23,10 @@ import { STEPPE } from './steppe';
 import { WOODLAND } from './woodland';
 import { ZANJI } from './zanji';
 import { GERMAN } from './germanic';
+import { SHADOWELF } from './shadowelf';
+import { DEEPGNOME } from './deepgnome';
+import { FUNGUSFOLK } from './fungusfolk';
+import { GREYDWARF } from './greydwarf';
 
 /**
  * Every culture template (see names/bundle.ts), in a fixed order: a world's cultures refer to
@@ -31,6 +35,8 @@ import { GERMAN } from './germanic';
 export const BUNDLES: TemplateBundle[] = [
   ANGLO, NORSE, LATIN, CELTIC, ELVISH, DESERT, SLAVIC, DWARVEN, SOUTHERN, STEPPE, JUNGLE, SINIC, JAPONIC, KOREANIC, WOODLAND, HIGHLAND,
   INDIC, SAHELIAN, ZANJI, ISLANDER, HALFLING, ORCISH, LIZARDFOLK, GERMAN,
+  // The peoples of the Underworld (never chosen for a hearth on the surface).
+  SHADOWELF, DEEPGNOME, FUNGUSFOLK, GREYDWARF,
 ];
 export const BUNDLE = new Map(BUNDLES.map((b) => [b.culture.id, b]));
 

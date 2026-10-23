@@ -33,7 +33,7 @@ export interface NumberSystem {
   noPlural: boolean;
 }
 
-const DEFAULT_KIND: Record<string, NumKind> = { celtic: 'vigesimal', jungle: 'vigesimal', highland: 'vigesimal', lizardfolk: 'sexagesimal', dwarven: 'duodecimal', orcish: 'quinary' };
+const DEFAULT_KIND: Record<string, NumKind> = { celtic: 'vigesimal', jungle: 'vigesimal', highland: 'vigesimal', lizardfolk: 'sexagesimal', dwarven: 'duodecimal', orcish: 'quinary', deepgnome: 'duodecimal', greydwarf: 'duodecimal', fungusfolk: 'vigesimal' };
 const BASES: Record<NumKind, [number, number, string]> = {
   decimal: [10, 0, 'counts in tens'],
   quinary: [10, 5, 'counts in tens, and in fives below ten: the five is a hand, and six is "hand and one"'],

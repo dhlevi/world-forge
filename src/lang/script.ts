@@ -63,6 +63,7 @@ export interface ScriptInfo {
 const STYLE_OF: Record<string, ScriptStyle> = {
   anglo: 'latin', german: 'latin', latin: 'latin', southern: 'latin', slavic: 'latin', halfling: 'latin', sahelian: 'abjad',
   norse: 'runes', dwarven: 'runes', orcish: 'runes', steppe: 'runes', celtic: 'ogham', elvish: 'elvish',
+  shadowelf: 'elvish', deepgnome: 'runes', fungusfolk: 'glyphs', greydwarf: 'cuneiform',
   desert: 'abjad', zanji: 'abjad', indic: 'devanagari', sinic: 'hanzi', japonic: 'kana', koreanic: 'hangul',
   jungle: 'glyphs', highland: 'glyphs', islander: 'kana', woodland: 'kana', lizardfolk: 'cuneiform',
 };

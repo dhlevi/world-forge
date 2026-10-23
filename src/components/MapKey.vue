@@ -7,7 +7,7 @@ import { SP } from '../gen/special';
 import { KIND_NAME, type DungeonKind } from '../dungeons/core';
 import { VILLAGE_ZOOM } from '../towns/manager';
 import { LAIR_ZOOM, lairIcons, specialIcons } from './map-style';
-import { DEEP_GLOW, DEEP_RGB, TUNNEL_STYLE } from './under-style';
+import { DEEP_GLOW, DEEP_RGB, REALM_RGB, TUNNEL_STYLE } from './under-style';
 import { DEEP_LABEL, type DeepKind } from '../gen/underworld';
 
 /**
@@ -111,6 +111,15 @@ const sections = computed<Section[]>(() => {
           { id: 'uw-tun1', label: TUNNEL_STYLE.lower.label, draw: { t: 'paint', f: line(TUNNEL_STYLE.lower.color, 2, [2, 1]) } },
           { id: 'uw-shaft', label: TUNNEL_STYLE.shaft.label, draw: { t: 'paint', f: (g) => { line(TUNNEL_STYLE.shaft.color, 1.2, [1, 1.6])(g); for (const x of [3, W - 3]) { g.beginPath(); g.arc(x, x < W / 2 ? H / 2 + 3 : H / 2 - 3, 3, 0, Math.PI * 2); g.fillStyle = '#15110e'; g.fill(); g.strokeStyle = TUNNEL_STYLE.shaft.color; g.lineWidth = 1.3; g.stroke(); } } } },
           { id: 'uw-in', label: 'Way in from the surface', draw: { t: 'paint', f: dot('#f4ecd8', 4, '#e0a040', 2) }, note: 'a delve, a lava tube or a sinkhole' },
+        ],
+      },
+      {
+        title: 'Peoples and realms of the deep',
+        items: [
+          { id: 'uw-cap', label: 'Capital of a realm', draw: { t: 'paint', f: dot('#f4ecd8', 5, REALM_RGB[1], 3) }, note: 'click a city for its map' },
+          { id: 'uw-city', label: 'City, warren, ring or hold', draw: { t: 'paint', f: dot('#f4ecd8', 3.6, REALM_RGB[2], 2) } },
+          { id: 'uw-realm', label: 'A realm\u2019s caverns and tunnels', draw: { t: 'paint', f: (g) => { line(REALM_RGB[3], 8, [], undefined, 2)(g); } }, note: 'each realm in its own colour; click its name' },
+          { id: 'uw-horror', label: 'Lair of a nameless horror', draw: { t: 'paint', f: dot('#1a0a0e', 4.5, '#c0304a', 2) }, note: 'in the lowest deep' },
         ],
       },
     );

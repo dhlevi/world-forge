@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { openLair } from '../store';
+import { flyTarget, openLair, store, world } from '../store';
+import { deepSite } from './under-style';
+import type { DeepWay } from '../lairs/lair';
 import { LAIR_CELL, lairMap } from '../lairs/lair';
 import { type Ctx2D, drawLair, lairPage } from '../lairs/render';
 import { KIND_LABEL, lairTags } from '../lairs/view';
@@ -23,6 +25,8 @@ const levelTabs = computed(() => (top.value?.levels.length ?? 1) > 1
 const keyed = computed(() => !!top.value?.levels.some((lv) => lv.rooms.length) || !!top.value?.rooms.length);
 /** Screen positions of the ways between levels, for clicking through. */
 let linkSpots: { x: number; y: number; to: number }[] = [];
+/** Places that lead elsewhere (a cavern's tunnels and shafts, a deep cave's way down), on screen. */
+let gotoSpots: { x: number; y: number; r: number; to: DeepWay }[] = [];
 const subtitle = computed(() => {
   const m = map.value;
   if (!m) return '';
@@ -55,7 +59,8 @@ function draw(): void {
   const scale = Math.min((W - 2 * margin) / m.W, (H - 2 * margin) / m.H);
   const ox = (W - m.W * scale) / 2, oy = (H - m.H * scale) / 2;
   drawLair(g, m, { scale, ox, oy, grid: grid.value, labels: marks.value });
-  linkSpots = m.links.map((l) => ({ x: ox + l.p[0] * scale, y: oy + l.p[1] * scale, to: l.to }));
+  linkSpots = m.site.kind === 'deep' ? [] : m.links.map((l) => ({ x: ox + l.p[0] * scale, y: oy + l.p[1] * scale, to: l.to }));
+  gotoSpots = (m.gotos ?? []).map((q) => ({ x: ox + q.p[0] * scale, y: oy + q.p[1] * scale, r: Math.max(18, q.r * scale), to: q.to }));
   // A thin frame, a north arrow (the map is north-up) and a scale bar.
   g.strokeStyle = '#2b2420';
   g.lineWidth = 1.5;
@@ -127,10 +132,35 @@ function onKey(e: KeyboardEvent): void {
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') level.value = Math.max(0, level.value - 1);
 }
 
-/** Clicking a way up or down goes to that level. */
+/**
+ * Goes where a way leads: another cavern of the Underworld (its map opens, on the Underworld
+ * layer), or up to the surface (the map flies there on the surface layer).
+ */
+function goWay(to: DeepWay): void {
+  const u = world.value?.raster.underworld;
+  if (to.node !== undefined && u) {
+    if (store.layer !== 'underworld') store.layer = 'underworld';
+    const n = u.nodes[to.node];
+    flyTarget.value = { lon: n.lon, lat: n.lat, zoom: 6.5, name: to.name, t: performance.now() };
+    openLair.value = deepSite(u, to.node);
+    return;
+  }
+  if (to.lon !== undefined && to.lat !== undefined) {
+    if (store.layer === 'underworld') store.layer = 'fantasy';
+    openLair.value = null;
+    flyTarget.value = { lon: to.lon, lat: to.lat, zoom: 12.5, name: to.name, t: performance.now() };
+  }
+}
+
+/** Clicking a way up or down goes to that level; clicking a way elsewhere goes there. */
 function onCanvasClick(e: MouseEvent): void {
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
+  const go = gotoSpots.find((s) => Math.hypot(s.x - x, s.y - y) < s.r);
+  if (go) {
+    goWay(go.to);
+    return;
+  }
   const hit = linkSpots.find((s) => Math.hypot(s.x - x, s.y - y) < 22);
   if (hit) level.value = hit.to;
 }
@@ -138,7 +168,10 @@ function onCanvasClick(e: MouseEvent): void {
 function onCanvasMove(e: MouseEvent): void {
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
-  (e.currentTarget as HTMLElement).style.cursor = linkSpots.some((s) => Math.hypot(s.x - x, s.y - y) < 22) ? 'pointer' : '';
+  const el = e.currentTarget as HTMLElement;
+  const go = gotoSpots.find((s) => Math.hypot(s.x - x, s.y - y) < s.r);
+  el.style.cursor = go || linkSpots.some((s) => Math.hypot(s.x - x, s.y - y) < 22) ? 'pointer' : '';
+  el.title = go ? (go.to.node !== undefined ? `Go to ${go.to.name}` : `Up to the surface at ${go.to.name}`) : '';
 }
 
 onMounted(() => {

@@ -17,10 +17,10 @@ export interface CultureFields {
 }
 
 /** Where a template's homelands may lie: the Old World, the New World or either (from its bundle). */
-export const worldOf = (id: string): 'old' | 'new' | 'both' => BUNDLE.get(id)?.world ?? 'old';
+export const worldOf = (id: string): 'old' | 'new' | 'both' | 'deep' => BUNDLE.get(id)?.world ?? 'old';
 const fits = (id: string, nw: boolean) => {
   const w = worldOf(id);
-  return w === 'both' || (w === 'new') === nw;
+  return w !== 'deep' && (w === 'both' || (w === 'new') === nw);
 };
 
 const FOREST = new Set<Biome>([
@@ -76,6 +76,8 @@ export function cultureMap(g: Grid, f: CultureFields, seed: string, races = true
     let best = 0, bestS = -Infinity;
     const nw = f.newWorld ? f.newWorld[c] === 1 : false;
     TEMPLATES.forEach((cu, k) => {
+      // The peoples of the Underworld have no hearths on the surface (and draw nothing here).
+      if (worldOf(cu.id) === 'deep') return;
       if (f.newWorld && !fits(cu.id, nw)) return;
       if (!races && templateFolk(cu.id) !== 'Humans') return;
       // Peoples of either world settle only where they truly belong (islanders on warm shores).

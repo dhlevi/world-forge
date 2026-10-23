@@ -1,7 +1,8 @@
 import type { ExpressionSpecification, FilterSpecification, LayerSpecification } from 'maplibre-gl';
 import { CAPS, ITALIC } from './label-style';
 import { DEEP_LABEL, type DeepKind, type Underworld } from '../gen/underworld';
-import type { LairSite } from '../lairs/lair';
+import type { DeepWay, LairSite } from '../lairs/lair';
+import { CULTURES } from '../names/cultures';
 
 /**
  * The Underworld map layer's vector lettering and drawing (gen/underworld.ts): caverns as glowing
@@ -28,9 +29,17 @@ export const TUNNEL_STYLE = {
 };
 
 const byKind = (table: Record<string, string>) => e(['match', ['get', 'kind'], ...Object.entries(table).flat(), '#888']);
+/** Realm colours of the deep (neighbours differ; index 0 unused). */
+export const REALM_RGB = ['#888888', '#d0605a', '#5a9ad0', '#d0b05a', '#7ac05a', '#b06ad0', '#5ac0b0', '#d0803a', '#9090d0', '#c0c070'];
+const byRealm = e(['match', ['get', 'rc'], ...REALM_RGB.flatMap((c, k) => [k, c]), '#888888']);
 const vis = { visibility: 'none' as const };
 
 export const UNDER_LAYERS: LayerSpecification[] = [
+  // The realms of the deep: a wash along the tunnels within each, and a ring round its caverns.
+  {
+    id: 'uw-realm-wash', type: 'line', source: 'uw-lines', filter: e(['has', 'rc']) as FilterSpecification, layout: { ...vis, 'line-join': 'round', 'line-cap': 'round' },
+    paint: { 'line-color': byRealm, 'line-width': e(['interpolate', ['linear'], ['zoom'], 1, 5, 7, 22]), 'line-blur': e(['interpolate', ['linear'], ['zoom'], 1, 2, 7, 8]), 'line-opacity': 0.35 },
+  },
   // Far out, where the caverns are too small to see, a glowing dot marks each.
   {
     id: 'uw-dot', type: 'circle', source: 'uw-points', maxzoom: 5, filter: e(['==', ['get', 'pt'], 'node']) as FilterSpecification, layout: vis,
@@ -51,6 +60,10 @@ export const UNDER_LAYERS: LayerSpecification[] = [
   {
     id: 'uw-edge', type: 'line', source: 'uw-areas', layout: vis,
     paint: { 'line-color': byKind(DEEP_GLOW), 'line-width': 1, 'line-opacity': 0.8 },
+  },
+  {
+    id: 'uw-realm-ring', type: 'line', source: 'uw-areas', filter: e(['has', 'rc']) as FilterSpecification, layout: vis,
+    paint: { 'line-color': byRealm, 'line-width': e(['interpolate', ['linear'], ['zoom'], 1, 1.5, 7, 4]), 'line-opacity': 0.9, 'line-offset': -1 },
   },
   {
     id: 'uw-shaft', type: 'line', source: 'uw-lines', filter: e(['==', ['get', 'tier'], 2]) as FilterSpecification, layout: { ...vis, 'line-cap': 'round' },
@@ -81,6 +94,32 @@ export const UNDER_LAYERS: LayerSpecification[] = [
     paint: { 'circle-radius': e(['interpolate', ['linear'], ['zoom'], 1, 2.2, 7, 4.5]), 'circle-color': '#f4ecd8', 'circle-stroke-color': '#e0a040', 'circle-stroke-width': 2 },
   },
   {
+    id: 'uw-city', type: 'circle', source: 'uw-points', filter: e(['==', ['get', 'pt'], 'city']) as FilterSpecification, layout: vis,
+    paint: {
+      'circle-radius': e(['interpolate', ['linear'], ['zoom'], 1, ['case', ['get', 'capital'], 3, 2], 7, ['case', ['get', 'capital'], 7, 5]]),
+      'circle-color': '#f4ecd8', 'circle-stroke-color': byRealm, 'circle-stroke-width': e(['case', ['get', 'capital'], 3, 2]),
+    },
+  },
+  {
+    id: 'uw-horror', type: 'circle', source: 'uw-points', filter: e(['==', ['get', 'pt'], 'horror']) as FilterSpecification, layout: vis,
+    paint: { 'circle-radius': e(['interpolate', ['linear'], ['zoom'], 1, 3, 7, 7]), 'circle-color': '#1a0a0e', 'circle-stroke-color': '#c0304a', 'circle-stroke-width': 2, 'circle-blur': 0.2 },
+  },
+  {
+    id: 'uw-label-horror', type: 'symbol', source: 'uw-points', minzoom: 3.6, filter: e(['==', ['get', 'pt'], 'horror']) as FilterSpecification,
+    layout: { ...vis, 'text-field': ['get', 'name'], 'text-font': [ITALIC], 'text-size': 11, 'text-offset': [0, 1.1], 'text-anchor': 'top', 'text-optional': true },
+    paint: { 'text-color': '#e07080', 'text-halo-color': '#15110e', 'text-halo-width': 1.4 },
+  },
+  {
+    id: 'uw-label-city', type: 'symbol', source: 'uw-points', minzoom: 3.2, filter: e(['==', ['get', 'pt'], 'city']) as FilterSpecification,
+    layout: { ...vis, 'text-field': ['get', 'name'], 'text-font': [CAPS], 'text-size': e(['case', ['get', 'capital'], 12.5, 11]), 'text-offset': [0, -1.2], 'text-anchor': 'bottom', 'text-optional': true },
+    paint: { 'text-color': '#f8eed8', 'text-halo-color': '#15110e', 'text-halo-width': 1.5 },
+  },
+  {
+    id: 'uw-label-realm', type: 'symbol', source: 'uw-points', minzoom: 1.8, maxzoom: 7.5, filter: e(['==', ['get', 'pt'], 'realm']) as FilterSpecification,
+    layout: { ...vis, 'text-field': ['upcase', ['get', 'name']], 'text-font': [CAPS], 'text-size': e(['interpolate', ['linear'], ['zoom'], 2, 10, 6, 16]), 'text-letter-spacing': 0.15, 'text-max-width': 9, 'text-offset': [0, 2.2], 'text-anchor': 'top' },
+    paint: { 'text-color': byRealm, 'text-halo-color': '#15110e', 'text-halo-width': 1.6 },
+  },
+  {
     id: 'uw-label-road', type: 'symbol', source: 'uw-lines', minzoom: 4.5, filter: e(['has', 'name']) as FilterSpecification,
     layout: { ...vis, 'symbol-placement': 'line', 'text-field': ['get', 'name'], 'text-font': [ITALIC], 'text-size': 11, 'symbol-spacing': 400 },
     paint: { 'text-color': '#e8cc90', 'text-halo-color': '#15110e', 'text-halo-width': 1.4 },
@@ -106,43 +145,59 @@ const fc = (features: Feat[]) => ({ type: 'FeatureCollection' as const, features
 
 /** The GeoJSON for the layer's three sources. */
 export function underFeatures(u: Underworld) {
-  const areas: Feat[] = u.nodes.map((n) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [n.ring] }, properties: { id: n.id, kind: n.kind, tier: n.tier } }));
+  const rc = (n: { realm?: number }) => (n.realm !== undefined && u.realms?.[n.realm] ? { rc: u.realms[n.realm].colour } : {});
+  const areas: Feat[] = u.nodes.map((n) => ({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [n.ring] }, properties: { id: n.id, kind: n.kind, tier: n.tier, ...rc(n) } }));
   // Lower tier first, so the upper deep lies over it.
   areas.sort((a, b) => Number(b.properties.tier) - Number(a.properties.tier));
   const lines: Feat[] = u.tunnels.map((t) => ({
     type: 'Feature', geometry: { type: 'LineString', coordinates: t.pts },
-    properties: { tier: t.tier, road: t.road, ...(t.name ? { name: t.name, ...(t.en ? { en: t.en } : {}) } : {}) },
+    properties: {
+      tier: t.tier, road: t.road, ...(t.name ? { name: t.name, ...(t.en ? { en: t.en } : {}) } : {}),
+      // A tunnel between two caverns of one realm is part of it.
+      ...(t.b >= 0 && u.nodes[t.a].realm !== undefined && u.nodes[t.a].realm === u.nodes[t.b].realm ? rc(u.nodes[t.a]) : {}),
+    },
   }));
   const points: Feat[] = [
     ...u.nodes.map((n) => ({ type: 'Feature' as const, geometry: { type: 'Point', coordinates: [n.lon, n.lat] }, properties: { pt: 'node', id: n.id, kind: n.kind, tier: n.tier, name: n.name, ...(n.en !== n.name ? { en: n.en } : {}) } })),
     ...u.entrances.map((x) => ({ type: 'Feature' as const, geometry: { type: 'Point', coordinates: [x.lon, x.lat] }, properties: { pt: 'entrance', kind: x.kind, name: x.name, ...(x.en !== x.name ? { en: x.en } : {}) } })),
+    ...u.nodes.filter((n) => n.city).map((n) => ({ type: 'Feature' as const, geometry: { type: 'Point', coordinates: [n.lon, n.lat] }, properties: { pt: 'city', id: n.id, name: n.city!.name, ...(n.city!.en !== n.city!.name ? { en: n.city!.en } : {}), capital: n.city!.capital, ...rc(n) } })),
+    ...(u.realms ?? []).map((rm) => ({ type: 'Feature' as const, geometry: { type: 'Point', coordinates: [u.nodes[rm.capital].lon, u.nodes[rm.capital].lat] }, properties: { pt: 'realm', realm: rm.id, name: rm.name, ...(rm.en !== rm.name ? { en: rm.en } : {}), rc: rm.colour } })),
+    ...u.nodes.filter((n) => n.horror).map((n) => ({ type: 'Feature' as const, geometry: { type: 'Point', coordinates: [n.lon, n.lat] }, properties: { pt: 'horror', id: n.id, name: n.horror! } })),
     ...u.tunnels.filter((t) => t.tier === 2).flatMap((t) => [t.pts[0], t.pts[t.pts.length - 1]].map((p) => ({ type: 'Feature' as const, geometry: { type: 'Point', coordinates: p }, properties: { pt: 'shaft' } }))),
   ];
   return { areas: fc(areas), lines: fc(lines), points: fc(points) };
 }
 
-/** A cavern as a map site: where its tunnels lead, and its shafts up and down. */
+/** A cavern as a map site: where its tunnels lead, its shafts up and down, and its city or horror. */
 export function deepSite(u: Underworld, id: number): LairSite {
   const n = u.nodes[id];
-  const exits: string[] = [];
-  let up: string | undefined, down: string | undefined;
+  const exits: DeepWay[] = [];
+  let up: DeepWay | undefined, down: DeepWay | undefined;
   for (const t of u.tunnels) {
     if (t.a !== id && t.b !== id) continue;
     if (t.b < 0) {
       const x = u.entrances[t.entrance ?? -1];
-      if (x && !up) up = x.name;
+      if (x && !up) up = { name: x.name, lon: x.lon, lat: x.lat };
       continue;
     }
-    const other = u.nodes[t.a === id ? t.b : t.a];
+    const o = t.a === id ? t.b : t.a, other = u.nodes[o];
+    const way: DeepWay = { name: other.city ? other.city.name : other.name, node: o };
     if (t.tier === 2) {
-      if (n.tier === 0) down ??= other.name;
-      else up ??= other.name;
-    } else exits.push(other.name);
+      if (n.tier === 0) down ??= way;
+      else up ??= way;
+    } else exits.push(way);
   }
   const size = n.r > 70 ? 'large' : n.r > 35 ? 'medium' : 'small';
+  const realm = n.realm !== undefined ? u.realms?.[n.realm] : undefined;
+  const people = n.people !== undefined ? CULTURES[n.people] : undefined;
+  const city = n.city && people ? {
+    name: n.city.name, en: n.city.en, kind: n.city.kind, pop: n.city.pop, capital: n.city.capital, template: people.id, people: people.people,
+    ...(realm ? { realm: realm.name, realmId: realm.id, ruler: realm.ruler, title: realm.title } : {}),
+  } : undefined;
   return {
-    id: `deep${id}`, kind: 'deep', name: n.name, ...(n.en !== n.name ? { en: n.en } : {}), seed: n.seed, lon: n.lon, lat: n.lat,
-    tags: [DEEP_LABEL[n.kind].toLowerCase(), n.tier === 0 ? 'upper deep' : 'lower deep', size],
-    deep: { kind: n.kind, tier: n.tier, exits, ...(up ? { up } : {}), ...(down ? { down } : {}) },
+    id: `deep${id}`, kind: 'deep', name: city ? city.name : n.name, ...(city ? (city.en !== city.name ? { en: city.en } : {}) : n.en !== n.name ? { en: n.en } : {}),
+    seed: n.seed, lon: n.lon, lat: n.lat,
+    tags: [...(city ? [`${city.kind} of the ${people!.name}`] : []), DEEP_LABEL[n.kind].toLowerCase(), n.tier === 0 ? 'upper deep' : 'lower deep', size],
+    deep: { kind: n.kind, tier: n.tier, exits, ...(up ? { up } : {}), ...(down ? { down } : {}), ...(city ? { city } : {}), ...(n.horror ? { horror: n.horror } : {}) },
   };
 }

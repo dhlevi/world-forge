@@ -891,6 +891,30 @@ export const GENERAL: Record<FaithFamily, string[]> = {
     'The high priest speaks with the voice of the morning ray.',
     'Walk the stone road with pride, for it was built by order of Heaven.'
   ],
+  veiled: [
+    'The Mother sees every thread; none is cut without her knowing.',
+    'Trust the blade in your hand, not the hand that offers friendship.',
+    'The weak exist to serve the strong; so the Mother wove the web.',
+    'Speak softly in the dark, for the dark is listening.',
+    'A daughter who rises over her mother\u2019s body has learned the first lesson.',
+    'Light blinds; only in shadow is the truth seen.',
+    'The web holds those who struggle tightest.',
+    'Give the Mother blood, and she will give you power.',
+    'No oath binds where the Mother wills otherwise.',
+    'Patience is the spider\u2019s virtue; strike only when the thread trembles.',
+  ],
+  mycelium: [
+    'All are one in the threads below.',
+    'Grow slowly, and you will outlast the stone.',
+    'What falls feeds what rises.',
+    'Dream, and share the dream.',
+    'There is no hurry in the dark.',
+    'The eldest cap remembers the first spore.',
+    'Do not fear the rot; it is only the return.',
+    'Many caps, one root.',
+    'The quiet hear the threads speak.',
+    'What harms the forest is remembered by every spore.',
+  ],
   serpent: [
     'The sun must be fed, or it will die.',
     'All flowers fade. All songs end.',
@@ -1106,6 +1130,13 @@ export const BOOKS: Record<FaithFamily, { oral?: boolean; books: string[] }> = {
       'the High Peak Rituals of {G}',
       'the Tablets of the Sun-Maidens'
     ]
+  },
+  veiled: {
+    books: ['the Threads of the Mother', 'the Silk Scrolls', 'the Litany of {G}', 'the Book of Venoms', 'the Sayings of the First Daughter', 'the Web of Fates'],
+  },
+  mycelium: {
+    oral: true,
+    books: ['the Dream of {G}', 'the Spore-Songs', 'the Memory of the Threads', 'the Slow Song'],
   },
   serpent: {
     books: [

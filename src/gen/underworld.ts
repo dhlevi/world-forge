@@ -48,6 +48,13 @@ export interface DeepNode {
   culture: number;
   /** Its outline: a ring of lon/lat points. */
   ring: number[][];
+  /** Who lives here (gen/deep-peoples.ts): their culture, city and realm; or the horror that lurks here. */
+  people?: number;
+  city?: import('./deep-peoples').DeepCity;
+  realm?: number;
+  horror?: string;
+  /** A hall under a living delve: the delve's settlement and name. */
+  delve?: { sid: string; name: string };
 }
 
 export interface DeepTunnel {
@@ -80,6 +87,9 @@ export interface Underworld {
   nodes: DeepNode[];
   tunnels: DeepTunnel[];
   entrances: DeepEntrance[];
+  /** The peoples of the deep (culture indices) and their realms (gen/deep-peoples.ts). */
+  peoples?: number[];
+  realms?: import('./deep-peoples').DeepRealm[];
 }
 
 export interface UnderInputs {

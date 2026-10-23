@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { openDungeon } from '../store';
+import { flyTarget, openDungeon, openLair, store, world } from '../store';
+import { deepSite } from './under-style';
 import { CELL_M, KIND_NAME } from '../dungeons/core';
 import { dungeon, dungeonTags } from '../dungeons/view';
 import { drawLevel, dungeonPage } from '../dungeons/render';
@@ -208,6 +209,25 @@ watch(stage, (el, old) => {
   if (old) observer?.unobserve(old);
   if (el) observer?.observe(el);
 });
+
+/** A delve's deep gate: its deep road down to a hall of the Underworld (opened on that layer). */
+const deepGate = computed(() => {
+  const s = site.value;
+  const u = world.value?.raster.underworld;
+  if (!s || s.kind !== 'delve' || !s.town || !u) return null;
+  const e = u.entrances.find((x) => x.kind === 'delve' && x.sid === s.town);
+  return e ? { node: e.node, name: u.nodes[e.node].name } : null;
+});
+function goDeepGate(): void {
+  const u = world.value?.raster.underworld;
+  const g = deepGate.value;
+  if (!u || !g) return;
+  openDungeon.value = null;
+  store.layer = 'underworld';
+  const n = u.nodes[g.node];
+  flyTarget.value = { lon: n.lon, lat: n.lat, zoom: 6.5, name: n.name, t: performance.now() };
+  openLair.value = deepSite(u, g.node);
+}
 </script>
 
 <template>
@@ -225,6 +245,7 @@ watch(stage, (el, old) => {
           <button title="Fit the whole level" @click="resetView">Fit</button>
           <button title="Zoom in" aria-label="Zoom in" :disabled="zoom >= MAX_ZOOM" @click="zoomAt(1.5)">+</button>
         </span>
+        <button v-if="deepGate" :title="`The deep gate: down the deep road to ${deepGate.name}`" @click="goDeepGate">Deep gate ▸</button>
         <button @click="download">Download PNG</button>
         <button class="leave" @click="leave">Leave</button>
       </div>

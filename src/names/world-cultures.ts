@@ -22,6 +22,8 @@ export interface CultureSpec {
   lat: number;
   nw: boolean;
   env: CultureEnv;
+  /** A people of the Underworld (gen/deep-peoples.ts), added after the surface's. */
+  deep?: boolean;
 }
 export interface CultureSet {
   seed: string;
@@ -87,7 +89,7 @@ export function setWorldCultures(set: CultureSet): void {
     out.push({
       ...plainCulture(tpl, k, spec.template), name, people: `the ${name}`, endonym: root, endonymIpa: language.toIpa(root),
       language, ethos: traits.ethos, traditions: traits.traditions, customs: { ...traits.customs, festivals }, mods: traits.mods, nw: spec.nw, hearth: [spec.lon, spec.lat], env: spec.env,
-      family: f, substrate: -1,
+      family: f, substrate: -1, ...(spec.deep ? { deep: true } : {}),
     });
   });
 
@@ -101,9 +103,10 @@ export function setWorldCultures(set: CultureSet): void {
   });
   // An older people's names linger in the lands of their nearest neighbour of another family.
   for (const c of out) {
+    if (c.deep) continue;
     let best = -1, bestD = 2600;
     for (const o of out) {
-      if (o.family === c.family || o.nw !== c.nw) continue;
+      if (o.deep || o.family === c.family || o.nw !== c.nw) continue;
       const d = km(c.hearth[0], c.hearth[1], o.hearth[0], o.hearth[1]);
       if (d < bestD) {
         bestD = d;

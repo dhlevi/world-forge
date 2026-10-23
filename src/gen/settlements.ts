@@ -54,6 +54,8 @@ export interface Settlement {
   delve?: boolean;
   /** A delve's deep road: the cavern of the Underworld it leads down to (gen/underworld.ts). */
   deepTo?: { name: string; en: string };
+  /** A delve's dealings with the realm of the deep beside its hall (gen/deep-peoples.ts). */
+  deepTies?: { realm: string; en: string; stance: string };
   /** Town plan layout (cities and towns), chosen once cultures are known. */
   layout?: CityLayout;
   /**

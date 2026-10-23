@@ -31,10 +31,31 @@ export interface LairSite {
   lat: number;
   /** Passes: the way the road runs over the saddle (radians, map x east and y south). */
   dir?: number;
-  /** Deep caves: the cavern of the Underworld their deepest passage leads down to. */
+  /** Deep caves: the cavern of the Underworld their deepest passage leads down to (and its node). */
   deepTo?: string;
-  /** Caverns of the Underworld: what kind, which tier, where its tunnels lead, and its shafts. */
-  deep?: { kind: string; tier: 0 | 1; exits: string[]; up?: string; down?: string };
+  deepNode?: number;
+  /** Caverns of the Underworld: what kind, which tier, where its tunnels lead, its shafts, its city or its horror. */
+  deep?: DeepInfo;
+}
+
+/** A way out of a cavern: to another cavern (node) or up to the surface (lon, lat). */
+export interface DeepWay {
+  name: string;
+  node?: number;
+  lon?: number;
+  lat?: number;
+}
+
+export interface DeepInfo {
+  kind: string;
+  tier: 0 | 1;
+  exits: DeepWay[];
+  up?: DeepWay;
+  down?: DeepWay;
+  /** A city of the deep in the cavern (gen/deep-peoples.ts). */
+  city?: { name: string; en: string; kind: string; pop: number; capital: boolean; template: string; people: string; realm?: string; realmId?: number; ruler?: string; title?: string };
+  /** What lurks here, in the lowest deep. */
+  horror?: string;
 }
 
 export interface LairMap {
@@ -89,6 +110,10 @@ export interface LairMap {
   chasms?: Pt[][];
   crystals?: Pt[][];
   lava?: boolean;
+  /** Caverns: the buildings of a city of the deep (by kind: spire, compound, temple, burrow, workshop, hall, forge, pen, gate, tower, ring). */
+  blds?: { kind: string; p: Pt; w: number; h: number; a: number }[];
+  /** Places on the map that lead elsewhere when clicked: a tunnel's mouth, a shaft, a deep cave's way down. */
+  gotos?: { p: Pt; r: number; to: DeepWay }[];
 }
 
 export interface LairRoom {
@@ -377,6 +402,8 @@ function buildCave(site: LairSite): LairMap {
     const last = levels[levels.length - 1].rooms;
     const r = last[last.length - 1];
     if (r) {
+      const last0 = levels[levels.length - 1];
+      last0.gotos = [{ p: r.p, r: 4, to: { name: site.deepTo, ...(site.deepNode !== undefined ? { node: site.deepNode } : {}) } }];
       r.name = 'The way into the deep';
       r.text += ` In the floor a crack opens on a stair of natural rock that goes down and down, beyond any light: the way to ${site.deepTo}. Cold air rises from it, smelling of fungus.`;
     }

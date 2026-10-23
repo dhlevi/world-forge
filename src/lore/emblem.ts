@@ -23,14 +23,17 @@ const COLOURS: Record<FaithFamily, [Tinct[], Metal[]]> = {
   oldgods: [['sable', 'gules', 'azure'], ['argent', 'or']], druid: [['vert', 'sable'], ['or', 'argent']], stars: [['azure', 'sable', 'purpure'], ['argent']],
   ancestors: [['sable', 'gules'], ['or']], sky: [['azure', 'teal'], ['argent', 'or']], heaven: [['gules', 'sable'], ['or']], kami: [['argent'], ['gules']],
   spirits: [['tenne', 'vert', 'teal'], ['argent', 'or']], sun: [['gules', 'sable', 'tenne'], ['or']], serpent: [['teal', 'vert', 'tenne'], ['or']],
+  veiled: [['sable', 'purpure'], ['argent']], mycelium: [['purpure', 'teal', 'tenne'], ['argent', 'or']],
 };
 const SHAPE: Record<FaithFamily, string[]> = {
   church: ['circle', 'circle', 'vesica'], crescent: ['octagon', 'circle'], pantheon: ['circle'], oldgods: ['circle', 'hexagon'], druid: ['circle'], stars: ['circle', 'lozenge'],
   ancestors: ['hexagon', 'octagon'], sky: ['circle'], heaven: ['circle', 'octagon'], kami: ['circle'], spirits: ['circle'], sun: ['step', 'circle'], serpent: ['step', 'square'],
+  veiled: ['octagon', 'lozenge'], mycelium: ['circle'],
 };
 const FRAME: Record<FaithFamily, string[]> = {
   church: ['double', 'rays', 'dots'], crescent: ['star8', 'double'], pantheon: ['laurel', 'dots'], oldgods: ['runes', 'knot'], druid: ['knot', 'dots'], stars: ['dots', 'double'],
   ancestors: ['runes', 'double'], sky: ['dots', 'rays'], heaven: ['double', 'dots'], kami: ['double'], spirits: ['feathers', 'dots'], sun: ['rays', 'step'], serpent: ['step', 'dots'],
+  veiled: ['double', 'dots'], mycelium: ['dots'],
 };
 
 // ---- Shapes ----------------------------------------------------------------------------------------
@@ -81,6 +84,13 @@ const M: Record<string, Draw> = {
   crescent: (m, bg) => `<circle cx="50" cy="50" r="22" ${F(m)}/><circle cx="58" cy="45" r="18" ${F(bg)}/>`,
   crescentStar: (m, bg) => `<circle cx="46" cy="50" r="22" ${F(m)}/><circle cx="54" cy="47" r="18" ${F(bg)}/><polygon points="${star(5, 8, 3.4, 63, 46)}" ${F(m)}/>`,
   star: (m) => `<polygon points="${star(5, 24, 10)}" ${F(m)}/>`,
+  // A spider's web: spokes and three rings of threads.
+  web: (m) => Array.from({ length: 8 }, (_, k) => {
+    const a = (k / 8) * Math.PI * 2;
+    return `<path d="M50,50L${f1(50 + Math.cos(a) * 26)},${f1(50 + Math.sin(a) * 26)}" ${S(m, 1.6)}/>`;
+  }).join('') + [9, 17, 25].map((r) => `<polygon points="${Array.from({ length: 8 }, (_, k) => `${f1(50 + Math.cos((k / 8) * Math.PI * 2) * r)},${f1(50 + Math.sin((k / 8) * Math.PI * 2) * r)}`).join(' ')}" fill="none" ${S(m, 1.3)}/>`).join('') + `<circle cx="50" cy="50" r="4" ${F(m)}/>`,
+  // A mushroom: a domed cap on a stalk, with spots.
+  mushroom: (m) => `<path d="M26,52Q26,26 50,26Q74,26 74,52Z" ${F(m)}/><path d="M44,52L42,76L58,76L56,52Z" ${F(m)}/>`,
   star8: (m, bg) => `<polygon points="${star(8, 25, 14)}" ${F(m)}/><circle cx="50" cy="50" r="6" ${F(bg)}/>`,
   cross: (m) => `<path d="M45,24H55V38H68V48H55V76H45V48H32V38H45Z" ${F(m)}/>`,
   stepCross: (m) => `<path d="M44,26H56V32H62V44H74V56H62V68H56V74H44V68H38V56H26V44H38V32H44Z" ${F(m)}/>`,
@@ -200,7 +210,7 @@ const MOTIF_OF: [RegExp, string][] = [
 ];
 const FAMILY_MOTIF: Record<FaithFamily, string> = {
   church: 'cross', crescent: 'crescentStar', pantheon: 'leaf', oldgods: 'valknut', druid: 'triskele', stars: 'star', ancestors: 'hammer', sky: 'sun', heaven: 'clouds', kami: 'tomoe',
-  spirits: 'feather', sun: 'sun', serpent: 'featherSerpent',
+  spirits: 'feather', sun: 'sun', serpent: 'featherSerpent', veiled: 'web', mycelium: 'mushroom',
 };
 export function motifOf(f: Faith): string {
   for (const [re, k] of MOTIF_OF) if (re.test(f.symbol)) return k;

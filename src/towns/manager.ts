@@ -228,7 +228,7 @@ export class TownManager {
           geometry: { type: 'Point', coordinates: [l.lon, l.lat] },
           properties: {
             id: l.id, tier: 'lair', kind: l.kind, name: l.name, ...(l.en && l.en !== l.name ? { en: l.en } : {}), seed: l.seed, tags: l.tags.join(','),
-            ...(l.dir !== undefined ? { dir: l.dir } : {}), ...(l.deepTo ? { deepTo: l.deepTo } : {}),
+            ...(l.dir !== undefined ? { dir: l.dir } : {}), ...(l.deepTo ? { deepTo: l.deepTo, ...(l.deepNode !== undefined ? { deepNode: l.deepNode } : {}) } : {}),
             // Groves in a mushroom forest or a cursed wood have icons of their own.
             ...(l.kind === 'glade' && l.tags.includes('mushrooms') ? { icon: 'lair-glade-fungal' } : l.kind === 'glade' && l.tags.includes('cursed') ? { icon: 'lair-glade-cursed' } : {}),
           },
@@ -783,7 +783,7 @@ export class TownManager {
         if (this.sampler.isWater(lon, lat)) continue;
         const size = rr(6) < 0.42 ? 'small' : rr(6) < 0.86 ? 'medium' : 'large';
         const tags = [size];
-        let deepTo: string | undefined;
+        let deepTo: string | undefined, deepNode: number | undefined;
         const dry = precip < (kind === 'cave' ? 350 : 450) || tWarm > 30;
         if (spv === 9) tags.push('cursed');
         if (kind === 'cave') {
@@ -803,6 +803,7 @@ export class TownManager {
             if (near) {
               tags.push('deep way');
               deepTo = near.name;
+              deepNode = near.id;
             }
           }
         } else {
@@ -825,7 +826,7 @@ export class TownManager {
         let nm: Named = { name: '', en: '' };
         for (let t = 0; t < 6 && (!nm.name || used.has(nm.name)); t++) nm = lairName(this.names, kind, raster.culture[c] ?? 0, t ? `${id}#${t}` : id, tags);
         used.add(nm.name);
-        out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0x1a17), tags, lon, lat, ...(deepTo ? { deepTo } : {}) });
+        out.push({ id, kind, name: nm.name, en: nm.en, seed: hash32(h0 ^ 0x1a17), tags, lon, lat, ...(deepTo ? { deepTo, deepNode } : {}) });
       }
     }
     return out;

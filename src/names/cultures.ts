@@ -66,6 +66,8 @@ export interface WorldCulture extends Culture {
   family: number;
   /** A neighbouring family whose older tongue left names in this people's lands (-1 if none). */
   substrate: number;
+  /** A people of the Underworld. */
+  deep?: boolean;
 }
 
 /**

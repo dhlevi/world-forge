@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { openRealm, store, world } from '../store';
+import { flyTarget, openLair, openRealm, store, world } from '../store';
+import { deepSite } from './under-style';
 import { LEVEL_NAME, type PolUnit, chainOf } from '../gen/politics';
 import { type Arms, blazon, vassalArms } from '../heraldry/arms';
 import { armsImage } from '../heraldry/draw';
@@ -32,6 +33,8 @@ interface Line {
   alt?: string;
   /** For an old name: where it came from. */
   old?: string;
+  /** A delve's deep road: the hall below (clicking opens it on the Underworld layer), and its dealings with the realm beside it. */
+  deep?: { label: string; node: number };
 }
 
 /** A name and its other form, by the chosen lettering (local names, English, or both). */
@@ -116,8 +119,9 @@ const info = computed<Line | null>(() => {
       const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
         ...pair(s.name ?? '', s.nameEn), old: s.nameOld,
-        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' && !s.delve ? LAYOUT_LABEL[s.layout] : '', s.delve ? `a delve: its halls lie under the mountain${s.deepTo ? `, and its deep road leads down to ${s.deepTo.name}` : ''}` : '', s.special === 'spa' ? `a spa town by ${s.specialNear ?? 'its hot springs'}` : s.special === 'mining' ? `a mining town by ${s.specialNear ?? 'the fire mountain'}` : s.special === 'ashen' ? `under the ash of ${s.specialNear ?? 'a volcano'}` : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', s.tower ? (s.tower.college ? `its college of magic, ${s.tower.en}` : `home of ${s.tower.en}`) : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
+        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' && !s.delve ? LAYOUT_LABEL[s.layout] : '', s.delve ? 'a delve: its halls lie under the mountain' : '', s.special === 'spa' ? `a spa town by ${s.specialNear ?? 'its hot springs'}` : s.special === 'mining' ? `a mining town by ${s.specialNear ?? 'the fire mountain'}` : s.special === 'ashen' ? `under the ash of ${s.specialNear ?? 'a volcano'}` : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', s.tower ? (s.tower.college ? `its college of magic, ${s.tower.en}` : `home of ${s.tower.en}`) : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
+        ...(s.delve && s.deepTo ? { deep: deepLine(s.id, s.deepTo.name, s.deepTies) } : {}),
       };
     }
     if (store.here) {
@@ -200,6 +204,23 @@ function onMain(): void {
   if (id !== undefined) openRealm.value = id;
   else open.value = !open.value;
 }
+
+const STANCE_TEXT: Record<string, string> = { war: 'at war with', feud: 'in a feud with', truce: 'under a truce with', trade: 'trading with', alliance: 'allied with', raids: 'raided by', peace: 'at peace with' };
+/** A delve's deep road line: where it leads, and the realm of the deep it deals with. */
+function deepLine(sid: string, hall: string, ties?: { realm: string; stance: string }): { label: string; node: number } | undefined {
+  const u = world.value?.raster.underworld;
+  const e = u?.entrances.find((x) => x.sid === sid);
+  if (!u || !e) return undefined;
+  return { label: `Deep road down to ${hall}${ties ? `, ${STANCE_TEXT[ties.stance] ?? 'dealing with'} ${ties.realm}` : ''} ▸`, node: e.node };
+}
+function goDeep(node: number): void {
+  const u = world.value?.raster.underworld;
+  if (!u) return;
+  store.layer = 'underworld';
+  const n = u.nodes[node];
+  flyTarget.value = { lon: n.lon, lat: n.lat, zoom: 6.5, name: n.name, t: performance.now() };
+  openLair.value = deepSite(u, node);
+}
 </script>
 
 <template>
@@ -215,6 +236,7 @@ function onMain(): void {
         <div class="name">{{ info.name }}<span v-if="info.alt" class="alt">{{ info.alt }}</span></div>
         <div v-if="info.sub" class="sub">{{ info.sub }}</div>
         <div v-if="info.old" class="sub old">{{ info.old }}</div>
+        <div v-if="info.deep" class="sub deep"><a href="#" title="Open the hall below on the Underworld layer" @click.stop.prevent="goDeep(info.deep.node)">{{ info.deep.label }}</a></div>
       </div>
       <button v-if="detail.length" class="more" :title="open ? 'Hide the hierarchy' : 'Show the hierarchy'" @click.stop="open = !open">{{ open ? '▴' : '▾' }}</button>
     </div>
@@ -316,6 +338,9 @@ function onMain(): void {
 .sub {
   font-size: 12.5px;
   opacity: 0.8;
+}
+.deep a {
+  color: #6e2a1e;
 }
 .old {
   font-style: italic;

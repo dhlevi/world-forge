@@ -1246,6 +1246,7 @@ type Ctx = { r: Rng; f: Faith; chief: Deity; others: Deity[]; folk: string; plac
 const BEGIN: Record<FaithFamily, string[]> = {
   church: ['word'], crescent: ['word'], pantheon: ['chaos', 'egg', 'titans'], oldgods: ['giant', 'void'], druid: ['sea', 'tree'], stars: ['song'], ancestors: ['stone'],
   sky: ['diver', 'sky'], heaven: ['split', 'egg'], kami: ['spear'], spirits: ['diver', 'emerge'], sun: ['lake', 'emerge'], serpent: ['suns', 'emerge'],
+  veiled: ['void'], mycelium: ['emerge', 'void'],
 };
 
 function creation(c: Ctx): Myth {

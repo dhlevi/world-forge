@@ -71,7 +71,10 @@ function underAt(w: RasterWorld, lon: number, lat: number): string {
     for (let a = 0, b = ring.length - 1; a < ring.length; b = a++) {
       if (ring[a][1] > lat !== ring[b][1] > lat && lon < ((ring[b][0] - ring[a][0]) * (lat - ring[a][1])) / (ring[b][1] - ring[a][1]) + ring[a][0]) inside = !inside;
     }
-    if (inside) out.push(`${n.name} (${DEEP_LABEL[n.kind].toLowerCase()}, ${n.tier ? 'lower' : 'upper'} deep)`);
+    if (inside) {
+      const realm = n.realm !== undefined ? w.underworld?.realms?.[n.realm] : undefined;
+      out.push(`${n.name} (${DEEP_LABEL[n.kind].toLowerCase()}, ${n.tier ? 'lower' : 'upper'} deep)${n.city ? `, the ${n.city.kind} of ${n.city.name}${realm ? ` in ${realm.name}` : ''}` : ''}${n.horror ? `, where ${n.horror} lurks` : ''}`);
+    }
   }
   return out.join(' · ');
 }

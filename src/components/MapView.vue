@@ -5,7 +5,7 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { faithLegend, flyTarget, groupLegend, openCulture, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
+import { faithLegend, flyTarget, groupLegend, openCulture, openDeepRealm, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
 import { blockEntry, faithEntries, planEntries, themeEntries, worldEntries } from '../search/index';
 import { THEME_LABEL, worldThemes } from '../lore/themes';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
@@ -383,11 +383,25 @@ function updateUnderworld(): void {
 function deepAt(point: { x: number; y: number }): LairSite | null {
   const u = world.value?.raster.underworld;
   if (!map || !u || store.layer !== 'underworld' || !map.getLayer('uw-fill')) return null;
+  // A city's marker, or the cavern itself.
+  const city = map.queryRenderedFeatures([point.x, point.y], { layers: ['uw-city'] })[0];
+  if (city) return deepSite(u, Number(city.properties?.id));
   const hits = map.queryRenderedFeatures([point.x, point.y], { layers: ['uw-fill'] });
   // The upper deep before the lower, where both are under the point.
   hits.sort((a, b) => Number(a.properties?.tier) - Number(b.properties?.tier));
   const id = hits[0]?.properties?.id;
   return id === undefined ? null : deepSite(u, Number(id));
+}
+
+/** The cavern below a sinkhole under a screen point (its icon or name on the surface). */
+function sinkholeAt(point: { x: number; y: number }): LairSite | null {
+  const u = world.value?.raster.underworld;
+  if (!map || !u || store.layer === 'underworld' || !map.getLayer('lbl-sinkhole')) return null;
+  const f = map.queryRenderedFeatures([point.x, point.y], { layers: ['lbl-sinkhole'] })[0];
+  if (!f || f.geometry.type !== 'Point') return null;
+  const [lon, lat] = f.geometry.coordinates;
+  const e = u.entrances.filter((x) => x.kind === 'sinkhole').sort((a, b) => Math.hypot(a.lon - lon, a.lat - lat) - Math.hypot(b.lon - lon, b.lat - lat))[0];
+  return e ? deepSite(u, e.node) : null;
 }
 
 /** The realm whose label or arms is under a screen point. */
@@ -557,7 +571,7 @@ function onHover(e: MapMouseEvent): void {
     const f = buildingAt(e.point);
     const l = f ? null : lairAt(e.point, e.lngLat);
     const dn = f || l ? null : dungeonAt(e.point);
-    if (map) map.getCanvas().style.cursor = f || l || dn || realmLabelAt(e.point) !== null || deepAt(e.point) ? 'pointer' : '';
+    if (map) map.getCanvas().style.cursor = f || l || dn || realmLabelAt(e.point) !== null || deepAt(e.point) || sinkholeAt(e.point) ? 'pointer' : '';
     showPreview(f);
     showLair(l, e.point);
     if (!l) showDungeon(dn, e.point);
@@ -839,10 +853,23 @@ onMounted(() => {
   });
   map.on('click', (e) => {
     scheduleProbe(e.lngLat);
-    // In the Underworld, a click on a cavern opens its map.
+    // In the Underworld, a click on a realm's name opens it; on a cavern or city, its map.
+    if (store.layer === 'underworld' && map) {
+      const rl = map.queryRenderedFeatures([e.point.x, e.point.y], { layers: ['uw-label-realm'].filter((id) => map!.getLayer(id)) })[0];
+      if (rl) {
+        openDeepRealm.value = Number(rl.properties?.realm);
+        return;
+      }
+    }
     const deep = deepAt(e.point);
     if (deep) {
       openLair.value = deep;
+      return;
+    }
+    // A sinkhole on the surface opens the cavern it leads down to.
+    const sink = sinkholeAt(e.point);
+    if (sink) {
+      openLair.value = sink;
       return;
     }
     // Touch: the first tap on a building, cave or glade previews it, a second tap opens it.

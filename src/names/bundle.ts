@@ -17,7 +17,7 @@ import type { Culture } from './cultures';
  */
 
 /** The peoples of the world. Without fantasy races, every people is human. Folk may have multiple cultures */
-export type Folk = 'Humans' | 'Elves' | 'Dwarves' | 'Halflings' | 'Orcs' | 'Lizardfolk';
+export type Folk = 'Humans' | 'Elves' | 'Dwarves' | 'Halflings' | 'Orcs' | 'Lizardfolk' | 'Shadow elves' | 'Deep gnomes' | 'Fungus folk' | 'Grey dwarves';
 
 /** A house or lineage name made from a root (a proper name in the culture's tongue). */
 export type HouseNamer = (root: string, rnd: Rng, o: { seatName: string; family: () => string }) => { name: string; short: string };
@@ -29,8 +29,8 @@ export interface TemplateBundle {
   /** Shown as the template's name ("Nordic"). */
   label: string;
   folk: Folk;
-  /** Where its homelands may lie: the Old World, the New World or either. */
-  world: 'old' | 'new' | 'both';
+  /** Where its homelands may lie: the Old World, the New World or either, or the Underworld (gen/deep-peoples.ts). */
+  world: 'old' | 'new' | 'both' | 'deep';
   /** How readily it is chosen against other templates where both suit (default 1). */
   rarity?: number;
   /** A stock of related templates: their peoples' tongues are kin where their homelands lie near. */

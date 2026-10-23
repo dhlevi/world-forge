@@ -490,7 +490,7 @@ export function realmDetails(c: Ctx, id: number): RealmDetails {
   if (fantasyRaces() && div >= 0.5) {
     const own = cultureFolk(u.culture);
     const pool = [...(MINOR_FOLK[cul] ?? [])];
-    if (div > 1.5) for (const f of new Set(CULTURES.map((x) => cultureFolk(x.index)))) if (f !== own && !pool.includes(f)) pool.push(f);
+    if (div > 1.5) for (const f of new Set(CULTURES.filter((x) => !x.deep).map((x) => cultureFolk(x.index)))) if (f !== own && !pool.includes(f)) pool.push(f);
     const chance = div > 1.5 ? 0.7 : 0.55;
     for (const m of pool) {
       if (r() >= chance || folkMap.has(m)) continue;
