@@ -8,6 +8,7 @@ import type { LairSite } from './lairs/lair';
 import type { DungeonSite } from './dungeons/core';
 import { SearchIndex } from './search/index';
 import { setWorldCultures } from './names/world-cultures';
+import { readUrlParams, writeUrlParams } from './url-params';
 import { registerFaithProtocol, registerPoliticalProtocol, registerRelationsProtocol } from './world/political';
 
 const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
@@ -96,8 +97,18 @@ registerFaithProtocol();
 /** The world settings have changed since the current world was made (Generate applies them). */
 export const settingsChanged = (): boolean => !!store.madeWith && JSON.stringify(store.params) !== store.madeWith;
 
-export async function regenerate(): Promise<void> {
+// Settings given in the page address (a bookmarked or shared world) replace the defaults.
+readUrlParams(store.params);
+
+/**
+ * Makes the world anew from the settings, and puts them in the page address: a new step in the
+ * browser history, or (`replace`, for the first world and for Back / Forward) the current one.
+ */
+export async function regenerate(opts?: { replace?: boolean } | Event): Promise<void> {
+  const first = !store.madeWith;
+  const replace = first || (!!opts && 'replace' in opts && !!opts.replace);
   store.madeWith = JSON.stringify(store.params);
+  writeUrlParams(store.params, replace);
   store.generating = true;
   store.error = '';
   store.progress = 0;
@@ -118,4 +129,12 @@ export async function regenerate(): Promise<void> {
     store.error = err instanceof Error ? err.message : String(err);
     store.generating = false;
   }
+}
+
+// Back and Forward return to the worlds made before (their settings are in the address).
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    if (!readUrlParams(store.params)) return;
+    if (JSON.stringify(store.params) !== store.madeWith) void regenerate({ replace: true });
+  });
 }
