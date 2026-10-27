@@ -6,6 +6,7 @@ import type { DeepWay } from '../lairs/lair';
 import { LAIR_CELL, lairMap } from '../lairs/lair';
 import { type Ctx2D, drawLair, lairPage } from '../lairs/render';
 import { KIND_LABEL, lairTags } from '../lairs/view';
+import { usePanZoom } from './pan-zoom';
 
 const PAPER = '#f3ead3';
 const canvas = ref<HTMLCanvasElement>();
@@ -13,6 +14,9 @@ const stage = ref<HTMLDivElement>();
 const grid = ref(true);
 const marks = ref(true);
 let observer: ResizeObserver | null = null;
+/** Zoom (1 = the whole map) and pan: the wheel, a pinch, dragging, the buttons and keys. */
+const pz = usePanZoom(stage);
+const { zoom, pan, maxZoom: MAX_ZOOM, zoomAt, onWheel, onPointerDown, onPointerMove, onPointerUp } = pz;
 
 const site = computed(() => openLair.value);
 const top = computed(() => (site.value ? lairMap(site.value) : null));
@@ -37,12 +41,15 @@ const subtitle = computed(() => {
 
 watch(site, () => {
   level.value = 0;
-  nextTick(draw);
+  pz.reset();
+  nextTick(() => draw());
   document.fonts?.load("italic 14px 'IM Fell English'").then(() => draw()).catch(() => {});
 });
-watch([grid, marks, level], draw);
+watch(level, () => pz.reset());
+watch([grid, marks, level, zoom, pan], () => nextTick(() => draw()), { deep: true });
 
-function draw(): void {
+/** Draws the map at the zoom and pan (or, with `whole`, the whole map, for a download). */
+function draw(whole = false): void {
   const cv = canvas.value, st = stage.value, m = map.value;
   if (!cv || !st || !m) return;
   const dpr = window.devicePixelRatio || 1;
@@ -55,9 +62,11 @@ function draw(): void {
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.fillStyle = PAPER;
   g.fillRect(0, 0, W, H);
+  if (!W || !H) return;
   const margin = 40;
-  const scale = Math.min((W - 2 * margin) / m.W, (H - 2 * margin) / m.H);
-  const ox = (W - m.W * scale) / 2, oy = (H - m.H * scale) / 2;
+  const base = Math.min((W - 2 * margin) / m.W, (H - 2 * margin) / m.H);
+  const fit = { scale: base, ox: (W - m.W * base) / 2, oy: (H - m.H * base) / 2 };
+  const { scale, ox, oy } = whole ? fit : pz.view(fit);
   drawLair(g, m, { scale, ox, oy, grid: grid.value, labels: marks.value });
   linkSpots = m.site.kind === 'deep' ? [] : m.links.map((l) => ({ x: ox + l.p[0] * scale, y: oy + l.p[1] * scale, to: l.to }));
   gotoSpots = (m.gotos ?? []).map((q) => ({ x: ox + q.p[0] * scale, y: oy + q.p[1] * scale, r: Math.max(18, q.r * scale), to: q.to }));
@@ -86,8 +95,8 @@ function drawNorth(g: Ctx2D, x: number, y: number): void {
 }
 
 function drawScale(g: Ctx2D, scale: number, x: number, y: number): void {
-  // Ten squares (50 ft) or five, whichever fits.
-  const n = 10 * LAIR_CELL * scale < 260 ? 10 : 5;
+  // Ten squares (50 ft) or the most of five, two or one that fits (fewer as the map is zoomed in).
+  const n = [10, 5, 2, 1].find((k) => k * LAIR_CELL * scale <= 260) ?? 1;
   const len = n * LAIR_CELL * scale;
   g.save();
   g.strokeStyle = '#2b2420';
@@ -111,6 +120,8 @@ function leave(): void {
 
 function download(): void {
   const m = map.value;
+  // A map without a key saves what the stage shows, as a whole (the bitmap is copied at once).
+  if (m && !keyed.value) draw(true);
   const cv = m && keyed.value ? lairPage(m, { grid: grid.value, labels: marks.value, subtitle: subtitle.value }) : canvas.value;
   if (!cv || !m) return;
   cv.toBlob((b) => {
@@ -122,12 +133,14 @@ function download(): void {
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
   });
+  if (!keyed.value) draw();
 }
 
 function onKey(e: KeyboardEvent): void {
   if (!site.value) return;
   const n = top.value?.levels.length ?? 1;
   if (e.key === 'Escape') leave();
+  else if (pz.onZoomKey(e)) return;
   else if (e.key === 'ArrowRight' || e.key === 'PageDown') level.value = Math.min(n - 1, level.value + 1);
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') level.value = Math.max(0, level.value - 1);
 }
@@ -154,6 +167,8 @@ function goWay(to: DeepWay): void {
 
 /** Clicking a way up or down goes to that level; clicking a way elsewhere goes there. */
 function onCanvasClick(e: MouseEvent): void {
+  // A drag is not a click.
+  if (pz.wasDrag()) return;
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
   const go = gotoSpots.find((s) => Math.hypot(s.x - x, s.y - y) < s.r);
@@ -161,22 +176,26 @@ function onCanvasClick(e: MouseEvent): void {
     goWay(go.to);
     return;
   }
-  const hit = linkSpots.find((s) => Math.hypot(s.x - x, s.y - y) < 22);
+  const hit = linkSpots.find((s) => Math.hypot(s.x - x, s.y - y) < linkR());
   if (hit) level.value = hit.to;
 }
 
+/** How near a way between levels a click must fall (the ways grow as the map is zoomed in). */
+const linkR = () => Math.max(22, 10 * zoom.value);
+
 function onCanvasMove(e: MouseEvent): void {
+  if (pz.busy()) return;
   const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
   const x = e.clientX - r.left, y = e.clientY - r.top;
   const el = e.currentTarget as HTMLElement;
   const go = gotoSpots.find((s) => Math.hypot(s.x - x, s.y - y) < s.r);
-  el.style.cursor = go || linkSpots.some((s) => Math.hypot(s.x - x, s.y - y) < 22) ? 'pointer' : '';
+  el.style.cursor = pz.cursor(!!go || linkSpots.some((s) => Math.hypot(s.x - x, s.y - y) < linkR()));
   el.title = go ? (go.to.node !== undefined ? `Go to ${go.to.name}` : `Up to the surface at ${go.to.name}`) : '';
 }
 
 onMounted(() => {
   window.addEventListener('keydown', onKey);
-  observer = new ResizeObserver(draw);
+  observer = new ResizeObserver(() => draw());
   if (stage.value) observer.observe(stage.value);
 });
 onBeforeUnmount(() => {
@@ -199,6 +218,11 @@ watch(stage, (el, old) => {
       <div class="actions">
         <label class="chip"><input v-model="grid" type="checkbox" /> Grid</label>
         <label class="chip"><input v-model="marks" type="checkbox" /> Labels</label>
+        <span class="zoom" role="group" aria-label="Zoom">
+          <button title="Zoom out (-)" aria-label="Zoom out" :disabled="zoom <= 1" @click="zoomAt(1 / 1.5)">&minus;</button>
+          <button title="Fit the whole map (0)" @click="pz.reset()">Fit</button>
+          <button title="Zoom in (+)" aria-label="Zoom in" :disabled="zoom >= MAX_ZOOM" @click="zoomAt(1.5)">+</button>
+        </span>
         <button @click="download">Download PNG</button>
         <button class="leave" @click="leave">Leave {{ site.kind === 'glade' ? 'grove' : site.kind === 'deep' ? 'cavern' : site.kind }}</button>
       </div>
@@ -208,7 +232,10 @@ watch(stage, (el, old) => {
     </nav>
     <div class="body">
       <div ref="stage" class="stage">
-        <canvas ref="canvas" @click="onCanvasClick" @mousemove="onCanvasMove" />
+        <canvas
+          ref="canvas" @click="onCanvasClick" @mousemove="onCanvasMove" @wheel="onWheel"
+          @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp"
+        />
       </div>
       <aside v-if="keyed && map" class="key">
         <p v-if="top?.hook" class="hook">{{ top.hook }}</p>
@@ -357,6 +384,19 @@ li {
 canvas {
   position: absolute;
   inset: 0;
+  touch-action: none;
+}
+.zoom {
+  display: inline-flex;
+  gap: 2px;
+}
+.zoom button {
+  min-width: 34px;
+  justify-content: center;
+}
+.zoom button:disabled {
+  opacity: 0.4;
+  cursor: default;
 }
 @media (max-width: 768px) {
   header {

@@ -5,6 +5,7 @@ import { deepSite } from './under-style';
 import { CELL_M, KIND_NAME } from '../dungeons/core';
 import { dungeon, dungeonTags } from '../dungeons/view';
 import { drawLevel, dungeonPage } from '../dungeons/render';
+import { usePanZoom } from './pan-zoom';
 
 /**
  * A dungeon in the manner of the One Page Dungeon: the level's map with numbered rooms and, beside
@@ -20,12 +21,9 @@ const marks = ref(true);
 const level = ref(0);
 let observer: ResizeObserver | null = null;
 let linkSpots: { x: number; y: number; to: number }[] = [];
-/** Zoom over the fitted view (1 = the whole level), and the pan in screen pixels. */
-const zoom = ref(1);
-const pan = ref({ x: 0, y: 0 });
-const MAX_ZOOM = 8;
-/** The fitted view's scale and origin, kept for turning screen points into map cells. */
-let fit = { scale: 1, ox: 0, oy: 0 };
+/** Zoom (1 = the whole level) and pan: the wheel, a pinch, dragging, the buttons and keys. */
+const pz = usePanZoom(stage);
+const { zoom, pan, maxZoom: MAX_ZOOM, zoomAt, onWheel, onPointerDown, onPointerMove, onPointerUp } = pz;
 
 const site = computed(() => openDungeon.value);
 const d = computed(() => (site.value ? dungeon(site.value) : null));
@@ -49,8 +47,7 @@ watch(level, resetView);
 watch([grid, marks, level, zoom, pan], () => nextTick(draw), { deep: true });
 
 function resetView(): void {
-  zoom.value = 1;
-  pan.value = { x: 0, y: 0 };
+  pz.reset();
 }
 
 function draw(): void {
@@ -69,10 +66,7 @@ function draw(): void {
   g.fillRect(0, 0, W, H);
   const margin = 24;
   const base = Math.min((W - 2 * margin) / lv.W, (H - 2 * margin) / lv.H);
-  fit = { scale: base, ox: (W - lv.W * base) / 2, oy: (H - lv.H * base) / 2 };
-  // Zoomed about the middle of the stage, then panned.
-  const scale = base * zoom.value;
-  const ox = W / 2 - (W / 2 - fit.ox) * zoom.value + pan.value.x, oy = H / 2 - (H / 2 - fit.oy) * zoom.value + pan.value.y;
+  const { scale, ox, oy } = pz.view({ scale: base, ox: (W - lv.W * base) / 2, oy: (H - lv.H * base) / 2 });
   drawLevel(g, dd, lv, { scale, ox, oy, grid: grid.value, labels: marks.value });
   g.strokeStyle = '#2b2420';
   g.lineWidth = 1.5;
@@ -103,6 +97,7 @@ function onKey(e: KeyboardEvent): void {
   if (!site.value) return;
   const n = d.value?.levels.length ?? 1;
   if (e.key === 'Escape') leave();
+  else if (pz.onZoomKey(e)) return;
   else if (e.key === 'ArrowRight' || e.key === 'PageDown') level.value = Math.min(n - 1, level.value + 1);
   else if (e.key === 'ArrowLeft' || e.key === 'PageUp') level.value = Math.max(0, level.value - 1);
 }
@@ -114,86 +109,18 @@ function spotAt(e: MouseEvent) {
 }
 function onCanvasClick(e: MouseEvent): void {
   // A drag is not a click.
-  if (dragged) return;
+  if (pz.wasDrag()) return;
   const hit = spotAt(e);
   if (hit) level.value = hit.to;
 }
 function onCanvasMove(e: MouseEvent): void {
-  if (pointers.size) return;
-  (e.currentTarget as HTMLElement).style.cursor = spotAt(e) ? 'pointer' : zoom.value > 1 ? 'grab' : '';
-}
-
-/** Zoom by `k` about a screen point (stage pixels), keeping that point of the map still. */
-function zoomAt(k: number, px?: number, py?: number): void {
-  const st = stage.value;
-  if (!st) return;
-  const W = st.clientWidth, H = st.clientHeight;
-  const z0 = zoom.value, z1 = Math.max(1, Math.min(MAX_ZOOM, z0 * k));
-  if (z1 === z0) return;
-  const x = px ?? W / 2, y = py ?? H / 2;
-  // The map point under (x, y) before and after must agree.
-  const ox0 = W / 2 - (W / 2 - fit.ox) * z0 + pan.value.x, oy0 = H / 2 - (H / 2 - fit.oy) * z0 + pan.value.y;
-  const mx = (x - ox0) / (fit.scale * z0), my = (y - oy0) / (fit.scale * z0);
-  const ox1 = x - mx * fit.scale * z1, oy1 = y - my * fit.scale * z1;
-  zoom.value = z1;
-  pan.value = z1 === 1 ? { x: 0, y: 0 } : { x: ox1 - (W / 2 - (W / 2 - fit.ox) * z1), y: oy1 - (H / 2 - (H / 2 - fit.oy) * z1) };
-}
-function onWheel(e: WheelEvent): void {
-  e.preventDefault();
-  const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-  zoomAt(Math.exp(-e.deltaY * 0.0015), e.clientX - r.left, e.clientY - r.top);
-}
-
-// Dragging pans; two fingers pinch to zoom.
-const pointers = new Map<number, { x: number; y: number }>();
-let dragged = false;
-let pinch0 = 0;
-function onPointerDown(e: PointerEvent): void {
-  (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
-  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  dragged = false;
-  if (pointers.size === 2) {
-    const [a, b] = [...pointers.values()];
-    pinch0 = Math.hypot(a.x - b.x, a.y - b.y);
-  }
-}
-function onPointerMove(e: PointerEvent): void {
-  const p = pointers.get(e.pointerId);
-  if (!p) return;
-  const dx = e.clientX - p.x, dy = e.clientY - p.y;
-  if (pointers.size === 2) {
-    pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    const [a, b] = [...pointers.values()];
-    const d = Math.hypot(a.x - b.x, a.y - b.y);
-    const r = (e.currentTarget as HTMLElement).getBoundingClientRect();
-    if (pinch0 > 0) zoomAt(d / pinch0, (a.x + b.x) / 2 - r.left, (a.y + b.y) / 2 - r.top);
-    pinch0 = d;
-    dragged = true;
-    return;
-  }
-  if (Math.abs(dx) + Math.abs(dy) > 3) dragged = true;
-  pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-  if (zoom.value > 1) {
-    pan.value = { x: pan.value.x + dx, y: pan.value.y + dy };
-    (e.currentTarget as HTMLElement).style.cursor = 'grabbing';
-  }
-}
-function onPointerUp(e: PointerEvent): void {
-  pointers.delete(e.pointerId);
-  if (pointers.size < 2) pinch0 = 0;
+  if (pz.busy()) return;
+  (e.currentTarget as HTMLElement).style.cursor = pz.cursor(!!spotAt(e));
 }
 
 /** Bring a room of the key into view, zoomed in on it. */
 function showRoom(r: { x: number; y: number; w: number; h: number }): void {
-  const st = stage.value;
-  if (!st) return;
-  const W = st.clientWidth, H = st.clientHeight;
-  const z = Math.max(zoom.value, Math.min(MAX_ZOOM, 2.5));
-  const cx = r.x + r.w / 2, cy = r.y + r.h / 2;
-  // Where the room's centre would be at zoom z with no pan, moved to the middle of the stage.
-  const ox = W / 2 - (W / 2 - fit.ox) * z, oy = H / 2 - (H / 2 - fit.oy) * z;
-  zoom.value = z;
-  pan.value = { x: W / 2 - (ox + cx * fit.scale * z), y: H / 2 - (oy + cy * fit.scale * z) };
+  pz.focus(r.x + r.w / 2, r.y + r.h / 2);
 }
 
 onMounted(() => {
@@ -241,9 +168,9 @@ function goDeepGate(): void {
         <label class="chip"><input v-model="grid" type="checkbox" /> Grid</label>
         <label class="chip"><input v-model="marks" type="checkbox" /> Numbers</label>
         <span class="zoom" role="group" aria-label="Zoom">
-          <button title="Zoom out" aria-label="Zoom out" :disabled="zoom <= 1" @click="zoomAt(1 / 1.5)">&minus;</button>
-          <button title="Fit the whole level" @click="resetView">Fit</button>
-          <button title="Zoom in" aria-label="Zoom in" :disabled="zoom >= MAX_ZOOM" @click="zoomAt(1.5)">+</button>
+          <button title="Zoom out (-)" aria-label="Zoom out" :disabled="zoom <= 1" @click="zoomAt(1 / 1.5)">&minus;</button>
+          <button title="Fit the whole level (0)" @click="resetView">Fit</button>
+          <button title="Zoom in (+)" aria-label="Zoom in" :disabled="zoom >= MAX_ZOOM" @click="zoomAt(1.5)">+</button>
         </span>
         <button v-if="deepGate" :title="`The deep gate: down the deep road to ${deepGate.name}`" @click="goDeepGate">Deep gate ▸</button>
         <button @click="download">Download PNG</button>
