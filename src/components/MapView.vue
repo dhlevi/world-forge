@@ -6,7 +6,9 @@ import {
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { faithLegend, flyTarget, groupLegend, openCulture, openDeepRealm, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
-import { blockEntry, faithEntries, planEntries, themeEntries, worldEntries } from '../search/index';
+import { blockEntry, faithEntries, orderEntries, planEntries, themeEntries, worldEntries } from '../search/index';
+import { currentOrders } from './orders';
+import { ORDER_KIND_LABEL } from '../lore/orders';
 import { THEME_LABEL, worldThemes } from '../lore/themes';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
 import type { PlanFeature } from '../towns/plan';
@@ -123,6 +125,7 @@ function syncWorld(): void {
       if (!c) return;
       search.add(faithEntries(c.L.faiths.faiths));
       search.add(themeEntries(w0.settlements, worldThemes(c, w0.raster.seed).themes, THEME_LABEL));
+      search.add(orderEntries(currentOrders(), ORDER_KIND_LABEL));
       searchState.version++;
     });
     searchState.done = 0;
@@ -674,7 +677,7 @@ function villageHere(): typeof store.here {
     const d = Math.hypot((lon - c.lng) * 111.32 * Math.cos((c.lat * Math.PI) / 180), (lat - c.lat) * 110.57);
     if (d < bd) {
       bd = d;
-      best = { name: String(f.properties.name ?? ''), ...(f.properties.en ? { en: String(f.properties.en) } : {}), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0), ...(f.properties.realm ? { realm: String(f.properties.realm), war: String(f.properties.war ?? '') } : {}), ...(f.properties.faith || f.properties.what ? { faith: String(f.properties.faith ?? ''), what: String(f.properties.what ?? '') } : {}), ...(f.properties.cause ? { cause: String(f.properties.cause), ago: String(f.properties.ago ?? ''), ...(f.properties.curse ? { curse: String(f.properties.curse) } : {}) } : {}) };
+      best = { name: String(f.properties.name ?? ''), ...(f.properties.en ? { en: String(f.properties.en) } : {}), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0), ...(f.properties.realm ? { realm: String(f.properties.realm), war: String(f.properties.war ?? '') } : {}), ...(f.properties.faith || f.properties.what ? { faith: String(f.properties.faith ?? ''), what: String(f.properties.what ?? '') } : {}), ...(f.properties.cause ? { cause: String(f.properties.cause), ago: String(f.properties.ago ?? ''), ...(f.properties.curse ? { curse: String(f.properties.curse) } : {}) } : {}), ...(f.properties.order ? { order: String(f.properties.order) } : {}) };
     }
   }
   return best;

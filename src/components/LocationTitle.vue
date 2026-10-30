@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { flyTarget, openLair, openRealm, store, world } from '../store';
+import { flyTarget, openLair, openOrder, openRealm, store, world } from '../store';
+import { currentOrders } from './orders';
+import { HOLD_LABEL } from '../lore/orders';
 import { deepSite } from './under-style';
 import { LEVEL_NAME, type PolUnit, chainOf } from '../gen/politics';
 import { type Arms, blazon, vassalArms } from '../heraldry/arms';
@@ -35,6 +37,19 @@ interface Line {
   old?: string;
   /** A delve's deep road: the hall below (clicking opens it on the Underworld layer), and its dealings with the realm beside it. */
   deep?: { label: string; node: number };
+  /** Organisations seated here or keeping a chapter house here (each opens its window); secret ones are not shown. */
+  orders?: { key: string; label: string }[];
+}
+
+/** The organisations a city is known for: those seated in it, then its chapter houses. */
+function ordersIn(sid: string): { key: string; label: string }[] {
+  const out: { key: string; label: string }[] = [];
+  for (const o of currentOrders()) {
+    if (o.secret) continue;
+    if (o.seat.kind === 'city' && o.seat.sid === sid) out.unshift({ key: o.key, label: `seat of ${o.en}` });
+    else if (o.chapters.some((c) => c.sid === sid && !c.front)) out.push({ key: o.key, label: o.en });
+  }
+  return out.slice(0, 5);
 }
 
 /** A name and its other form, by the chosen lettering (local names, English, or both). */
@@ -44,7 +59,7 @@ function pair(native: string, en?: string): { name: string; alt?: string } {
 }
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
-const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp', shrine: 'Shrine', prison: 'Prison fort' };
+const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp', shrine: 'Shrine', prison: 'Prison fort', vineyard: 'Vineyard village' };
 const townArms = new Map<string, Arms>();
 
 /** "2.3 million", "34,000", "870". */
@@ -122,6 +137,7 @@ const info = computed<Line | null>(() => {
         sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' && !s.delve ? LAYOUT_LABEL[s.layout] : '', s.delve ? 'a delve: its halls lie under the mountain' : '', s.special === 'spa' ? `a spa town by ${s.specialNear ?? 'its hot springs'}` : s.special === 'mining' ? `a mining town by ${s.specialNear ?? 'the fire mountain'}` : s.special === 'ashen' ? `under the ash of ${s.specialNear ?? 'a volcano'}` : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', s.tower ? (s.tower.college ? `its college of magic, ${s.tower.en}` : `home of ${s.tower.en}`) : '', s.prison ? `its prison, ${s.prison.en}` : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
         ...(s.delve && s.deepTo ? { deep: deepLine(s.id, s.deepTo.name, s.deepTies) } : {}),
+        orders: ordersIn(s.id),
       };
     }
     if (store.here) {
@@ -133,6 +149,19 @@ const info = computed<Line | null>(() => {
         return {
           ...pair(h.name, h.en), sub: ['Shrine', h.what, h.faith ? `holy to ${h.faith}` : ''].filter(Boolean).join(' · '),
           arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
+        };
+      }
+      if (h.kind === 'vineyard') {
+        return {
+          ...pair(h.name, h.en), sub: [`Vineyard village of ${h.population.toLocaleString('en')}`, h.what ? `known for its wine, ${h.what}` : '', tie].filter(Boolean).join(' · '),
+          arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
+        };
+      }
+      if (h.kind === 'order' && h.order) {
+        const o = currentOrders().find((x) => x.key === h.order);
+        return {
+          ...pair(h.name, h.en), sub: [o?.seat.hold ? HOLD_LABEL[o.seat.hold] : 'Stronghold', o?.seat.where ?? ''].filter(Boolean).join(' · '),
+          arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain, ...(o ? { orders: [{ key: o.key, label: `seat of ${o.en}` }] } : {}),
         };
       }
       if (h.kind === 'prison') {
@@ -242,6 +271,9 @@ function goDeep(node: number): void {
         <div class="name">{{ info.name }}<span v-if="info.alt" class="alt">{{ info.alt }}</span></div>
         <div v-if="info.sub" class="sub">{{ info.sub }}</div>
         <div v-if="info.old" class="sub old">{{ info.old }}</div>
+        <div v-if="info.orders?.length" class="sub deep">
+          <template v-for="(q, i) in info.orders" :key="q.key"><template v-if="i"> · </template><a href="#" title="Open its window" @click.stop.prevent="openOrder = q.key">{{ q.label }}</a></template>
+        </div>
         <div v-if="info.deep" class="sub deep"><a href="#" title="Open the hall below on the Underworld layer" @click.stop.prevent="goDeep(info.deep.node)">{{ info.deep.label }}</a></div>
       </div>
       <button v-if="detail.length" class="more" :title="open ? 'Hide the hierarchy' : 'Show the hierarchy'" @click.stop="open = !open">{{ open ? '▴' : '▾' }}</button>

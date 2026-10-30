@@ -36,6 +36,8 @@ export interface LairSite {
   deepNode?: number;
   /** Caverns of the Underworld: what kind, which tier, where its tunnels lead, its shafts, its city or its horror. */
   deep?: DeepInfo;
+  /** A druid circle's sacred grove: the circle's key (lore/orders.ts). */
+  order?: string;
 }
 
 /** A way out of a cavern: to another cavern (node) or up to the surface (lon, lat). */

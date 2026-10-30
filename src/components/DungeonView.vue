@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { flyTarget, openDungeon, openLair, store, world } from '../store';
+import { flyTarget, openDungeon, openLair, openOrder, store, world } from '../store';
+import { currentOrders } from './orders';
 import { deepSite } from './under-style';
 import { CELL_M, KIND_NAME } from '../dungeons/core';
 import { dungeon, dungeonTags } from '../dungeons/view';
@@ -154,6 +155,16 @@ watch(stage, (el, old) => {
   if (el) observer?.observe(el);
 });
 
+/** The organisation whose house this is: a stronghold's order, or the thieves' guild under a city. */
+const order = computed(() => {
+  const s = site.value;
+  if (!s) return null;
+  const os = currentOrders();
+  if (s.order) return os.find((o) => o.key === s.order) ?? null;
+  if (s.kind === 'sewer' && s.thieves && s.town) return os.find((o) => o.kind === 'thieves' && o.seat.sid === s.town) ?? null;
+  return null;
+});
+
 /** A delve's deep gate: its deep road down to a hall of the Underworld (opened on that layer). */
 const deepGate = computed(() => {
   const s = site.value;
@@ -189,6 +200,7 @@ function goDeepGate(): void {
           <button title="Fit the whole level (0)" @click="resetView">Fit</button>
           <button title="Zoom in (+)" aria-label="Zoom in" :disabled="zoom >= MAX_ZOOM" @click="zoomAt(1.5)">+</button>
         </span>
+        <button v-if="order" :title="`Open the window of ${order.en}`" @click="openOrder = order.key; leave()">{{ order.kind === 'thieves' ? 'Thieves\' guild' : 'Order' }} ▸</button>
         <button v-if="deepGate" :title="`The deep gate: down the deep road to ${deepGate.name}`" @click="goDeepGate">Deep gate ▸</button>
         <button @click="download">Download PNG</button>
         <button class="leave" @click="leave">Leave</button>

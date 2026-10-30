@@ -60,7 +60,7 @@ export const store = reactive({
   /** Map zoom (updated when the map settles). */
   zoom: 1.6,
   /** The village under the map centre at close zoom, if any (from the towns worker's data). */
-  here: null as { name: string; en?: string; kind: string; population: number; realm?: string; war?: string; faith?: string; what?: string; cause?: string; ago?: string; curse?: string } | null,
+  here: null as { name: string; en?: string; kind: string; population: number; realm?: string; war?: string; faith?: string; what?: string; cause?: string; ago?: string; curse?: string; order?: string } | null,
 });
 
 export const world = shallowRef<ClientWorld | null>(null);
@@ -82,6 +82,8 @@ export const openRealm = shallowRef<number | null>(null);
 export const openCulture = shallowRef<number | null>(null);
 /** The faith (id in the world lore's faiths) open in the faith window, if any. */
 export const openFaith = shallowRef<number | null>(null);
+/** The organisation whose window is open (its key, lore/orders.ts). */
+export const openOrder = shallowRef<string | null>(null);
 /** The realm of the Underworld whose window is open (an index into `underworld.realms`). */
 export const openDeepRealm = shallowRef<number | null>(null);
 /** The faith map's key: each faith shown, with its colour. */

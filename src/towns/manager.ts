@@ -19,6 +19,7 @@ import { NameBank, type Named, dungeonName, lairName } from '../names/names';
 import { type DungeonSite, packLines, sewerScale, townUnderground } from '../dungeons/core';
 import type { LairSite } from '../lairs/lair';
 import { loreFor } from '../lore/realm';
+import { chaptersIn, type Order, worldOrders } from '../lore/orders';
 import { type NaturalShrine, type WorldThemes, worldThemes } from '../lore/themes';
 import { CULTURES } from '../names/cultures';
 import { BUNDLE } from '../names/bundles';
@@ -233,6 +234,8 @@ export class TownManager {
             ...(l.dir !== undefined ? { dir: l.dir } : {}), ...(l.deepTo ? { deepTo: l.deepTo, ...(l.deepNode !== undefined ? { deepNode: l.deepNode } : {}) } : {}),
             // Groves in a mushroom forest or a cursed wood have icons of their own.
             ...(l.kind === 'glade' && l.tags.includes('mushrooms') ? { icon: 'lair-glade-fungal' } : l.kind === 'glade' && l.tags.includes('cursed') ? { icon: 'lair-glade-cursed' } : {}),
+            // A druid circle's grove: its stones, and the circle's key.
+            ...(l.order ? { order: l.order, icon: 'dun-circle' } : {}),
           },
         });
       }
@@ -244,7 +247,7 @@ export class TownManager {
           geometry: { type: 'Point', coordinates: [d.lon, d.lat] },
           properties: {
             id: d.id, tier: 'lair', kind: d.kind, name: d.name, ...(d.en && d.en !== d.name ? { en: d.en } : {}), seed: d.seed, tags: d.tags.join(','), culture: d.culture,
-            ...(d.story ? { story: d.story } : {}), ...(d.icon ? { icon: d.icon } : {}),
+            ...(d.story ? { story: d.story } : {}), ...(d.icon ? { icon: d.icon } : {}), ...(d.order ? { order: d.order } : {}),
           },
         });
       }
@@ -257,6 +260,8 @@ export class TownManager {
             ...(v.army ? { realm: v.army.realm, war: v.army.war } : {}),
             ...(v.shrine ? { faith: v.shrine.faith, what: v.shrine.what } : {}),
             ...(v.fort ? { realm: this.world.politics?.units[v.fort.realm]?.name ?? '', what: FORT_WHERE[v.fort.setting] } : {}),
+            ...(v.order ? { order: v.order.key, what: v.order.hold } : {}),
+            ...(v.wine ? { what: v.wine.en, wine: v.wine.name } : {}),
             ...(v.abandoned ? { cause: v.abandoned.cause, ago: v.abandoned.ago, ...(v.abandoned.curse ? { curse: v.abandoned.curse } : {}) } : {}),
           },
         });
@@ -539,6 +544,19 @@ export class TownManager {
         const vn = this.villageName(v, cellOf(lon, lat), used);
         v.name = vn.name;
         v.nameEn = vn.en;
+        // Vineyards: some farming villages of the warm, dry hills grow vines (decided after the
+        // village is named, from its own seed, so nothing else moves).
+        if (kind === 'farming' && !nwCell) {
+          const kp = raster.koppen[c];
+          const med = kp === 7 || kp === 8;
+          const warm = (kp === 13 || kp === 14 || kp === 16 || kp === 17 || kp === 24) && tWarm >= 19;
+          const hill = Math.hypot(gx, gy) > 0.015 ? 1.4 : 0.8;
+          if ((med || warm) && hash32(v.seed ^ 0x717e) / 4294967296 < (med ? 0.15 : 0.04) * hill) {
+            v.kind = 'vineyard';
+            const col = ['{0} Red', '{0} White', '{0} Gold', 'the Black of {0}'][hash32(v.seed ^ 0x717f) % 4];
+            v.wine = this.names.named(raster.culture[c] ?? 0, col, [{ name: v.name ?? '', en: v.name ?? '' }]);
+          }
+        }
         villages.push(v);
         const track = withTracks ? this.track(v, road, villages, rr(4)) : null;
         if (track) tracks.push(track);
@@ -632,7 +650,7 @@ export class TownManager {
       const pos = this.bestNear(land[0], land[1], crag ? 2500 : 1200, (_x, _y, hh, sl) => (crag ? hh * 0.003 : 0) - 8 * Math.max(0, sl - (crag ? 0.25 : 0.08)));
       if (this.sampler.isWater(pos[0], pos[1]) || this.slopeAt(pos[0], pos[1]) > 0.45) continue;
       const vseed = hash32(hashString(`${raster.seed}#fort#${pf.lon.toFixed(3)},${pf.lat.toFixed(3)}`));
-      const v = makeSettlement('village', `p${key}_${villages.length}`, pos[0], pos[1], 0, vseed, pf.setting === 'island', false, 'prison');
+      const v = makeSettlement('village', `pf${key}_${villages.length}`, pos[0], pos[1], 0, vseed, pf.setting === 'island', false, 'prison');
       v.population = 40 + (vseed % 90);
       v.coreM = 60;
       v.radiusM = pf.setting === 'island' ? 120 : 260;
@@ -650,7 +668,107 @@ export class TownManager {
         lon: pos[0], lat: pos[1], culture: pf.culture, village: v.id,
       });
     }
+    // The strongholds of the organisations (lore/orders.ts), after everything else: a school,
+    // commandery, retreat or winter camp is a village of its own with a keyed map; a druid circle
+    // is a sacred grove.
+    for (const o of this.orders()) {
+      const sd = o.seat;
+      if (sd.kind !== 'hold' || !inBlock(sd.lon, sd.lat, lon0, lat0)) continue;
+      const land = this.landNear(sd.lon, sd.lat, 30);
+      if (!land) continue;
+      const high = sd.hold === 'school' || sd.hold === 'retreat';
+      const pos = this.bestNear(land[0], land[1], high ? 2500 : 1200, (_x, _y, hh, sl) => (high ? hh * 0.002 : 0) - 8 * Math.max(0, sl - (high ? 0.2 : 0.06)));
+      if (this.sampler.isWater(pos[0], pos[1]) || this.slopeAt(pos[0], pos[1]) > 0.4) continue;
+      const hseed = hash32(hashString(`${raster.seed}#hold#${o.key}`));
+      if (sd.hold === 'circle') {
+        lairs.push({ id: `oc${key}_${lairs.length}`, kind: 'glade', name: sd.name, en: sd.name, seed: hseed, tags: ['large', 'stones', 'sacred', 'druid circle'], lon: pos[0], lat: pos[1], order: o.key });
+        continue;
+      }
+      const v = makeSettlement('village', `ov${key}_${villages.length}`, pos[0], pos[1], 0, hseed, false, false, 'order');
+      v.population = 30 + (hseed % 120);
+      v.coreM = 60;
+      v.radiusM = 240;
+      v.culture = o.culture;
+      v.order = { key: o.key, hold: sd.hold ?? 'commandery' };
+      v.name = sd.name;
+      v.nameEn = sd.name;
+      villages.push(v);
+      const track = withTracks ? this.track(v, this.roadPts.nearest(pos[0], pos[1], S.villageLinkKm), villages, hash32(hseed ^ 0x0d) / 4294967296) : null;
+      if (track) tracks.push(track);
+      dungeons.push({
+        id: `d${key}_${dungeons.length}`, kind: 'hold', name: sd.name, en: sd.name, seed: hash32(hseed ^ 0x401d),
+        tags: [o.kind === 'knights' ? 'large' : 'medium', '2 levels', sd.hold ?? 'commandery'], lon: pos[0], lat: pos[1], culture: o.culture, village: v.id, order: o.key,
+        icon: `dun-${sd.hold}`,
+      });
+    }
     return { villages, tracks, lairs, dungeons };
+  }
+
+  /** The world's organisations (lore/orders.ts), from the lore this worker builds. */
+  private ordersCache: Order[] | null = null;
+  private orders(): Order[] {
+    if (this.ordersCache) return this.ordersCache;
+    const { politics, settlements, labels, raster } = this.world;
+    if (!politics) return (this.ordersCache = []);
+    const ctx = loreFor(`towns#${raster.seed}`, raster.seed, politics, settlements, labels?.features ?? []);
+    this.ordersCache = worldOrders(ctx, { seed: raster.seed, features: labels?.features ?? [], curses: raster.curses, underworld: raster.underworld });
+    return this.ordersCache;
+  }
+
+  /**
+   * Chapter houses of the organisations on a city's plan: an ordinary large building near the
+   * market (in a direction of each order's own), given the order's role and the house's name.
+   * Chosen without the plan's random stream, so the rest of the plan keeps its shape.
+   */
+  private chapterHouses(s: Settlement, out: PlanOut, frame: LocalFrame): void {
+    const here: { key: string; role: string; house: string }[] = chaptersIn(this.orders(), s.id).map(({ order, chapter }) => ({ key: order.key, role: `order:${order.kind}`, house: chapter.house }));
+    for (const o of this.orders()) if (o.seat.kind === 'city' && o.seat.sid === s.id && !here.some((h) => h.key === o.key)) here.push({ key: o.key, role: `order:${o.kind}`, house: o.en });
+    // A city of the wine country has a vintners' company, which buys and ships the vineyards' wine.
+    const kp = this.world.raster.koppen[this.cell(s.lon, s.lat)];
+    if (s.tier === 'city' && (kp === 7 || kp === 8)) here.push({ key: '', role: 'guild:vintners', house: 'the Vintners\' Hall' });
+    if (!here.length) return;
+    const ring = (f: PlanFeature) => (f.geometry.type === 'Polygon' ? f.geometry.coordinates[0].slice(0, -1).map((c) => frame.fromLL(c[0], c[1]) as Pt) : []);
+    const mid = (p: Pt[]): Pt => [p.reduce((a, q) => a + q[0], 0) / p.length, p.reduce((a, q) => a + q[1], 0) / p.length];
+    const area = (p: Pt[]) => Math.abs(p.reduce((a, q, k) => a + q[0] * p[(k + 1) % p.length][1] - p[(k + 1) % p.length][0] * q[1], 0)) / 2;
+    const plaza = out.features.find((f) => f.properties.kind === 'plaza');
+    const c0: Pt = plaza ? mid(ring(plaza)) : [0, 0];
+    const cands = out.features.filter((f) => f.properties.kind === 'building' && f.geometry.type === 'Polygon' && !f.properties.role && !f.properties.use && !f.properties.label)
+      .map((f) => ({ f, p: ring(f) })).map((x) => ({ ...x, c: mid(x.p), a: area(x.p) })).filter((x) => x.a >= 90);
+    const used = new Set<PlanFeature>();
+    for (const h of here) {
+      const hk = h.key || h.role;
+      const ang = (hashString(hk) % 360) * (Math.PI / 180), d = 60 + (hashString(hk) % 80);
+      const t: Pt = [c0[0] + Math.cos(ang) * d, c0[1] + Math.sin(ang) * d];
+      let best: (typeof cands)[number] | null = null, bd = Infinity;
+      for (const x of cands) {
+        if (used.has(x.f)) continue;
+        const dd = Math.hypot(x.c[0] - t[0], x.c[1] - t[1]);
+        if (dd < bd) {
+          bd = dd;
+          best = x;
+        }
+      }
+      if (!best) break;
+      used.add(best.f);
+      best.f.properties.role = h.role;
+      best.f.properties.label = h.house;
+      if (h.key) best.f.properties.order = h.key;
+      out.point('blabel', best.c, { name: h.house, role: h.role, ...(h.key ? { order: h.key } : {}) });
+    }
+  }
+
+  /** The way into a stronghold, marked at its main block on its plan. */
+  private holdEntry(s: Settlement, out: PlanOut, frame: LocalFrame, culture: number): void {
+    let site: DungeonSite | undefined;
+    for (const b of this.blocks.values()) {
+      site = b.dungeons.find((d) => d.village === s.id && d.kind === 'hold');
+      if (site) break;
+    }
+    const block = out.features.find((f) => f.properties.kind === 'building' && f.properties.label === s.name);
+    if (!site || !block || block.geometry.type !== 'Polygon') return;
+    const ring = block.geometry.coordinates[0].slice(0, -1).map((c) => frame.fromLL(c[0], c[1]) as Pt);
+    const p: Pt = [ring.reduce((a, q) => a + q[0], 0) / ring.length, ring.reduce((a, q) => a + q[1], 0) / ring.length];
+    out.point('dentry', p, { did: site.id, dkind: 'hold', name: site.name, seed: site.seed, tags: site.tags.join(','), culture, sid: s.id, order: site.order ?? '' });
   }
 
   /**
@@ -1540,9 +1658,11 @@ export class TownManager {
       if (s.kind === 'mining') this.mineEntry(s, out, frame, culture);
       if (secretWell(s)) this.wellEntry(s, out, frame, culture);
       if (s.kind === 'prison') this.prisonEntry(s, out, frame, culture);
+      if (s.kind === 'order') this.holdEntry(s, out, frame, culture);
     } else {
       buildCity(inp);
       this.underground(s, out, frame, water, culture);
+      this.chapterHouses(s, out, frame);
     }
 
     // Contours show the lie of the land; the interval adapts to the relief.

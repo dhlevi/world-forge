@@ -5,7 +5,7 @@ import type { Rng } from '../gen/rng';
  * it, what lies hidden there, and a detail for the senses, by kind of site. Shared by
  * `dungeons/key.ts` and `lairs/lair.ts`. Every table is plain data, so it is easy to extend.
  */
-export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve' | 'pass' | 'deep' | 'prison';
+export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve' | 'pass' | 'deep' | 'prison' | 'school' | 'commandery' | 'retreat' | 'camp';
 
 export interface KeyNote {
   /** "Creature", "Trap", "Treasure" or "Hazard". */
@@ -16,6 +16,37 @@ export interface KeyNote {
 const pick = <T>(rnd: Rng, a: T[]): T => a[Math.floor(rnd() * a.length)];
 
 export const CREATURES: Record<SiteKind, string[]> = {
+  school: [
+    'A hunter back from a contract, still bloodied, cleaning silver steel by the fire.',
+    'Trainees running the wall in full kit while the master-at-arms counts the laps.',
+    'The school alchemist, testing a new draught on a volunteer who is starting to regret it.',
+    'A caged creature brought back alive for study; it watches every move.',
+    'A farmer come to beg a hunter for his village, coins clutched in his fist.',
+    'Two old hunters arguing over a map of the last nest they burned.',
+  ],
+  commandery: [
+    'Knights at their devotions; no one will speak until the office is done.',
+    'Sergeants drilling the novices at the pell with wooden swords.',
+    'A chaplain copying the order\'s rule by candlelight.',
+    'The Marshal, inspecting horses with a face like thunder.',
+    'Pilgrims waiting for an escort to the holy places, with all they own on their backs.',
+    'A banker from the city, come to borrow from the order rather than lend.',
+  ],
+  retreat: [
+    'A brother in grey who smiles too pleasantly and walks without a sound.',
+    'Novices sweeping the cloister in silence; every one of them watches the visitor\'s hands.',
+    'The herbalist tending a garden where nothing is quite what it seems.',
+    'A guest of the house who arrived last night and will not be leaving.',
+    'An old brother asleep in the sun, who was once the most feared blade in three kingdoms.',
+  ],
+  camp: [
+    'Soldiers dicing for next month\'s pay, which has not arrived.',
+    'The paymaster under guard, counting coin into a chest.',
+    'A recruiting sergeant with a jug of ale and a list of names.',
+    'Camp followers selling everything from pies to promises.',
+    'A captain nursing a wound and a grudge against the employer.',
+    'Horses being shod in a row while a farrier curses the ice.',
+  ],
   prison: [
     'Two turnkeys play at knucklebones for the right to the next bribe; they are not hard to distract.',
     'A guard sergeant with a ring of keys on his belt makes his round every hour, regular as a bell.',
@@ -373,6 +404,10 @@ export const CREATURES: Record<SiteKind, string[]> = {
 };
 
 const TRAPS: Record<SiteKind, string[]> = {
+  school: ['A practice course of swinging logs and pitfalls, not cleared away.', 'A trip wire across the kennel door, set to keep the hounds in.', 'A spilled flask on the floor that burns through boot leather.'],
+  commandery: ['A portcullis that drops at the bell.', 'The treasury door is set to jam and ring a bell inside the chapter hall.', 'A loose step on the stair that every knight knows to skip.'],
+  retreat: ['A needle in the latch, tipped with something that numbs.', 'A floor of nightingale boards that sing at every step.', 'A false door onto a long drop.', 'Incense that slows the thoughts of anyone not used to it.'],
+  camp: ['Caltrops strewn before the gate at night.', 'A trip line to a bell in the guardroom.', 'Rotten planks over the cellar stair.'],
   prison: [
     'A bell wire runs along the floor; a foot on it rings an alarm in the guardroom.',
     'A false flagstone over a short drop; the guards step around it without looking.',
@@ -606,6 +641,10 @@ const TREASURE_ANY = [
 ];
 
 const TREASURE: Record<SiteKind, string[]> = {
+  school: ['A silver sword in a scabbard of black leather.', 'A flask of a hunter\'s draught: strength, at a price.', 'A bestiary with notes in a dozen hands.', 'The trophy of a basilisk, worth a fortune to an alchemist.'],
+  commandery: ['A reliquary of gold and crystal holding a finger bone.', 'Letters of credit drawn on the order, good in any port.', 'A sword blessed at the faith\'s holiest shrine.', 'A chest of coin set aside for the next crusade.'],
+  retreat: ['A ledger of contracts in a cipher, with a key hidden in its binding.', 'A set of fine knives in a roll of black velvet.', 'A vial of poison with no taste and no cure.', 'Letters from a great lord commissioning a death.'],
+  camp: ['The company\'s pay chest: a season\'s wages in mixed coin.', 'A captured banner, worth a ransom to its realm.', 'Loot from the last sack: plate, candlesticks and a bishop\'s ring.', 'A signed contract worth more than the gold it promises.'],
   prison: [
     "A box of confiscated goods: a silver ring, a purse of foreign coin and a lockpick roll.",
     "The warden's ledger of bribes taken, worth a great deal to the right person.",
@@ -880,6 +919,10 @@ const TREASURE: Record<SiteKind, string[]> = {
 };
 
 export const SENSES: Record<SiteKind, string[]> = {
+  school: ['The smell of herbs and burnt hair from the alchemist\'s rooms.', 'A beast howls somewhere below.', 'Steel rings on steel from the training yard.'],
+  commandery: ['Bells call the hours, and the whole house moves to them.', 'Plainsong drifts from the chapel.', 'The smell of horses and incense.'],
+  retreat: ['Silence, so complete that a dropped spoon is a shock.', 'The scent of flowers from a garden too lovely for the hills.', 'Somewhere a bell is struck once, softly.'],
+  camp: ['Woodsmoke, wet wool and cheap ale.', 'Someone is singing a marching song badly.', 'Hammers ring from the farrier\'s forge.'],
   prison: [
     'Somewhere a prisoner sings the same verse over and over.',
     'The smell of damp straw, old sweat and lamp smoke hangs in the air.',
@@ -1305,7 +1348,7 @@ export function roomNotes(kind: SiteKind, rnd: Rng, o: { tag?: string; entry?: b
   const pTreasure = rich ? 1 : 0.2 + 0.05 * depth;
   if (rnd() < pCreature) {
     const s = fresh(CREATURES[kind]);
-    if (s) out.push({ label: kind === 'delve' || kind === 'prison' ? 'Who is here' : 'Creature', text: s });
+    if (s) out.push({ label: kind === 'delve' || kind === 'prison' || kind === 'school' || kind === 'commandery' || kind === 'retreat' || kind === 'camp' ? 'Who is here' : 'Creature', text: s });
   }
   if (rnd() < pTrap) {
     const s = fresh(TRAPS[kind]);

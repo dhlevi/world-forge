@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { flyTarget, openLair, store, world } from '../store';
+import { flyTarget, openLair, openOrder, store, world } from '../store';
+import { currentOrders } from './orders';
 import { deepSite } from './under-style';
 import type { DeepWay } from '../lairs/lair';
 import { LAIR_CELL, lairMap } from '../lairs/lair';
@@ -19,6 +20,8 @@ const pz = usePanZoom(stage);
 const { zoom, pan, maxZoom: MAX_ZOOM, zoomAt, onWheel, onPointerDown, onPointerMove, onPointerUp } = pz;
 
 const site = computed(() => openLair.value);
+/** A druid circle's grove: the circle (lore/orders.ts). */
+const order = computed(() => (site.value?.order ? currentOrders().find((o) => o.key === site.value!.order) ?? null : null));
 const top = computed(() => (site.value ? lairMap(site.value) : null));
 /** The level shown (caves of several levels have a tab per level). */
 const level = ref(0);
@@ -223,6 +226,7 @@ watch(stage, (el, old) => {
           <button title="Fit the whole map (0)" @click="pz.reset()">Fit</button>
           <button title="Zoom in (+)" aria-label="Zoom in" :disabled="zoom >= MAX_ZOOM" @click="zoomAt(1.5)">+</button>
         </span>
+        <button v-if="order" :title="`Open the window of ${order.en}`" @click="openOrder = order.key; leave()">Order ▸</button>
         <button @click="download">Download PNG</button>
         <button class="leave" @click="leave">Leave {{ site.kind === 'glade' ? 'grove' : site.kind === 'deep' ? 'cavern' : site.kind }}</button>
       </div>

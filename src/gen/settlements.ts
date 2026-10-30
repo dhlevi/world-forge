@@ -10,7 +10,7 @@ import type { DetailSampler } from './detail';
 import { chaikin, riverVertex, riverWidthM } from './rivers';
 
 export type Tier = 'city' | 'town' | 'village';
-export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal' | 'camp' | 'shrine' | 'abandoned' | 'prison';
+export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal' | 'camp' | 'shrine' | 'abandoned' | 'prison' | 'order' | 'vineyard';
 /** Why a village stands empty. */
 export type AbandonCause = 'plague' | 'war' | 'famine' | 'raiders' | 'flood' | 'ash' | 'curse' | 'dragon' | 'drought';
 /** A New World town founded by an Old World realm. */
@@ -69,6 +69,10 @@ export interface Settlement {
   prison?: { name: string; en: string };
   /** Prison forts (a village of their own): the fort's setting and the realm that keeps it. */
   fort?: { setting: 'island' | 'crag' | 'marsh' | 'moor'; realm: number };
+  /** An organisation's stronghold (a village of its own): the order's key and what kind of hold (lore/orders.ts). */
+  order?: { key: string; hold: string };
+  /** Vineyards: the village's wine, named for it. */
+  wine?: { name: string; en: string };
   /** Abandoned villages: why they were left, what they were, when, and the story told of it. */
   abandoned?: { cause: AbandonCause; was: VillageKind; ago: string; story: string; curse?: string };
   /** The feature it is known by (the geysers, the volcano). */

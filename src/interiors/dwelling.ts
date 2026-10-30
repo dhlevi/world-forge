@@ -147,7 +147,7 @@ const LABELS: Record<Kind, string> = {
 /** Roles that turn a town house into a trade: the shop floor's name. */
 const TRADE_ROLE: Record<string, string> = {
   tavern: 'Taproom', smithy: 'Smithy', bakery: 'Bakery', apothecary: 'Apothecary', pawnshop: 'Pawnshop', tailor: 'Tailor',
-  butcher: 'Butcher', chandlery: 'Chandlery', foundry: 'Foundry',
+  butcher: 'Butcher', chandlery: 'Chandlery', foundry: 'Foundry', winepress: 'Press room',
 };
 const ROLE_LABEL: Record<string, string> = {
   tavern: 'Tavern', smithy: 'Smithy', bakery: 'Bakery', apothecary: 'Apothecary', pawnshop: 'Pawnshop', tailor: 'Tailor',
@@ -155,6 +155,9 @@ const ROLE_LABEL: Record<string, string> = {
   university: 'University', college: 'College', 'guild:adventurers': 'Adventurers\' guild', 'guild:warriors': 'Warriors\' guild',
   'guild:cartographers': 'Cartographers\' guild', 'guild:alchemists': 'Alchemists\' guild', 'guild:mages': 'Mages\' guild', 'guild:masons': 'Masons\' guild',
   'guild:smiths': 'Smiths\' guild', 'guild:weavers': 'Weavers\' guild', 'guild:physicians': 'Physicians\' guild',
+  'order:knights': 'Commandery', 'order:hunters': 'Hunters\' lodge', 'order:assassins': 'Shop', 'order:mercenaries': 'Recruiting house',
+  'guild:vintners': 'Vintners\' hall', winepress: 'Press house',
+  'order:traders': 'Company house', 'order:bards': 'College', 'order:explorers': 'Society rooms',
 };
 
 function pointInPoly(p: Pt[], x: number, y: number): boolean {
@@ -177,7 +180,7 @@ function classify(inp: DwellingInput, areaM2: number, rnd: () => number): Kind {
     case 'university': case 'college': return 'university';
     case 'prison': return 'prison';
   }
-  if (inp.role?.startsWith('guild:')) return 'guild';
+  if (inp.role?.startsWith('guild:') || inp.role?.startsWith('order:')) return 'guild';
   if (inp.burrow && !inp.role && !inp.use) return 'burrow';
   if (inp.role === 'magetower') return 'tower';
   if (inp.role === 'countinghouse') return 'bank';
@@ -354,14 +357,27 @@ function programs(kind: Kind, inp: DwellingInput, storeys: number, rnd: () => nu
         alchemists: [R('Laboratory', 'large'), R('Hall', 'stair'), R('Shop', 'front'), R('Store', 'small')],
         mages: [R('Lecture hall', 'large'), R('Hall', 'stair'), R('Laboratory'), R('Library')],
         physicians: [R('Infirmary', 'large'), R('Hall', 'stair'), R('Apothecary', 'front'), R('Laboratory')],
+        // Organisations' chapter houses (lore/orders.ts; roles 'order:kind').
+        knights: [R('Chapter hall', 'large'), R('Hall', 'stair'), R('Chapel'), R('Armoury', 'small')],
+        hunters: [R('Trophy hall', 'large'), R('Hall', 'stair'), R('Armoury', 'small'), R('Still room')],
+        assassins: [R('Shop', 'front'), R('Hall', 'stair'), R('Workshop', 'back'), R('Store', 'small')],
+        mercenaries: [R('Recruiting hall', 'large'), R('Hall', 'stair'), R('Paymaster\'s office', 'front'), R('Armoury', 'small')],
+        traders: [R('Counting room', 'large'), R('Hall', 'stair'), R('Clerks\' office', 'front'), R('Strongroom', 'small')],
+        bards: [R('Music room', 'large'), R('Hall', 'stair'), R('Library'), R('Practice room', 'small')],
+        explorers: [R('Lecture hall', 'large'), R('Hall', 'stair'), R('Map room'), R('Cabinet of curiosities')],
+        vintners: [R('Tasting hall', 'large'), R('Hall', 'stair'), R('Counting room', 'front'), R('Store', 'small')],
       };
       const UPPER: Record<string, Program['roles']> = {
         adventurers: [R('Landing', 'stair'), R('Bunk room', 'large')], warriors: [R('Landing', 'stair'), R('Barrack room', 'large')],
         cartographers: [R('Landing', 'stair'), R('Stacks', 'large')], alchemists: [R('Landing', 'stair'), R('Library', 'large')],
         mages: [R('Landing', 'stair'), R('Library', 'large'), R('Study')], physicians: [R('Landing', 'stair'), R('Ward', 'large')],
+        knights: [R('Landing', 'stair'), R('Dormitory', 'large')], hunters: [R('Landing', 'stair'), R('Bunk room', 'large')],
+        assassins: [R('Landing', 'stair'), R('Training hall', 'large'), R('Study')], mercenaries: [R('Landing', 'stair'), R('Barrack room', 'large')],
+        traders: [R('Landing', 'stair'), R('Council chamber', 'large')], bards: [R('Landing', 'stair'), R('Guest room', 'large')],
+        explorers: [R('Landing', 'stair'), R('Library', 'large'), R('Map room')],
       };
       return {
-        basement: g === 'mages' ? { ...cellar, roles: [R('Summoning chamber', 'stair')] } : g === 'alchemists' ? { ...cellar, roles: [R('Still room', 'stair')] } : { ...cellar, roles: [R('Strongroom', 'stair')] },
+        basement: g === 'mages' ? { ...cellar, roles: [R('Summoning chamber', 'stair')] } : g === 'vintners' ? { ...cellar, roles: [R('Wine cellar', 'stair'), R('Wine cellar')] } : g === 'alchemists' ? { ...cellar, roles: [R('Still room', 'stair')] } : { ...cellar, roles: [R('Strongroom', 'stair')] },
         floors: [
           { roles: GROUND[g] ?? [R('Great hall', 'large'), R('Hall', 'stair'), R('Clerks\' office', 'front'), R('Workshop')], fallback: g === 'mages' ? 'Study' : 'Clerks\' office', surface: 'flags' },
           ...Array.from({ length: storeys - 1 }, (): Program => ({ roles: UPPER[g] ?? [R('Landing', 'stair'), R('Council chamber', 'large')], fallback: g === 'adventurers' ? 'Guest room' : 'Study', surface: 'boards' })),
@@ -447,7 +463,7 @@ function programs(kind: Kind, inp: DwellingInput, storeys: number, rnd: () => nu
         fallback: 'Bedroom', surface: 'boards',
       });
       return {
-        basement: { ...cellar, roles: [R('Cellar', 'stair'), R(trade === 'Taproom' ? 'Wine cellar' : 'Storage')] },
+        basement: { ...cellar, roles: [R('Cellar', 'stair'), R(trade === 'Taproom' || trade === 'Press room' ? 'Wine cellar' : 'Storage')] },
         floors: [ground, ...Array.from({ length: storeys - 1 }, (_, k) => upper(k + 1))],
         attic: { ...loft, roles: [R(pick(['Attic', 'Servants\' garret', 'Attic store']), 'large')] },
       };
@@ -694,7 +710,7 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
   const progs = programs(kind, inp, storeys, rnd);
 
   // Which floors exist.
-  const hasBasement = rnd() < BASEMENT[kind];
+  const hasBasement = rnd() < (inp.role === 'winepress' ? 1 : BASEMENT[kind]);
   const atticMask = roof.type === 'flat' ? null : atticCells(d);
   const atticCount = atticMask ? atticMask.reduce((a, b) => a + b, 0) : 0;
   const wantAttic = atticCount >= 4 && kind !== 'temple' && kind !== 'burrow' && kind !== 'store' && kind !== 'hut' && (storeys > 1 || rnd() < 0.6);

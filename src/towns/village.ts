@@ -19,7 +19,7 @@ const toward = (a: Pt, b: Pt, d: number): Pt => {
 };
 
 /** Villages with a green or market square and a well at its heart (settled farming and fishing villages). */
-export const hasWell = (s: Pick<Settlement, 'kind' | 'newWorld'>): boolean => (!s.kind || s.kind === 'farming' || s.kind === 'fishing') && !s.newWorld;
+export const hasWell = (s: Pick<Settlement, 'kind' | 'newWorld'>): boolean => (!s.kind || s.kind === 'farming' || s.kind === 'fishing' || s.kind === 'vineyard') && !s.newWorld;
 /** About one well in nine leads down to something hidden (decided from the village alone, so search can list it). */
 export const secretWell = (s: Pick<Settlement, 'kind' | 'newWorld' | 'seed'>): boolean => hasWell(s) && hash32(s.seed ^ 0x3e11) / 4294967296 < 0.11;
 
@@ -41,6 +41,8 @@ export function buildVillage(inp: PlanInput): void {
     case 'camp': camp(k); break;
     case 'shrine': shrine(k); break;
     case 'prison': prisonFort(k); break;
+    case 'order': orderHold(k); break;
+    case 'vineyard': farming(k); vines(k); break;
     default: farming(k);
   }
   villageLabels(k);
@@ -126,7 +128,7 @@ function villageLabels(k: Kit): void {
     }
   }
   const ordinary = k.buildings.filter((b) => !b.use && !used.has(b)).sort((a, b) => Math.hypot(...a.c) - Math.hypot(...b.c));
-  const farmingLike = !s.delve && (!s.kind || s.kind === 'farming' || s.kind === 'fishing');
+  const farmingLike = !s.delve && (!s.kind || s.kind === 'farming' || s.kind === 'fishing' || s.kind === 'vineyard');
   if (farmingLike && s.population > 120 && ordinary[0]) mark(ordinary.shift()!, 'inn', innName(names.rng(`${s.id}:inn`)));
   if (farmingLike && s.population > 220 && ordinary.length > 3) mark(ordinary.splice(2, 1)[0], 'smithy', 'Smithy');
   // A village apothecary: herbs, salves and simples for the villages round about.
@@ -641,6 +643,33 @@ function tribal(k: Kit): void {
 }
 
 /** Lanes from each track to a common centre, houses along them, fields with furrows around. */
+/**
+ * A vineyard village: laid out as a farming village, then its fields are planted with vines (the
+ * furrows become rows of vines) and its largest ordinary house becomes the press house.
+ */
+function vines(k: Kit): void {
+  const feats = k.inp.out.features;
+  for (const f of feats) {
+    if (f.properties.kind === 'field') f.properties.kind = 'vineyard';
+    else if (f.properties.kind === 'furrow') f.properties.kind = 'vinerow';
+  }
+  let best: (typeof feats)[number] | null = null, ba = 0;
+  for (const f of feats) {
+    if (f.properties.kind !== 'building' || f.properties.role || f.properties.use || f.geometry.type !== 'Polygon') continue;
+    const p = f.geometry.coordinates[0];
+    let a = 0;
+    for (let q = 0; q + 1 < p.length; q++) a += p[q][0] * p[q + 1][1] - p[q + 1][0] * p[q][1];
+    if (Math.abs(a) > ba) {
+      ba = Math.abs(a);
+      best = f;
+    }
+  }
+  if (best) {
+    best.properties.role = 'winepress';
+    best.properties.label = 'the Press House';
+  }
+}
+
 function farming(k: Kit): void {
   const { rnd, core, R, inp } = k;
   const ends = k.exitLanes();
@@ -796,6 +825,25 @@ function monastery(k: Kit): void {
  * against the wall, and outside the gate the hamlet of the guards' families (none on an island).
  */
 function prisonFort(k: Kit): void {
+  const setting = k.inp.s.fort?.setting;
+  fortPlan(k, { role: 'prison' }, setting === 'island', setting !== 'crag');
+}
+
+/**
+ * The stronghold of an organisation (lore/orders.ts): a hunters' school, a knightly order's
+ * commandery, an assassins' retreat (a monastery to the eye) or a free company's winter quarters,
+ * built as a walled fort with the house's main block in the yard.
+ */
+function orderHold(k: Kit): void {
+  const o = k.inp.s.order;
+  const MAIN: Record<string, Record<string, string>> = {
+    school: { role: 'order:hunters' }, commandery: { role: 'order:knights' }, retreat: { use: 'temple' }, camp: { role: 'order:mercenaries' },
+  };
+  fortPlan(k, MAIN[o?.hold ?? 'commandery'] ?? { use: 'hall' }, o?.hold === 'school' || o?.hold === 'retreat', o?.hold !== 'school');
+}
+
+/** A square walled fort: the main block in the yard, barracks and stores, and a hamlet outside the gate (unless `alone`). */
+function fortPlan(k: Kit, main: Record<string, string>, alone: boolean, fields: boolean): void {
   const { rnd, R, inp } = k;
   const out = inp.out;
   const S = 54 + rnd() * 12;
@@ -814,10 +862,10 @@ function prisonFort(k: Kit): void {
   out.point('tower', g2, { r: 3.2 });
   k.blocked.push([T(h * 1.3, h * 1.3), T(-h * 1.3, h * 1.3), T(-h * 1.3, -h * 1.3), T(h * 1.3, -h * 1.3)]);
   const name = inp.s.name ?? 'the Prison';
-  // The prison block, the barracks and the stores.
+  // The main block, the barracks and the stores.
   const bc = T(-h * 0.12, 0);
-  out.poly('building', rect(bc[0], bc[1], ga, S * 0.42, S * 0.34), { role: 'prison', label: name, ctx: 'ward' });
-  out.point('blabel', bc, { name, role: 'prison' });
+  out.poly('building', rect(bc[0], bc[1], ga, S * 0.42, S * 0.34), { ...main, label: name, ctx: 'ward' });
+  out.point('blabel', bc, { name, ...main });
   const bar = T(-h + 6, h * 0.45);
   out.poly('building', rect(bar[0], bar[1], ga + Math.PI / 2, 16, 7), { role: 'barracks', ctx: 'ward' });
   const st = T(-h + 6, -h * 0.5);
@@ -826,11 +874,11 @@ function prisonFort(k: Kit): void {
   const gate: Pt = T(h, 0);
   const outside: Pt = T(h * 1.7, 0);
   out.line('road', [outside, gate], { cls: 'track' });
-  if (inp.s.fort?.setting === 'island') return;
-  // The guards' families, outside the gate.
+  if (alone) return;
+  // The garrison's families, outside the gate.
   k.exitLanes(outside, h * 1.9);
   k.housesAlongLanes(0.6, [6, 9], 1.1);
-  if (inp.s.fort?.setting !== 'crag') k.fieldRing(h * 2.2, R, 4000, 0.4);
+  if (fields) k.fieldRing(h * 2.2, R, 4000, 0.4);
   k.clumps(3, h * 2, R);
 }
 

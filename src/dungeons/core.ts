@@ -8,10 +8,10 @@ import type { KeyNote } from '../keys/flavour';
  * caves found under some village wells)
  * has its own generator (kinds.ts) on this shared core.
  */
-export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'well' | 'delve' | 'prison';
-export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer', 'well', 'delve', 'prison'];
+export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'well' | 'delve' | 'prison' | 'hold';
+export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer', 'well', 'delve', 'prison', 'hold'];
 export const KIND_NAME: Record<DungeonKind, string> = {
-  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers', well: 'Below the well', delve: 'Delve', prison: 'Prison',
+  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers', well: 'Below the well', delve: 'Delve', prison: 'Prison', hold: 'Stronghold',
 };
 
 export interface DungeonSite {
@@ -46,6 +46,8 @@ export interface DungeonSite {
   thieves?: boolean;
   /** Sewers: under a thieves' city, the guild's den is larger and richer. */
   grandDen?: boolean;
+  /** Strongholds: the organisation (its key, lore/orders.ts) whose seat it is. */
+  order?: string;
 }
 
 /**

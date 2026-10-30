@@ -22,11 +22,11 @@ import {
 export function prison(site: DungeonSite, rnd: Rng): DLevel[] {
   const large = site.tags.includes('large');
   const W = large ? 46 : 40, H = large ? 36 : 32;
-  const top = yardLevel(rnd, W, H, large);
+  const top = yardLevel(rnd, W, H, large, PRISON_YARD);
   const down0 = top.links[0];
   const cells = galleryLevel(rnd, W, H, [down0.x, down0.y], large);
   const down1 = cells.links.find((l) => l.dir === 'down')!;
-  const pit = pitLevel(rnd, W, H, [down1.x, down1.y]);
+  const pit = pitLevel(rnd, W, H, [down1.x, down1.y], PRISON_PIT, 1);
   void site;
   return [top, cells, pit];
 }
@@ -34,7 +34,7 @@ export function prison(site: DungeonSite, rnd: Rng): DLevel[] {
 type Put = (kind: PropKind, x: number, y: number, extra?: { a?: number; w?: number; h?: number }) => void;
 
 /** Props for a room by what it is for. */
-function furnish(L: DLevel, r: Rect, tag: string, rnd: Rng): void {
+export function furnish(L: DLevel, r: Rect, tag: string, rnd: Rng): void {
   const put: Put = (kind, x, y, extra = {}) => {
     if (at(L, Math.floor(x), Math.floor(y)) === FLOOR) L.props.push({ kind, x, y, ...extra });
   };
@@ -60,6 +60,27 @@ function furnish(L: DLevel, r: Rect, tag: string, rnd: Rng): void {
     case 'prison-question': put('table', cx, cy, { w: 2, h: 0.9 }); put('brazier', r.x + 1, r.y + 1); put('chest', r.x + r.w - 0.8, r.y + r.h - 0.8); break;
     case 'prison-forgotten': put('bones', cx, cy); put('skull', cx + 0.6, cy - 0.4); break;
     case 'cistern': put('well', cx, cy); break;
+    case 'hold-watch': put('brazier', cx, cy); break;
+    case 'hold-cloister': put('well', cx, cy); for (const [dx, dy] of [[-3, -2], [3, -2], [-3, 2], [3, 2]]) put('pillar', cx + dx, cy + dy); break;
+    case 'hold-porter': case 'hold-landing': put('table', cx + 0.6, cy + 0.6, { w: 1.2, h: 0.7 }); break;
+    // Strongholds of the organisations (dungeons/hold.ts).
+    case 'hold-hall': case 'hold-chapterhall': put('table', cx, cy, { w: Math.min(4, r.w - 2), h: 1 }); put('throne', cx, r.y + 0.9); break;
+    case 'hold-trophy': put('statue', r.x + 1, r.y + 1); put('statue', r.x + r.w - 1, r.y + 1); put('table', cx, cy + 0.5, { w: 2, h: 0.9 }); put('skull', cx, cy - 0.5); break;
+    case 'hold-kitchen': put('table', cx, cy, { w: 2, h: 0.9 }); put('barrel', r.x + 0.8, r.y + 0.8); put('brazier', r.x + r.w - 1, r.y + 1); break;
+    case 'hold-armoury': put('crate', cx - 1, cy); put('crate', cx + 1, cy); put('barrel', cx, cy + 1.2); break;
+    case 'hold-lab': case 'hold-poison': put('table', cx, cy, { w: 2, h: 0.9 }); put('brazier', cx + 1.5, cy - 1); put('barrel', r.x + 0.8, r.y + r.h - 0.8); break;
+    case 'hold-library': case 'hold-archive': for (let x = r.x + 1; x < r.x + r.w - 1; x += 1) put('bookcase', x + 0.5, r.y + 0.5, { w: 1, h: 0.5 }); put('table', cx, cy + 0.5, { w: 1.5, h: 0.9 }); break;
+    case 'hold-dorm': for (let x = r.x + 0.7; x < r.x + r.w - 0.5; x += 1.3) put('bed', x, r.y + 1.1, { w: 0.9, h: 1.8 }); put('chest', cx, r.y + r.h - 0.8); break;
+    case 'hold-kennels': case 'hold-stables': for (let x = r.x + 0.8; x < r.x + r.w - 0.5; x += 1.6) put('crate', x, r.y + 0.8); put('cart', cx, r.y + r.h - 1.2, { a: 0 }); break;
+    case 'hold-store': case 'hold-wine': for (let q = 0; q < 5; q++) put(rnd() < 0.6 ? 'barrel' : 'crate', r.x + 0.8 + rnd() * (r.w - 1.6), r.y + 0.8 + rnd() * (r.h - 1.6)); break;
+    case 'hold-vault': case 'hold-treasury': for (let q = 0; q < 4; q++) put('chest', r.x + 0.8 + rnd() * (r.w - 1.6), r.y + 0.8 + rnd() * (r.h - 1.6)); break;
+    case 'hold-crypt': put('sarcophagus', cx, cy, { a: r.w > r.h ? 0 : Math.PI / 2, w: 1.8, h: 0.9 }); put('urn', r.x + 0.7, r.y + 0.7); put('urn', r.x + r.w - 0.7, r.y + 0.7); break;
+    case 'hold-reliquary': case 'hold-shrine': put('altar', cx, r.y + 0.9, { w: 1.6, h: 0.7 }); put('brazier', cx - 1.3, r.y + 0.9); put('brazier', cx + 1.3, r.y + 0.9); put('statue', cx, cy + 0.6); break;
+    case 'hold-cells': put('bones', cx, cy); put('bed', r.x + 0.6, cy, { w: 0.8, h: 1.7 }); break;
+    case 'hold-trials': put('altar', cx, cy, { w: 1.6, h: 0.9 }); put('brazier', r.x + 1, r.y + 1); put('brazier', r.x + r.w - 1, r.y + r.h - 1); break;
+    case 'hold-training': case 'hold-tiltyard': case 'hold-drill': put('pillar', cx - 2, cy); put('pillar', cx + 2, cy); put('well', cx, cy + 2); break;
+    case 'hold-gm': case 'hold-paymaster': put('table', cx, cy, { w: 1.6, h: 0.9 }); put('chest', r.x + r.w - 0.8, r.y + 0.8); put('bed', r.x + 0.8, r.y + r.h - 1.2, { w: 0.9, h: 1.8 }); break;
+    case 'hold-infirmary': put('bed', r.x + 0.8, cy, { w: 0.9, h: 1.8 }); put('bed', r.x + 2.2, cy, { w: 0.9, h: 1.8 }); put('table', r.x + r.w - 1.2, r.y + 1, { w: 1.2, h: 0.8 }); break;
   }
 }
 
@@ -77,8 +98,47 @@ function pieces(a: number, b: number, want: number): [number, number][] {
   return out;
 }
 
-function yardLevel(rnd: Rng, W: number, H: number, large: boolean): DLevel {
-  const L = newLevel('Gatehouse and yard', W, H);
+/** The rooms of a walled court (a prison's gatehouse and yard, a stronghold's courtyard). */
+export interface YardSpec {
+  name: string;
+  yard: string;
+  north: string[];
+  west: string[];
+  east: string[];
+  /** The rooms either side of the gate passage, and the corner towers. */
+  gate: string;
+  tower: string;
+  /** The room the stair down goes from (the first of the west range by default). */
+  stair: string;
+  /** Any room left over. */
+  spare: string;
+}
+/** The rooms off a passage below (a prison's pit, a stronghold's undercroft). */
+export interface PitSpec {
+  name: string;
+  landing: string;
+  rooms: [string, number, number][];
+  /** Rooms behind locked doors, and the one behind bars. */
+  locked: string[];
+  barred?: string;
+  /** A shaft in the floor (the oubliette), rubble (forgotten cells), and the room an escape tunnel starts from. */
+  shaft?: string;
+  rubble?: string;
+  tunnel?: string;
+}
+const PRISON_YARD: YardSpec = {
+  name: 'Gatehouse and yard', yard: 'prison-yard', north: ['prison-warden', 'chapel', 'prison-kitchen', 'prison-store'], west: ['prison-turnkey', 'prison-debtors', 'prison-infirmary'],
+  east: ['prison-barracks', 'armoury', 'prison-store'], gate: 'guard', tower: 'prison-watch', stair: 'prison-turnkey', spare: 'prison-store',
+};
+const PRISON_PIT: PitSpec = {
+  name: 'The pit', landing: 'prison-landing',
+  rooms: [['prison-question', 6, 5], ['prison-oubliette', 5, 5], ['prison-held', 3, 3], ['prison-deep', 3, 3], ['prison-forgotten', 4, 3],
+    ['prison-deep', 3, 3], ['prison-held', 3, 3], ['cistern', 5, 4], ['prison-deep', 3, 3], ['prison-forgotten', 3, 3]],
+  locked: ['prison-deep', 'prison-held', 'prison-forgotten'], barred: 'prison-oubliette', shaft: 'prison-oubliette', rubble: 'prison-forgotten', tunnel: 'prison-held',
+};
+
+export function yardLevel(rnd: Rng, W: number, H: number, large: boolean, spec: YardSpec): DLevel {
+  const L = newLevel(spec.name, W, H);
   const D = large ? 6 : 5;
   const X0 = 2, Y0 = 2, X1 = W - 2, Y1 = H - 2;
   const yx0 = X0 + D + 1, yx1 = X1 - D - 1, yy0 = Y0 + D + 1, yy1 = Y1 - D - 1;
@@ -93,27 +153,25 @@ function yardLevel(rnd: Rng, W: number, H: number, large: boolean): DLevel {
   const yard: Rect = { x: yx0, y: yy0, w: yx1 - yx0, h: yy1 - yy0 };
   carveRect(L, yard.x, yard.y, yard.w, yard.h);
   // The ranges round it: north, west, east, and the gate range to the south.
-  const north = ['prison-warden', 'chapel', 'prison-kitchen', 'prison-store'];
-  const west = ['prison-turnkey', 'prison-debtors', 'prison-infirmary'];
-  const east = ['prison-barracks', 'armoury', 'prison-store'];
-  pieces(yx0, yx1, large ? 7 : 6).forEach(([a, b], k) => add({ x: a, y: Y0, w: b - a, h: D }, north[k] ?? 'prison-store', [Math.floor((a + b) / 2), Y0 + D]));
-  pieces(yy0, yy1, 5).forEach(([a, b], k) => add({ x: X0, y: a, w: D, h: b - a }, west[k] ?? 'prison-store', [X0 + D, Math.floor((a + b) / 2)]));
-  pieces(yy0, yy1, 5).forEach(([a, b], k) => add({ x: X1 - D, y: a, w: D, h: b - a }, east[k] ?? 'prison-store', [X1 - D - 1, Math.floor((a + b) / 2)]));
+  const { north, west, east } = spec;
+  pieces(yx0, yx1, large ? 7 : 6).forEach(([a, b], k) => add({ x: a, y: Y0, w: b - a, h: D }, north[k] ?? spec.spare, [Math.floor((a + b) / 2), Y0 + D]));
+  pieces(yy0, yy1, 5).forEach(([a, b], k) => add({ x: X0, y: a, w: D, h: b - a }, west[k] ?? spec.spare, [X0 + D, Math.floor((a + b) / 2)]));
+  pieces(yy0, yy1, 5).forEach(([a, b], k) => add({ x: X1 - D, y: a, w: D, h: b - a }, east[k] ?? spec.spare, [X1 - D - 1, Math.floor((a + b) / 2)]));
   // The gate range: a guardroom either side of the passage, each with a door onto it.
-  add({ x: yx0, y: Y1 - D, w: cx - 2 - yx0, h: D }, 'guard', [cx - 2, Y1 - Math.ceil(D / 2)]);
-  add({ x: cx + 2, y: Y1 - D, w: yx1 - cx - 2, h: D }, 'guard', [cx + 1, Y1 - Math.ceil(D / 2)]);
+  add({ x: yx0, y: Y1 - D, w: cx - 2 - yx0, h: D }, spec.gate, [cx - 2, Y1 - Math.ceil(D / 2)]);
+  add({ x: cx + 2, y: Y1 - D, w: yx1 - cx - 2, h: D }, spec.gate, [cx + 1, Y1 - Math.ceil(D / 2)]);
   // Watchtowers at the corners, reached from the range beside them.
   const s = D - 1;
-  add({ x: X0, y: Y0, w: s, h: s }, 'prison-watch', [X0 + s, Y0 + Math.floor(s / 2)]);
+  add({ x: X0, y: Y0, w: s, h: s }, spec.tower, [X0 + s, Y0 + Math.floor(s / 2)]);
   set(L, X0 + s + 1, Y0 + Math.floor(s / 2), FLOOR);
-  add({ x: X1 - s, y: Y0, w: s, h: s }, 'prison-watch', [X1 - s - 1, Y0 + Math.floor(s / 2)]);
+  add({ x: X1 - s, y: Y0, w: s, h: s }, spec.tower, [X1 - s - 1, Y0 + Math.floor(s / 2)]);
   set(L, X1 - s - 2, Y0 + Math.floor(s / 2), FLOOR);
   // The gate passage, from the outer gate to the yard.
   for (let y = yy1; y < H; y++) for (const x of [cx - 1, cx]) set(L, x, y, FLOOR);
   L.entrances.push({ x: cx, y: H - 1, dir: -Math.PI / 2 });
   // Doors where the rooms open on the yard, the passage and each other (the yard itself adds none).
   doorsForRooms(L, rooms.map((q) => q.r), rnd, () => 'door');
-  rooms.unshift({ r: yard, tag: 'prison-yard' });
+  rooms.unshift({ r: yard, tag: spec.yard });
   // Portcullises at both ends of the passage; the turnkeys keep their door locked.
   for (const x of [cx - 1, cx]) {
     L.doors.push({ x, y: Y1, vertical: false, kind: 'portcullis' });
@@ -124,7 +182,7 @@ function yardLevel(rnd: Rng, W: number, H: number, large: boolean): DLevel {
     L.rooms.push(roomOf(q.r, 1, [q.tag]));
   }
   // The stair down to the cells, in the turnkeys' room.
-  const tk = rooms.find((q) => q.tag === 'prison-turnkey') ?? rooms[1];
+  const tk = rooms.find((q) => q.tag === spec.stair) ?? rooms[1];
   const p: [number, number] = [tk.r.x + 1, tk.r.y + 1];
   L.props = L.props.filter((q) => Math.hypot(q.x - p[0] - 0.5, q.y - p[1] - 0.5) > 1.2);
   L.links.push({ x: p[0], y: p[1], dir: 'down', to: 1, style: 'stairs' });
@@ -200,17 +258,14 @@ function galleryLevel(rnd: Rng, W: number, H: number, up: [number, number], larg
   return L;
 }
 
-function pitLevel(rnd: Rng, W: number, H: number, up: [number, number]): DLevel {
-  const L = newLevel('The pit', W, H);
+export function pitLevel(rnd: Rng, W: number, H: number, up: [number, number], spec: PitSpec, upTo: number): DLevel {
+  const L = newLevel(spec.name, W, H);
   // One passage through the pit, level with the stair foot, with rooms on both sides of it.
   const cy = Math.max(9, Math.min(H - 10, up[1]));
   const land: Rect = { x: Math.max(2, Math.min(W - 5, up[0] - 1)), y: Math.max(2, Math.min(H - 5, up[1] - 1)), w: 3, h: 3 };
   carveRect(L, land.x, land.y, land.w, land.h);
-  const want: [string, number, number][] = [
-    ['prison-question', 6, 5], ['prison-oubliette', 5, 5], ['prison-held', 3, 3], ['prison-deep', 3, 3], ['prison-forgotten', 4, 3],
-    ['prison-deep', 3, 3], ['prison-held', 3, 3], ['cistern', 5, 4], ['prison-deep', 3, 3], ['prison-forgotten', 3, 3],
-  ].sort(() => rnd() - 0.5) as [string, number, number][];
-  const placed: { r: Rect; tag: string; side: number }[] = [{ r: land, tag: 'prison-landing', side: 0 }];
+  const want = spec.rooms.slice().sort(() => rnd() - 0.5);
+  const placed: { r: Rect; tag: string; side: number }[] = [{ r: land, tag: spec.landing, side: 0 }];
   const next = [3, 3];
   want.forEach(([tag, w, h], k) => {
     for (const side of k % 2 ? [1, -1] : [-1, 1]) {
@@ -234,28 +289,28 @@ function pitLevel(rnd: Rng, W: number, H: number, up: [number, number]): DLevel 
   carveCorridor(L, Math.max(2, xs0), cy, Math.min(W - 3, xs1), cy, true);
   carveCorridor(L, up[0], up[1], up[0], cy, false);
   // The oubliette: a shaft in the floor with a grate over it.
-  const ob = placed.find((q) => q.tag === 'prison-oubliette');
+  const ob = placed.find((q) => q.tag === spec.shaft);
   if (ob) {
     const [ox, oy] = centre(ob.r);
     for (const [i, j] of [[0, 0], [-1, 0], [0, -1], [-1, -1]]) set(L, ox + i, oy + j, PIT);
   }
   // The forgotten cells: rubble on the floor.
   for (const q of placed) {
-    if (q.tag !== 'prison-forgotten') continue;
+    if (q.tag !== spec.rubble) continue;
     for (let k = 0; k < 2; k++) set(L, q.r.x + Math.floor(rnd() * q.r.w), q.r.y + Math.floor(rnd() * q.r.h), RUBBLE);
   }
   doorsForRooms(L, placed.map((q) => q.r), rnd, () => 'door');
   for (const d of L.doors) {
     const q = placed.find((p) => d.x >= p.r.x - 1 && d.x <= p.r.x + p.r.w && d.y >= p.r.y - 1 && d.y <= p.r.y + p.r.h);
     if (!q) continue;
-    d.kind = q.tag === 'prison-deep' || q.tag === 'prison-held' || q.tag === 'prison-forgotten' ? 'locked' : q.tag === 'prison-oubliette' ? 'bars' : 'door';
+    d.kind = spec.locked.includes(q.tag) ? 'locked' : q.tag === spec.barred ? 'bars' : 'door';
   }
   for (const q of placed) {
     furnish(L, q.r, q.tag, rnd);
     L.rooms.push(roomOf(q.r, 1, [q.tag]));
   }
   // An escape tunnel: from one of the held cells, behind a loose stone, away from the passage.
-  const from = placed.filter((q) => q.tag === 'prison-held').sort(() => rnd() - 0.5)[0];
+  const from = placed.filter((q) => q.tag === spec.tunnel).sort(() => rnd() - 0.5)[0];
   if (from) {
     const dir = from.side;
     let x = from.r.x + 1, y = dir < 0 ? from.r.y - 1 : from.r.y + from.r.h;
@@ -283,7 +338,7 @@ function pitLevel(rnd: Rng, W: number, H: number, up: [number, number]): DLevel 
       L.rooms.push(room);
     }
   }
-  L.links.push({ x: up[0], y: up[1], dir: 'up', to: 1, style: 'stairs' });
+  L.links.push({ x: up[0], y: up[1], dir: 'up', to: upTo, style: 'stairs' });
   L.props = L.props.filter((q) => Math.hypot(q.x - up[0] - 0.5, q.y - up[1] - 0.5) > 1.2);
   void reach;
   void connectAll;

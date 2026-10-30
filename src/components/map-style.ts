@@ -76,6 +76,15 @@ export const PLAN_GROUND_LAYERS: LayerSpecification[] = [
     paint: { 'line-color': '#c2b385', 'line-width': e(['interpolate', ['linear'], ['zoom'], 13.5, 0.4, 16, 0.8, 19, 1.4]) },
   },
   {
+    // Vineyards: green-gold ground with rows of vines.
+    id: 'plan-vineyards', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('vineyard'),
+    paint: { 'fill-color': '#d3d39c', 'fill-outline-color': '#a3a06c', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
+  },
+  {
+    id: 'plan-vinerows', type: 'line', source: 'plans', minzoom: 13.5, filter: kind('vinerow'),
+    paint: { 'line-color': '#5f7a36', 'line-width': e(['interpolate', ['linear'], ['zoom'], 13.5, 0.6, 16, 1.2, 19, 2.2]), 'line-dasharray': [0.7, 0.9] },
+  },
+  {
     id: 'plan-plaza', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('plaza'),
     paint: { 'fill-color': '#f4ecd9', 'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3) },
   },
@@ -251,7 +260,7 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     paint: {
       // Notable buildings are washed a little warmer so they stand out from the terraces.
       'fill-color': e(['case', ['has', 'role'],
-        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', 'apothecary', '#bdb38a', 'witch', '#a7a07c', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians'], '#b8a689', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', 'magetower', '#a99bb3', 'countinghouse', '#c2a978', 'foundry', '#a8978a', 'shrine', '#bba27c', '#c6b08e'],
+        ['match', ['get', 'role'], ['inn', 'tavern'], '#c9a283', 'apothecary', '#bdb38a', 'witch', '#a7a07c', ['townhall', 'guildhall', 'library', 'guild:adventurers', 'guild:warriors', 'guild:cartographers', 'guild:alchemists', 'guild:mages', 'guild:masons', 'guild:smiths', 'guild:weavers', 'guild:physicians', 'order:knights', 'order:hunters', 'order:assassins', 'order:mercenaries', 'order:traders', 'order:bards', 'order:explorers', 'guild:vintners'], '#b8a689', 'winepress', '#b89a8a', ['university', 'college'], '#b29c86', 'barracks', '#b3a38f', 'magetower', '#a99bb3', 'countinghouse', '#c2a978', 'foundry', '#a8978a', 'shrine', '#bba27c', '#c6b08e'],
         ['has', 'burrow'], '#a5b47a',
         ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', 'witch', '#a7a07c', '#cdbd9c']]),
       'fill-outline-color': INK,
@@ -313,11 +322,11 @@ export const MARKER_LAYERS: LayerSpecification[] = [
   {
     id: 'village-markers', type: 'circle', source: 'regional', minzoom: VILLAGE_ZOOM, maxzoom: 13.5,
     // Abandoned villages and prison forts are marked by their dungeon's icon instead.
-    filter: e(['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'tier'], 'village'], ['!=', ['get', 'kind'], 'abandoned'], ['!=', ['get', 'kind'], 'prison']]) as FilterSpecification,
+    filter: e(['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'tier'], 'village'], ['!=', ['get', 'kind'], 'abandoned'], ['!=', ['get', 'kind'], 'prison'], ['!=', ['get', 'kind'], 'order']]) as FilterSpecification,
     paint: {
       // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
       'circle-color': e(['match', ['get', 'kind'],
-        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, 'tribal', '#8a5a3a', 'camp', '#b0402c', 'shrine', '#c9a227', INK]),
+        'fishing', '#3b6276', 'logging', '#4f6b39', 'mining', '#6e6a64', 'keep', '#9b3b2e', 'monastery', PAPER, 'tribal', '#8a5a3a', 'camp', '#b0402c', 'shrine', '#c9a227', 'vineyard', '#7a2d4f', INK]),
       'circle-radius': e(['interpolate', ['linear'], ['zoom'],
         8, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp', 'shrine'], 2, 1.5],
         12, ['match', ['get', 'kind'], ['keep', 'monastery', 'camp', 'shrine'], 4, 3]]),
@@ -743,6 +752,108 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
     }
     g.stroke();
   });
+  // The strongholds of the organisations (lore/orders.ts).
+  const keepShape = (g: CanvasRenderingContext2D, fill: string) => {
+    g.fillStyle = fill;
+    g.beginPath();
+    g.moveTo(8, 24);
+    g.lineTo(8, 12);
+    for (const x of [8, 12.5, 17]) {
+      g.lineTo(x, 9.5);
+      g.lineTo(x + 2, 9.5);
+      g.lineTo(x + 2, 12);
+      g.lineTo(x + 4.5, 12);
+    }
+    g.lineTo(22, 12);
+    g.lineTo(22, 24);
+    g.closePath();
+    g.fill();
+    g.stroke();
+  };
+  // A hunters' school: a keep with crossed blades.
+  const school = make((g) => {
+    disc(g);
+    keepShape(g, '#d8cfbd');
+    g.strokeStyle = '#1f1a16';
+    g.lineWidth = 1.5;
+    g.beginPath();
+    g.moveTo(11, 22);
+    g.lineTo(19, 14);
+    g.moveTo(19, 22);
+    g.lineTo(11, 14);
+    g.stroke();
+  });
+  // A commandery: a keep with a red cross.
+  const commandery = make((g) => {
+    disc(g);
+    keepShape(g, '#e8e0cc');
+    g.fillStyle = '#9b2a22';
+    g.fillRect(14, 14, 2.2, 9);
+    g.fillRect(11, 16.5, 8.2, 2.2);
+  });
+  // A retreat: a monastery's arched front and bell.
+  const retreat = make((g) => {
+    disc(g);
+    g.fillStyle = '#d8cfbd';
+    g.beginPath();
+    g.moveTo(8, 24);
+    g.lineTo(8, 14);
+    g.lineTo(15, 7);
+    g.lineTo(22, 14);
+    g.lineTo(22, 24);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#1f1a16';
+    g.beginPath();
+    g.arc(15, 15, 2.2, Math.PI, 0);
+    g.lineTo(17.2, 18);
+    g.lineTo(12.8, 18);
+    g.closePath();
+    g.fill();
+    g.fillRect(13.5, 20, 3, 4);
+  });
+  // A winter camp: tents behind a palisade.
+  const campIcon = make((g) => {
+    disc(g);
+    g.fillStyle = '#e8e0cc';
+    for (const [x, w] of [[9, 7], [16, 8]]) {
+      g.beginPath();
+      g.moveTo(x - w / 2, 21);
+      g.lineTo(x, 12);
+      g.lineTo(x + w / 2, 21);
+      g.closePath();
+      g.fill();
+      g.stroke();
+    }
+    g.strokeStyle = '#6b4a2e';
+    g.lineWidth = 1.2;
+    g.beginPath();
+    for (let x = 6; x <= 24; x += 2) {
+      g.moveTo(x, 25);
+      g.lineTo(x, 21.5);
+    }
+    g.moveTo(5.5, 23);
+    g.lineTo(24.5, 23);
+    g.stroke();
+  });
+  // A druid circle: a ring of standing stones.
+  const circle = make((g) => {
+    disc(g);
+    g.fillStyle = '#b9b2a2';
+    for (let q = 0; q < 7; q++) {
+      const a = (q / 7) * Math.PI * 2;
+      const x = 15 + Math.cos(a) * 7.5, y = 16 + Math.sin(a) * 6;
+      g.beginPath();
+      g.rect(x - 1.3, y - 3, 2.6, 4);
+      g.fill();
+      g.stroke();
+    }
+    g.fillStyle = '#4f6b3a';
+    g.beginPath();
+    g.arc(15, 16, 1.6, 0, Math.PI * 2);
+    g.fill();
+  });
   const crypt = make((g) => {
     disc(g);
     g.fillStyle = '#d8cfbd';
@@ -896,7 +1007,9 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
     { id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr },
     { id: 'lair-glade-fungal', image: gladeFungal, pixelRatio: pr }, { id: 'lair-glade-cursed', image: gladeCursed, pixelRatio: pr },
     { id: 'lair-pass', image: pass, pixelRatio: pr }, { id: 'dun-abandoned', image: abandoned, pixelRatio: pr },
-    { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-prison', image: prison, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },
+    { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-prison', image: prison, pixelRatio: pr },
+    { id: 'dun-school', image: school, pixelRatio: pr }, { id: 'dun-commandery', image: commandery, pixelRatio: pr }, { id: 'dun-retreat', image: retreat, pixelRatio: pr },
+    { id: 'dun-camp', image: campIcon, pixelRatio: pr }, { id: 'dun-circle', image: circle, pixelRatio: pr }, { id: 'dun-hold', image: commandery, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },
     { id: 'dun-mine', image: mine, pixelRatio: pr }, { id: 'dun-sewer', image: sewer, pixelRatio: pr }, { id: 'dun-catacomb', image: catacomb, pixelRatio: pr },
   ];
 }

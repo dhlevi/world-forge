@@ -69,7 +69,7 @@ const LABEL_TYPE: Record<string, [string, SearchCat]> = {
 
 const VILLAGE_TYPE: Record<string, string> = {
   farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village',
-  camp: 'Army camp', shrine: 'Shrine', abandoned: 'Abandoned village', prison: 'Prison fort',
+  camp: 'Army camp', shrine: 'Shrine', abandoned: 'Abandoned village', prison: 'Prison fort', order: 'Stronghold', vineyard: 'Vineyard',
 };
 
 const mid = (c: number[][]) => c[c.length >> 1];
@@ -195,6 +195,14 @@ export function themeEntries(settlements: Settlement[], themes: Map<string, { th
   return out;
 }
 
+/** The world's organisations (lore/orders.ts): each opens its window, at its seat. */
+export function orderEntries(orders: { key: string; name: string; en: string; kind: string; seat: { kind: string; lon: number; lat: number; name: string } }[], label: Record<string, string>): SearchEntry[] {
+  return orders.map((o) => ({
+    id: `ord${o.key}`, name: cap(o.en), ...(o.name !== o.en ? { alt: cap(o.name) } : {}), type: label[o.kind] ?? 'Order', cat: 'region' as SearchCat,
+    lon: o.seat.lon, lat: o.seat.lat, zoom: o.seat.kind === 'hold' ? 13 : o.seat.kind === 'hidden' ? 6 : 12, rank: 0.5, info: o.seat.kind === 'hidden' ? 'seat unknown' : o.seat.name,
+  }));
+}
+
 /** The world's faiths (from the lore): each opens the faith window. */
 export function faithEntries(faiths: Faith[]): SearchEntry[] {
   return faiths.map((f) => {
@@ -212,7 +220,7 @@ export function blockEntry(o: { id: string; name: string; tier: string; kind: st
 }
 
 const LAIR_TYPE: Record<string, string> = {
-  cave: 'Cave', glade: 'Glade', pass: 'Mountain pass', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', mine: 'Mine', sewer: 'Sewers', catacomb: 'Catacombs', delve: 'Delve', prison: 'Prison',
+  cave: 'Cave', glade: 'Glade', pass: 'Mountain pass', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', mine: 'Mine', sewer: 'Sewers', catacomb: 'Catacombs', delve: 'Delve', prison: 'Prison', hold: 'Stronghold',
 };
 
 const PLAN_TYPE: Record<string, string> = { qlabel: 'Quarter', dlabel: 'District', blabel: 'Building' };

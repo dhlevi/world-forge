@@ -5,6 +5,7 @@ import {
 } from './core';
 import { writeKey } from './key';
 import { prison } from './prison';
+import { stronghold } from './hold';
 
 /** Number of levels from the tags ("3 levels"), else the kind's default. */
 export function dungeonLevels(site: DungeonSite): number {
@@ -41,6 +42,7 @@ function build(site: DungeonSite): Dungeon {
     case 'well': levels = stack(n, rnd, (k, anchors) => k === 0 ? wellLevel(site, rnd) : vaultLevel(site, rnd, k, anchors, 'Hidden vaults', 36, 28), 'stairs'); break;
     case 'delve': levels = delve(site, rnd); break;
     case 'prison': levels = prison(site, rnd); break;
+    case 'hold': levels = stronghold(site, rnd); break;
     default: levels = stack(n, rnd, (k, anchors) => cryptLevel(site, rnd, k, anchors), 'stairs'); break;
   }
   // Rooms are numbered through the whole dungeon, level by level.

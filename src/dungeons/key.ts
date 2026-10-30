@@ -66,6 +66,30 @@ const HOOKS: Record<string, string[]> = {
     "A noble's daughter fled into the sewers rather than marry; her father wants her back unharmed.",
     'Strange chanting rises through the gratings under the old temple at midnight.',
   ],
+  school: [
+    'A hunter of the school went out on a contract a month ago and his horse came back alone.',
+    'The school has caught something it cannot kill, and it is getting out of its cage.',
+    'A village wants its child back: the school took her in payment, as the old contract allowed.',
+    'The master is dying, and the hunters are choosing sides for the succession.',
+  ],
+  commandery: [
+    'The order\'s treasury is said to hold enough gold to buy a kingdom, and a king means to find out.',
+    'A knight-brother has broken his vows and fled with a relic; the order wants him back quietly.',
+    'The grandmaster has been summoned to answer a charge of heresy, and the commandery is preparing to resist.',
+    'Pilgrims escorted by the order keep disappearing on one stretch of the road.',
+  ],
+  retreat: [
+    'A traveller sheltering at the monastery noticed the monks do not pray, and has not been seen since.',
+    'A contract has been taken on someone you know, and the trail leads to a quiet house in the hills.',
+    'An old brother wants to leave the brotherhood alive, and needs help to do it.',
+    'Someone has stolen the ledger of contracts, and the brotherhood will pay anything to have it back.',
+  ],
+  camp: [
+    'The company has not been paid in three months, and the captains are talking about taking it from the employer by force.',
+    'A captain of the company has sold its plans to the enemy; the captain-general wants him found.',
+    'The company holds a noble hostage against its pay, and her family wants her back without paying.',
+    'Deserters from the company are raiding the villages, and the locals blame the whole company.',
+  ],
   prison: [
     'A prisoner in the cells claims to know where the crown jewels went, and will say so only to someone who gets her out.',
     'The warden has been selling releases to the highest bidder; a family wants proof before the next assize.',
@@ -150,6 +174,37 @@ const ROOMS: Record<string, Entry> = {
   'prison-infirmary': ['Infirmary', ['A few cots, a table of bandages and bitter herbs, and a prisoner coughing behind a screen.', "Fever is the prison's real hangman; the infirmary is never empty."]],
   'prison-barracks': ['Guards\' barracks', ['Bunks for the guards off watch, their cloaks on pegs and their crossbows racked by the door.', 'The guards sleep here in shifts; a game of dice goes on at the end table at all hours.']],
   'prison-watch': ['Watchtower', ['A corner tower with a brazier and a view over the yard and the country beyond the walls.', 'A tower stair winds up to the wall walk; a guard keeps watch from the arrow slits.']],
+  'hold-hall': ['Great hall', ['A long hall with a high table and benches, banners of the order on the walls.', 'The hall where the whole house eats; a fire burns at each end.']],
+  'hold-chapterhall': ['Chapter hall', ['A vaulted hall where the knights meet in chapter, ranked by seniority on stone benches round the walls.', 'The order\'s rule is read here each morning; the grandmaster\'s chair stands under the banner.']],
+  'hold-trophy': ['Trophy hall', ['Skulls and hides of beasts the school has killed hang from every wall, each with a name and a year.', 'A wyvern\'s skeleton hangs from the rafters; the school\'s greatest kills are painted round it.']],
+  'hold-kitchen': ['Kitchen', ['A busy kitchen with a great hearth and a cook who rules it.', 'Bread, broth and ale for the whole house, and something better for the masters.']],
+  'hold-armoury': ['Armoury', ['Racks of weapons and harness, oiled and counted.', 'Swords, crossbows and spears for the whole house, and a smith\'s bench for repairs.']],
+  'hold-lab': ['Alchemist\'s room', ['Shelves of jars holding things best not named; the stair down to the undercroft opens in the corner.', 'Stills and retorts bubble over a brazier: the school\'s draughts are brewed here.']],
+  'hold-library': ['Library', ['Bestiaries, chronicles and treatises, chained to the shelves.', 'A small library of the order\'s rule, its histories and its accounts.']],
+  'hold-dorm': ['Dormitory', ['Rows of narrow beds, a chest at the foot of each.', 'A long dormitory where the brothers sleep in their clothes, ready for the bell.']],
+  'hold-kennels': ['Kennels', ['Hounds trained to the scent of the things the school hunts; they do not bark at men.', 'Pens and runs for the school\'s dogs, and a cage for something that is not a dog.']],
+  'hold-stables': ['Stables', ['Warhorses in a row of stalls, each with its name painted above.', 'Stables and tack for the house\'s horses.']],
+  'hold-store': ['Storeroom', ['Barrels, sacks and crates, counted and tallied.', 'Stores for a long siege: grain, salt meat and oil.']],
+  'hold-watch': ['Watchtower', ['A tower over the wall with a brazier and a view of every road.', 'A lookout keeps watch here day and night.']],
+  'hold-training': ['Training ground', ['A practice ground with pells, posts and a course of swinging logs.', 'Here novices learn to fight, fall and get up again.']],
+  'hold-tiltyard': ['Tiltyard', ['A yard of beaten sand for the lance and the sword, with a tilt barrier down the middle.', 'Knights at practice in the yard, horses wheeling, dust everywhere.']],
+  'hold-drill': ['Drill yard', ['A muddy yard where the company drills with pike and crossbow.', 'Tents and wagons fill half the yard; the rest is kept clear for drill.']],
+  'hold-cloister': ['Cloister', ['A quiet cloister round a garden of herbs and flowers; brothers walk it in silence.', 'A colonnade round a well; it is very peaceful, and every corner can be watched from somewhere.']],
+  'hold-porter': ['Porter\'s lodge', ['The porter greets every visitor kindly and remembers every face.', 'A lodge by the gate where guests are welcomed, and counted.']],
+  'hold-gm': ['Master\'s rooms', ['Plain rooms for the head of the house: a bed, a desk, a chest of letters.', 'The master\'s rooms, richer than the rule allows.']],
+  'hold-infirmary': ['Infirmary', ['Beds for the sick and wounded, and a shelf of remedies.', 'A quiet room of cots where the old and the hurt are nursed.']],
+  'hold-paymaster': ['Paymaster\'s office', ['The company\'s ledgers and an iron-bound chest; the stair to the cellars goes down from here.', 'Every man\'s pay, debts and fines are written here.']],
+  'hold-landing': ['Stair foot', ['The foot of the stair, with a lamp and a bench.', 'A small vaulted room at the stair foot.']],
+  'hold-trials': ['Chamber of trials', ['A stone table with straps, a brazier and a drain: where trainees are given the draughts that make them hunters. Not all survive.', 'The walls are scratched with the names of those who did not come through the trials.']],
+  'hold-cells': ['Cells', ['Iron-barred cells; one holds something still alive.', 'Cells for prisoners, hostages, or things brought back for study.']],
+  'hold-crypt': ['Crypt', ['The house\'s dead lie here in stone, with their swords on their breasts.', 'A crypt of the masters of the order; the newest tomb is not yet sealed.']],
+  'hold-vault': ['Vault', ['A locked vault of the house\'s treasures.', 'An iron door and, behind it, chests and a strongbox.']],
+  'hold-treasury': ['Treasury', ['The order\'s wealth in coin, plate and letters of credit.', 'Chests of coin and a ledger of loans to half the kings of the world.']],
+  'hold-reliquary': ['Reliquary', ['The order\'s holiest relic, in a shrine of gold behind a grille.', 'A shrine of relics where a candle has burned without going out since the order was founded.']],
+  'hold-wine': ['Wine cellar', ['Racks of casks; the house keeps a good cellar.', 'Barrels of wine and ale, and a few bottles hidden behind them.']],
+  'hold-shrine': ['Shrine of the Master', ['A hidden shrine to the god of quiet endings, its altar a block of black stone.', 'Here new blades swear their oath, in the dark, before the masked master.']],
+  'hold-poison': ['Poison room', ['Jars of dried leaves and roots, a mortar, and a list of doses in a careful hand.', 'The garden\'s harvest ends here, distilled into things with no taste.']],
+  'hold-archive': ['Archive of contracts', ['Every contract the brotherhood has taken, sealed and shelved; some of the names would shake thrones.', 'A locked room of ledgers and letters, the brotherhood\'s memory and its insurance.']],
   'prison-kitchen': ['Kitchen', ['A smoky kitchen where a cauldron of thin pottage feeds the whole prison; the guards eat better, from a separate pot.', 'Bread for the prisoners is baked here, coarse and grey; the cook sells better to those who can pay.']],
   'prison-store': ['Storeroom', ['Sacks of meal, barrels of small beer and a stack of chains waiting for new prisoners.', 'Bales of straw for the cells, lamp oil and spare manacles, all counted by the warden himself.', 'Prisoners\' belongings in tagged bundles, waiting for release or sale.']],
   'prison-landing': ['Guard post', ['The foot of the stair: a table, a lamp, and a guard who takes the name of everyone who passes.', 'A guard post at the stair foot, with a bench, a slate of names and a bell to ring for the turnkeys.']],
@@ -168,9 +223,11 @@ const ROOMS: Record<string, Entry> = {
 
 export function writeKey(d: Dungeon, rnd: Rng): void {
   // The caves under a well take their creatures, traps and treasure from the natural caves.
-  const kind = (d.site.kind === 'well' ? 'cave' : d.site.kind) as SiteKind;
+  // A stronghold keys by what it is (its kind is one of its tags).
+  const hold = d.site.kind === 'hold' ? (['school', 'commandery', 'retreat', 'camp'].find((t) => d.site.tags.includes(t)) ?? 'commandery') : '';
+  const kind = (d.site.kind === 'well' ? 'cave' : hold || d.site.kind) as SiteKind;
   d.title = d.site.name;
-  d.hook = [pick(rnd, HOOKS[d.site.kind] ?? HOOKS.crypt), hookTail(rnd)].filter(Boolean).join(' ');
+  d.hook = [pick(rnd, HOOKS[hold || d.site.kind] ?? HOOKS.crypt), hookTail(rnd)].filter(Boolean).join(' ');
   // A place with a story of its own (an abandoned village, a cursed land's heart) tells it first.
   if (d.site.story) d.hook = `${d.site.story} ${d.hook}`;
   const used = new Set<string>();
