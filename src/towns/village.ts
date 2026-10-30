@@ -40,6 +40,7 @@ export function buildVillage(inp: PlanInput): void {
     case 'tribal': tribal(k); break;
     case 'camp': camp(k); break;
     case 'shrine': shrine(k); break;
+    case 'prison': prisonFort(k); break;
     default: farming(k);
   }
   villageLabels(k);
@@ -789,6 +790,50 @@ function monastery(k: Kit): void {
 }
 
 /** A ringwork on the hilltop: ditch, wall with towers and gate, keep and hall; a hamlet below. */
+/**
+ * A prison fort (gen/prisons.ts): a square curtain wall with towers at the corners and a
+ * gatehouse, the prison block in the middle of the yard, the garrison's barracks and stores
+ * against the wall, and outside the gate the hamlet of the guards' families (none on an island).
+ */
+function prisonFort(k: Kit): void {
+  const { rnd, R, inp } = k;
+  const out = inp.out;
+  const S = 54 + rnd() * 12;
+  const e0 = inp.exits[0]?.p ?? k.polar(R, rnd() * 2 * Math.PI);
+  const ga = Math.atan2(e0[1], e0[0]);
+  const ca = Math.cos(ga), sa = Math.sin(ga);
+  // Local frame: u toward the gate.
+  const T = (u: number, v: number): Pt => [u * ca - v * sa, u * sa + v * ca];
+  const h = S / 2;
+  const corners = [T(h, h), T(-h, h), T(-h, -h), T(h, -h)];
+  out.poly('plaza', corners);
+  const g1 = T(h, 4), g2 = T(h, -4);
+  out.line('wall', [g1, T(h, h), T(-h, h), T(-h, -h), T(h, -h), g2], { w: 3 });
+  for (const c of corners) out.point('tower', c, { r: 4 });
+  out.point('tower', g1, { r: 3.2 });
+  out.point('tower', g2, { r: 3.2 });
+  k.blocked.push([T(h * 1.3, h * 1.3), T(-h * 1.3, h * 1.3), T(-h * 1.3, -h * 1.3), T(h * 1.3, -h * 1.3)]);
+  const name = inp.s.name ?? 'the Prison';
+  // The prison block, the barracks and the stores.
+  const bc = T(-h * 0.12, 0);
+  out.poly('building', rect(bc[0], bc[1], ga, S * 0.42, S * 0.34), { role: 'prison', label: name, ctx: 'ward' });
+  out.point('blabel', bc, { name, role: 'prison' });
+  const bar = T(-h + 6, h * 0.45);
+  out.poly('building', rect(bar[0], bar[1], ga + Math.PI / 2, 16, 7), { role: 'barracks', ctx: 'ward' });
+  const st = T(-h + 6, -h * 0.5);
+  out.poly('building', rect(st[0], st[1], ga + Math.PI / 2, 12, 6), { use: 'store' });
+  out.point('well', T(h * 0.55, h * 0.5), { r: 1.4 });
+  const gate: Pt = T(h, 0);
+  const outside: Pt = T(h * 1.7, 0);
+  out.line('road', [outside, gate], { cls: 'track' });
+  if (inp.s.fort?.setting === 'island') return;
+  // The guards' families, outside the gate.
+  k.exitLanes(outside, h * 1.9);
+  k.housesAlongLanes(0.6, [6, 9], 1.1);
+  if (inp.s.fort?.setting !== 'crag') k.fieldRing(h * 2.2, R, 4000, 0.4);
+  k.clumps(3, h * 2, R);
+}
+
 function keep(k: Kit): void {
   const { rnd, core, R, inp } = k;
   const out = inp.out;

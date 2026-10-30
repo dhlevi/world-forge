@@ -8,10 +8,10 @@ import type { KeyNote } from '../keys/flavour';
  * caves found under some village wells)
  * has its own generator (kinds.ts) on this shared core.
  */
-export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'well' | 'delve';
-export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer', 'well', 'delve'];
+export type DungeonKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'well' | 'delve' | 'prison';
+export const DUNGEON_KINDS: DungeonKind[] = ['mine', 'tower', 'crypt', 'ruin', 'catacomb', 'sewer', 'well', 'delve', 'prison'];
 export const KIND_NAME: Record<DungeonKind, string> = {
-  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers', well: 'Below the well', delve: 'Delve',
+  mine: 'Mine', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', catacomb: 'Catacombs', sewer: 'Sewers', well: 'Below the well', delve: 'Delve', prison: 'Prison',
 };
 
 export interface DungeonSite {
@@ -148,6 +148,24 @@ export interface Dungeon {
   title: string;
   hook: string;
   levels: DLevel[];
+  /** Prisons: the notable inmates (dungeons/inmates.ts, filled in on the page from the world's lore). */
+  roster?: Inmate[];
+}
+
+/** A notable inmate of a prison, held in a numbered cell. */
+export interface Inmate {
+  name: string;
+  female: boolean;
+  /** Their people and folk ("Varskish (dwarf)"), and the culture (index into CULTURES). */
+  people: string;
+  culture: number;
+  crime: string;
+  sentence: string;
+  /** The room (key number) and level that hold them. */
+  cell: number;
+  level: number;
+  /** What they know or want, or what is not as it seems. */
+  hook: string;
 }
 
 // ---- Grid helpers ------------------------------------------------------------------------------
@@ -324,7 +342,7 @@ export function packLines(lines: number[][][]): string {
  * the streets of each quarter; a stair in the graveyard, by the temple, or in the market).
  */
 export function townUnderground(
-  s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string; delve?: boolean },
+  s: { id: string; tier: string; population: number; seed: number; name?: string; kind?: string; delve?: boolean; prison?: { name: string; en: string } },
   /** Names from an English pattern ({0} the town), in the local language and in English. */
   named: (tpl: string) => { name: string; en: string } = (tpl) => ({ name: tpl.replace('{0}', s.name ?? ''), en: tpl.replace('{0}', s.name ?? '') }),
 ): Underground[] {
@@ -359,11 +377,13 @@ export function townUnderground(
     const nm = named(u(0xca7c) < 0.6 ? 'the Catacombs of {0}' : 'the Undercroft of {0}');
     out.push({ dkind: 'catacomb', did: `${s.id}/catacomb`, ...nm, tags: [size, ...(levels > 1 ? [`${levels} levels`] : [])] });
   }
+  // A prison keep (gen/prisons.ts), entered at the prison block on the plan.
+  if (s.prison) out.push({ dkind: 'prison', did: `${s.id}/prison`, name: s.prison.name, en: s.prison.en, tags: ['large', '3 levels', 'city prison'] });
   return out;
 }
 
 export interface Underground {
-  dkind: 'sewer' | 'catacomb' | 'delve';
+  dkind: 'sewer' | 'catacomb' | 'delve' | 'prison';
   did: string;
   name: string;
   en: string;

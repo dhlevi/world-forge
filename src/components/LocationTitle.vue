@@ -44,7 +44,7 @@ function pair(native: string, en?: string): { name: string; alt?: string } {
 }
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
-const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp', shrine: 'Shrine' };
+const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp', shrine: 'Shrine', prison: 'Prison fort' };
 const townArms = new Map<string, Arms>();
 
 /** "2.3 million", "34,000", "870". */
@@ -119,7 +119,7 @@ const info = computed<Line | null>(() => {
       const seatOf = chain.filter((u) => u.seat === s.id && u.gov !== 'league').pop();
       return {
         ...pair(s.name ?? '', s.nameEn), old: s.nameOld,
-        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' && !s.delve ? LAYOUT_LABEL[s.layout] : '', s.delve ? 'a delve: its halls lie under the mountain' : '', s.special === 'spa' ? `a spa town by ${s.specialNear ?? 'its hot springs'}` : s.special === 'mining' ? `a mining town by ${s.specialNear ?? 'the fire mountain'}` : s.special === 'ashen' ? `under the ash of ${s.specialNear ?? 'a volcano'}` : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', s.tower ? (s.tower.college ? `its college of magic, ${s.tower.en}` : `home of ${s.tower.en}`) : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
+        sub: [`${s.kind === 'tribal' ? 'Tribal town' : s.colony ? cap(s.colony === 'post' ? 'trading post' : s.colony) : kind} of ${s.population.toLocaleString('en')}`, s.layout && s.kind !== 'tribal' && !s.delve ? LAYOUT_LABEL[s.layout] : '', s.delve ? 'a delve: its halls lie under the mountain' : '', s.special === 'spa' ? `a spa town by ${s.specialNear ?? 'its hot springs'}` : s.special === 'mining' ? `a mining town by ${s.specialNear ?? 'the fire mountain'}` : s.special === 'ashen' ? `under the ash of ${s.specialNear ?? 'a volcano'}` : '', s.university && theme?.theme !== 'mages' ? 'a university city' : '', s.tower ? (s.tower.college ? `its college of magic, ${s.tower.en}` : `home of ${s.tower.en}`) : '', s.prison ? `its prison, ${s.prison.en}` : '', theme ? `${THEME_LABEL[theme.theme]} (${theme.why})` : '', holy && theme?.theme !== 'pilgrim' ? `holy to ${holy.faith}` : '', seatOf ? `seat of the ${seatOf.title.toLowerCase()}` : ''].filter(Boolean).join(' · '),
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
         ...(s.delve && s.deepTo ? { deep: deepLine(s.id, s.deepTo.name, s.deepTies) } : {}),
       };
@@ -132,6 +132,12 @@ const info = computed<Line | null>(() => {
       if (h.kind === 'shrine') {
         return {
           ...pair(h.name, h.en), sub: ['Shrine', h.what, h.faith ? `holy to ${h.faith}` : ''].filter(Boolean).join(' · '),
+          arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
+        };
+      }
+      if (h.kind === 'prison') {
+        return {
+          ...pair(h.name, h.en), sub: ['Prison fort', h.what, h.realm ? `the prison of the ${h.realm.replace(/^the /, '')}` : '', `a garrison of ${h.population.toLocaleString('en')}`].filter(Boolean).join(' · '),
           arms: null, armsKey: '', crumbs: crumbs(chain, 0), chain,
         };
       }

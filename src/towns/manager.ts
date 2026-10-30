@@ -141,6 +141,8 @@ export interface IndexEntry {
 
 /** Spacing (km) of cave and glade candidates; only suitable ground keeps one (about one per 30–40 km there). */
 const LAIR_SPACING_KM = 30;
+/** Where a prison fort stands, for the location title. */
+const FORT_WHERE: Record<string, string> = { island: 'on an island off the coast', crag: 'on a mountain crag', marsh: 'in the marshes', moor: 'on lonely moorland' };
 /** Spacing (km) of tower, crypt and ruin candidates (most are kept on land, so roughly one per 45 km). */
 const DUNGEON_SPACING_KM = 45;
 
@@ -254,6 +256,7 @@ export class TownManager {
             id: v.id, tier: 'village', kind: v.kind ?? 'farming', population: v.population, name: v.name ?? '', ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}),
             ...(v.army ? { realm: v.army.realm, war: v.army.war } : {}),
             ...(v.shrine ? { faith: v.shrine.faith, what: v.shrine.what } : {}),
+            ...(v.fort ? { realm: this.world.politics?.units[v.fort.realm]?.name ?? '', what: FORT_WHERE[v.fort.setting] } : {}),
             ...(v.abandoned ? { cause: v.abandoned.cause, ago: v.abandoned.ago, ...(v.abandoned.curse ? { curse: v.abandoned.curse } : {}) } : {}),
           },
         });
@@ -619,6 +622,34 @@ export class TownManager {
     }
     const dungeons = this.dungeons(lon0, lat0, key, seed, villages, lairs, cellOf, used);
     lairs.push(...this.passesIn(lon0, lat0, key, cellOf, used));
+    // Prison forts (gen/prisons.ts), last of all so everything else keeps its place: the fort is
+    // a village of its own, and its prison a dungeon marked at the fort.
+    for (const pf of this.world.raster.prisons ?? []) {
+      if (!inBlock(pf.lon, pf.lat, lon0, lat0)) continue;
+      const land = this.landNear(pf.lon, pf.lat, 30);
+      if (!land) continue;
+      const crag = pf.setting === 'crag';
+      const pos = this.bestNear(land[0], land[1], crag ? 2500 : 1200, (_x, _y, hh, sl) => (crag ? hh * 0.003 : 0) - 8 * Math.max(0, sl - (crag ? 0.25 : 0.08)));
+      if (this.sampler.isWater(pos[0], pos[1]) || this.slopeAt(pos[0], pos[1]) > 0.45) continue;
+      const vseed = hash32(hashString(`${raster.seed}#fort#${pf.lon.toFixed(3)},${pf.lat.toFixed(3)}`));
+      const v = makeSettlement('village', `p${key}_${villages.length}`, pos[0], pos[1], 0, vseed, pf.setting === 'island', false, 'prison');
+      v.population = 40 + (vseed % 90);
+      v.coreM = 60;
+      v.radiusM = pf.setting === 'island' ? 120 : 260;
+      v.culture = pf.culture;
+      v.fort = { setting: pf.setting, realm: pf.realm };
+      v.name = pf.name;
+      v.nameEn = pf.en;
+      villages.push(v);
+      const track = withTracks && pf.setting !== 'island' ? this.track(v, this.roadPts.nearest(pos[0], pos[1], S.villageLinkKm), villages, hash32(vseed ^ 0xf07) / 4294967296) : null;
+      if (track) tracks.push(track);
+      const level = this.world.politics?.units[pf.realm]?.level ?? 2;
+      dungeons.push({
+        id: `d${key}_${dungeons.length}`, kind: 'prison', name: pf.name, en: pf.en, seed: hash32(vseed ^ 0x9152),
+        tags: [level >= 3 ? 'large' : 'medium', '3 levels', pf.setting === 'island' ? 'island fort' : pf.setting === 'crag' ? 'mountain fort' : pf.setting === 'marsh' ? 'marsh fort' : 'moorland fort'],
+        lon: pos[0], lat: pos[1], culture: pf.culture, village: v.id,
+      });
+    }
     return { villages, tracks, lairs, dungeons };
   }
 
@@ -1021,7 +1052,7 @@ export class TownManager {
       if (first) first.thieves = true;
     }
     for (const u of under) {
-      const seed = hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 + (u.k ?? 0) * 0x1001 : 0xca7));
+      const seed = hash32(s.seed ^ (u.dkind === 'sewer' ? 0x5e3 + (u.k ?? 0) * 0x1001 : u.dkind === 'prison' ? 0x9151 : 0xca7));
       const props = { did: u.did, dkind: u.dkind, name: u.name, ...(u.en !== u.name ? { en: u.en } : {}), seed, tags: u.tags.join(','), culture, sid: s.id, ...(u.thieves ? { thieves: grand ? 2 : 1 } : {}) };
       if (u.dkind === 'sewer') {
         // The main grate: under a town, a street vertex 25 to 45 m from the centre; under a city,
@@ -1111,6 +1142,10 @@ export class TownManager {
         out.point('dentry', g, { ...props, ...more });
         // Every grate opens the same sewers.
         for (const p of grates) out.point('dentry', p, { ...props, ...more });
+      } else if (u.dkind === 'prison') {
+        // The prison keep: entered at its prison block.
+        const block = out.features.find((f) => f.properties.kind === 'building' && f.properties.role === 'prison');
+        if (block) out.point('dentry', centroid(local(block)), props);
       } else if (u.dkind === 'delve') {
         // A delve: entered through the great gate in the mountainside.
         const gate = out.features.find((f) => f.properties.kind === 'building' && f.properties.role === 'delvegate');
@@ -1124,6 +1159,34 @@ export class TownManager {
         out.point('dentry', f ? centroid(local(f)) : [0, 0], props);
       }
     }
+  }
+
+  /** The nearest dry land to a point, searched outward in rings up to `km`. */
+  private landNear(lon: number, lat: number, km: number): [number, number] | null {
+    const kLat = 1 / 111.2, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const ok = (x: number, y: number) => this.sampler.height(x, y, 0.02) > 0 && !this.sampler.isWater(x, y);
+    if (ok(lon, lat)) return [lon, lat];
+    for (let d = 0.5; d <= km; d += d < 4 ? 0.5 : 1.5) {
+      for (let q = 0; q < 24; q++) {
+        const x = lon + Math.cos((q / 24) * 2 * Math.PI) * d * kLon, y = lat + Math.sin((q / 24) * 2 * Math.PI) * d * kLat;
+        if (ok(x, y)) return [x, y];
+      }
+    }
+    return null;
+  }
+
+  /** The way into a prison fort's prison, marked at its prison block on the fort's plan. */
+  private prisonEntry(s: Settlement, out: PlanOut, frame: LocalFrame, culture: number): void {
+    let site: DungeonSite | undefined;
+    for (const b of this.blocks.values()) {
+      site = b.dungeons.find((d) => d.village === s.id && d.kind === 'prison');
+      if (site) break;
+    }
+    const block = out.features.find((f) => f.properties.kind === 'building' && f.properties.role === 'prison');
+    if (!site || !block || block.geometry.type !== 'Polygon') return;
+    const ring = block.geometry.coordinates[0].slice(0, -1).map((c) => frame.fromLL(c[0], c[1]) as Pt);
+    const p: Pt = [ring.reduce((a, q) => a + q[0], 0) / ring.length, ring.reduce((a, q) => a + q[1], 0) / ring.length];
+    out.point('dentry', p, { did: site.id, dkind: 'prison', name: site.name, ...(site.en && site.en !== site.name ? { en: site.en } : {}), seed: site.seed, tags: site.tags.join(','), culture, sid: s.id });
   }
 
   /** The way into a mining camp's mine, marked at the mouth of its first adit on the camp's plan. */
@@ -1476,6 +1539,7 @@ export class TownManager {
       if (s.delve) this.underground(s, out, frame, water, culture);
       if (s.kind === 'mining') this.mineEntry(s, out, frame, culture);
       if (secretWell(s)) this.wellEntry(s, out, frame, culture);
+      if (s.kind === 'prison') this.prisonEntry(s, out, frame, culture);
     } else {
       buildCity(inp);
       this.underground(s, out, frame, water, culture);

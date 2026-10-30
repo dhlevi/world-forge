@@ -134,14 +134,14 @@ export const CELL_M = 1.5;
 type Kind =
   | 'cottage' | 'farmhouse' | 'townhouse' | 'mansion' | 'warehouse' | 'temple' | 'keep'
   | 'hall' | 'store' | 'mill' | 'range' | 'cabin' | 'hut' | 'inn' | 'civic' | 'library' | 'barracks' | 'stables' | 'bathhouse'
-  | 'university' | 'guild' | 'witch' | 'tower' | 'bank' | 'shrine' | 'burrow';
+  | 'university' | 'guild' | 'witch' | 'tower' | 'bank' | 'shrine' | 'burrow' | 'prison';
 
 const LABELS: Record<Kind, string> = {
   cottage: 'Cottage', farmhouse: 'Farmhouse', townhouse: 'Town house', mansion: 'Mansion', warehouse: 'Warehouse',
   tower: 'Mages\' tower', bank: 'Counting house', shrine: 'Shrine', burrow: 'Burrow',
   temple: 'Temple', keep: 'Keep', hall: 'Hall', store: 'Storehouse', mill: 'Mill', range: 'Monastic range',
   cabin: 'Cabin', hut: 'Miner\'s hut', inn: 'Inn', civic: 'Hall', library: 'Library', barracks: 'Barracks',
-  stables: 'Stables', bathhouse: 'Bathhouse', university: 'University', guild: 'Guildhall', witch: "Witch's hut",
+  stables: 'Stables', bathhouse: 'Bathhouse', university: 'University', guild: 'Guildhall', witch: "Witch's hut", prison: 'Prison',
 };
 
 /** Roles that turn a town house into a trade: the shop floor's name. */
@@ -175,6 +175,7 @@ function classify(inp: DwellingInput, areaM2: number, rnd: () => number): Kind {
     case 'stables': return 'stables';
     case 'bathhouse': return 'bathhouse';
     case 'university': case 'college': return 'university';
+    case 'prison': return 'prison';
   }
   if (inp.role?.startsWith('guild:')) return 'guild';
   if (inp.burrow && !inp.role && !inp.use) return 'burrow';
@@ -541,6 +542,18 @@ function programs(kind: Kind, inp: DwellingInput, storeys: number, rnd: () => nu
         ],
         attic: loft,
       };
+    case 'prison':
+      // The prison block: the guardroom and the gaoler by the door, cells on every floor, the
+      // warden's lodging at the top, and the pit below.
+      return {
+        basement: { roles: [R('Stair foot', 'stair'), R('Oubliette', 'small'), R('Question room'), R('Deep cell', 'small'), R('Deep cell', 'small')], fallback: 'Deep cell', surface: 'earth' },
+        floors: [
+          { roles: [R('Guardroom', 'stair'), R("Gaoler's room", 'front'), R('Common cell', 'large'), R('Kitchen', 'back')], fallback: 'Cell', surface: 'flags' },
+          ...Array.from({ length: storeys - 2 }, (): Program => ({ roles: [R("Turnkeys' post", 'stair'), R("Debtors' ward", 'large')], fallback: 'Cell', surface: 'flags' })),
+          { roles: [R('Landing', 'stair'), R("Warden's lodging", 'large'), R("Warden's study")], fallback: 'Cell', surface: 'boards' },
+        ],
+        attic: loft,
+      };
     case 'temple':
       // Temples get a fixed layout (see templeRooms); this program covers the crypt.
       return {
@@ -625,19 +638,19 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
     farmhouse: () => 1, cabin: () => 1, hut: () => 1, temple: () => 1, keep: () => 3 + (rnd() < 0.4 ? 1 : 0),
     hall: () => 1, store: () => 1, mill: () => (inp.ctx === 'logging' || inp.ctx === 'mining' ? 1 : 2), range: () => 2, inn: () => (areaM2 < 60 ? 2 : 3), civic: () => 2,
     library: () => 2, barracks: () => 2, stables: () => 1, bathhouse: () => 1, university: () => 2 + (areaM2 > 160 ? 1 : 0), guild: () => 2 + (rnd() < 0.35 ? 1 : 0), witch: () => 1,
-    tower: () => 4 + (rnd() < 0.5 ? 1 : 0), bank: () => 2 + (rnd() < 0.4 ? 1 : 0), shrine: () => 1, burrow: () => 1,
+    tower: () => 4 + (rnd() < 0.5 ? 1 : 0), bank: () => 2 + (rnd() < 0.4 ? 1 : 0), shrine: () => 1, burrow: () => 1, prison: () => 3,
   };
   const BASEMENT: Record<Kind, number> = {
     townhouse: 0.5, mansion: 0.85, warehouse: 0.6, cottage: 0.12, farmhouse: 0.25, cabin: 0, hut: 0, temple: 0.6,
     keep: 0.9, hall: 0.3, store: 0.2, mill: 0, range: 0.3, inn: 0.85, civic: 0.6, library: 0.4, barracks: 0.3, stables: 0,
-    bathhouse: 0.5, university: 0.6, guild: 0.75, witch: 0.7, tower: 0.8, bank: 1, shrine: 0.5, burrow: 0.8,
+    bathhouse: 0.5, university: 0.6, guild: 0.75, witch: 0.7, tower: 0.8, bank: 1, shrine: 0.5, burrow: 0.8, prison: 1,
   };
   const storeys = STOREYS[kind]();
-  const storeyH = kind === 'temple' ? 8 : kind === 'hall' || kind === 'mill' ? 5 : kind === 'keep' ? 4 : kind === 'burrow' ? 2.4 : 3;
+  const storeyH = kind === 'temple' ? 8 : kind === 'hall' || kind === 'mill' ? 5 : kind === 'keep' || kind === 'prison' ? 4 : kind === 'burrow' ? 2.4 : 3;
   const style = buildStyle(inp.culture, kind);
   const fill = poly ? Math.abs(polyArea(poly)) / (nx * ny) : cells / (nx * ny);
   const pitchK = style?.form === 'steep' ? 1.45 : style?.form === 'low' || style?.form === 'upturned' ? 0.7 : 1;
-  const roof: Roof = kind === 'keep' || (style?.form === 'flat' && kind !== 'burrow')
+  const roof: Roof = kind === 'keep' || kind === 'prison' || (style?.form === 'flat' && kind !== 'burrow')
     ? { type: 'flat', pitch: 0, axis: 'u' }
     : kind === 'burrow'
       ? { type: 'mound', pitch: 0.55, axis: nx * cw >= ny * ch ? 'u' : 'v' }
@@ -669,12 +682,12 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
   const roomArea: Record<Kind, number> = {
     townhouse: 14, mansion: 20, warehouse: 45, cottage: 16, farmhouse: 15, cabin: 18, hut: 14, temple: 1, keep: 45,
     hall: 30, store: 999, mill: 35, range: 30, inn: 13, civic: 30, library: 25, barracks: 30, stables: 40, bathhouse: 25, university: 28, guild: 22, witch: 12,
-    tower: 30, bank: 18, shrine: 999, burrow: 1,
+    tower: 30, bank: 18, shrine: 999, burrow: 1, prison: 9,
   };
   const maxRooms: Record<Kind, number> = {
     townhouse: 5, mansion: 8, warehouse: 3, cottage: 3, farmhouse: 5, cabin: 2, hut: 2, temple: 1, keep: 6,
     hall: 3, store: 1, mill: 3, range: 4, inn: 6, civic: 4, library: 3, barracks: 3, stables: 2, bathhouse: 3, university: 5, guild: 5, witch: 3,
-    tower: 3, bank: 5, shrine: 1, burrow: 1,
+    tower: 3, bank: 5, shrine: 1, burrow: 1, prison: 14,
   };
   const nRooms = Math.max(1, Math.min(maxRooms[kind], Math.round(areaM2 / roomArea[kind])));
   const leaves = kind === 'temple' ? templeLeaves(c) : kind === 'burrow' ? burrowLeaves(c) : partition(g, nRooms, cw, ch, rnd);
@@ -1221,6 +1234,9 @@ const FURNITURE: [RegExp, Spec[]][] = [
   [/Notice hall/, [COUNTER, BENCH, BENCH, TABLE]],
   [/Infirmary|^Ward$/, [S('bed', 'deep', 0.9, 1.9, 6), CHEST, SHELF]],
   [/Master's lodging/, [DBED, HEARTH, DESK, BOOKS, RUG]],
+  [/Warden's lodging/, [DBED, HEARTH, RUG, WARDROBE, CHEST]],
+  [/^Question room$/, [TABLE, HEARTH, S('rack', 'long', 2.4, 0.5), CHEST]],
+  [/Turnkeys' post|^Stair foot$/, [TABLE, BENCH, CHEST]],
   [/Scholars' room/, [BED, DESK, BOOKS, CHEST]],
   [/Barrack room/, [S('bed', 'deep', 0.9, 1.9, 10), CHEST, CHEST]],
   [/^Stalls$|Hayloft/, [S('straw', 'grid', 0, 0)]],
@@ -1262,7 +1278,8 @@ const FURNITURE: [RegExp, Spec[]][] = [
   [/^Side chapel$/, [S('altar', 'wall', 1.2, 0.6), S('candle', 'wall', 0.35, 0.35, 2), S('tomb', 'wall', 0.9, 2)]],
   [/^Crypt$/, [S('tomb', 'grid', 0, 0)]],
   [/Chapter house/, [BENCH, BENCH, BENCH, S('chair', 'wall', 0.7, 0.7)]],
-  [/Dungeon|^Cell$/, [S('straw', 'wall', 1.0, 1.4), S('bucket', 'wall', 0.4, 0.4)]],
+  [/Dungeon|^Cell$|^Deep cell$|^Oubliette$/, [S('straw', 'wall', 1.0, 1.4), S('bucket', 'wall', 0.4, 0.4)]],
+  [/^Common cell$|Debtors' ward/, [S('straw', 'wall', 1.0, 1.4, 4), S('bucket', 'wall', 0.4, 0.4)]],
   [/Byre/, [S('straw', 'grid', 0, 0)]],
   [/Cabin|^Hut$/, [HEARTH, BED, TABLE, CHEST, BARREL]],
   [/^Millstones$/, [S('millstone', 'table', 0, 0), SACK, SACK, SACK, S('bin', 'wall', 1.2, 0.8)]],

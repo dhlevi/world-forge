@@ -6,6 +6,8 @@ import { CELL_M, KIND_NAME } from '../dungeons/core';
 import { dungeon, dungeonTags } from '../dungeons/view';
 import { drawLevel, dungeonPage } from '../dungeons/render';
 import { usePanZoom } from './pan-zoom';
+import { currentLore } from './realm-lore';
+import { prisonRoster } from '../dungeons/inmates';
 
 /**
  * A dungeon in the manner of the One Page Dungeon: the level's map with numbered rooms and, beside
@@ -27,6 +29,12 @@ const { zoom, pan, maxZoom: MAX_ZOOM, zoomAt, onWheel, onPointerDown, onPointerM
 
 const site = computed(() => openDungeon.value);
 const d = computed(() => (site.value ? dungeon(site.value) : null));
+/** A prison's notable inmates (from the world's lore), each in a numbered cell. */
+const roster = computed(() => {
+  const dd = d.value;
+  if (!dd || dd.site.kind !== 'prison') return [];
+  return prisonRoster(dd, currentLore(), world.value?.politics ?? null);
+});
 const L = computed(() => d.value?.levels[level.value] ?? null);
 const rooms = computed(() => (L.value?.rooms ?? []).filter((r) => r.n));
 const subtitle = computed(() => {
@@ -123,6 +131,15 @@ function showRoom(r: { x: number; y: number; w: number; h: number }): void {
   pz.focus(r.x + r.w / 2, r.y + r.h / 2);
 }
 
+/** Show an inmate's cell: its level, zoomed in on it. */
+function showCell(level0: number, n: number): void {
+  const r = d.value?.levels[level0]?.rooms.find((x) => x.n === n);
+  if (!r) return;
+  level.value = level0;
+  // After the level's view is reset for the new level.
+  nextTick(() => nextTick(() => showRoom(r)));
+}
+
 onMounted(() => {
   window.addEventListener('keydown', onKey);
   observer = new ResizeObserver(draw);
@@ -191,6 +208,17 @@ function goDeepGate(): void {
       </div>
       <aside class="key">
         <p class="hook">{{ d.hook }}</p>
+        <section v-if="roster.length" class="roster">
+          <h3>Notable inmates</h3>
+          <ul>
+            <li v-for="m in roster" :key="m.cell">
+              <button class="room" :title="`Show cell ${m.cell} on the map`" @click="showCell(m.level, m.cell)"><strong>{{ m.name }}</strong></button>
+              <span class="who"> ({{ m.people }}), cell {{ m.cell }}.</span>
+              {{ m.crime.charAt(0).toUpperCase() + m.crime.slice(1) }}. <em>{{ m.sentence }}.</em>
+              <div class="note hookline">{{ m.hook }}</div>
+            </li>
+          </ul>
+        </section>
         <ol>
           <li v-for="r in rooms" :key="r.n" :value="r.n">
             <button class="room" :title="`Show room ${r.n} on the map`" @click="showRoom(r)"><strong>{{ r.name }}.</strong></button> {{ r.text }}
@@ -315,6 +343,27 @@ canvas {
   opacity: 0.4;
   cursor: default;
 }
+.roster h3 {
+  margin: 4px 0 6px;
+  font-size: 15px;
+  font-weight: normal;
+  font-style: italic;
+  border-bottom: 1px solid rgba(43, 36, 32, 0.25);
+}
+.roster ul {
+  margin: 0 0 12px;
+  padding-left: 0;
+  list-style: none;
+}
+.roster li {
+  margin-bottom: 7px;
+}
+.roster .who {
+  opacity: 0.8;
+}
+.hookline {
+  font-style: italic;
+}
 button.room {
   border: none;
   background: none;
@@ -358,6 +407,9 @@ li {
 }
 .note em {
   font-weight: bold;
+}
+.note.prisoner {
+  border-left-color: #3b5a76;
 }
 .note.creature {
   border-left-color: #8a3b2e;

@@ -3,6 +3,7 @@ import { type Rng, hashString, mulberry32 } from './rng';
 import { Simplex3 } from './noise';
 import { buildTectonics, drainInlandSeas } from './tectonics';
 import { type CurseHeart, specialFeatures } from './special';
+import { type PrisonFort, prisons } from './prisons';
 import { type Underworld, underworld } from './underworld';
 import { deepPeoples } from './deep-peoples';
 import { computeClimate } from './climate';
@@ -88,6 +89,8 @@ export interface RasterWorld {
   curses?: CurseHeart[];
   /** Fantasy worlds: the caverns, tunnels and ways down of the Underworld (gen/underworld.ts). */
   underworld?: Underworld;
+  /** Prison forts far from the towns (gen/prisons.ts); the towns worker builds each as a village. */
+  prisons?: PrisonFort[];
 }
 
 export interface WorldSummary {
@@ -262,6 +265,8 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
     uw.world.peoples = dp.peoples;
     uw.world.realms = dp.realms;
   }
+  // Prisons: keeps in the great cities, and forts far from the towns (after everything else).
+  const forts = prisons({ W, H, height, lakeDepth, biome, culture, newWorld }, politics, settlements, bank, params.seed);
   const vents = Float32Array.from(sf.vents.flatMap((v) => [v.lon, v.lat, v.h, v.activity]));
 
   let land = 0, total = 0, maxE = -Infinity, minE = Infinity;
@@ -305,6 +310,7 @@ export function generateWorld(params: WorldParams, progress: ProgressFn = () => 
       vents,
       curses: sf.curses,
       ...(uw ? { underworld: uw.world } : {}),
+      prisons: forts,
     },
     rivers,
     wind,

@@ -216,6 +216,7 @@ const sections = computed<Section[]>(() => {
         ] : []),
         { id: 'pass', label: 'Mountain pass', draw: { t: 'icon', id: 'lair-pass' }, z: [LAIR_ZOOM, 24], note: 'where a road crosses a range' },
         { id: 'abandoned', label: 'Abandoned village', draw: { t: 'icon', id: 'dun-abandoned' }, z: [LAIR_ZOOM, 24] },
+        { id: 'prison-fort', label: 'Prison fort', draw: { t: 'icon', id: 'dun-prison' }, z: [LAIR_ZOOM, 24], note: 'far from the towns; in great cities, a prison keep on the plan' },
         dun('mine', [LAIR_ZOOM, 24]), dun('tower', [LAIR_ZOOM, 24]), dun('crypt', [LAIR_ZOOM, 24]), dun('ruin', [LAIR_ZOOM, 24]),
         dun('catacomb', [13.6, 24]), dun('sewer', [13.6, 24]), dun('delve', [13.6, 24]), dun('well', [13.6, 24]),
       ],

@@ -523,6 +523,14 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     }
   }
   for (const i of inner) if (free(i)) patches[i].kind = !town && rnd() < 0.15 ? 'rich' : 'ward';
+  // A prison keep (gen/prisons.ts): a ward on the wall away from the market, the last such in
+  // the plan's order (chosen without the plan's random stream, so the rest of the plan keeps it).
+  if (s.prison) {
+    const cand = inner.filter((i) => patches[i].inside && (patches[i].kind === 'ward' || patches[i].kind === 'rich') && !plazas.some((pz) => nbrs(pz).includes(i)));
+    const onWall = cand.filter((i) => touchesWall(i) && !patches[i].poly.some((q) => gateNodes.has(key(q))));
+    const pickP = (onWall.length ? onWall : cand).at(-1);
+    if (pickP !== undefined) patches[pickP].kind = 'prison';
+  }
 
   const wallOff = s.walls ? 10 : 3;
   const offsets = (i: number, onWall: number, main: number, lane: number) => {
@@ -879,6 +887,55 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
           }
         }
         trees(q, Math.min(14, Math.round(area(q) / 500)), 2, 3.5);
+        break;
+      }
+      case 'prison': {
+        // The prison keep: a walled yard with towers along its wall, the prison block in the middle
+        // and ranges of buildings along the walls (on a random stream of its own).
+        const pr = mulberry32(s.seed ^ 0x9150);
+        const q0 = inset(pt.poly, offsets(i, wallOff, 4, 3));
+        const q = q0 && ground.fit(q0, BUILD_GROUND, pr, 0, 0.3);
+        if (!q) break;
+        out.poly('plaza', q);
+        out.line('wall', [...q, q[0]], { w: 2.4 });
+        let last: Pt | null = null;
+        for (const v of q) {
+          if (last && Math.hypot(v[0] - last[0], v[1] - last[1]) < 12) continue;
+          out.point('tower', v, { r: 3.4 });
+          last = v;
+        }
+        const name = s.prison?.name ?? 'the Gaol';
+        const f = frameIn(q, 4);
+        if (f) {
+          const bw = Math.max(14, Math.min(f.W * 0.42, 48)), bh = Math.max(10, Math.min(f.H * 0.34, 26));
+          const block = f.box(0, 0, bw, bh);
+          if (ground.allOk(block, BUILD_GROUND)) {
+            out.poly('building', block, { role: 'prison', label: name, ctx: 'ward' });
+            out.point('blabel', f.T(0, 0), { name, role: 'prison' });
+          }
+          // Ranges along the long walls: the guards' barracks, stores, the chapel and the warden's
+          // house, with gaps between them; the yard and a well between them and the prison block.
+          const roles: Record<string, string>[] = [{ role: 'barracks', ctx: 'ward' }, { use: 'store' }, { use: 'temple', ctx: 'castle' }, { use: 'hall' }, { role: 'barracks', ctx: 'ward' }, { use: 'store' }];
+          let k = 0;
+          for (const sv of [-1, 1]) {
+            const d = 11;
+            if (f.H / 2 - d - 3 < bh / 2 + 4) continue;
+            for (let u = -f.W / 2 + 4; u < f.W / 2 - 12; ) {
+              const len = Math.min(f.W / 2 - 4 - u, 18 + pr() * 12);
+              if (len < 10) break;
+              const b = f.box(u + len / 2, sv * (f.H / 2 - d / 2 - 2), len, d);
+              if (ground.allOk(b, BUILD_GROUND)) out.poly('building', b, roles[k++ % roles.length]);
+              u += len + 2.5 + pr() * 2.5;
+            }
+          }
+          out.point('well', f.T(bw / 2 + Math.min(10, (f.W - bw) / 4), 0), { r: 1.4 });
+        } else {
+          const block = rectIn(q, 0.3);
+          if (block && ground.allOk(block, BUILD_GROUND)) {
+            out.poly('building', block, { role: 'prison', label: name, ctx: 'ward' });
+            out.point('blabel', centroid(block), { name, role: 'prison' });
+          }
+        }
         break;
       }
       case 'ruins': {

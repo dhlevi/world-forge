@@ -5,7 +5,7 @@ import type { Rng } from '../gen/rng';
  * it, what lies hidden there, and a detail for the senses, by kind of site. Shared by
  * `dungeons/key.ts` and `lairs/lair.ts`. Every table is plain data, so it is easy to extend.
  */
-export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve' | 'pass' | 'deep';
+export type SiteKind = 'mine' | 'tower' | 'crypt' | 'ruin' | 'catacomb' | 'sewer' | 'cave' | 'grove' | 'delve' | 'pass' | 'deep' | 'prison';
 
 export interface KeyNote {
   /** "Creature", "Trap", "Treasure" or "Hazard". */
@@ -16,6 +16,20 @@ export interface KeyNote {
 const pick = <T>(rnd: Rng, a: T[]): T => a[Math.floor(rnd() * a.length)];
 
 export const CREATURES: Record<SiteKind, string[]> = {
+  prison: [
+    'Two turnkeys play at knucklebones for the right to the next bribe; they are not hard to distract.',
+    'A guard sergeant with a ring of keys on his belt makes his round every hour, regular as a bell.',
+    'The chaplain, a tired old priest, carries letters in and out for the price of a prayer.',
+    'A pair of guards drag a new prisoner along, still protesting his innocence.',
+    'A turnkey who drinks: he is asleep at his post with the keys in his lap.',
+    'Rats the size of cats, bold from a lifetime of stealing bread from the sleeping.',
+    'A trusty, a prisoner allowed to fetch and carry, who sees everything and sells what she sees.',
+    "The warden's mastiff, trained to the smell of the cells; it does not bark before it bites.",
+    'A new guard, young and frightened, who can be talked round or bullied.',
+    'A physician on her rounds with a basket of bandages and a sharp eye for faked fevers.',
+    'An informer placed among the prisoners; he asks too many questions of newcomers.',
+    "A gang of prisoners who run the gallery's trade in candles, ale and news.",
+  ],
   delve: [
     'Two dwarven wardens in mail stop every stranger and ask their business, and their clan.',
     'A smith and her apprentices argue over a blade that rang wrong on the anvil.',
@@ -359,6 +373,14 @@ export const CREATURES: Record<SiteKind, string[]> = {
 };
 
 const TRAPS: Record<SiteKind, string[]> = {
+  prison: [
+    'A bell wire runs along the floor; a foot on it rings an alarm in the guardroom.',
+    'A false flagstone over a short drop; the guards step around it without looking.',
+    'The door bar is weighted to fall shut behind anyone who passes without propping it.',
+    'Caltrops strewn in the dark at the foot of the stair, swept aside only for the warden.',
+    'A spiked grille drops across the passage when a lever in the guardroom is pulled.',
+    'The lock is fouled with a needle smeared with sleeping draught.',
+  ],
   delve: [
     'A rune-lock on the door: the wrong word seals it and rings a bell in the wardens\' hall.',
     'A pressure plate drops a portcullis across the passage behind anyone who steps on it.',
@@ -584,6 +606,15 @@ const TREASURE_ANY = [
 ];
 
 const TREASURE: Record<SiteKind, string[]> = {
+  prison: [
+    "A box of confiscated goods: a silver ring, a purse of foreign coin and a lockpick roll.",
+    "The warden's ledger of bribes taken, worth a great deal to the right person.",
+    'A loose stone hides a prisoner\'s savings: forty silver coins in a sock.',
+    'A sword taken from a noble prisoner, its hilt set with a garnet.',
+    'A bundle of letters smuggled in and never delivered, some of them in cipher.',
+    'A key to the outer gate, hidden under a bunk by someone who never got to use it.',
+    'Sealed orders for a release, signed but never sent.',
+  ],
   delve: [
     'Ingots of bright steel stamped with the clan\'s mark, worth a fortune on the surface.',
     'A small chest of uncut gems, sorted by colour into leather pouches.',
@@ -849,6 +880,14 @@ const TREASURE: Record<SiteKind, string[]> = {
 };
 
 export const SENSES: Record<SiteKind, string[]> = {
+  prison: [
+    'Somewhere a prisoner sings the same verse over and over.',
+    'The smell of damp straw, old sweat and lamp smoke hangs in the air.',
+    'Keys jangle in the distance, and every voice falls silent until they pass.',
+    'Someone taps on the wall in a slow pattern, and someone else taps back.',
+    'Water drips steadily from the vault onto the stone.',
+    'A cold draught comes up from the pit below.',
+  ],
   delve: [
     'The ring of hammers carries through the stone from the forges.',
     'Warm air rises from the vents, smelling of coal smoke and hot iron.',
@@ -1266,7 +1305,7 @@ export function roomNotes(kind: SiteKind, rnd: Rng, o: { tag?: string; entry?: b
   const pTreasure = rich ? 1 : 0.2 + 0.05 * depth;
   if (rnd() < pCreature) {
     const s = fresh(CREATURES[kind]);
-    if (s) out.push({ label: kind === 'delve' ? 'Who is here' : 'Creature', text: s });
+    if (s) out.push({ label: kind === 'delve' || kind === 'prison' ? 'Who is here' : 'Creature', text: s });
   }
   if (rnd() < pTrap) {
     const s = fresh(TRAPS[kind]);

@@ -69,7 +69,7 @@ const LABEL_TYPE: Record<string, [string, SearchCat]> = {
 
 const VILLAGE_TYPE: Record<string, string> = {
   farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village',
-  camp: 'Army camp', shrine: 'Shrine', abandoned: 'Abandoned village',
+  camp: 'Army camp', shrine: 'Shrine', abandoned: 'Abandoned village', prison: 'Prison fort',
 };
 
 const mid = (c: number[][]) => c[c.length >> 1];
@@ -105,7 +105,7 @@ export function worldEntries(w: { settlements: Settlement[]; labels: LabelCollec
     const ci = s.culture ?? cultureAt(s.lon, s.lat);
     for (const u of townUnderground(s, (tpl) => namePhrase(ci, tpl, [{ name: s.name ?? '', en: s.nameEn ?? s.name ?? '' }]))) {
       out.push({
-        id: u.did, name: cap(u.name), ...(u.en !== u.name ? { alt: cap(u.en) } : {}), type: u.dkind === 'sewer' ? 'Sewers' : u.dkind === 'delve' ? 'Delve' : 'Catacombs', cat: 'lair', lon: s.lon, lat: s.lat, zoom: 15.2, rank: 0.3,
+        id: u.did, name: cap(u.name), ...(u.en !== u.name ? { alt: cap(u.en) } : {}), type: u.dkind === 'sewer' ? 'Sewers' : u.dkind === 'delve' ? 'Delve' : u.dkind === 'prison' ? 'Prison' : 'Catacombs', cat: 'lair', lon: s.lon, lat: s.lat, zoom: 15.2, rank: 0.3,
         sid: s.id, info: u.tags.filter((t) => !t.includes(':')).join(' · '),
       });
     }
@@ -212,7 +212,7 @@ export function blockEntry(o: { id: string; name: string; tier: string; kind: st
 }
 
 const LAIR_TYPE: Record<string, string> = {
-  cave: 'Cave', glade: 'Glade', pass: 'Mountain pass', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', mine: 'Mine', sewer: 'Sewers', catacomb: 'Catacombs', delve: 'Delve',
+  cave: 'Cave', glade: 'Glade', pass: 'Mountain pass', tower: 'Tower', crypt: 'Crypt', ruin: 'Ruin', mine: 'Mine', sewer: 'Sewers', catacomb: 'Catacombs', delve: 'Delve', prison: 'Prison',
 };
 
 const PLAN_TYPE: Record<string, string> = { qlabel: 'Quarter', dlabel: 'District', blabel: 'Building' };

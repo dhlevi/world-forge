@@ -312,8 +312,8 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
 export const MARKER_LAYERS: LayerSpecification[] = [
   {
     id: 'village-markers', type: 'circle', source: 'regional', minzoom: VILLAGE_ZOOM, maxzoom: 13.5,
-    // Abandoned villages are marked by their ruin's icon instead.
-    filter: e(['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'tier'], 'village'], ['!=', ['get', 'kind'], 'abandoned']]) as FilterSpecification,
+    // Abandoned villages and prison forts are marked by their dungeon's icon instead.
+    filter: e(['all', ['==', ['geometry-type'], 'Point'], ['==', ['get', 'tier'], 'village'], ['!=', ['get', 'kind'], 'abandoned'], ['!=', ['get', 'kind'], 'prison']]) as FilterSpecification,
     paint: {
       // Colour by kind: fishing blue, logging green, mining grey, keep red, monastery hollow.
       'circle-color': e(['match', ['get', 'kind'],
@@ -714,6 +714,35 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
     for (const x of [10, 13.5, 17]) g.fillRect(x, 7.5, 3, 3.5);
     g.fillRect(14, 15, 2, 4);
   });
+  // A prison: a squat crenellated keep with a barred window.
+  const prison = make((g) => {
+    disc(g);
+    g.fillStyle = '#c9c0ae';
+    g.beginPath();
+    g.moveTo(7, 25);
+    g.lineTo(7, 10);
+    for (const x of [7, 11, 15, 19]) {
+      g.lineTo(x, 7.5);
+      g.lineTo(x + 2, 7.5);
+      g.lineTo(x + 2, 10);
+      g.lineTo(x + 4, 10);
+    }
+    g.lineTo(23, 10);
+    g.lineTo(23, 25);
+    g.closePath();
+    g.fill();
+    g.stroke();
+    g.fillStyle = '#1f1a16';
+    g.fillRect(11, 13, 8, 7);
+    g.strokeStyle = '#c9c0ae';
+    g.lineWidth = 1.1;
+    g.beginPath();
+    for (const x of [13, 15, 17]) {
+      g.moveTo(x, 13);
+      g.lineTo(x, 20);
+    }
+    g.stroke();
+  });
   const crypt = make((g) => {
     disc(g);
     g.fillStyle = '#d8cfbd';
@@ -867,7 +896,7 @@ export function lairIcons(): { id: string; image: ImageData; pixelRatio: number 
     { id: 'lair-cave', image: cave, pixelRatio: pr }, { id: 'lair-glade', image: glade, pixelRatio: pr },
     { id: 'lair-glade-fungal', image: gladeFungal, pixelRatio: pr }, { id: 'lair-glade-cursed', image: gladeCursed, pixelRatio: pr },
     { id: 'lair-pass', image: pass, pixelRatio: pr }, { id: 'dun-abandoned', image: abandoned, pixelRatio: pr },
-    { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },
+    { id: 'dun-tower', image: tower, pixelRatio: pr }, { id: 'dun-prison', image: prison, pixelRatio: pr }, { id: 'dun-crypt', image: crypt, pixelRatio: pr }, { id: 'dun-ruin', image: ruin, pixelRatio: pr },
     { id: 'dun-mine', image: mine, pixelRatio: pr }, { id: 'dun-sewer', image: sewer, pixelRatio: pr }, { id: 'dun-catacomb', image: catacomb, pixelRatio: pr },
   ];
 }

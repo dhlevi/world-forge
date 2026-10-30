@@ -674,7 +674,7 @@ function villageHere(): typeof store.here {
     const d = Math.hypot((lon - c.lng) * 111.32 * Math.cos((c.lat * Math.PI) / 180), (lat - c.lat) * 110.57);
     if (d < bd) {
       bd = d;
-      best = { name: String(f.properties.name ?? ''), ...(f.properties.en ? { en: String(f.properties.en) } : {}), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0), ...(f.properties.realm ? { realm: String(f.properties.realm), war: String(f.properties.war ?? '') } : {}), ...(f.properties.faith ? { faith: String(f.properties.faith), what: String(f.properties.what ?? '') } : {}), ...(f.properties.cause ? { cause: String(f.properties.cause), ago: String(f.properties.ago ?? ''), ...(f.properties.curse ? { curse: String(f.properties.curse) } : {}) } : {}) };
+      best = { name: String(f.properties.name ?? ''), ...(f.properties.en ? { en: String(f.properties.en) } : {}), kind: String(f.properties.kind ?? 'farming'), population: Number(f.properties.population ?? 0), ...(f.properties.realm ? { realm: String(f.properties.realm), war: String(f.properties.war ?? '') } : {}), ...(f.properties.faith || f.properties.what ? { faith: String(f.properties.faith ?? ''), what: String(f.properties.what ?? '') } : {}), ...(f.properties.cause ? { cause: String(f.properties.cause), ago: String(f.properties.ago ?? ''), ...(f.properties.curse ? { curse: String(f.properties.curse) } : {}) } : {}) };
     }
   }
   return best;

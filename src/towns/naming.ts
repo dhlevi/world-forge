@@ -15,7 +15,7 @@ import type { CityTheme } from '../lore/themes';
 export type WardKind = 'plaza' | 'temple' | 'citadel' | 'park' | 'harbour' | 'ward' | 'rich' | 'garrison' | 'graveyard'
   // Wards of the city themes: a merchants' counting-house quarter, a rookery, a ruined quarter, a
   // forge quarter, a mages' tower in its garden, and a pilgrims' square by a great temple.
-  | 'counting' | 'slum' | 'ruins' | 'forge' | 'tower' | 'pilgrims' | '';
+  | 'counting' | 'slum' | 'ruins' | 'forge' | 'tower' | 'pilgrims' | 'prison' | '';
 
 export interface WardInfo {
   poly: Poly;
