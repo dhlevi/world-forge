@@ -2,6 +2,7 @@ import { hashString, mulberry32, type Rng } from '../gen/rng';
 import type { Language } from './language';
 import { CONS, VOW, isVowel } from './phonemes';
 import { numberSystem } from './numbers';
+import { DETERMINATIVES, PICTOGRAPHS, type Pictograph } from './pictographs';
 
 /**
  * Writing systems. Every language has a script, chosen from its template (Nordic runes, Celtic
@@ -16,7 +17,8 @@ import { numberSystem } from './numbers';
  * Glyphs are lists of strokes in a box 100 high (and `w` wide), drawn as SVG.
  */
 
-export type ScriptStyle = 'runes' | 'ogham' | 'latin' | 'elvish' | 'abjad' | 'devanagari' | 'kana' | 'hanzi' | 'hangul' | 'glyphs' | 'cuneiform' | 'phagspa';
+export type ScriptStyle = 'runes' | 'ogham' | 'latin' | 'elvish' | 'abjad' | 'devanagari' | 'kana' | 'hanzi' | 'hangul' | 'glyphs' | 'cuneiform' | 'phagspa'
+  | 'ethiopic' | 'hieroglyph' | 'looped' | 'syllabics' | 'square' | 'spine';
 export type ScriptKind = 'alphabet' | 'abjad' | 'abugida' | 'syllabary' | 'logosyllabary' | 'featural';
 
 /** line: a polyline [x0, y0, x1, y1, ...]; quad: [x0, y0, cx, cy, x1, y1]; circ: an outlined circle [cx, cy, r]; dot: a filled circle; poly: a filled polygon. */
@@ -60,18 +62,28 @@ export interface ScriptInfo {
   stroke: number;
 }
 
-const STYLE_OF: Record<string, ScriptStyle> = {
-  anglo: 'latin', german: 'latin', latin: 'latin', southern: 'latin', slavic: 'latin', halfling: 'latin', sahelian: 'abjad',
-  norse: 'runes', dwarven: 'runes', orcish: 'runes', steppe: 'runes', celtic: 'ogham', elvish: 'elvish',
-  shadowelf: 'elvish', deepgnome: 'runes', fungusfolk: 'glyphs', greydwarf: 'cuneiform',
-  desert: 'abjad', zanji: 'abjad', indic: 'devanagari', sinic: 'hanzi', japonic: 'kana', koreanic: 'hangul',
-  jungle: 'glyphs', highland: 'glyphs', islander: 'kana', woodland: 'kana', lizardfolk: 'cuneiform',
+/**
+ * The writing styles each culture template's peoples use, with weights: each people picks one
+ * from its own seed, so peoples of one template need not write alike.
+ */
+const STYLES_OF: Record<string, [ScriptStyle, number][]> = {
+  anglo: [['latin', 3], ['square', 1]], german: [['latin', 3], ['runes', 1], ['square', 1]], latin: [['latin', 3], ['square', 1]],
+  southern: [['latin', 2], ['square', 2]], slavic: [['latin', 2], ['square', 1], ['looped', 1]], halfling: [['latin', 1]],
+  sahelian: [['abjad', 2], ['syllabics', 2], ['ethiopic', 1]], norse: [['runes', 3], ['ogham', 1]], dwarven: [['runes', 3], ['square', 1], ['cuneiform', 1]],
+  orcish: [['runes', 2], ['syllabics', 1], ['cuneiform', 1]], steppe: [['runes', 2], ['spine', 2]], celtic: [['ogham', 2], ['latin', 1], ['runes', 1]],
+  elvish: [['elvish', 3], ['looped', 1]], shadowelf: [['elvish', 2], ['looped', 1], ['spine', 1]], deepgnome: [['runes', 2], ['syllabics', 1], ['cuneiform', 1]],
+  fungusfolk: [['glyphs', 2], ['hieroglyph', 1], ['looped', 1]], greydwarf: [['cuneiform', 2], ['runes', 1], ['square', 1]],
+  desert: [['abjad', 3], ['square', 2], ['hieroglyph', 1]], zanji: [['ethiopic', 3], ['abjad', 2]], indic: [['devanagari', 3], ['looped', 2]],
+  sinic: [['hanzi', 1]], japonic: [['kana', 3], ['hanzi', 1]], koreanic: [['hangul', 3], ['hanzi', 1]], jungle: [['glyphs', 3], ['hieroglyph', 1]],
+  highland: [['glyphs', 2], ['syllabics', 1], ['hieroglyph', 1]], islander: [['kana', 2], ['looped', 2]], woodland: [['syllabics', 3], ['kana', 2]],
+  lizardfolk: [['cuneiform', 2], ['hieroglyph', 2]],
 };
 /** Peoples of these templates now and then write in Tengwar-like letters instead. */
 const TENGWAR_SOMETIMES = new Set(['anglo', 'german', 'latin', 'southern', 'slavic', 'celtic', 'norse']);
 const KIND: Record<ScriptStyle, ScriptKind> = {
   runes: 'alphabet', ogham: 'alphabet', latin: 'alphabet', elvish: 'abugida', abjad: 'abjad', devanagari: 'abugida', kana: 'syllabary', hanzi: 'logosyllabary',
   hangul: 'featural', glyphs: 'syllabary', cuneiform: 'syllabary', phagspa: 'abugida',
+  ethiopic: 'abugida', hieroglyph: 'abjad', looped: 'abugida', syllabics: 'syllabary', square: 'alphabet', spine: 'alphabet',
 };
 const LABEL: Record<ScriptStyle, string> = {
   runes: 'an alphabet of runes, cut in straight strokes for wood and stone', ogham: 'an alphabet of notches and strokes along a stem line, cut on the edges of standing stones',
@@ -82,13 +94,29 @@ const LABEL: Record<ScriptStyle, string> = {
   kana: 'a syllabary of brush strokes, one sign for each syllable', hanzi: 'characters built from radicals, one for each syllable, written in columns',
   hangul: 'an alphabet written in syllable blocks, its letters drawn from the shape of the mouth', glyphs: 'glyph blocks carved in stone, one for each syllable',
   cuneiform: 'wedges pressed into clay with a reed, one sign for each syllable',
+  ethiopic: 'an abugida of letters standing on legs: each consonant has a letter, changed for the vowel after it',
+  hieroglyph: 'hieroglyphs: pictures of birds, beasts, tools and the body standing for its consonants, grouped in blocks',
+  looped: 'an abugida of round letters built from rings and loops: each letter carries a vowel unless a mark changes it',
+  syllabics: 'a syllabary of simple shapes, each turned four ways for the vowels',
+  square: 'an alphabet of square letters hung from a heavy top stroke',
+  spine: 'letters hung from a spine down the column, each word written as one joined stroke',
 };
 const LOOK: Record<ScriptStyle, { ink: string; paper: string; stroke: number }> = {
   runes: { ink: '#2b2420', paper: '#f3ead3', stroke: 6 }, ogham: { ink: '#2b2420', paper: '#f3ead3', stroke: 6 }, latin: { ink: '#2b2420', paper: '#f3ead3', stroke: 6 },
   elvish: { ink: '#2b2420', paper: '#f3ead3', stroke: 5 }, phagspa: { ink: '#2b2420', paper: '#f3ead3', stroke: 5.5 }, abjad: { ink: '#2b2420', paper: '#f3ead3', stroke: 6 }, devanagari: { ink: '#2b2420', paper: '#f3ead3', stroke: 6 },
   kana: { ink: '#1f1a17', paper: '#f5efe2', stroke: 8 }, hanzi: { ink: '#1f1a17', paper: '#f5efe2', stroke: 6 }, hangul: { ink: '#1f1a17', paper: '#f5efe2', stroke: 6 },
   glyphs: { ink: '#3d3328', paper: '#ddd3bf', stroke: 4 }, cuneiform: { ink: '#4b3a2a', paper: '#d7b98d', stroke: 3 },
+  ethiopic: { ink: '#2b2420', paper: '#f3ead3', stroke: 6.5 }, hieroglyph: { ink: '#1d2e4a', paper: '#e9dcb2', stroke: 4.5 },
+  looped: { ink: '#2b2420', paper: '#f3ead3', stroke: 6 }, syllabics: { ink: '#2b2420', paper: '#f3ead3', stroke: 7 },
+  square: { ink: '#2b2420', paper: '#f3ead3', stroke: 7 }, spine: { ink: '#2b2420', paper: '#f3ead3', stroke: 6 },
 };
+/** Pen-written styles whose ink varies from people to people (iron-gall, soot, red-brown, indigo). */
+const INKS = ['#2b2420', '#1f1a17', '#3a2416', '#5a2018', '#1e2a44'];
+/** Styles written upright (not slanted by the hand). */
+const UPRIGHT = new Set<ScriptStyle>(['hanzi', 'kana', 'hangul', 'cuneiform', 'glyphs', 'hieroglyph', 'spine', 'phagspa', 'ogham']);
+
+/** Shapes of the syllabics (box 0 to 80 wide, 14 to 86 high), each turned four ways for the vowels; the first is the vowel's own. */
+const SYL_SHAPES: Prim[][] = [];
 
 const PLACE_ORDER_S = ['dental', 'alveolar', 'postalveolar', 'retroflex', 'bilabial', 'labiodental', 'alveolo-palatal', 'palatal', 'velar', 'uvular', 'pharyngeal', 'glottal'];
 const pick = <T>(r: Rng, a: readonly T[]): T => a[Math.floor(r() * a.length)];
@@ -98,6 +126,33 @@ const Q_ = (...p: number[]): Prim => ({ k: 'quad', p });
 const C_ = (...p: number[]): Prim => ({ k: 'circ', p });
 const D_ = (...p: number[]): Prim => ({ k: 'dot', p });
 const P_ = (...p: number[]): Prim => ({ k: 'poly', p });
+
+SYL_SHAPES.push(
+  [L_(4, 86, 40, 14, 76, 86, 4, 86)],
+  [L_(76, 14, 4, 50, 76, 86)],
+  [L_(4, 14, 4, 86, 76, 86, 76, 14)],
+  [Q_(76, 14, -20, 50, 76, 86)],
+  [L_(20, 14, 60, 14, 60, 66), Q_(60, 66, 60, 86, 36, 86)],
+  [L_(10, 14, 10, 86, 76, 86)],
+  [C_(30, 62, 20), L_(50, 62, 76, 14)],
+  [L_(4, 14, 76, 14), L_(40, 14, 40, 86)],
+  [L_(4, 50, 62, 50), Q_(62, 50, 82, 40, 70, 20)],
+  [Q_(70, 14, 4, 30, 40, 50), Q_(40, 50, 76, 70, 10, 86)],
+  [P_(4, 86, 40, 30, 76, 86)],
+  [L_(76, 14, 30, 50, 76, 86), L_(50, 14, 4, 50, 50, 86)],
+  [L_(10, 86, 10, 14), Q_(10, 14, 76, 14, 60, 50), L_(60, 50, 10, 50)],
+  [L_(4, 14, 40, 50, 76, 14), L_(40, 50, 40, 86)],
+  [C_(40, 56, 24), L_(40, 32, 40, 8)],
+  [L_(76, 14, 4, 14, 4, 86, 76, 86), L_(4, 50, 56, 50)],
+  [L_(4, 14, 76, 14, 4, 86, 76, 86)],
+  [C_(34, 50, 22), L_(56, 50, 80, 50)],
+  [L_(4, 86, 40, 14, 76, 86), L_(22, 56, 58, 56)],
+  [L_(4, 14, 76, 50, 4, 86), D_(56, 50, 5)],
+  [L_(4, 20, 76, 20), Q_(76, 20, 76, 70, 40, 86)],
+  [L_(10, 14, 10, 86), Q_(10, 50, 70, 30, 70, 86)],
+  [L_(40, 14, 40, 86), L_(40, 50, 76, 20), L_(40, 50, 76, 80)],
+  [Q_(4, 50, 40, -10, 76, 50), D_(40, 66, 5)],
+);
 
 /** Latin-like letter bodies on the x-height (40 to 100), and the marks that tell them apart. */
 const LT_BODIES: Prim[][] = [
@@ -143,7 +198,7 @@ const AB_DOTS: number[][] = [[], [1], [1, 2], [1, 2, 3], [-1], [-1, -2], [-1, -2
 const AB_RESERVED = { alif: 2 * AB_DOTS.length, ya: 4 * AB_DOTS.length + 5 };
 
 /** Scripts that write positional digits with pen-made figures. */
-const ALPHA_DIGITS = new Set(['abjad', 'latin', 'elvish', 'devanagari']);
+const ALPHA_DIGITS = new Set(['abjad', 'latin', 'elvish', 'devanagari', 'ethiopic', 'looped', 'square', 'spine', 'syllabics']);
 /** Digit forms: Eastern-Arabic-like for the abjad, and pen-written ones for the other alphabets (in a box about 50 wide). */
 const DIGIT_FORMS: Record<'abjad' | 'pen', Prim[][]> = {
   abjad: [
@@ -263,7 +318,11 @@ export class Script {
   constructor(readonly L: Language, force?: ScriptStyle) {
     this.seed = hashString(`script#${L.key}`);
     const r = mulberry32(this.seed);
-    let style = STYLE_OF[L.t.id] ?? 'latin';
+    // The style: one of its template's, picked on a stream of its own.
+    const rs = mulberry32(hashString(`script-style#${L.key}`));
+    const opts = STYLES_OF[L.t.id] ?? [['latin', 1]];
+    let tw = rs() * opts.reduce((x, [, w]) => x + w, 0);
+    let style: ScriptStyle = (opts.find(([, w]) => (tw -= w) < 0) ?? opts[0])[0];
     // Halflings keep elvish letters; steppe peoples write runes or a square script; some human
     // peoples took up elvish letters (on a stream of its own, so other scripts are unchanged).
     const rx = mulberry32(hashString(`script-extra#${L.key}`));
@@ -275,7 +334,14 @@ export class Script {
     // A drifting people may have taken up another kind of writing.
     if (r() < L.drift * 0.4) style = pick(r, Object.keys(KIND) as ScriptStyle[]);
     if (force) style = force;
-    const direction = style === 'phagspa' ? 'ttbl' : style === 'abjad' ? 'rtl' : style === 'hanzi' || (style === 'kana' && r() < 0.5) ? 'ttb' : style === 'runes' && r() < 0.2 ? 'rtl' : 'ltr';
+    let direction: ScriptInfo['direction'] = style === 'phagspa' ? 'ttbl' : style === 'abjad' ? 'rtl' : style === 'hanzi' || (style === 'kana' && r() < 0.5) ? 'ttb' : style === 'runes' && r() < 0.2 ? 'rtl' : 'ltr';
+    // The new styles' manners, each on a stream of its own.
+    this.squareVariant = this.rng('square-variant')() < 0.5 ? 'block' : 'round';
+    this.loopVariant = pick(this.rng('loop-variant'), ['round', 'headloop', 'hat', 'tail'] as const);
+    const dx = this.rng('direction')();
+    if (style === 'square' && this.squareVariant === 'block' && dx < 0.7) direction = 'rtl';
+    if (style === 'hieroglyph') direction = dx < 0.55 ? 'ltr' : dx < 0.85 ? 'rtl' : 'ttb';
+    if (style === 'spine') direction = 'ttbl';
     const kind = KIND[style];
     const notes: string[] = [];
     if (style === 'devanagari') notes.push(`Every consonant carries the vowel ${this.inherentSpell()} unless a mark gives it another; a stroke beneath silences it.`);
@@ -288,11 +354,30 @@ export class Script {
     if (kind === 'syllabary' || kind === 'logosyllabary') notes.push('A consonant with no vowel of its own (a cluster, or a closing consonant) takes a sign of its own.');
     if (style === 'hangul') notes.push('Consonants are drawn from where they are made: a lip-box for sounds made with the lips, an angle for those at the back of the mouth, a corner for the tongue tip, a roof for hissing sounds, a ring for the throat, with strokes added for each other manner. Vowels are long bars with short ticks.');
     if (style === 'ogham') notes.push('The letters are groups of one to five strokes on one side of the stem, on the other, across it, or as notches on it for the vowels.');
+    if (style === 'ethiopic') notes.push(`Each consonant has a letter of one to three legs standing on small feet. With the vowel ${this.inherentSpell()} it is written plain; for each other vowel it is changed (a bar at its side, a foot, a longer leg, a ring below or above, a dot), and with no vowel its first leg is bent. A vowel alone is written on the letter of the glottal stop. Words are parted by two dots.`);
+    if (style === 'hieroglyph') notes.push('Each sign is a picture standing for a consonant; vowels are written only when long, or at the start of a word. Small signs stand one above the other and narrow ones side by side, so the signs fall into even blocks, and many words end with a sign that is not read but tells what kind of thing the word means (a person, a writing, a going).' + (direction === 'rtl' ? ' The pictures face the start of the line, which runs from right to left.' : ''));
+    if (style === 'looped') notes.push(`Every consonant carries the vowel ${this.inherentSpell()} unless a mark beside, above or below it gives another; a small curl above silences it. The letters are built of rings, arches and loops${this.loopVariant === 'headloop' ? ', most beginning with a small loop' : this.loopVariant === 'hat' ? ', each with a small cap' : this.loopVariant === 'tail' ? ', many with a tail' : ''}.`);
+    if (style === 'syllabics') notes.push('Each consonant has one simple shape, turned four ways for the vowel that follows it (and mirrored for more vowels; a dot above makes the vowel long). A vowel alone is a triangle turned the same way, and a consonant that closes a syllable is written small and raised.');
+    if (style === 'square') notes.push(this.squareVariant === 'block' ? 'The letters are square, most hanging from a heavy stroke along the top, with a few reaching below the line.' : 'The letters are rounded, sitting on the line, many with a tall ascender or a long descender.');
+    if (style === 'spine') notes.push('The letters of a word hang on either side of one stroke running down the column, so that the whole word is written without lifting the pen: a crown at its head, teeth, bows and rings along it, and a tail at its end.');
     if (direction === 'ttb') notes.push('It is written in columns, from the top down, the columns running from right to left.');
     else if (direction === 'ttbl') notes.push('It is written in columns, from the top down, the columns running from left to right.');
     else if (direction === 'rtl') notes.push('It is written from right to left.');
-    this.info = { style, kind, direction, label: LABEL[style], notes, ...LOOK[style] };
+    const look = { ...LOOK[style] };
+    // Every people has its own hand: how it slants, how wide and how heavy its strokes are, and its ink.
+    const rh = this.rng('hand');
+    this.hand = { slant: UPRIGHT.has(style) ? 0 : (rh() - 0.35) * 0.34, width: 0.86 + rh() * 0.28 };
+    look.stroke = Math.round(look.stroke * (0.78 + rh() * 0.5) * 10) / 10;
+    const ink = rh();
+    if (!['cuneiform', 'glyphs', 'hieroglyph'].includes(style)) look.ink = INKS[Math.floor(ink * INKS.length)];
+    const label = style === 'square' && this.squareVariant === 'round' ? 'an alphabet of rounded letters on a baseline, with long ascenders and descenders' : LABEL[style];
+    this.info = { style, kind, direction, label, notes, ...look };
   }
+
+  /** The people's hand: slant (a shear, positive leaning right) and width (1 as drawn). */
+  hand: { slant: number; width: number } = { slant: 0, width: 1 };
+  private squareVariant: 'block' | 'round' = 'round';
+  private loopVariant: 'round' | 'headloop' | 'hat' | 'tail' = 'round';
 
   /** Tengwar-like writing: vowels as marks over the consonants (tehta), or as letters (full). */
   private tengMode: 'tehta' | 'full' = 'tehta';
@@ -823,6 +908,254 @@ export class Script {
     });
   }
 
+  // ---- Ethiopic-like letters -----------------------------------------------------------------------
+
+  /** An Ethiopic-like letter (the plain form): one to three legs on small feet under a joining head. */
+  private fidel(key: string): Glyph {
+    return this.make(`eth:${key}`, (r) => {
+      const n = pick(r, [1, 2, 2, 2, 3]);
+      const xs = n === 1 ? [30] : n === 2 ? [14, 46] : [8, 30, 52];
+      const prims: Prim[] = [];
+      const top = 32;
+      for (const x of xs) prims.push(L_(x, top, x, 96), L_(x - 6, 96, x + 6, 96));
+      const x0 = xs[0], x1 = xs[xs.length - 1], m = (x0 + x1) / 2;
+      switch (pick(r, n === 1 ? ['loop', 'bar', 'curl', 'fork'] : ['arch', 'arch', 'bar', 'loop', 'hook'])) {
+        case 'arch': prims.push(Q_(x0, top, m, top - 32, x1, top)); break;
+        case 'bar': prims.push(L_(x0 - (n === 1 ? 14 : 0), top, x1 + (n === 1 ? 14 : 0), top)); break;
+        case 'loop': prims.push(C_(m, top - 10, 10)); break;
+        case 'curl': prims.push(Q_(x0, top, x0 - 18, top - 22, x0 + 12, top - 20)); break;
+        case 'fork': prims.push(L_(x0 - 14, top - 22, x0, top, x0 + 14, top - 22)); break;
+        default: prims.push(Q_(x0, top, x0 - 4, top - 24, m + 10, top - 20), L_(m + 10, top - 20, x1, top));
+      }
+      switch (pick(r, ['none', 'none', 'mid', 'belly', 'notch'])) {
+        case 'mid': if (n > 1) prims.push(L_(x0, 62, x1, 62)); else prims.push(L_(x0, 62, x0 + 14, 62)); break;
+        case 'belly': if (n > 1) prims.push(Q_(x0, 56, m, 88, x1, 56)); else prims.push(C_(x0 + 10, 64, 8)); break;
+        case 'notch': prims.push(L_(x1, 50, x1 + 10, 42)); break;
+      }
+      return { prims, w: x1 + 16 };
+    });
+  }
+  /** How a vowel changes the letter: the inherent vowel leaves it plain, 'none' bends its first leg. */
+  private fidelMark(g: Glyph, v: string | null): Glyph {
+    const x0 = g.prims[0].p[0], x1 = g.w - 16;
+    let add: Prim[] = [];
+    if (v === null) add = [L_(x0, 74, x0 - 12, 82, x0, 90)];
+    else if (v !== this.inherent) {
+      const order = this.L.vowels.map((x) => x.ipa).filter((x) => x !== this.inherent);
+      const k = Math.max(0, order.indexOf(v));
+      switch (['bar', 'foot', 'long', 'ring', 'top', 'dot', 'bar2', 'ringTop'][k % 8]) {
+        case 'bar': add = [L_(x1, 58, x1 + 13, 58)]; break;
+        case 'foot': add = [L_(x1 + 6, 96, x1 + 14, 96, x1 + 14, 84)]; break;
+        case 'long': add = [L_(x1, 96, x1, 114)]; break;
+        case 'ring': add = [C_(x1 + 10, 100, 6)]; break;
+        case 'top': add = [L_(x1, 32, x1 + 12, 24)]; break;
+        case 'dot': add = [D_(x1 + 11, 70, 4)]; break;
+        case 'bar2': add = [L_(x1, 52, x1 + 12, 52), L_(x1, 64, x1 + 12, 64)]; break;
+        default: add = [C_(x1 + 8, 22, 6)];
+      }
+    }
+    return { prims: [...g.prims, ...add], w: g.w + (add.length && v !== null ? 6 : 0) };
+  }
+
+  // ---- Hieroglyphs ---------------------------------------------------------------------------------------
+
+  /** The picture for a sound (a consonant, or 'v:' and a vowel), dealt from the pictures in an order of the script's own. */
+  private pictMap: Map<string, number> | null = null;
+  private pict(key: string): Pictograph {
+    if (!this.pictMap) {
+      const r = this.rng('pict-order');
+      const order = PICTOGRAPHS.map((_, i) => i).sort(() => r() - 0.5);
+      this.pictMap = new Map();
+      const keys = [...this.L.consonants.map((c) => c.ipa).sort(), ...[...new Set(this.L.vowels.map((v) => `v:${v.ipa.replace('ː', '')}`))].sort()];
+      keys.forEach((k, i) => this.pictMap!.set(k, order[i % order.length]));
+    }
+    return PICTOGRAPHS[this.pictMap.get(key) ?? hashString(key) % PICTOGRAPHS.length];
+  }
+  /** Signs grouped into blocks: two low signs one above the other, two tall ones side by side. */
+  private blocks(signs: Pictograph[], mirror: boolean): Glyph[] {
+    const out: Glyph[] = [];
+    for (let i = 0; i < signs.length; i++) {
+      const a = signs[i], b = signs[i + 1];
+      let g: Glyph;
+      if (a.cls === 'low' && b?.cls === 'low') {
+        g = { prims: [...tf(a.prims, 0.9, 0.9, 5, -20), ...tf(b.prims, 0.9, 0.9, 5, 26)], w: 100 };
+        i++;
+      } else if (a.cls === 'tall' && b?.cls === 'tall') {
+        g = { prims: [...a.prims, ...tf(b.prims, 1, 1, 50, 0)], w: 98 };
+        i++;
+      } else g = { prims: a.prims, w: a.cls === 'tall' ? 50 : 100 };
+      if (mirror) g = { prims: g.prims.map((q) => ({ k: q.k, p: q.p.map((v, n) => (n % 2 || (q.k !== 'line' && q.k !== 'quad' && q.k !== 'poly' && n > 1) ? v : g.w - v)) })), w: g.w };
+      out.push(g);
+    }
+    return out;
+  }
+
+  // ---- Looped letters -------------------------------------------------------------------------------------
+
+  /** A letter built of rings and loops (Burmese, Thai, Tamil or Khmer-like), in the script's own manner. */
+  private loopLetter(key: string, vowel: boolean): Glyph {
+    return this.make(`loop:${key}`, (r) => {
+      const prims: Prim[] = [];
+      let w = 60;
+      switch (pick(r, ['o', 'c', 'm', 'u', 'n', 'oo', 'o', 'c'])) {
+        case 'o': prims.push(C_(30, 68, 24)); break;
+        case 'c': prims.push(Q_(52, 52, 30, 34, 10, 58), Q_(10, 58, 6, 92, 32, 92), Q_(32, 92, 56, 92, 54, 68)); break;
+        case 'm': prims.push(Q_(6, 94, 4, 48, 22, 48), Q_(22, 48, 36, 48, 36, 94), Q_(36, 94, 36, 48, 50, 48), Q_(50, 48, 66, 48, 64, 94)); w = 70; break;
+        case 'u': prims.push(Q_(8, 46, 4, 94, 30, 94), Q_(30, 94, 58, 94, 54, 46)); break;
+        case 'n': prims.push(Q_(8, 94, 6, 44, 30, 44), Q_(30, 44, 56, 44, 54, 94)); break;
+        default: prims.push(C_(18, 70, 14), C_(46, 70, 14)); w = 64;
+      }
+      switch (pick(r, ['none', 'dot', 'bar', 'tail', 'inner', 'loopTop', 'none'])) {
+        case 'dot': prims.push(D_(w / 2, 68, 4)); break;
+        case 'bar': prims.push(L_(w / 2 - 10, 68, w / 2 + 10, 68)); break;
+        case 'tail': prims.push(Q_(w - 6, 82, w + 4, 106, w - 14, 112)); break;
+        case 'inner': prims.push(C_(w / 2, 74, 8)); break;
+        case 'loopTop': prims.push(C_(w - 10, 40, 6)); break;
+      }
+      const v = this.loopVariant;
+      if (v === 'headloop') prims.push(C_(9, 50, 5));
+      else if (v === 'hat') prims.push(Q_(w / 2 - 12, 36, w / 2, 24, w / 2 + 12, 36));
+      else if (v === 'tail' && r() < 0.5) prims.push(L_(w - 6, 70, w - 6, 106));
+      if (vowel) {
+        prims.push(Q_(w + 2, 50, w + 16, 70, w + 2, 92));
+        w += 14;
+      }
+      return { prims, w };
+    });
+  }
+  private loopMark(v: string, w: number): { prims: Prim[]; w: number } {
+    const order = this.L.vowels.map((x) => x.ipa).filter((x) => x !== this.inherent);
+    const i = Math.max(0, order.indexOf(v));
+    switch (['after', 'above', 'below', 'arc', 'afterRing', 'ringBelow', 'twoDots'][i % 7]) {
+      case 'after': return { prims: [Q_(w + 4, 46, w + 22, 72, w + 4, 98)], w: 16 };
+      case 'above': return { prims: [C_(w - 20, 26, 7)], w: 0 };
+      case 'below': return { prims: [Q_(w - 32, 104, w - 18, 124, w - 6, 104)], w: 0 };
+      case 'arc': return { prims: [Q_(w - 36, 32, w - 20, 10, w - 4, 32)], w: 0 };
+      case 'afterRing': return { prims: [C_(w + 10, 72, 9)], w: 20 };
+      case 'ringBelow': return { prims: [C_(w - 18, 114, 6)], w: 0 };
+      default: return { prims: [D_(w - 26, 24, 4), D_(w - 12, 24, 4)], w: 0 };
+    }
+  }
+
+  // ---- Syllabics ------------------------------------------------------------------------------------------
+
+  /** Each consonant's shape (the first, the triangle, is the vowel's own), dealt in an order of the script's own. */
+  private sylMap: Map<string, number> | null = null;
+  private sylShape(c: string | null): Prim[] {
+    if (c === null) return SYL_SHAPES[0];
+    if (!this.sylMap) {
+      const r = this.rng('syl-order');
+      const order = SYL_SHAPES.map((_, i) => i).slice(1).sort(() => r() - 0.5);
+      this.sylMap = new Map();
+      this.L.consonants.map((x) => x.ipa).sort().forEach((k, i) => this.sylMap!.set(k, order[i % order.length]));
+    }
+    const k = this.sylMap.get(c) ?? 1 + (hashString(c) % (SYL_SHAPES.length - 1));
+    const base = SYL_SHAPES[k];
+    // Past the stock of shapes, a consonant shares one with a bar through it.
+    const over = this.L.consonants.map((x) => x.ipa).sort().indexOf(c) >= SYL_SHAPES.length - 1;
+    return over ? [...base, L_(0, 50, 18, 50)] : base;
+  }
+  /** A syllable sign: the consonant's shape turned for its vowel; with no vowel, small and raised. */
+  private syllabic(c: string | null, v: string | null): Glyph {
+    const shape = this.sylShape(c);
+    if (v === null) return { prims: tf(shape, 0.42, 0.42, 2, 0), w: 38 };
+    const vs = [...new Set(this.L.vowels.map((x) => x.ipa.replace('ː', '')))];
+    const vi = Math.max(0, vs.indexOf(v.replace('ː', '')));
+    const rot = vi % 4, mirror = Math.floor(vi / 4) % 2 === 1;
+    const turn = (x: number, y: number): [number, number] => {
+      let dx = x - 40, dy = y - 50;
+      for (let k = 0; k < rot; k++) [dx, dy] = [-dy, dx];
+      if (mirror) dx = -dx;
+      return [40 + dx, 50 + dy];
+    };
+    const prims = shape.map((q) => {
+      if (q.k === 'circ' || q.k === 'dot') {
+        const [x, y] = turn(q.p[0], q.p[1]);
+        return { k: q.k, p: [x, y, q.p[2]] };
+      }
+      const p: number[] = [];
+      for (let i = 0; i < q.p.length; i += 2) p.push(...turn(q.p[i], q.p[i + 1]));
+      return { k: q.k, p };
+    });
+    if (/ː/.test(v)) prims.push(D_(40, 0, 5));
+    return { prims, w: 84 };
+  }
+
+  // ---- Square alphabets ---------------------------------------------------------------------------------
+
+  /** A square letter (Hebrew-like, hung from a top stroke) or a rounded one (Georgian or Armenian-like). */
+  private squareLetter(key: string): Glyph {
+    return this.make(`sq:${key}`, (r) => {
+      const prims: Prim[] = [];
+      if (this.squareVariant === 'block') {
+        const top = r() < 0.85;
+        if (top) prims.push(L_(6, 34, 52, 34));
+        switch (pick(r, ['full', 'full', 'desc', 'none', 'short'])) {
+          case 'full': prims.push(L_(52, 34, 52, 96)); break;
+          case 'desc': prims.push(L_(52, 34, 52, 126)); break;
+          case 'short': prims.push(L_(52, 34, 52, 64)); break;
+        }
+        switch (pick(r, ['none', 'full', 'low', 'tick', 'slant'])) {
+          case 'full': prims.push(L_(10, 34, 10, 96)); break;
+          case 'low': prims.push(L_(10, 62, 10, 96)); break;
+          case 'tick': prims.push(L_(4, 24, 10, 34)); break;
+          case 'slant': prims.push(L_(14, 34, 36, 96)); break;
+        }
+        switch (pick(r, ['none', 'none', 'bar', 'half'])) {
+          case 'bar': prims.push(L_(4, 96, 58, 96)); break;
+          case 'half': prims.push(L_(28, 96, 58, 96)); break;
+        }
+        if (!top) prims.push(L_(30, 22, 30, 96), Q_(30, 22, 44, 20, 52, 30));
+        if (r() < 0.2) prims.push(L_(30, 34, 30, 66));
+        return { prims, w: 62 };
+      }
+      let w = 58;
+      switch (pick(r, ['bowl', 'openL', 'openR', 'arch', 'm', 'cup', 'hook'])) {
+        case 'bowl': prims.push(C_(28, 74, 22)); break;
+        case 'openL': prims.push(Q_(48, 56, 4, 50, 8, 80), Q_(8, 80, 16, 100, 48, 92)); break;
+        case 'openR': prims.push(Q_(8, 56, 52, 50, 48, 80), Q_(48, 80, 40, 100, 8, 92)); break;
+        case 'arch': prims.push(Q_(8, 96, 8, 52, 28, 52), Q_(28, 52, 50, 52, 50, 96)); break;
+        case 'm': prims.push(Q_(4, 96, 4, 52, 18, 52), Q_(18, 52, 30, 52, 30, 96), Q_(30, 96, 30, 52, 44, 52), Q_(44, 52, 58, 52, 58, 96)); w = 64; break;
+        case 'cup': prims.push(Q_(8, 52, 6, 96, 28, 96), Q_(28, 96, 52, 96, 50, 52)); break;
+        default: prims.push(L_(28, 52, 28, 88), Q_(28, 88, 28, 100, 12, 94));
+      }
+      switch (pick(r, ['none', 'asc', 'desc', 'curlUp', 'curlDown', 'dot', 'ascL'])) {
+        case 'asc': prims.push(L_(w - 8, 74, w - 8, 8)); break;
+        case 'ascL': prims.push(L_(8, 74, 8, 8)); break;
+        case 'desc': prims.push(L_(w - 8, 74, w - 8, 128)); break;
+        case 'curlUp': prims.push(Q_(w - 8, 60, w + 2, 10, w - 30, 16)); break;
+        case 'curlDown': prims.push(Q_(8, 90, -2, 132, 28, 124)); break;
+        case 'dot': prims.push(D_(w / 2, 32, 4.5)); break;
+      }
+      return { prims, w };
+    });
+  }
+
+  // ---- Spine script -----------------------------------------------------------------------------------------
+
+  /** A letter hung on the spine (Mongolian-like): teeth, bows, hooks or rings either side of the stroke down the column. */
+  private spineLetter(key: string, vowel: boolean): Glyph {
+    return this.make(`sp:${key}`, (r) => {
+      const prims: Prim[] = [L_(50, -4, 50, 104)];
+      const n = vowel ? 1 : 1 + (r() < 0.45 ? 1 : 0);
+      for (let k = 0; k < n; k++) {
+        const y = n === 1 ? 50 : 28 + k * 44;
+        switch (pick(r, ['tooth', 'toothR', 'bowL', 'bowR', 'hook', 'ring', 'dot', 'dots', 'tooth2'])) {
+          case 'tooth': prims.push(L_(50, y - 8, 24, y + 6)); break;
+          case 'toothR': prims.push(L_(50, y - 8, 76, y + 6)); break;
+          case 'tooth2': prims.push(L_(50, y - 14, 26, y - 4), L_(50, y + 4, 26, y + 14)); break;
+          case 'bowL': prims.push(Q_(50, y - 18, 8, y, 50, y + 18)); break;
+          case 'bowR': prims.push(Q_(50, y - 18, 92, y, 50, y + 18)); break;
+          case 'hook': prims.push(L_(50, y, 76, y - 14, 76, y + 12)); break;
+          case 'ring': prims.push(C_(30, y, 11), L_(41, y, 50, y)); break;
+          case 'dot': prims.push(D_(28, y, 5)); break;
+          default: prims.push(D_(28, y - 10, 4), D_(28, y + 10, 4));
+        }
+      }
+      return { prims, w: 100 };
+    });
+  }
+
   // ---- Numerals ---------------------------------------------------------------------------------
 
   private numInfo: NumeralInfo | null = null;
@@ -835,7 +1168,7 @@ export class Script {
     const r = this.rng('numerals');
     const st = this.info.style;
     const base = numberSystem(this.L).base;
-    const kind: NumeralKind = st === 'runes' || st === 'ogham' ? 'additive' : st === 'hanzi' || st === 'kana' || st === 'hangul' ? 'multiplicative' : st === 'latin' && r() < 0.35 ? 'additive' : 'positional';
+    const kind: NumeralKind = st === 'runes' || st === 'ogham' || st === 'hieroglyph' ? 'additive' : st === 'hanzi' || st === 'kana' || st === 'hangul' ? 'multiplicative' : st === 'latin' && r() < 0.35 ? 'additive' : 'positional';
     const pen = ALPHA_DIGITS.has(st);
     const group = kind !== 'positional' ? 0 : st === 'cuneiform' ? (base > 12 ? 10 : 0) : st === 'glyphs' || (base > 12 && !pen) ? (base === 60 ? 10 : 5) : 0;
     const composite = kind === 'positional' && (st === 'glyphs' || st === 'cuneiform' || (base > 12 && !pen));
@@ -879,7 +1212,7 @@ export class Script {
       const a = this.radical(Math.floor(r() * 28));
       return { prims: r() < 0.5 ? a : [...tf(a, 1, 0.5, 0, 0), ...tf(this.radical(Math.floor(r() * 28)), 1, 0.45, 0, 52)], w: 100 };
     });
-    const straight = st === 'runes' || st === 'ogham' || st === 'cuneiform' || st === 'phagspa';
+    const straight = st === 'runes' || st === 'ogham' || st === 'cuneiform' || st === 'phagspa' || st === 'square' || st === 'syllabics';
     return this.makeNum(key, (r) => {
       const prims: Prim[] = [];
       const n = 1 + Math.floor(r() * 2.4);
@@ -1063,7 +1396,73 @@ export class Script {
           });
         });
         break;
+      case 'square': for (const x of segs) out.push(this.squareLetter(x)); break;
+      case 'spine':
+        segs.forEach((x, i) => {
+          const g = this.spineLetter(x, isVowel(x));
+          // A crown at the word's head, a tail at its end; the letters joined down the spine.
+          const extra: Prim[] = [...(i === 0 ? [L_(50, -4, 36, -16)] : []), ...(i === segs.length - 1 ? [Q_(50, 100, 48, 126, 24, 120)] : [])];
+          out.push({ prims: [...g.prims, ...extra], w: g.w, join: i > 0 });
+        });
+        break;
+      case 'ethiopic':
+        for (const syl of syls) {
+          const sy = syl.filter((q) => !q.startsWith('#'));
+          for (let i = 0; i < sy.length; i++) {
+            const x = sy[i];
+            if (isVowel(x)) out.push(this.fidelMark(this.fidel('ʔ'), x));
+            else if (sy[i + 1] && isVowel(sy[i + 1])) out.push(this.fidelMark(this.fidel(x), sy[++i]));
+            else out.push(this.fidelMark(this.fidel(x), null));
+          }
+        }
+        break;
+      case 'syllabics':
+        for (const syl of syls) {
+          const sy = syl.filter((q) => !q.startsWith('#'));
+          for (let i = 0; i < sy.length; i++) {
+            const x = sy[i];
+            if (isVowel(x)) out.push(this.syllabic(null, x));
+            else if (sy[i + 1] && isVowel(sy[i + 1])) out.push(this.syllabic(x, sy[++i]));
+            else out.push(this.syllabic(x, null));
+          }
+        }
+        break;
+      case 'hieroglyph': {
+        // Consonants, and vowels that are long or begin the word.
+        const signs: Pictograph[] = [];
+        segs.forEach((x, i) => {
+          if (!isVowel(x)) signs.push(this.pict(x));
+          else if (i === 0 || /ː/.test(x)) signs.push(this.pict(`v:${x.replace('ː', '')}`));
+        });
+        // Many words close with a sign that tells what kind of thing they mean (not read).
+        const h = hashString(`${this.seed}:det:${spell}`);
+        if (h % 5 < 2) signs.push(DETERMINATIVES[(h >>> 4) % DETERMINATIVES.length]);
+        out.push(...this.blocks(signs, this.info?.direction === 'rtl'));
+        break;
+      }
+      case 'looped':
       case 'devanagari':
+        if (s === 'looped') {
+          for (const syl of syls) {
+            const sy = syl.filter((q) => !q.startsWith('#'));
+            const vi = sy.findIndex(isVowel);
+            sy.forEach((x, i) => {
+              if (i === vi) {
+                if (i === 0) out.push(this.loopLetter(`v:${x}`, true));
+                else if (x !== this.inherent) {
+                  const prev = out.pop()!;
+                  const m = this.loopMark(x, prev.w);
+                  out.push({ prims: [...prev.prims, ...m.prims], w: prev.w + m.w });
+                }
+              } else {
+                const g = this.loopLetter(x, false);
+                const silent = i > vi || sy[i + 1] === undefined || !isVowel(sy[i + 1]);
+                out.push(silent ? { prims: [...g.prims, Q_(g.w - 28, 26, g.w - 16, 6, g.w - 6, 24)], w: g.w } : g);
+              }
+            });
+          }
+          break;
+        }
         for (const syl of syls) {
           const sy = syl.filter((q) => !q.startsWith('#'));
           const vi = sy.findIndex(isVowel);
@@ -1126,6 +1525,21 @@ export class Script {
     const twice = new Set([...vows, ...cons].map(sp).filter((x, i, a) => a.indexOf(x) !== i));
     const lab = (x: string) => (twice.has(sp(x)) ? `${sp(x)} /${x}/` : sp(x));
     if (s === 'runes' || s === 'ogham' || s === 'latin') return [...vows, ...cons].map((x) => ({ label: lab(x), glyph: s === 'runes' ? this.rune(x, isVowel(x)) : s === 'ogham' ? this.ogham(x, isVowel(x)) : this.latin(x, isVowel(x)) }));
+    if (s === 'square') return [...vows, ...cons].map((x) => ({ label: lab(x), glyph: this.squareLetter(x) }));
+    if (s === 'spine') return [...vows, ...cons].map((x) => ({ label: lab(x), glyph: this.spineLetter(x, isVowel(x)) }));
+    if (s === 'hieroglyph') {
+      const vk = [...new Set(vows.map((v) => v.replace('ː', '')))];
+      return [...cons.map((x) => ({ label: lab(x), glyph: this.blocks([this.pict(x)], false)[0] })), ...vk.map((x) => ({ label: sp(x), glyph: this.blocks([this.pict(`v:${x}`)], false)[0] })),
+        ...DETERMINATIVES.slice(0, 3).map((d) => ({ label: `(${d.name})`, glyph: this.blocks([d], false)[0] }))];
+    }
+    if (s === 'looped') {
+      const k0 = cons[0] ?? 'k';
+      return [...cons.map((x) => ({ label: `${sp(x)}${sp(this.inherent)}`, glyph: this.loopLetter(x, false) })), ...vows.map((x) => ({ label: sp(x), glyph: this.loopLetter(`v:${x}`, true) })),
+        ...vows.filter((v) => v !== this.inherent).map((x) => {
+          const g = this.loopLetter(k0, false), m = this.loopMark(x, g.w);
+          return { label: `${sp(k0)}${sp(x)}`, glyph: { prims: [...g.prims, ...m.prims], w: g.w + m.w } };
+        })];
+    }
     if (s === 'abjad') return [...cons.map((x) => ({ label: sp(x), glyph: this.abjadLetter(x, false) })), ...vows.filter((v) => /ː/.test(v)).map((x) => ({ label: sp(x), glyph: this.abjadLetter(x, true) })), { label: 'carrier', glyph: this.abjadLetter('carrier', true) }];
     if (s === 'elvish') {
       // Letters in their series and grades (by place, then manner), then the vowels.
@@ -1174,6 +1588,23 @@ export function scriptOf(L: Language): Script {
 
 // ---- SVG -----------------------------------------------------------------------------------------
 
+/** A glyph in the people's hand: slanted about the baseline and made wider or narrower. */
+export function handGlyph(sc: Script, g: Glyph): Glyph {
+  const { slant, width } = sc.hand;
+  if (!slant && width === 1) return g;
+  const X = (x: number, y: number) => x * width + (100 - y) * slant;
+  return {
+    ...g,
+    w: g.w * width,
+    prims: g.prims.map((q) => {
+      if (q.k === 'circ' || q.k === 'dot') return { k: q.k, p: [X(q.p[0], q.p[1]), q.p[1], q.p[2]] };
+      const p = q.p.slice();
+      for (let i = 0; i < p.length; i += 2) p[i] = X(q.p[i], q.p[i + 1]);
+      return { k: q.k, p };
+    }),
+  };
+}
+
 function primSvg(q: Prim, ox: number, oy: number, k: number): string {
   const P = (i: number) => `${(q.p[i] * k + ox).toFixed(1)},${(q.p[i + 1] * k + oy).toFixed(1)}`;
   switch (q.k) {
@@ -1194,7 +1625,8 @@ function primSvg(q: Prim, ox: number, oy: number, k: number): string {
 }
 
 /** One glyph as a small SVG (for charts). */
-export function glyphSvg(sc: Script, g: Glyph, size = 40): string {
+export function glyphSvg(sc: Script, g0: Glyph, size = 40): string {
+  const g = handGlyph(sc, g0);
   const k = size / 140, pad = 20 * k;
   const W = Math.max(g.w, 60) * k + 2 * pad, H = size;
   const ox = (W - g.w * k) / 2;
@@ -1203,7 +1635,7 @@ export function glyphSvg(sc: Script, g: Glyph, size = 40): string {
 
 /** Text in the script set around a ring (SVG markup for a 100 by 100 box, centred), for seals and emblems. */
 export function ringText(sc: Script, text: string, radius = 40, ink = sc.info.ink, glyphSize = 7): string {
-  const gl = text.split(/\s+/).filter(Boolean).flatMap((w) => sc.word(w)).slice(0, 24);
+  const gl = text.split(/\s+/).filter(Boolean).flatMap((w) => sc.word(w)).slice(0, 24).map((g) => handGlyph(sc, g));
   const k = glyphSize / 100;
   const parts: string[] = [];
   gl.forEach((g, i) => {
@@ -1228,9 +1660,9 @@ export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?:
   const size = o.size ?? 36, k = size / 100, gap = 26 * k;
   // Words are spelled out; a run of digits is written in the script's numerals.
   const words = text.split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w.replace(/[^\p{L}'-]/gu, ''))).filter(Boolean).map((w) => {
-    if (!/^\d+$/.test(w)) return sc.word(w);
+    if (!/^\d+$/.test(w)) return sc.word(w).map((g) => handGlyph(sc, g));
     // Numbers read from left to right even in a script written from right to left (as Arabic's do).
-    const g = sc.numeral(parseInt(w, 10));
+    const g = sc.numeral(parseInt(w, 10)).map((x) => handGlyph(sc, x));
     return sc.info.direction === 'rtl' ? [...g].reverse() : g;
   });
   const { style, direction, ink, paper, stroke } = sc.info;
@@ -1284,8 +1716,8 @@ export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?:
       for (const w of line) {
         const ww = w.reduce((a, g) => a + g.w * k + (stem ? 0 : 4 * k), 0);
         if (stem) parts.push(`<path d="M${(direction === 'rtl' ? x - ww - 6 : x - 6).toFixed(1)},${(y + 50 * k).toFixed(1)}h${(ww + 12).toFixed(1)}"/>`);
-        // Runes part their words with a pair of dots.
-        if (style === 'runes' && w !== line[0]) {
+        // Runes and the Ethiopic-like letters part their words with a pair of dots.
+        if ((style === 'runes' || style === 'ethiopic') && w !== line[0]) {
           const sx = x - (direction === 'rtl' ? -1 : 1) * gap * 0.5;
           parts.push(`<circle class="f" cx="${sx.toFixed(1)}" cy="${(y + 38 * k).toFixed(1)}" r="${(4 * k).toFixed(1)}"/>`, `<circle class="f" cx="${sx.toFixed(1)}" cy="${(y + 62 * k).toFixed(1)}" r="${(4 * k).toFixed(1)}"/>`);
         }
@@ -1301,7 +1733,7 @@ export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?:
   }
   W = Math.ceil(Math.max(W, 40));
   H = Math.ceil(Math.max(H, size));
-  const bg = style === 'cuneiform' ? `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="14" fill="${paper}" stroke="#a88a62"/>` : style === 'glyphs' ? `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="4" fill="${paper}"/>` : '';
+  const bg = style === 'hieroglyph' ? `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="3" fill="${paper}"/>` : style === 'cuneiform' ? `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="14" fill="${paper}" stroke="#a88a62"/>` : style === 'glyphs' ? `<rect x="1" y="1" width="${W - 2}" height="${H - 2}" rx="4" fill="${paper}"/>` : '';
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${W}" height="${H}" viewBox="0 0 ${W} ${H}">${bg}<g fill="none" stroke="${ink}" stroke-width="${(stroke * k).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round">${parts.join('')}</g><style>.f{fill:${ink};stroke:none}</style></svg>`;
 }
 
@@ -1357,7 +1789,7 @@ export function sigilSvg(sc: Script, name: string, size = 140): string {
   }
   parts.push(`<path d="M${cx},${(cy - R - size * 0.05).toFixed(1)}V${(cy + R + size * 0.05).toFixed(1)}" stroke-width="1" stroke-dasharray="2 3"/>`);
   // The name in the script, small, between the rings.
-  const gl = sc.word(name).slice(0, 10);
+  const gl = sc.word(name).slice(0, 10).map((g) => handGlyph(sc, g));
   const k = size / 1000;
   gl.forEach((g, i) => {
     const t = -Math.PI / 2 + ((i + 0.5) / Math.max(6, gl.length)) * Math.PI * 2;
