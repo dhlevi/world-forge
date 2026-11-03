@@ -90,6 +90,54 @@ function lit(nx: number, ny: number): number {
   return 0.9 + 0.13 * (-(nx / l) * 0.55 - (ny / l) * 0.8);
 }
 
+/** Width of the ink edge round each face (m). */
+const RIM_M = 0.12;
+
+/**
+ * A polygon moved in by d on every side (each edge offset inward, neighbouring offsets met at
+ * their crossing); null where it is too small or too thin for that.
+ */
+function inset(p: Pt[], d: number): Pt[] | null {
+  const n = p.length;
+  const sgn = area(p) > 0 ? 1 : -1;
+  const lines: { px: number; py: number; dx: number; dy: number; at: Pt }[] = [];
+  for (let i = 0; i < n; i++) {
+    const a = p[i], b = p[(i + 1) % n];
+    const dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+    if (L < 1e-6) continue;
+    // Inward normal: to the left of the edge for a counter-clockwise ring.
+    const nx = (-dy / L) * sgn, ny = (dx / L) * sgn;
+    lines.push({ px: a[0] + nx * d, py: a[1] + ny * d, dx, dy, at: a });
+  }
+  if (lines.length < 3) return null;
+  let cx = 0, cy = 0;
+  for (const v of p) {
+    cx += v[0] / n;
+    cy += v[1] / n;
+  }
+  const out: Pt[] = [];
+  for (let i = 0; i < lines.length; i++) {
+    const l1 = lines[(i + lines.length - 1) % lines.length], l2 = lines[i];
+    const den = l1.dx * l2.dy - l1.dy * l2.dx;
+    let q: Pt = [l2.px, l2.py];
+    if (Math.abs(den) > 1e-9) {
+      const t = ((l2.px - l1.px) * l2.dy - (l2.py - l1.py) * l2.dx) / den;
+      q = [l1.px + l1.dx * t, l1.py + l1.dy * t];
+    }
+    // At a sharp corner the mitre runs far out: pull the corner in toward the middle instead.
+    const v = l2.at;
+    if (Math.hypot(q[0] - v[0], q[1] - v[1]) > 4 * d) {
+      const toC = Math.hypot(cx - v[0], cy - v[1]) || 1, k = Math.min(4 * d, toC * 0.5) / toC;
+      q = [v[0] + (cx - v[0]) * k, v[1] + (cy - v[1]) * k];
+    }
+    out.push(q);
+  }
+  const ai = area(out);
+  // Too thin: the inset turned inside out, collapsed or grew.
+  if (Math.sign(ai) !== sgn || Math.abs(ai) < Math.abs(area(p)) * 0.15 || Math.abs(ai) >= Math.abs(area(p))) return null;
+  return out;
+}
+
 class Painter {
   readonly out: PlanFeature[] = [];
   /** Faces are drawn in the order they are made (`z` records it). */
@@ -107,8 +155,18 @@ class Painter {
   face(pts: V[], c: string, _order: number, o = INK, extra?: Record<string, string | number>): void {
     if (pts.length < 3) return;
     const flat = pts.map((v) => [v[0], v[1] + v[2] * ILL_K] as Pt);
-    if (Math.abs(area(flat)) < 0.01) return;
-    this.out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [this.ring(flat)] }, properties: { kind: 'ill', c, o, z: this.seq++, ppm20: this.ppm20, ...(extra ?? {}) } });
+    const a = area(flat);
+    if (Math.abs(a) < 0.01) return;
+    // The ink edge is drawn as a face of its own just under the face (the face inset over it),
+    // so a nearer face hides the edges behind it as it hides the faces (a fill layer's own
+    // outlines would all be drawn last, over everything).
+    const inner = o !== c ? inset(flat, RIM_M) : null;
+    if (inner) {
+      this.out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [this.ring(flat)] }, properties: { kind: 'ill', c: o, o, z: this.seq++, ppm20: this.ppm20, ...(extra ?? {}) } });
+      this.out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [this.ring(inner)] }, properties: { kind: 'ill', c, o: c, z: this.seq++, ppm20: this.ppm20, ...(extra ?? {}) } });
+      return;
+    }
+    this.out.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [this.ring(flat)] }, properties: { kind: 'ill', c, o: c, z: this.seq++, ppm20: this.ppm20, ...(extra ?? {}) } });
   }
 
   shadow(pts: Pt[]): void {
@@ -143,13 +201,21 @@ interface Opts {
   ahead?: number;
   /** Timber-framed: dark beams over the walls. */
   timber?: boolean;
+  /** Where roads pass through the building (a gatehouse, a house built over a road). */
+  arches?: Arch[];
+}
+
+/** A road's way through a building: where it meets the outline, and how wide it is (m). */
+interface Arch {
+  p: Pt;
+  w: number;
 }
 
 /**
  * The walls of the edges of `p` that face south (toward the viewer), from the ground to `h`,
  * shaded by the way they face. With `ends`, an edge's wall reaches up to a ridge point.
  */
-function walls(P: Painter, p: Pt[], h: number, wall: string, key: (i: number) => number, ends?: Map<number, V>, extra?: Record<string, string | number>, win?: () => number, timber = false): number {
+function walls(P: Painter, p: Pt[], h: number, wall: string, key: (i: number) => number, ends?: Map<number, V>, extra?: Record<string, string | number>, win?: () => number, timber = false, arches?: Arch[]): number {
   let k = 0;
   const ccw = area(p) > 0;
   for (let i = 0; i < p.length; i++) {
@@ -179,6 +245,23 @@ function walls(P: Painter, p: Pt[], h: number, wall: string, key: (i: number) =>
     }
     // Windows (and a door) in walls that face the viewer.
     if (win && len >= 3.2 && h >= 2.6 && -ny / len > 0.6) k = openings(P, a, b, len, h, win, key, k, extra);
+    // A passage through the building where a road runs under it.
+    for (const ar of arches ?? []) {
+      const ux = dx / len, uy = dy / len;
+      const t = (ar.p[0] - a[0]) * ux + (ar.p[1] - a[1]) * uy;
+      const off = Math.abs((ar.p[0] - a[0]) * uy - (ar.p[1] - a[1]) * ux);
+      if (off > 0.8 || t < -0.5 || t > len + 0.5) continue;
+      const w = Math.min(ar.w, len - 0.8), t0 = Math.max(0.4, Math.min(len - 0.4 - w, t - w / 2));
+      const rise = Math.min(h * 0.78, w * 0.5 + h * 0.4);
+      const pts: V[] = [];
+      const along = (tt: number, z: number): V => [a[0] + ux * tt, a[1] + uy * tt, z];
+      pts.push(along(t0, 0), along(t0 + w, 0));
+      for (let q = 0; q <= 8; q++) {
+        const ang = (q / 8) * Math.PI;
+        pts.push(along(t0 + w / 2 + (Math.cos(ang) * w) / 2, rise - w / 2 + (Math.sin(ang) * w) / 2));
+      }
+      P.face(pts, '#3a2e24', key(k++), INK, extra);
+    }
   }
   return k;
 }
@@ -248,14 +331,14 @@ function quadSolid(P: Painter, q0: Pt[], o: Opts): Solid {
       const R0: V = at(r0, hr), R1: V = at(r1, hr);
       let k = 0;
       if (o.roof === 'flat') {
-        k += walls(P, q, h, mat.wall, key, undefined, o.extra, o.win, o.timber);
+        k += walls(P, q, h, mat.wall, key, undefined, o.extra, o.win, o.timber, o.arches);
         P.face(q.map((v) => at(v, h)), shade(mat.roof, o.jit), key(k++), INK, o.extra);
         if (o.crenel) merlons(P, q, h, shade(mat.wall, 0.95), key, k);
         return;
       }
       // A gable's end wall rises to the ridge.
       const ends = o.roof === 'gable' ? new Map<number, V>([[1, R1], [3, R0]]) : undefined;
-      k += walls(P, q, h, mat.wall, key, ends, o.extra, o.win, o.timber);
+      k += walls(P, q, h, mat.wall, key, ends, o.extra, o.win, o.timber, o.arches);
       const planes: { pts: V[]; nx: number; ny: number }[] = [];
       const plane = (a: Pt, b: Pt, top: V[]) => {
         const dx = b[0] - a[0], dy = b[1] - a[1];
@@ -285,7 +368,7 @@ function polySolid(P: Painter, p0: Pt[], o: Opts): Solid {
     front,
     draw: (key) => {
       const { h, mat } = o;
-      let k = walls(P, p, h, mat.wall, key, undefined, o.extra);
+      let k = walls(P, p, h, mat.wall, key, undefined, o.extra, undefined, false, o.arches);
       const c: Pt = [p.reduce((a, v) => a + v[0], 0) / p.length, p.reduce((a, v) => a + v[1], 0) / p.length];
       const rad = Math.max(...p.map((v) => dist(v, c)));
       if (o.roof === 'flat' || o.roof === 'gable' || o.roof === 'hip') {
@@ -442,6 +525,28 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
   };
   const towersAt: { c: Pt; r: number }[] = [];
 
+  // Roads (their centre lines and widths), for gates in the walls and passages under buildings.
+  const roadSegs: { a: Pt; b: Pt; w: number; street: boolean }[] = [];
+  for (const f of features) {
+    if ((f.properties.kind !== 'road' && f.properties.kind !== 'street') || f.geometry.type !== 'LineString') continue;
+    const w = f.properties.kind === 'street' ? 6 : ROAD_W[String(f.properties.cls ?? '')] ?? 3.5;
+    if (w < 2) continue;
+    const pts = f.geometry.coordinates.map((c) => frame.fromLL(c[0], c[1]));
+    for (let i = 0; i + 1 < pts.length; i++) roadSegs.push({ a: pts[i], b: pts[i + 1], w, street: f.properties.kind === 'street' });
+  }
+  /** Where roads cross a building's outline. */
+  const archesIn = (p: Pt[]): Arch[] => {
+    const out: Arch[] = [];
+    for (const r of roadSegs) {
+      for (let i = 0; i < p.length; i++) {
+        const x = crossing(r.a, r.b, p[i], p[(i + 1) % p.length]);
+        if (x) out.push({ p: x, w: r.w });
+      }
+    }
+    return out;
+  };
+  gatehouses(P, features, frame, wallSegs, roadSegs, solids, village, cl);
+
   for (const [fi, f] of features.entries()) {
     const pr = f.properties;
     const kind = pr.kind;
@@ -524,6 +629,10 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
       const sh = o.h * 0.4;
       P.shadow(p.map((v) => [v[0] + sh, v[1] - sh * 0.3] as Pt));
       if (timber && !o.crenel && o.h <= 9 && use !== 'temple') o.timber = true;
+      // A building standing over a road (the plan leaves few: halls and shops built across a
+      // road out of town) has a passage through it.
+      const arches = archesIn(p);
+      if (arches.length) o.arches = arches;
       const solid = p.length === 4 && o.roof !== 'cone' ? quadSolid(P, p, o) : polySolid(P, p, o);
       solids.push(solid, ...extras);
       // A windmill's sails, turned to face the viewer, on its cap.
@@ -836,5 +945,105 @@ function staffage(P0: Painter, features: PlanFeature[], frame: LocalFrame, solid
         carry -= len;
       }
     }
+  }
+}
+
+// ---- Gates -----------------------------------------------------------------------------------
+
+/** Plan road widths (m), as the map draws them. */
+const ROAD_W: Record<string, number> = { major: 7, minor: 5, street: 6, path: 1.6, track: 3.5 };
+
+/** Distance from p to segment ab. */
+function ptSeg(p: Pt, a: Pt, b: Pt): number {
+  const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+  const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+  return Math.hypot(a[0] + dx * t - p[0], a[1] + dy * t - p[1]);
+}
+
+/** Where segment ab crosses segment cd (null if it does not). */
+function crossing(a: Pt, b: Pt, c: Pt, d: Pt): Pt | null {
+  const rx = b[0] - a[0], ry = b[1] - a[1], sx = d[0] - c[0], sy = d[1] - c[1];
+  const den = rx * sy - ry * sx;
+  if (Math.abs(den) < 1e-9) return null;
+  const t = ((c[0] - a[0]) * sy - (c[1] - a[1]) * sx) / den, u = ((c[0] - a[0]) * ry - (c[1] - a[1]) * rx) / den;
+  if (t < 0 || t > 1 || u < 0 || u > 1) return null;
+  return [a[0] + rx * t, a[1] + ry * t];
+}
+
+/**
+ * Gatehouses where roads pass the walls: across each gap left in a wall for a road (between
+ * the ends of two runs), and wherever a road crosses a wall that has no gap for it (a citadel's
+ * wall, a walled ward's). Each is a tower of stone (a timber gate in a palisade) astride the
+ * wall, with an arch for the road.
+ */
+function gatehouses(
+  P: Painter, features: PlanFeature[], frame: LocalFrame, wallSegs: { a: Pt; b: Pt; f: number; w: number }[],
+  roadSegs: { a: Pt; b: Pt; w: number; street: boolean }[], solids: Solid[], village: boolean, cl: string,
+): void {
+  const gates: { c: Pt; u: Pt; half: number; w: number; road: number; wood: boolean }[] = [];
+  const add = (c: Pt, u: Pt, half: number, w: number, road: number, wood: boolean) => {
+    if (gates.some((g) => dist(g.c, c) < Math.max(10, g.half + half))) return;
+    gates.push({ c, u, half, w, road, wood });
+  };
+  // Gaps between the ends of wall runs that a road passes through.
+  const ends: { p: Pt; f: number; w: number }[] = [];
+  features.forEach((f, fi) => {
+    if (f.properties.kind !== 'wall' || f.geometry.type !== 'LineString') return;
+    const c = f.geometry.coordinates;
+    if (c.length < 2) return;
+    const w = Number(f.properties.w ?? 2);
+    ends.push({ p: frame.fromLL(c[0][0], c[0][1]), f: fi, w }, { p: frame.fromLL(c[c.length - 1][0], c[c.length - 1][1]), f: fi, w });
+  });
+  for (let i = 0; i < ends.length; i++) {
+    for (let j = i + 1; j < ends.length; j++) {
+      const e1 = ends[i], e2 = ends[j];
+      const gap = dist(e1.p, e2.p);
+      if (gap < 2 || gap > 22) continue;
+      // A road through the gap, or ending in it (where the town's streets take over).
+      const m = mid(e1.p, e2.p);
+      const road = roadSegs.find((r) => crossing(r.a, r.b, e1.p, e2.p) || ptSeg(m, r.a, r.b) < Math.min(4, gap / 2));
+      if (!road) continue;
+      const u: Pt = [(e2.p[0] - e1.p[0]) / gap, (e2.p[1] - e1.p[1]) / gap];
+      add(mid(e1.p, e2.p), u, gap / 2 + 2.5, Math.max(e1.w, e2.w), road.w, village && Math.max(e1.w, e2.w) < 2);
+    }
+  }
+  // Roads (not the streets that run inside the walls) that cross a wall with no gap.
+  for (const s of wallSegs) {
+    for (const r of roadSegs) {
+      if (r.street) continue;
+      const x = crossing(r.a, r.b, s.a, s.b);
+      if (!x) continue;
+      const L = dist(s.a, s.b) || 1, Lr = dist(r.a, r.b) || 1;
+      // Only a road that goes through the wall, not one that runs along it and wavers across.
+      const sin = Math.abs(((s.b[0] - s.a[0]) * (r.b[1] - r.a[1]) - (s.b[1] - s.a[1]) * (r.b[0] - r.a[0])) / (L * Lr));
+      if (sin < 0.5) continue;
+      add(x, [(s.b[0] - s.a[0]) / L, (s.b[1] - s.a[1]) / L], r.w / 2 + 3, s.w, r.w, village && s.w < 2);
+    }
+  }
+  for (const g of gates) {
+    const n: Pt = [-g.u[1], g.u[0]];
+    const depth = g.w * 1.6 / 2 + (g.wood ? 1 : 2.2);
+    const corner = (su: number, sn: number): Pt => [g.c[0] + g.u[0] * g.half * su + n[0] * depth * sn, g.c[1] + g.u[1] * g.half * su + n[1] * depth * sn];
+    const q: Pt[] = [corner(-1, -1), corner(1, -1), corner(1, 1), corner(-1, 1)];
+    // The arch on each long face, where the road passes.
+    const arches: Arch[] = [{ p: [g.c[0] - n[0] * depth, g.c[1] - n[1] * depth], w: Math.min(g.road + 0.6, g.half * 2 - 1.6) }, { p: [g.c[0] + n[0] * depth, g.c[1] + n[1] * depth], w: Math.min(g.road + 0.6, g.half * 2 - 1.6) }];
+    const r = mulberry32(hashString(`gate#${g.c[0].toFixed(1)},${g.c[1].toFixed(1)}`));
+    const wallH = g.wood ? 3 : g.w >= 2.4 ? 9 : g.w >= 2 ? 7 : 4;
+    const o: Opts = g.wood
+      ? { h: wallH + 1.5, pitch: 0.9, roof: 'gable', mat: { roof: pick(r, ROOFS.shingle), wall: '#9c7f5a' }, jit: 1, arches }
+      : r() < 0.55 || cl === 'desert' || cl === 'steppe'
+        ? { h: wallH + 4, pitch: 0, roof: 'flat', crenel: true, mat: { roof: '#a89f8c', wall: '#c4bcaa' }, jit: 1, arches }
+        : { h: wallH + 4, pitch: 0.9, roof: 'hip', mat: { roof: pick(r, ROOFS[cl === 'med' ? 'tile' : 'slate']), wall: '#c4bcaa' }, jit: 1, arches };
+    P.shadow(q.map((v) => [v[0] + o.h * 0.4, v[1] - o.h * 0.12] as Pt));
+    // Drawn over the wall it stands astride (every piece of wall that reaches it).
+    const sol = quadSolid(P, q, o);
+    for (const ws of wallSegs) {
+      const dx = ws.b[0] - ws.a[0], dy = ws.b[1] - ws.a[1], l2 = dx * dx + dy * dy;
+      const t = l2 > 0 ? Math.max(0, Math.min(1, ((g.c[0] - ws.a[0]) * dx + (g.c[1] - ws.a[1]) * dy) / l2)) : 0;
+      if (Math.hypot(ws.a[0] + dx * t - g.c[0], ws.a[1] + dy * t - g.c[1]) > g.half + depth) continue;
+      sol.front = Math.min(sol.front, Math.min(ws.a[1], ws.b[1]) - (ws.w * 1.6) / 2);
+    }
+    sol.front -= 0.5;
+    solids.push(sol);
   }
 }

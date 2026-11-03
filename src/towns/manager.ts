@@ -179,6 +179,62 @@ interface FrontCamp {
   seed: number;
 }
 
+/** Plan road widths (m), as the map draws them. */
+const ROAD_W: Record<string, number> = { major: 7, minor: 5, path: 1.6, track: 3.5 };
+
+/**
+ * Takes away the plain houses that stand on a road (a suburb's houses laid out along a road
+ * can reach into it): any whose footprint reaches more than half a metre into the road. Halls,
+ * shops and other buildings with a part to play are kept (the illustrated plan gives them a
+ * passage for the road). The other buildings keep their ids.
+ */
+function clearRoads(out: PlanOut, frame: LocalFrame): void {
+  const segs: { a: Pt; b: Pt; r: number }[] = [];
+  for (const f of out.features) {
+    if (f.properties.kind !== 'road' || f.geometry.type !== 'LineString') continue;
+    const r = (ROAD_W[String(f.properties.cls ?? '')] ?? 3.5) / 2 - 0.5;
+    if (r <= 0.3) continue;
+    const pts = f.geometry.coordinates.map((c) => frame.fromLL(c[0], c[1]));
+    for (let i = 0; i + 1 < pts.length; i++) segs.push({ a: pts[i], b: pts[i + 1], r });
+  }
+  if (!segs.length) return;
+  const segDist = (p: Pt, a: Pt, b: Pt) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+    return Math.hypot(a[0] + dx * t - p[0], a[1] + dy * t - p[1]);
+  };
+  const inside = (q: Pt[], x: number, y: number) => {
+    let r = false;
+    for (let i = 0, j = q.length - 1; i < q.length; j = i++) {
+      if ((q[i][1] > y) !== (q[j][1] > y) && x < ((q[j][0] - q[i][0]) * (y - q[i][1])) / (q[j][1] - q[i][1]) + q[i][0]) r = !r;
+    }
+    return r;
+  };
+  const keep = out.features.filter((f) => {
+    const p = f.properties;
+    if (p.kind !== 'building' || p.role || p.use || p.label || p.burrow || f.geometry.type !== 'Polygon') return true;
+    const q = f.geometry.coordinates[0].slice(0, -1).map((c) => frame.fromLL(c[0], c[1]));
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (const v of q) {
+      x0 = Math.min(x0, v[0]); y0 = Math.min(y0, v[1]); x1 = Math.max(x1, v[0]); y1 = Math.max(y1, v[1]);
+    }
+    for (const s of segs) {
+      if (Math.min(s.a[0], s.b[0]) - s.r > x1 || Math.max(s.a[0], s.b[0]) + s.r < x0 || Math.min(s.a[1], s.b[1]) - s.r > y1 || Math.max(s.a[1], s.b[1]) + s.r < y0) continue;
+      // Corners or edges in the road, or the road's line through the footprint.
+      if (q.some((v) => segDist(v, s.a, s.b) < s.r)) return false;
+      for (let i = 0; i < q.length; i++) {
+        const m: Pt = [(q[i][0] + q[(i + 1) % q.length][0]) / 2, (q[i][1] + q[(i + 1) % q.length][1]) / 2];
+        if (segDist(m, s.a, s.b) < s.r) return false;
+      }
+      if (inside(q, (s.a[0] + s.b[0]) / 2, (s.a[1] + s.b[1]) / 2)) return false;
+    }
+    return true;
+  });
+  if (keep.length === out.features.length) return;
+  out.features.length = 0;
+  for (const f of keep) out.features.push(f);
+}
+
 /** City and town markers. */
 export function siteFeatures(settlements: Settlement[]): FC<PlanFeature> {
   return {
@@ -1677,6 +1733,7 @@ export class TownManager {
     if (s.tier === 'village' || s.kind === 'tribal' || s.delve) {
       // Villages, the New World's tribal towns and the gates of delves are built as villages.
       buildVillage(inp);
+      clearRoads(out, frame);
       if (s.delve) this.underground(s, out, frame, water, culture);
       if (s.kind === 'mining') this.mineEntry(s, out, frame, culture);
       if (secretWell(s)) this.wellEntry(s, out, frame, culture);
@@ -1684,6 +1741,7 @@ export class TownManager {
       if (s.kind === 'order') this.holdEntry(s, out, frame, culture);
     } else {
       buildCity(inp);
+      clearRoads(out, frame);
       this.underground(s, out, frame, water, culture);
       this.chapterHouses(s, out, frame);
     }
