@@ -285,7 +285,8 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
       'fill-color': e(['to-color', ['get', 'c']]),
       // Ink outlines come in as the buildings grow large enough to need them.
       'fill-outline-color': e(['interpolate', ['linear'], ['zoom'], 13.5, ['to-color', ['get', 'c']], 15.5, ['to-color', ['get', 'o']]]),
-      'fill-opacity': fadeIn(ILL_ZOOM, ILL_ZOOM + 0.4),
+      // Figures (`fig`) come in last, once they are large enough to make out.
+      'fill-opacity': e(['interpolate', ['linear'], ['zoom'], ILL_ZOOM, 0, ILL_ZOOM + 0.4, ['case', ['has', 'fig'], 0, 1], 15, ['case', ['has', 'fig'], 0, 1], 15.5, 1]),
     },
   },
   {

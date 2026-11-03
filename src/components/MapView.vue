@@ -4,6 +4,9 @@ import {
   type FilterSpecification, type GeoJSONSource, type ImageSource, type LngLat, type MapMouseEvent, type PointLike, type RasterTileSource,
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
+import IllusFrame from './IllusFrame.vue';
+import { type CartoucheSite, Cartouches } from './cartouche';
+import { townArms } from './town-arms';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { savePref, faithLegend, flyTarget, groupLegend, openCulture, openDeepRealm, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
 import { blockEntry, faithEntries, orderEntries, planEntries, themeEntries, worldEntries } from '../search/index';
@@ -42,6 +45,13 @@ let townsGen = -1;
 /** Plan buildings by id, from the latest plans the towns worker sent. */
 let planIndex = new Map<string, PlanFeature>();
 let hoverBid: string | null = null;
+/** The villages the towns worker sent last (for their title cartouches). */
+let lastVillages: { type: 'Feature'; geometry: { type: string; coordinates: unknown }; properties: Record<string, unknown> }[] = [];
+let cartouches: Cartouches | null = null;
+/** The latitude of the northern edge of each drawn plan's houses, by settlement id. */
+let planNorth = new Map<string, number>();
+/** Whether an illustrated plan is in view: its border and title cartouches are drawn. */
+const illusOn = ref(false);
 let hoverFrame = 0;
 const touchOnly = typeof matchMedia === 'function' && matchMedia('(hover: none)').matches;
 /** The cave or glade being previewed: as a card by the cursor, or laid over the ground when close in. */
@@ -464,11 +474,33 @@ function postTowns(msg: TownsRequest): void {
         searchState.version++;
         return;
       }
-      if (res.villages) (map.getSource('regional') as GeoJSONSource).setData(res.villages);
+      if (res.villages) {
+        (map.getSource('regional') as GeoJSONSource).setData(res.villages);
+        lastVillages = res.villages.features as typeof lastVillages;
+        updateCartouches();
+      }
       if (res.plans) {
         (map.getSource('plans') as GeoJSONSource).setData(res.plans);
         planIndex = new Map();
-        for (const f of res.plans.features) if (f.properties.kind === 'building') planIndex.set(String(f.properties.bid), f);
+        // The northern edge of each plan's houses (past the odd outlying farm), where its
+        // title cartouche stands.
+        const lats = new Map<string, number[]>();
+        for (const f of res.plans.features) {
+          if (f.properties.kind !== 'building') continue;
+          planIndex.set(String(f.properties.bid), f);
+          if (f.geometry.type === 'Polygon') {
+            const sid = String(f.properties.sid);
+            const l = lats.get(sid) ?? [];
+            l.push(f.geometry.coordinates[0][0][1]);
+            lats.set(sid, l);
+          }
+        }
+        planNorth = new Map();
+        for (const [sid, l] of lats) {
+          l.sort((a, b) => a - b);
+          planNorth.set(sid, l[Math.min(l.length - 1, Math.floor(l.length * 0.96))]);
+        }
+        updateCartouches();
         // Quarters, districts and notable buildings of drawn plans become searchable.
         search.add(planEntries(res.plans.features));
         searchState.version++;
@@ -544,6 +576,7 @@ function applyPlanStyle(): void {
   map.setPaintProperty('plan-furrows', 'line-color', ill ? '#ad9c6b' : '#c2b385');
   setVisibility('settlements', store.showSettlements);
   northLock(true);
+  updateIllus();
 }
 
 let rotationLocked = false;
@@ -566,6 +599,57 @@ function northLock(settle: boolean): void {
   if (lock && settle && (Math.abs(map.getBearing()) > 0.01 || map.getPitch() > 0.01) && !map.isMoving()) {
     map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
   }
+}
+
+/** Turns the illustrated map's border and cartouches on or off by the zoom. */
+function updateIllus(): void {
+  if (!map) return;
+  const on = store.illustratedTowns && store.showSettlements && store.layer !== 'underworld' && map.getZoom() >= ILL_ZOOM;
+  if (on !== illusOn.value) {
+    illusOn.value = on;
+    updateCartouches();
+  }
+}
+
+/**
+ * Title cartouches over the towns and villages whose plans are in view, nearest the centre
+ * first (a few at most), in the lettering chosen for place names.
+ */
+function updateCartouches(): void {
+  if (!map || !cartouches) return;
+  const w = world.value;
+  if (!illusOn.value || !w || !store.showLabels) {
+    cartouches.clear();
+    return;
+  }
+  const b = map.getBounds(), c = map.getCenter();
+  const padLat = (b.getNorth() - b.getSouth()) * 0.6, padLon = (b.getEast() - b.getWest()) * 0.3;
+  const inView = (lon: number, lat: number) => lon > b.getWest() - padLon && lon < b.getEast() + padLon && lat > b.getSouth() - padLat && lat < b.getNorth() + padLat * 0.2;
+  const naming = (name: string, en?: string) => {
+    if (!en || en === name) return { name, alt: undefined };
+    if (store.labelMode === 'english') return { name: en, alt: undefined };
+    return { name, alt: store.labelMode === 'both' ? en : undefined };
+  };
+  // Just above the plan's northernmost roof (once the plan is drawn).
+  const northOf = (id: string, lat: number, fallbackM: number) => {
+    const n = planNorth.get(id);
+    return n !== undefined ? (n - lat) * 110540 + 22 : fallbackM;
+  };
+  const sites: (CartoucheSite & { d: number })[] = [];
+  const d = (lon: number, lat: number) => Math.hypot((lon - c.lng) * Math.cos((c.lat * Math.PI) / 180), lat - c.lat);
+  for (const s of w.settlements) {
+    if (s.tier === 'village' || !s.name || !inView(s.lon, s.lat)) continue;
+    sites.push({ id: s.id, ...naming(s.name, s.nameEn), lon: s.lon, lat: s.lat, northM: northOf(s.id, s.lat, s.coreM * 0.7), arms: townArms(w, s), small: false, d: d(s.lon, s.lat) });
+  }
+  for (const f of lastVillages) {
+    const p = f.properties;
+    if (p.tier !== 'village' || f.geometry.type !== 'Point' || !p.name || p.kind === 'abandoned') continue;
+    const [lon, lat] = f.geometry.coordinates as number[];
+    if (!inView(lon, lat)) continue;
+    sites.push({ id: String(p.id), ...naming(String(p.name), p.en ? String(p.en) : undefined), lon, lat, northM: northOf(String(p.id), lat, 60 + Math.sqrt(Number(p.population ?? 100)) * 3), arms: null, small: true, d: d(lon, lat) });
+  }
+  sites.sort((x, y) => x.d - y.d);
+  cartouches.set(sites.slice(0, 6));
 }
 
 /** The plan building under a screen point, at interior zooms. */
@@ -898,9 +982,15 @@ onMounted(() => {
     applyPlanStyle();
     syncWorld();
   });
-  map.on('zoom', () => northLock(false));
+  map.on('zoom', () => {
+    northLock(false);
+    updateIllus();
+  });
+  cartouches = new Cartouches(map);
   map.on('moveend', () => {
     northLock(true);
+    updateIllus();
+    updateCartouches();
     runTowns();
     if (map) {
       const c = map.getCenter();
@@ -1017,7 +1107,16 @@ onBeforeUnmount(() => {
 
 watch([world, () => store.layer], syncWorld);
 watch(openRealm, updateRelations);
-watch(() => store.labelMode, applyLabelMode);
+watch(() => store.labelMode, () => {
+  applyLabelMode();
+  updateCartouches();
+});
+watch(() => store.showLabels, () => updateCartouches());
+watch(() => store.layer, () => updateIllus());
+watch(world, () => {
+  lastVillages = [];
+  cartouches?.clear();
+});
 watch(() => store.showRivers, () => {
   syncWorld();
   setVisibility('labels', store.showLabels);
@@ -1050,6 +1149,7 @@ watch(() => store.illustratedTowns, (ill) => {
 });
 watch(() => store.showSettlements, (show) => {
   northLock(true);
+  updateIllus();
   setVisibility('settlements', show);
   setVisibility('labels', store.showLabels);
   if (!show) hidePreview();
@@ -1060,6 +1160,7 @@ watch(() => store.showSettlements, (show) => {
 <template>
   <div class="map-view">
     <div ref="container" class="map-canvas" />
+    <IllusFrame :show="illusOn" />
     <div v-if="lairCard" class="lair-card" :style="{ left: `${lairCard.x}px`, top: `${lairCard.y}px` }">
       <div class="lair-name">{{ lairCard.name }}</div>
       <div class="lair-sub">{{ lairCard.sub }}</div>

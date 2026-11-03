@@ -36,3 +36,105 @@ body,
     bottom: 64px;
   }
 }
+
+/* Blackletter for the illustrated towns' title cartouches (UnifrakturMaguntia, SIL Open Font License). */
+@font-face {
+  font-family: 'UnifrakturMaguntia';
+  src: url('/fonts/UnifrakturMaguntia.woff2') format('woff2');
+  font-display: swap;
+}
+
+/* Title cartouches on illustrated town plans (components/cartouche.ts). */
+.ct-anchor {
+  pointer-events: none;
+}
+.ct {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: 50% 100%;
+  filter: drop-shadow(0 2px 3px rgba(43, 36, 32, 0.35));
+}
+.ct-arms {
+  position: relative;
+  z-index: 2;
+  margin-bottom: -14px;
+  height: auto;
+}
+.ct-row {
+  display: flex;
+  align-items: center;
+}
+.ct-vine {
+  flex: none;
+  margin: 0 -14px;
+  position: relative;
+  z-index: 0;
+}
+.ct-scroll {
+  position: relative;
+  z-index: 1;
+  padding: 6px 26px 7px;
+  background: #f3ead3;
+  border: 2px solid #3f3126;
+  border-left: 11px solid #9b3b2e;
+  border-right: 11px solid #3b5a7a;
+  box-shadow: inset 0 0 0 3px #f3ead3, inset 0 0 0 4.5px #b08a3a;
+  text-align: center;
+  white-space: nowrap;
+}
+.ct-curl {
+  position: absolute;
+  top: -6px;
+  bottom: -6px;
+  width: 12px;
+  background: #e6d9b6;
+  border: 2px solid #3f3126;
+  border-radius: 7px;
+}
+.ct-curl-l {
+  left: -22px;
+}
+.ct-curl-r {
+  right: -22px;
+}
+.ct-name {
+  font-family: 'UnifrakturMaguntia', 'IM Fell English', Georgia, serif;
+  font-size: 34px;
+  line-height: 1.05;
+  color: #2b2420;
+}
+.ct-initial {
+  font-size: 1.4em;
+  color: #9b3b2e;
+  text-shadow: 1px 1px 0 #d4b062, -1px -1px 0 #d4b062;
+  margin-right: 1px;
+}
+.ct-alt {
+  font-family: 'IM Fell English', Georgia, serif;
+  font-style: italic;
+  font-size: 14px;
+  color: #5a4a3a;
+  margin-top: -2px;
+}
+.ct-small .ct-name {
+  font-size: 24px;
+}
+.ct-small .ct-vine {
+  width: 80px;
+  height: 47px;
+}
+.ct-small .ct-scroll {
+  padding: 4px 16px 5px;
+}
+
+/* The illustrated map's border, drawn round the view at plan zoom. */
+.illus-frame {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  /* Under the panels and the map's controls, over the map. */
+  z-index: 0;
+  transition: opacity 0.6s;
+}

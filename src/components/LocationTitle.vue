@@ -60,7 +60,7 @@ function pair(native: string, en?: string): { name: string; alt?: string } {
 
 const WATER = new Set(['ocean', 'sea', 'inlandSea', 'gulf', 'bay', 'bight', 'strait', 'channel', 'lake']);
 const VILLAGE: Record<string, string> = { farming: 'Village', fishing: 'Fishing village', logging: 'Logging camp', mining: 'Mining camp', keep: 'Keep', monastery: 'Monastery', tribal: 'Tribal village', camp: 'Army camp', shrine: 'Shrine', prison: 'Prison fort', vineyard: 'Vineyard village' };
-const townArms = new Map<string, Arms>();
+const townArmsMap = new Map<string, Arms>();
 
 /** "2.3 million", "34,000", "870". */
 function people(n: number): string {
@@ -120,10 +120,11 @@ const info = computed<Line | null>(() => {
   if (store.zoom >= 11) {
     for (const s of w.settlements) {
       if (s.tier === 'village' || km(lon, lat, s.lon, s.lat) * 1000 > s.radiusM * 1.1) continue;
-      let a = townArms.get(s.id);
+      // The same arms the town's title cartouche on an illustrated plan shows.
+      let a = townArmsMap.get(s.id);
       if (!a) {
         a = s.id === barony.seat ? barony.arms : vassalArms(mulberry32(s.seed ^ 0x7a11), barony.arms, CULTURES[barony.culture]?.id ?? 'anglo');
-        townArms.set(s.id, a);
+        townArmsMap.set(s.id, a);
       }
       const kind = s.tier === 'city' ? 'City' : 'Town';
       // Its theme and holiness, from the lore (built on first need).

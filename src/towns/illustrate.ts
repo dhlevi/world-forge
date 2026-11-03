@@ -619,8 +619,222 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
       });
     }
   }
+  staffage(P, features, frame, solids, cl, site);
   // The northernmost solids first, so the nearer overlap them.
   solids.sort((a, b) => b.front - a.front);
   for (const s of solids) s.draw(keyer(s.front, 0));
   return P.out;
+}
+
+// ---- Staffage --------------------------------------------------------------------------------
+
+/** Figures are drawn larger than life, as the old maps draw them. */
+const FIG = 2.8;
+const FIGX = { fig: 1 };
+/** How much taller figures are drawn than the oblique view would foreshorten them. */
+const FIG_UP = 1.6;
+type FigPainter = Pick<Painter, 'face'>;
+const SKIN = '#e6c39a';
+const CLOTHES = ['#9b3b2e', '#b5763a', '#3b5a7a', '#6f8a45', '#8a6a4a', '#c9b37a', '#7a4a5a', '#e9e1cc', '#5f6d7a'];
+
+function inPoly(p: Pt[], x: number, y: number): boolean {
+  let inside = false;
+  for (let i = 0, j = p.length - 1; i < p.length; j = i++) {
+    if ((p[i][1] > y) !== (p[j][1] > y) && x < ((p[j][0] - p[i][0]) * (y - p[i][1])) / (p[j][1] - p[i][1]) + p[i][0]) inside = !inside;
+  }
+  return inside;
+}
+
+/** A point well inside a polygon (tried at random; null if none is found). */
+function inside(p: Pt[], r: () => number, margin: number): Pt | null {
+  let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+  for (const v of p) {
+    x0 = Math.min(x0, v[0]); y0 = Math.min(y0, v[1]); x1 = Math.max(x1, v[0]); y1 = Math.max(y1, v[1]);
+  }
+  for (let t = 0; t < 12; t++) {
+    const x = x0 + (x1 - x0) * r(), y = y0 + (y1 - y0) * r();
+    if (inPoly(p, x, y) && [[margin, 0], [-margin, 0], [0, margin], [0, -margin]].every(([dx, dy]) => inPoly(p, x + dx, y + dy))) return [x, y];
+  }
+  return null;
+}
+
+/** A round shape in the upright plane through y (facing the viewer). */
+function blobV(cx: number, y: number, cz: number, rx: number, rz: number, n = 9): V[] {
+  const out: V[] = [];
+  for (let i = 0; i < n; i++) {
+    const t = (i / n) * Math.PI * 2;
+    out.push([cx + Math.cos(t) * rx, y, cz + Math.sin(t) * rz]);
+  }
+  return out;
+}
+
+type Pose = 'walk' | 'stand' | 'bend' | 'plough';
+
+/** A person seen from the side, facing `m` (1 east, -1 west). */
+function person(P: FigPainter, x: number, y: number, m: number, col: string, pose: Pose, k: () => number): void {
+  const H = 1.75 * FIG;
+  const q = (pts: [number, number][], c: string) => P.face(pts.map(([dx, z]) => [x + dx * m, y, z] as V), c, k(), INK, FIGX);
+  const bend = pose === 'bend' ? 0.2 * H : pose === 'plough' ? 0.08 * H : 0;
+  const stride = pose === 'walk' || pose === 'plough' ? 0.1 * H : 0.03 * H;
+  q([[-0.1 * H - stride, 0], [-0.02 * H - stride, 0], [0.0, 0.45 * H], [-0.08 * H, 0.45 * H]], '#5a4636');
+  q([[0.02 * H + stride, 0], [0.1 * H + stride, 0], [0.08 * H, 0.45 * H], [0.0, 0.45 * H]], '#4c3b2e');
+  const top = pose === 'bend' ? 0.7 * H : 0.8 * H;
+  q([[-0.19 * H, 0.36 * H], [0.19 * H, 0.36 * H], [0.13 * H + bend, top], [-0.13 * H + bend, top]], col);
+  // An arm reaching forward (to the plough, a hoe or a sickle) or hanging.
+  const reach = pose === 'stand' ? 0.12 : 0.3;
+  q([[0.04 * H + bend, top - 0.04 * H], [0.1 * H + bend, top - 0.06 * H], [reach * H + bend, 0.5 * H], [(reach - 0.06) * H + bend, 0.47 * H]], shade(col, 0.85));
+  if (pose === 'bend') q([[(reach - 0.03) * H + bend, 0.5 * H], [(reach + 0.01) * H + bend, 0.5 * H], [(reach + 0.1) * H + bend, 0], [(reach + 0.06) * H + bend, 0]], '#7a5c40');
+  const hz = top + 0.1 * H;
+  P.face(blobV(x + bend * m, y, hz, 0.085 * H, 0.09 * H, 8), SKIN, k(), INK, FIGX);
+}
+
+/** A beast seen from the side: an ox, a cow, a horse or a sheep. */
+function beast(P: FigPainter, x: number, y: number, m: number, kind: 'ox' | 'cow' | 'horse' | 'sheep', col: string, k: () => number): void {
+  const S = kind === 'sheep' ? FIG * 0.75 : FIG * 0.95;
+  const at2 = (dx: number, z: number): V => [x + dx * S * m, y, z * S];
+  const leg = (dx: number, top: number) => P.face([at2(dx - 0.07, 0), at2(dx + 0.07, 0), at2(dx + 0.07, top), at2(dx - 0.07, top)], kind === 'sheep' ? '#3f3530' : shade(col, 0.8), k(), INK, FIGX);
+  if (kind === 'sheep') {
+    leg(-0.3, 0.4); leg(0.3, 0.4);
+    P.face(blobV(x, y, 0.6 * S, 0.55 * S, 0.33 * S), col, k(), INK, FIGX);
+    P.face(blobV(x + 0.6 * S * m, y, 0.72 * S, 0.17 * S, 0.14 * S, 7), '#3f3530', k(), INK, FIGX);
+    return;
+  }
+  const horse = kind === 'horse';
+  const bodyZ = horse ? 1.25 : 1.05, legTop = horse ? 1.0 : 0.85;
+  leg(-0.9, legTop); leg(-0.65, legTop); leg(0.65, legTop); leg(0.9, legTop);
+  P.face(blobV(x, y, bodyZ * S, 1.15 * S, (horse ? 0.38 : 0.45) * S, 10), col, k(), INK, FIGX);
+  if (horse) {
+    // A tail, a stout neck with its mane, and a long head held low.
+    P.face([at2(-1.1, 1.45), at2(-1.0, 1.3), at2(-1.3, 0.75), at2(-1.42, 0.82)], shade(col, 0.7), k(), INK, FIGX);
+    P.face([at2(0.6, 1.5), at2(1.15, 1.2), at2(1.55, 1.85), at2(1.25, 2.1)], col, k(), INK, FIGX);
+    P.face([at2(0.6, 1.5), at2(0.72, 1.6), at2(1.3, 2.18), at2(1.25, 2.1)], shade(col, 0.6), k(), INK, FIGX);
+    P.face([at2(1.25, 2.1), at2(1.55, 1.85), at2(1.95, 1.6), at2(2.02, 1.72), at2(1.6, 2.08)], col, k(), INK, FIGX);
+  } else {
+    P.face(blobV(x + 1.3 * S * m, y, 1.15 * S, 0.3 * S, 0.24 * S, 8), shade(col, 0.92), k(), INK, FIGX);
+    if (kind === 'ox') P.face([at2(1.25, 1.35), at2(1.32, 1.35), at2(1.45, 1.6), at2(1.4, 1.62)], '#e9e1cc', k(), INK, FIGX);
+  }
+}
+
+/** A cart of hay, sacks or barrels, drawn by a horse or an ox, with its carter walking beside. */
+function cart(P: FigPainter, x: number, y: number, m: number, r: () => number, k: () => number): void {
+  const S = FIG * 0.95;
+  const at2 = (dx: number, z: number): V => [x + dx * S * m, y, z * S];
+  const load = r();
+  if (load < 0.45) P.face(blobV(x - 0.1 * S * m, y, 1.45 * S, 1.35 * S, 0.55 * S, 10), '#d6bf72', k(), INK, FIGX);
+  else P.face([at2(-1.3, 1.2), at2(1.1, 1.2), at2(0.9, 1.75), at2(-1.1, 1.75)], load < 0.75 ? '#c9b48a' : '#8a6a4a', k(), INK, FIGX);
+  P.face([at2(-1.45, 0.75), at2(1.25, 0.75), at2(1.25, 1.25), at2(-1.45, 1.25)], '#9c7a52', k(), INK, FIGX);
+  P.face(blobV(x - 0.3 * S * m, y, 0.6 * S, 0.6 * S, 0.6 * S, 10), '#5d4733', k(), INK, FIGX);
+  P.face(blobV(x - 0.3 * S * m, y, 0.6 * S, 0.36 * S, 0.36 * S, 8), '#a88a64', k(), '#5d4733', FIGX);
+  P.face([at2(1.2, 1.0), at2(2.1, 1.05), at2(2.1, 1.12), at2(1.2, 1.08)], '#5d4733', k(), INK, FIGX);
+  const ox = r() < 0.3;
+  beast(P, x + 3.3 * S * m, y, m, ox ? 'ox' : 'horse', ox ? pick(r, ['#8a6a4a', '#a88660']) : pick(r, ['#8a5a3a', '#6b4a33', '#c9b49a', '#4f3f33']), k);
+  if (r() < 0.7) person(P, x + 4.6 * S * m, y - 1.2, m, pick(r, CLOTHES), 'walk', k);
+}
+
+/**
+ * Small figures at work and on the move, as on the old maps: ploughmen with their teams,
+ * reapers and hoers in the fields, flocks and herds with their herders on the greens, carts
+ * and travellers on the roads, and townsfolk in the streets and the market. Placed by the
+ * settlement's own stream, apart from the plan's.
+ */
+function staffage(P0: Painter, features: PlanFeature[], frame: LocalFrame, solids: Solid[], cl: string, site: IllustrateSite): void {
+  const r = mulberry32(hashString(`fig#${site.sid}`));
+  // Figures stand taller than the walls are drawn (which the oblique view foreshortens), so
+  // they read at a glance, as on the old maps.
+  const P: FigPainter = { face: (pts, c, order, o, extra) => P0.face(pts.map((v) => [v[0], v[1], v[2] * FIG_UP] as V), c, order, o, extra) };
+  const add = (x: number, y: number, draw: (k: () => number) => void) => {
+    solids.push({ front: y - 0.5, draw: (key) => {
+      let i = 0;
+      draw(() => key(i++));
+    } });
+  };
+  const local = (f: PlanFeature): Pt[] => {
+    if (f.geometry.type === 'Polygon') return f.geometry.coordinates[0].slice(0, -1).map((c) => frame.fromLL(c[0], c[1]));
+    if (f.geometry.type === 'LineString') return f.geometry.coordinates.map((c) => frame.fromLL(c[0], c[1]));
+    return [];
+  };
+  const herd = cl === 'cold' || cl === 'temperate' || cl === 'polar' ? 'cow' : 'sheep';
+  for (const f of features) {
+    const kind = f.properties.kind;
+    if (kind === 'field') {
+      if (r() >= 0.14) continue;
+      const p = local(f);
+      if (Math.abs(area(p)) < 1500) continue;
+      const c = inside(p, r, 8);
+      if (!c) continue;
+      const m = r() < 0.5 ? 1 : -1;
+      const job = r();
+      if (job < 0.4) {
+        // A ploughman behind his team.
+        add(c[0], c[1], (k) => {
+          const col = pick(r, ['#8a6a4a', '#a88660', '#e6dfcf', '#6f563f']);
+          P.face([[c[0] - 1.2 * m, c[1], 0], [c[0] - 1.0 * m, c[1], 0], [c[0] + 1.6 * m, c[1], 0.9], [c[0] + 1.5 * m, c[1], 1.0]], '#5d4733', k(), INK, FIGX);
+          beast(P, c[0] + 4.2 * m, c[1], m, 'ox', col, k);
+          beast(P, c[0] + 8.4 * m, c[1], m, 'ox', shade(col, 0.92), k);
+          person(P, c[0] - 1.6 * m, c[1], m, pick(r, CLOTHES), 'plough', k);
+        });
+      } else {
+        // Reapers or hoers, two or three in a row.
+        const n = 2 + Math.floor(r() * 2);
+        for (let i = 0; i < n; i++) {
+          const x = c[0] + (i - n / 2) * 4.5, y = c[1] + (r() - 0.5) * 3;
+          if (!inPoly(p, x, y)) continue;
+          const col = pick(r, CLOTHES), mm = r() < 0.7 ? m : -m;
+          add(x, y, (k) => person(P, x, y, mm, col, 'bend', k));
+        }
+      }
+    } else if (kind === 'green') {
+      if (r() >= 0.35) continue;
+      const p = local(f);
+      if (Math.abs(area(p)) < 700) continue;
+      const animal = r() < 0.6 ? 'sheep' : herd;
+      const n = animal === 'sheep' ? 4 + Math.floor(r() * 6) : 2 + Math.floor(r() * 3);
+      const c0 = inside(p, r, 10);
+      if (!c0) continue;
+      for (let i = 0; i < n; i++) {
+        const x = c0[0] + (r() - 0.5) * 22, y = c0[1] + (r() - 0.5) * 16;
+        if (!inPoly(p, x, y)) continue;
+        const m = r() < 0.5 ? 1 : -1;
+        const col = animal === 'sheep' ? pick(r, ['#efeadc', '#e6dfcf', '#f2eee2', '#4f453d']) : pick(r, ['#8a6a4a', '#a88660', '#e6dfcf', '#5f4a3a']);
+        add(x, y, (k) => beast(P, x, y, m, animal, col, k));
+      }
+      if (r() < 0.6) {
+        const x = c0[0] + 9, y = c0[1] - 6, col = pick(r, CLOTHES);
+        if (inPoly(p, x, y)) add(x, y, (k) => person(P, x, y, -1, col, 'stand', k));
+      }
+    } else if (kind === 'road' || kind === 'street' || kind === 'plaza' || kind === 'square') {
+      if (kind === 'plaza' || kind === 'square') {
+        const p = local(f);
+        const n = Math.min(12, Math.floor(Math.abs(area(p)) / (kind === 'square' ? 300 : 500)));
+        for (let i = 0; i < n; i++) {
+          const c = inside(p, r, 2);
+          if (!c) continue;
+          const m = r() < 0.5 ? 1 : -1, col = pick(r, CLOTHES), pose: Pose = r() < 0.6 ? 'stand' : 'walk';
+          add(c[0], c[1], (k) => person(P, c[0], c[1], m, col, pose, k));
+        }
+        continue;
+      }
+      const pts = local(f);
+      const step = kind === 'road' ? 170 : 85;
+      let carry = step * r();
+      for (let i = 0; i + 1 < pts.length; i++) {
+        const a = pts[i], b = pts[i + 1];
+        const len = dist(a, b);
+        while (carry < len) {
+          const t = carry / len;
+          const x = a[0] + (b[0] - a[0]) * t, y = a[1] + (b[1] - a[1]) * t;
+          const m = b[0] >= a[0] ? 1 : -1;
+          const roll = r();
+          if (kind === 'road' && roll < 0.3) add(x, y, (k) => cart(P, x, y, m, r, k));
+          else if (kind === 'road' && roll < 0.42) add(x, y, (k) => beast(P, x, y, m, 'horse', pick(r, ['#8a5a3a', '#6b4a33', '#c9b49a']), k));
+          else if (roll < 0.62) {
+            const col = pick(r, CLOTHES);
+            add(x, y, (k) => person(P, x, y, m, col, 'walk', k));
+          }
+          carry += step * (0.6 + r() * 0.8);
+        }
+        carry -= len;
+      }
+    }
+  }
 }
