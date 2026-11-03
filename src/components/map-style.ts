@@ -27,6 +27,8 @@ const ROAD_OPACITY = e([
   5.5, 0.85,
 ]);
 const LINE_LAYOUT = { 'line-cap': 'round', 'line-join': 'round' } as const;
+/** Zoom from which plans are drawn illustrated, when that style is on. */
+export const ILL_ZOOM = 13.6;
 const fadeIn = (z0: number, z1: number) => e(['interpolate', ['linear'], ['zoom'], z0, 0, z1, 1]);
 const fadeOut = (z0: number, z1: number) => e(['interpolate', ['linear'], ['zoom'], z0, 1, z1, 0]);
 const kind = (...kinds: string[]) => e(['in', ['get', 'kind'], ['literal', kinds]]) as FilterSpecification;
@@ -256,6 +258,12 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     },
   },
   {
+    // Illustrated plans (towns/illustrate.ts): shadows on the ground, under the raised buildings.
+    // Below ILL_ZOOM the plain plan is drawn instead (the buildings are too small to raise).
+    id: 'ill-shadow', type: 'fill', source: 'plans', minzoom: ILL_ZOOM, filter: kind('ills'), layout: { visibility: 'none' },
+    paint: { 'fill-color': INK, 'fill-antialias': false, 'fill-opacity': e(['interpolate', ['linear'], ['zoom'], ILL_ZOOM, 0, ILL_ZOOM + 0.4, 0.15]) },
+  },
+  {
     id: 'plan-buildings', type: 'fill', source: 'plans', minzoom: TOWN_PLAN_ZOOM, filter: kind('building'),
     paint: {
       // Notable buildings are washed a little warmer so they stand out from the terraces.
@@ -265,6 +273,19 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
         ['match', ['get', 'use'], 'temple', '#b6a383', 'keep', '#a8957a', 'mill', '#bfa986', 'witch', '#a7a07c', '#cdbd9c']]),
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
+    },
+  },
+  {
+    // Illustrated plans: the walls and roofs of every building, town walls, towers and trees,
+    // made from the north southward so the nearer overlap those behind.
+    id: 'ill-faces', type: 'fill', source: 'plans', minzoom: ILL_ZOOM, filter: kind('ill'),
+    // They are drawn in the order the plan gives them (no sort key, which would draw each face apart).
+    layout: { visibility: 'none' },
+    paint: {
+      'fill-color': e(['to-color', ['get', 'c']]),
+      // Ink outlines come in as the buildings grow large enough to need them.
+      'fill-outline-color': e(['interpolate', ['linear'], ['zoom'], 13.5, ['to-color', ['get', 'c']], 15.5, ['to-color', ['get', 'o']]]),
+      'fill-opacity': fadeIn(ILL_ZOOM, ILL_ZOOM + 0.4),
     },
   },
   {
@@ -316,6 +337,13 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     },
   },
 ];
+
+/**
+ * Layers drawn only in the illustrated plan style (from ILL_ZOOM), and the plain style's layers
+ * it replaces there (still drawn below it).
+ */
+export const ILLUSTRATED_LAYERS = new Set(['ill-shadow', 'ill-faces']);
+export const PLAIN_ONLY_LAYERS = new Set(['plan-walls', 'plan-towers', 'plan-trees', 'plan-sails']);
 
 /** City, town and village markers; they fade out as the plans fade in. */
 export const MARKER_LAYERS: LayerSpecification[] = [

@@ -18,6 +18,23 @@ export function randomSeed(): string {
   return `${pick()}-${pick()}-${Math.floor(Math.random() * 1000)}`;
 }
 
+/** A remembered view preference (kept in this browser only). */
+function loadPref(key: string, fallback: boolean): boolean {
+  try {
+    const v = window.localStorage.getItem(`mapforge.${key}`);
+    return v === null ? fallback : v === '1';
+  } catch {
+    return fallback;
+  }
+}
+export function savePref(key: string, v: boolean): void {
+  try {
+    window.localStorage.setItem(`mapforge.${key}`, v ? '1' : '0');
+  } catch {
+    // Storage may be unavailable (a private window); the preference lasts this visit only.
+  }
+}
+
 export const store = reactive({
   params: {
     seed: randomSeed(),
@@ -32,6 +49,8 @@ export const store = reactive({
   layer: 'fantasy' as LayerId,
   showRivers: true,
   showSettlements: true,
+  /** Town plans drawn as an old bird's-eye map (raised buildings, roofs and trees), facing north. */
+  illustratedTowns: loadPref('illustratedTowns', true),
   showLabels: true,
   /** Place names in the local languages, in English, or both. */
   labelMode: 'native' as 'native' | 'english' | 'both',

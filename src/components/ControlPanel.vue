@@ -100,6 +100,10 @@ function randomize(): void {
           <input v-model="store.showSettlements" type="checkbox" />
           Settlements &amp; roads
         </label>
+        <label class="check" title="Draw town plans as an old bird's-eye map: raised buildings, roofs, walls and trees. The map turns to face north at plan zoom.">
+          <input v-model="store.illustratedTowns" type="checkbox" :disabled="!store.showSettlements" />
+          Illustrated towns
+        </label>
         <label class="check">
           <input v-model="store.showLabels" type="checkbox" />
           Place names

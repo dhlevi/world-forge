@@ -5,7 +5,7 @@ import {
 } from 'maplibre-gl';
 import 'maplibre-gl/dist/maplibre-gl.css';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { faithLegend, flyTarget, groupLegend, openCulture, openDeepRealm, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
+import { savePref, faithLegend, flyTarget, groupLegend, openCulture, openDeepRealm, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
 import { blockEntry, faithEntries, orderEntries, planEntries, themeEntries, worldEntries } from '../search/index';
 import { currentOrders } from './orders';
 import { ORDER_KIND_LABEL } from '../lore/orders';
@@ -13,11 +13,12 @@ import { THEME_LABEL, worldThemes } from '../lore/themes';
 import { INTERIOR_ZOOM, buildingView, previewImage } from '../interiors/building';
 import type { PlanFeature } from '../towns/plan';
 import { probeWorld } from '../world/probe';
-import { siteFeatures } from '../towns/manager';
+import { TOWN_PLAN_ZOOM, siteFeatures } from '../towns/manager';
 import { LAYOUT_LABEL } from '../towns/layout';
 import type { TownsRequest, TownsResponse } from '../worker/protocol';
 import {
   BORDER_LAYERS, LAIR_LAYERS, MARKER_LAYERS, PLAN_GROUND_LAYERS, RIVER_WIDTH, SETTLEMENT_LAYERS, SETTLEMENT_SOURCES, lairIcons, specialIcons,
+  ILL_ZOOM, ILLUSTRATED_LAYERS, PLAIN_ONLY_LAYERS,
 } from './map-style';
 import type { LairSite } from '../lairs/lair';
 import { armsImageData } from '../heraldry/draw';
@@ -482,7 +483,7 @@ function runTowns(): void {
   if (!map || !ready || townsGen < 0 || !store.showSettlements) return;
   const b = map.getBounds();
   postTowns({
-    type: 'view', gen: townsGen, zoom: map.getZoom(),
+    type: 'view', gen: townsGen, zoom: map.getZoom(), illustrated: store.illustratedTowns,
     bounds: { west: b.getWest(), south: b.getSouth(), east: b.getEast(), north: b.getNorth() },
   });
 }
@@ -512,6 +513,8 @@ function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): voi
   if (store.layer === 'underworld') show = false;
   for (const id of OVERLAY_LAYERS[overlay]) {
     let vis = show;
+    // The illustrated plan style replaces some of the plain style's layers.
+    if (ILLUSTRATED_LAYERS.has(id)) vis = show && store.illustratedTowns;
     // Name layers also follow the overlay they belong to.
     if (overlay === 'political') vis = show && (id === 'political' || store.showLabels);
     if (overlay === 'labels') {
@@ -523,11 +526,64 @@ function setVisibility(overlay: keyof typeof OVERLAY_LAYERS, show: boolean): voi
   }
 }
 
+/**
+ * The plan style: in the illustrated style the plain footprints, walls, towers and trees give
+ * way to raised ones at ILL_ZOOM, and the map faces north and lies flat there, since the
+ * raised buildings are drawn as seen from the south.
+ */
+function applyPlanStyle(): void {
+  if (!map || !ready || !map.getLayer('plan-buildings')) return;
+  const ill = store.illustratedTowns;
+  // The plain footprints give way to the raised buildings at ILL_ZOOM (but for burrows, which keep their mounds).
+  const fade = ['interpolate', ['linear'], ['zoom'], TOWN_PLAN_ZOOM, 0, 12.3, 1];
+  map.setPaintProperty('plan-buildings', 'fill-opacity', (ill ? ['interpolate', ['linear'], ['zoom'], TOWN_PLAN_ZOOM, 0, 12.3, 1, ILL_ZOOM + 0.2, 1, ILL_ZOOM + 0.4, ['case', ['has', 'burrow'], 1, 0]] : fade) as never);
+  for (const id of PLAIN_ONLY_LAYERS) {
+    const l = SETTLEMENT_LAYERS.find((q) => q.id === id);
+    if (l && map.getLayer(id)) map.setLayerZoomRange(id, l.minzoom ?? 0, ill ? ILL_ZOOM + 0.4 : 24);
+  }
+  map.setPaintProperty('plan-furrows', 'line-color', ill ? '#ad9c6b' : '#c2b385');
+  setVisibility('settlements', store.showSettlements);
+  northLock(true);
+}
+
+let rotationLocked = false;
+/** Faces the map north (and flat) and stops it turning while an illustrated plan is in view. */
+function northLock(settle: boolean): void {
+  if (!map) return;
+  const lock = store.illustratedTowns && store.showSettlements && store.layer !== 'underworld' && map.getZoom() >= ILL_ZOOM - 0.6;
+  if (lock !== rotationLocked) {
+    rotationLocked = lock;
+    if (lock) {
+      map.dragRotate.disable();
+      map.touchZoomRotate.disableRotation();
+      map.keyboard.disableRotation();
+    } else {
+      map.dragRotate.enable();
+      map.touchZoomRotate.enableRotation();
+      map.keyboard.enableRotation();
+    }
+  }
+  if (lock && settle && (Math.abs(map.getBearing()) > 0.01 || map.getPitch() > 0.01) && !map.isMoving()) {
+    map.easeTo({ bearing: 0, pitch: 0, duration: 600 });
+  }
+}
+
 /** The plan building under a screen point, at interior zooms. */
 function buildingAt(point: PointLike): PlanFeature | null {
   if (!map || !ready || map.getZoom() < INTERIOR_ZOOM || !store.showSettlements || !map.getLayer('plan-buildings')) return null;
-  const hit = map.queryRenderedFeatures(point, { layers: ['plan-buildings'] })[0];
-  const bid = hit?.properties?.bid;
+  // In the illustrated style a building is found by its walls and roof (the frontmost face).
+  let bid: unknown = null;
+  if (store.illustratedTowns && map.getLayer('ill-faces')) {
+    let top = -Infinity;
+    for (const f of map.queryRenderedFeatures(point, { layers: ['ill-faces'] })) {
+      const z = Number(f.properties?.z ?? -Infinity);
+      if (f.properties?.bid && z > top) {
+        top = z;
+        bid = f.properties.bid;
+      }
+    }
+  }
+  bid ??= map.queryRenderedFeatures(point, { layers: ['plan-buildings'] })[0]?.properties?.bid;
   return bid ? planIndex.get(String(bid)) ?? null : null;
 }
 
@@ -839,9 +895,12 @@ onMounted(() => {
     setVisibility('labels', store.showLabels);
     setVisibility('borders', store.showBorders);
     setVisibility('political', store.showPolitical);
+    applyPlanStyle();
     syncWorld();
   });
+  map.on('zoom', () => northLock(false));
   map.on('moveend', () => {
+    northLock(true);
     runTowns();
     if (map) {
       const c = map.getCenter();
@@ -927,7 +986,9 @@ onMounted(() => {
 let hitFrame = 0;
 watch(flyTarget, (t) => {
   if (!map || !t) return;
-  map.flyTo({ center: [t.lon, t.lat], zoom: t.zoom, duration: 2200, essential: true });
+  // Flying in to an illustrated plan turns the map to face north on the way.
+  const north = store.illustratedTowns && store.showSettlements && t.zoom >= ILL_ZOOM - 0.6;
+  map.flyTo({ center: [t.lon, t.lat], zoom: t.zoom, duration: 2200, essential: true, ...(north ? { bearing: 0, pitch: 0 } : {}) });
   const src = map.getSource('search-hit') as GeoJSONSource | undefined;
   if (!src) return;
   cancelAnimationFrame(hitFrame);
@@ -982,7 +1043,13 @@ watch(() => store.showPolitical, (show) => {
   setVisibility('political', show);
   setVisibility('labels', store.showLabels);
 });
+watch(() => store.illustratedTowns, (ill) => {
+  savePref('illustratedTowns', ill);
+  applyPlanStyle();
+  runTowns();
+});
 watch(() => store.showSettlements, (show) => {
+  northLock(true);
   setVisibility('settlements', show);
   setVisibility('labels', store.showLabels);
   if (!show) hidePreview();

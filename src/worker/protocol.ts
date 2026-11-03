@@ -18,7 +18,7 @@ export type WorkerResponse =
 
 export type TownsRequest =
   | { type: 'init'; gen: number; world: TownWorld }
-  | { type: 'view'; gen: number; bounds: Bounds; zoom: number };
+  | { type: 'view'; gen: number; bounds: Bounds; zoom: number; illustrated?: boolean };
 
 type FC<F> = { type: 'FeatureCollection'; features: F[] };
 

@@ -5,7 +5,7 @@ import type { IndexEntry } from '../towns/manager';
 
 let towns: TownManager | null = null;
 let gen = -1;
-let view: { bounds: Bounds; zoom: number } | null = null;
+let view: { bounds: Bounds; zoom: number; illustrated: boolean } | null = null;
 let scheduled = false;
 
 function post(msg: TownsResponse): void {
@@ -17,6 +17,11 @@ function step(): void {
   scheduled = false;
   if (!towns || !view) return;
   const res = towns.update(view.bounds, view.zoom, 60);
+  // Switching the plan style resends the plans, with or without their illustrated faces.
+  if (towns.illustrated !== view.illustrated) {
+    towns.illustrated = view.illustrated;
+    res.plansChanged = true;
+  }
   if (res.villagesChanged || res.plansChanged) {
     post({
       type: 'data',
@@ -76,7 +81,7 @@ self.onmessage = (e: MessageEvent<TownsRequest>) => {
     batch = [];
     scheduleIndex();
   } else if (msg.gen === gen) {
-    view = { bounds: msg.bounds, zoom: msg.zoom };
+    view = { bounds: msg.bounds, zoom: msg.zoom, illustrated: !!msg.illustrated };
     schedule();
   }
 };

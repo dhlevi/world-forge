@@ -11,6 +11,7 @@ import {
 import type { GeneratedWorld } from '../gen/world';
 import type { Pt } from './geom';
 import { LocalFrame, type PlanFeature, PlanOut } from './plan';
+import { illustrate } from './illustrate';
 import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
 import { buildVillage, secretWell } from './village';
@@ -203,6 +204,11 @@ export class TownManager {
   private exits = new Map<string, { ll: number[]; cls: RoadClass }[]>();
   private blocks = new Map<number, Block>();
   private plans = new Map<string, PlanFeature[]>();
+  /** The illustrated style's faces for each plan (made when first wanted), and the plans' sites. */
+  private illus = new Map<string, PlanFeature[]>();
+  private planSite = new Map<string, Settlement>();
+  /** Whether plans are sent with their illustrated faces. */
+  illustrated = false;
   /** Villages' names before they were dressed ("Ashby" of "Ashby Mine"). */
   private baseNames = new Map<string, Named>();
   /** Army camps behind the fronts of today's wars, by 1° block key (made on first use). */
@@ -272,8 +278,23 @@ export class TownManager {
 
   planFeatures(): FC<PlanFeature> {
     const features: PlanFeature[] = [];
-    for (const f of this.plans.values()) features.push(...f);
+    for (const [id, f] of this.plans) {
+      for (const x of f) features.push(x);
+      if (this.illustrated) for (const x of this.illustration(id, f)) features.push(x);
+    }
+    for (const id of this.illus.keys()) if (!this.plans.has(id)) this.illus.delete(id);
     return { type: 'FeatureCollection', features };
+  }
+
+  /** A plan's illustrated faces (see towns/illustrate.ts), drawn from the finished plan. */
+  private illustration(id: string, f: PlanFeature[]): PlanFeature[] {
+    let ill = this.illus.get(id);
+    const s = this.planSite.get(id);
+    if (!ill && s) {
+      ill = illustrate(f, new LocalFrame(s.lon, s.lat), pxPerMeterZ20(s.lat), { sid: s.id, tier: s.tier, koppen: this.world.raster.koppen[this.cell(s.lon, s.lat)] });
+      this.illus.set(id, ill);
+    }
+    return ill ?? [];
   }
 
   /** Generates what the view needs, for up to `budgetMs`; `pending` means call again. */
@@ -316,6 +337,8 @@ export class TownManager {
       const bx = Math.floor(s.lon), by = Math.floor(s.lat);
       for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) this.block(bx + dx, by + dy);
       this.plans.set(s.id, this.plan(s));
+      this.planSite.set(s.id, s);
+      this.illus.delete(s.id);
       res.plansChanged = true;
       res.villagesChanged = true;
     }
