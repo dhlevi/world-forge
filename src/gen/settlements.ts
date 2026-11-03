@@ -284,7 +284,8 @@ interface SettlementFields {
 /**
  * Founds cities and towns on the most habitable sites (rivers, coasts, mild climate, flat
  * ground) with minimum spacings in km, then links them with roads routed by A* over the grid
- * (slope, biome and bridge costs; reusing existing roads is cheap so routes merge into trunks).
+ * (slope, biome and bridge costs; reusing existing roads is cheap, so routes merge into trunks). The routes are then laid out as one network: each stretch
+ * between two junctions or towns is drawn once, however many routes share it.
  */
 export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sampler: DetailSampler) {
   const { W, H, N } = g;
@@ -500,6 +501,7 @@ function buildRoads(
   const gScore = new Float64Array(N), from = new Int32Array(N);
   const seen = new Int32Array(N), closed = new Int32Array(N);
   const onRoad = new Uint8Array(N);
+
   const heap = new MinHeap(4096);
   // Low land next to the sea or a lake (or water itself): only there can the detailed shoreline
   // differ from the grid, so only there are roads checked against it.
@@ -519,6 +521,8 @@ function buildRoads(
   const features: RoadFeature[] = [];
   let search = 0;
   const route = new FineRoute(sampler, seed, g, isRiver, shore);
+  /** Each route found: its grid cells, with the two towns standing in for their cells (as -1 - index). */
+  const routes: { nodes: number[]; cls: RoadClass }[] = [];
 
   for (const job of jobs) {
     const start = cells[job.a], goal = cells[job.b];
@@ -573,34 +577,89 @@ function buildRoads(
       if (c === start) break;
     }
     path.reverse();
-    const pts = path.map(vertex);
-    pts[0] = [sa.lon, sa.lat];
-    pts[pts.length - 1] = [sb.lon, sb.lat];
+    // The towns stand in for their own cells (two towns may share a cell).
+    const nodes = path.map((c) => c);
+    nodes[0] = -1 - job.a;
+    nodes[nodes.length - 1] = -1 - job.b;
+    routes.push({ nodes, cls: job.cls });
+  }
+
+  // ---- The network: each stretch between towns and junctions, laid out once ------------------
+  const adj = new Map<number, number[]>();
+  const edgeCls = new Map<string, RoadClass>();
+  const ek = (u: number, v: number) => (u < v ? `${u},${v}` : `${v},${u}`);
+  const link = (u: number, v: number) => {
+    const l = adj.get(u);
+    if (!l) adj.set(u, [v]);
+    else if (!l.includes(v)) l.push(v);
+  };
+  for (const r of routes) {
+    for (let k = 0; k + 1 < r.nodes.length; k++) {
+      const u = r.nodes[k], v = r.nodes[k + 1];
+      if (u === v) continue;
+      link(u, v);
+      link(v, u);
+      const key = ek(u, v);
+      if (edgeCls.get(key) !== 'major') edgeCls.set(key, r.cls);
+    }
+  }
+  const isNode = (u: number) => u < 0 || (adj.get(u)?.length ?? 0) !== 2;
+  const used = new Set<string>();
+  const chains: { nodes: number[]; cls: RoadClass }[] = [];
+  const walk = (u: number, v: number) => {
+    const nodes = [u, v];
+    let cls: RoadClass = edgeCls.get(ek(u, v)) ?? 'minor';
+    used.add(ek(u, v));
+    let prev = u, cur = v;
+    while (!isNode(cur)) {
+      const next = adj.get(cur)!.find((w) => w !== prev && !used.has(ek(cur, w)));
+      if (next === undefined) break;
+      used.add(ek(cur, next));
+      if (edgeCls.get(ek(cur, next)) === 'major') cls = 'major';
+      nodes.push(next);
+      prev = cur;
+      cur = next;
+    }
+    if (edgeCls.get(ek(u, v)) === 'major') cls = 'major';
+    chains.push({ nodes, cls });
+  };
+  for (const [u, l] of adj) {
+    if (!isNode(u)) continue;
+    for (const v of l) if (!used.has(ek(u, v))) walk(u, v);
+  }
+  // Any loop with no junction on it (it cannot reach a town, but keep it whole).
+  for (const [u, l] of adj) for (const v of l) if (!used.has(ek(u, v))) walk(u, v);
+
+  for (const ch of chains) {
+    const ta = ch.nodes[0] < 0 ? -1 - ch.nodes[0] : -1, tb = ch.nodes[ch.nodes.length - 1] < 0 ? -1 - ch.nodes[ch.nodes.length - 1] : -1;
+    const sa = ta >= 0 ? sts[ta] : null, sb = tb >= 0 ? sts[tb] : null;
+    const pts = ch.nodes.map((u) => (u < 0 ? [sts[-1 - u].lon, sts[-1 - u].lat] : vertex(u)));
     for (let k = 1; k < pts.length; k++) {
       while (pts[k][0] - pts[k - 1][0] > 180) pts[k][0] -= 360;
       while (pts[k][0] - pts[k - 1][0] < -180) pts[k][0] += 360;
     }
     // The grid route only knows grid cells; at full detail it can cut across bays and lakes.
-    // Fit the whole line (it starts and ends on land, at the town centres), then trim the ends
-    // back to the town edges, so the road also reaches each town over land.
-    const line0 = chaikin(route.line(pts, job.cls === 'major'), S.roadSmoothing);
+    // Fit the whole line (it starts and ends on land), then trim the ends back to the town edges,
+    // so the road also reaches each town over land. A stretch that ends at a junction keeps its
+    // end exactly there, where the other stretches meet it.
+    const line0 = chaikin(route.line(pts, ch.cls === 'major'), S.roadSmoothing);
     route.wobble(line0);
     simplifyInPlace(line0, ROUTE.simplifyKm);
     const first = line0[0], last = line0[line0.length - 1];
-    for (const pc of fitRoadToLand(line0, sampler, g, shore, sa.radiusM / 1000, sb.radiusM / 1000)) {
-      // Pieces keep the original end points (by reference) where they reach a town.
+    for (const pc of fitRoadToLand(line0, sampler, g, shore, sa ? sa.radiusM / 1000 : 0, sb ? sb.radiusM / 1000 : 0)) {
+      // Pieces keep the original end points (by reference) where they reach a town or junction.
       const atA = pc[0] === first, atB = pc[pc.length - 1] === last;
-      let t = trimEnds(pc, atA ? sa.radiusM / 1000 : 0, atB ? sb.radiusM / 1000 : 0);
+      let t = trimEnds(pc, atA && sa ? sa.radiusM / 1000 : 0, atB && sb ? sb.radiusM / 1000 : 0);
       if (!t) continue;
       // Where the town edge falls in the water, start the road at the shore instead (the town
       // plan carries it on from there).
       const dry = (p: number[]) => !sampler.isWater(p[0], p[1], sampler.height(p[0], p[1], 0.05, false));
-      if (atA) {
+      if (atA && sa) {
         let k = 0;
         while (k < t.length - 2 && !dry(t[k])) k++;
         t = t.slice(k);
       }
-      if (atB) {
+      if (atB && sb) {
         let k = t.length - 1;
         while (k > 1 && !dry(t[k])) k--;
         t = t.slice(0, k + 1);
@@ -611,7 +670,7 @@ function buildRoads(
       features.push({
         type: 'Feature',
         geometry: { type: 'LineString', coordinates: t },
-        properties: { cls: job.cls, a: atA ? sa.id : '', b: atB ? sb.id : '', ppm20: pxPerMeterZ20(t[t.length >> 1][1]) },
+        properties: { cls: ch.cls, a: atA && sa ? sa.id : '', b: atB && sb ? sb.id : '', ppm20: pxPerMeterZ20(t[t.length >> 1][1]) },
       });
     }
   }
