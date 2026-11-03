@@ -1,3 +1,4 @@
+import { ROOF_COLOURS } from './style';
 import { type Dwelling, type Floor, type Item, type Opening, type Pt, type WallSide, outline, polyAnchor, roofHeight } from './dwelling';
 
 /** Any 2D canvas context (DOM, OffscreenCanvas, or a Node canvas in scripts). */
@@ -674,19 +675,6 @@ export interface ExteriorView {
   height: number;
 }
 
-const ROOF_COLOURS: Record<string, [string, string]> = {
-  thatch: ['#cdb07a', '#a88d5a'],
-  tile: ['#b9735a', '#8f5442'],
-  slate: ['#8b929a', '#666c74'],
-  shingle: ['#9c7b5a', '#765b40'],
-  turf: ['#97a965', '#71824a'],
-  pantile: ['#cf8d5f', '#a1653f'],
-  glazed: ['#7b878c', '#566166'],
-  palm: ['#bea96d', '#93804c'],
-  bark: ['#86715a', '#615140'],
-  greenslate: ['#93a89e', '#6e8279'],
-  mud: ['#cfae86', '#a98a64'],
-};
 
 function roofMaterial(d: Dwelling): keyof typeof ROOF_COLOURS {
   if (d.style) return d.style.roof;

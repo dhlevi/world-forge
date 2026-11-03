@@ -1,5 +1,6 @@
 import { KOPPEN_CLASSES } from '../gen/koppen';
 import { hashString, mulberry32 } from '../gen/rng';
+import { type BuildStyle, ROOF_COLOURS, buildStyle } from '../interiors/style';
 import type { Pt } from './geom';
 import type { LocalFrame, PlanFeature } from './plan';
 
@@ -19,6 +20,7 @@ import type { LocalFrame, PlanFeature } from './plan';
 export const ILL_K = 0.55;
 
 const INK = '#3f3126';
+const BEAM = '#5d4733';
 type V = [number, number, number];
 type Roof = 'gable' | 'hip' | 'flat' | 'spire' | 'cone' | 'dome';
 
@@ -139,13 +141,15 @@ interface Opts {
   win?: () => number;
   /** Drawn after (in front of) what shares its front edge. */
   ahead?: number;
+  /** Timber-framed: dark beams over the walls. */
+  timber?: boolean;
 }
 
 /**
  * The walls of the edges of `p` that face south (toward the viewer), from the ground to `h`,
  * shaded by the way they face. With `ends`, an edge's wall reaches up to a ridge point.
  */
-function walls(P: Painter, p: Pt[], h: number, wall: string, key: (i: number) => number, ends?: Map<number, V>, extra?: Record<string, string | number>, win?: () => number): number {
+function walls(P: Painter, p: Pt[], h: number, wall: string, key: (i: number) => number, ends?: Map<number, V>, extra?: Record<string, string | number>, win?: () => number, timber = false): number {
   let k = 0;
   const ccw = area(p) > 0;
   for (let i = 0; i < p.length; i++) {
@@ -156,8 +160,24 @@ function walls(P: Painter, p: Pt[], h: number, wall: string, key: (i: number) =>
     const top = ends?.get(i);
     const pts: V[] = [at(a, 0), at(b, 0), at(b, h), ...(top ? [top] : []), at(a, h)];
     P.face(pts, shade(wall, nx < 0 ? 1 : 0.84 + 0.1 * (-ny / Math.hypot(nx, ny))), key(k++), INK, extra);
-    // Windows (and a door) in walls that face the viewer.
     const len = Math.hypot(dx, dy);
+    // A timber frame: posts at the corners, a rail at each floor and a beam under the eaves.
+    if (timber && len >= 2) {
+      const ux = dx / len, uy = dy / len;
+      const along = (t: number): Pt => [a[0] + ux * t, a[1] + uy * t];
+      const band = (t0: number, t1: number, z0: number, z1: number) => {
+        const p0 = along(t0), p1 = along(t1);
+        P.face([at(p0, z0), at(p1, z0), at(p1, z1), at(p0, z1)], BEAM, key(k++), BEAM, extra);
+      };
+      band(0, 0.3, 0, h);
+      band(len - 0.3, len, 0, h);
+      band(0, len, h - 0.3, h);
+      if (h > 4.5) band(0, len, h * 0.5 - 0.15, h * 0.5 + 0.15);
+      // Posts between the windows (which stand in the middle of each bay).
+      const bays = Math.min(4, Math.floor(len / 2.6));
+      for (let j = 1; j < bays; j++) band((len * j) / bays - 0.12, (len * j) / bays + 0.12, 0, h);
+    }
+    // Windows (and a door) in walls that face the viewer.
     if (win && len >= 3.2 && h >= 2.6 && -ny / len > 0.6) k = openings(P, a, b, len, h, win, key, k, extra);
   }
   return k;
@@ -228,14 +248,14 @@ function quadSolid(P: Painter, q0: Pt[], o: Opts): Solid {
       const R0: V = at(r0, hr), R1: V = at(r1, hr);
       let k = 0;
       if (o.roof === 'flat') {
-        k += walls(P, q, h, mat.wall, key, undefined, o.extra, o.win);
+        k += walls(P, q, h, mat.wall, key, undefined, o.extra, o.win, o.timber);
         P.face(q.map((v) => at(v, h)), shade(mat.roof, o.jit), key(k++), INK, o.extra);
         if (o.crenel) merlons(P, q, h, shade(mat.wall, 0.95), key, k);
         return;
       }
       // A gable's end wall rises to the ridge.
       const ends = o.roof === 'gable' ? new Map<number, V>([[1, R1], [3, R0]]) : undefined;
-      k += walls(P, q, h, mat.wall, key, ends, o.extra, o.win);
+      k += walls(P, q, h, mat.wall, key, ends, o.extra, o.win, o.timber);
       const planes: { pts: V[]; nx: number; ny: number }[] = [];
       const plane = (a: Pt, b: Pt, top: V[]) => {
         const dx = b[0] - a[0], dy = b[1] - a[1];
@@ -331,6 +351,27 @@ function templeTower(P: Painter, q0: Pt[], o: Opts, r: () => number, dome: boole
   return quadSolid(P, tower, { ...o, h: o.h * 2.4, roof: 'spire', pitch: 4.4, win: undefined, mat: { roof: spire, wall: shade(o.mat.wall, 0.97) } });
 }
 
+/** Wall colours by material, where a people's style gives none (as the exterior view draws them). */
+const WALL_MAT: Record<string, string> = {
+  timber: '#efe4c8', stone: '#d8d0bf', plaster: '#efe4c8', whitewash: '#f4f0e6', adobe: '#dfc49c', log: '#a8845c',
+  plank: '#a68a68', turf: '#a8b77c', brick: '#b98a6e',
+};
+
+/** What kind of building a plan building is, in the terms of the interiors' styles. */
+function styleKind(ctx: string, use: string, role: string, village: boolean): string {
+  if (use === 'temple') return 'temple';
+  if (use === 'keep') return 'keep';
+  if (ctx === 'monastery') return 'range';
+  if (role === 'magetower') return 'tower';
+  if (role === 'countinghouse') return 'bank';
+  if (role === 'shrine') return 'shrine';
+  if (role === 'library') return 'library';
+  if (role === 'university' || role === 'college') return 'university';
+  if (role === 'townhall' || role === 'guildhall') return 'civic';
+  if (village || ['suburb', 'slum', 'farm', 'farming', 'fishing', 'logging', 'mining', 'tribal'].includes(ctx)) return 'cottage';
+  return 'townhouse';
+}
+
 export interface IllustrateSite {
   sid: string;
   tier: string;
@@ -374,7 +415,34 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
     }
   };
 
-  for (const f of features) {
+  // Walls that run alongside one another (a citadel's wall inside the town wall, an outer
+  // ring) would be drawn one over the other: a stretch alongside a wider wall (or an earlier
+  // one as wide) is left to that wall. Towers standing on one another are drawn once.
+  const wallSegs: { a: Pt; b: Pt; f: number; w: number }[] = [];
+  features.forEach((f, fi) => {
+    if (f.properties.kind !== 'wall' || f.geometry.type !== 'LineString') return;
+    const pts = f.geometry.coordinates.map((c) => frame.fromLL(c[0], c[1]));
+    for (let i = 0; i + 1 < pts.length; i++) wallSegs.push({ a: pts[i], b: pts[i + 1], f: fi, w: Number(f.properties.w ?? 2) });
+  });
+  const segDist = (p: Pt, a: Pt, b: Pt) => {
+    const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
+    const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
+    return Math.hypot(a[0] + dx * t - p[0], a[1] + dy * t - p[1]);
+  };
+  const alongside = (a: Pt, b: Pt, fi: number, w: number): boolean => {
+    const m = mid(a, b), len = dist(a, b) || 1;
+    for (const o of wallSegs) {
+      if (o.f === fi || o.w < w || (o.w === w && o.f > fi)) continue;
+      if (segDist(m, o.a, o.b) > (w + o.w) * 0.8 + 3) continue;
+      const ol = dist(o.a, o.b) || 1;
+      const cos = Math.abs(((b[0] - a[0]) * (o.b[0] - o.a[0]) + (b[1] - a[1]) * (o.b[1] - o.a[1])) / (len * ol));
+      if (cos > 0.87) return true;
+    }
+    return false;
+  };
+  const towersAt: { c: Pt; r: number }[] = [];
+
+  for (const [fi, f] of features.entries()) {
     const pr = f.properties;
     const kind = pr.kind;
     if (kind === 'building') {
@@ -387,8 +455,20 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
       const use = String(pr.use ?? ''), role = String(pr.role ?? '');
       const a = Math.abs(area(p));
       const base = roofOf(r, ctx);
-      const wall = wallOf(r, ctx);
+      let wall = wallOf(r, ctx);
       const jit = 0.93 + r() * 0.14;
+      // The people's own way of building (interiors/style.ts, as the exterior view draws it),
+      // for most of their houses; the rest keep the climate's materials, for variety.
+      const kindS = styleKind(ctx, use, role, village);
+      const st: BuildStyle | null = typeof pr.cul === 'string' ? buildStyle(pr.cul, kindS) : null;
+      const own = !!st && (kindS !== 'cottage' && kindS !== 'townhouse' ? true : r() < 0.82);
+      if (st && own) {
+        base.roof = shade(ROOF_COLOURS[st.roof]?.[0] ?? base.roof, 0.86 + r() * 0.16);
+        wall = shade(st.colour?.[0] ?? WALL_MAT[st.wall] ?? wall, 0.95 + r() * 0.07);
+        base.kind = st.form === 'flat' ? 'flat' : st.form === 'upturned' ? 'hip' : 'gable';
+        base.pitch = st.form === 'steep' ? 1.3 : st.form === 'low' || st.form === 'upturned' ? 0.55 : 0.9;
+      }
+      const timber = own && st?.wall === 'timber' && base.kind !== 'flat';
       const extra = bid ? { bid } : undefined;
       const stone = pick(r, WALLS.stone);
       let o: Opts = { h: 5, pitch: base.pitch, roof: base.kind, mat: { roof: base.roof, wall }, jit, extra, win: mulberry32(hashString(`win#${bid}`)) };
@@ -400,8 +480,14 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
       if (use === 'temple') {
         o = { ...o, win: undefined, h: pr.great ? 16 : 11, pitch: cl === 'med' || cl === 'desert' || cl === 'steppe' ? 0.55 : 1.05, roof: 'gable', mat: { roof: cl === 'desert' ? pick(r, ROOFS.flat) : cl === 'med' ? pick(r, ROOFS.tile) : pick(r, ROOFS.slate), wall: stone } };
         if (cl === 'desert') o.roof = 'flat';
+        if (st) {
+          o.mat.roof = shade(ROOF_COLOURS[st.roof]?.[0] ?? o.mat.roof, 0.85);
+          o.roof = st.form === 'flat' ? 'flat' : 'gable';
+          if (st.form === 'steep') o.pitch = 1.3;
+          if (st.form === 'low' || st.form === 'upturned') o.pitch = 0.55;
+        }
         if (p.length === 4) {
-          const t = templeTower(P, p, o, r, cl === 'desert' || cl === 'steppe');
+          const t = templeTower(P, p, o, r, st ? st.form === 'flat' || st.roof === 'mud' : cl === 'desert' || cl === 'steppe');
           // Drawn just after the nave it stands in.
           if (t) {
             t.front = Math.min(...p.map((v) => v[1])) - 0.05;
@@ -437,6 +523,7 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
       // Shadows fall to the east, a little south, by the building's height.
       const sh = o.h * 0.4;
       P.shadow(p.map((v) => [v[0] + sh, v[1] - sh * 0.3] as Pt));
+      if (timber && !o.crenel && o.h <= 9 && use !== 'temple') o.timber = true;
       const solid = p.length === 4 && o.roof !== 'cone' ? quadSolid(P, p, o) : polySolid(P, p, o);
       solids.push(solid, ...extras);
       // A windmill's sails, turned to face the viewer, on its cap.
@@ -460,14 +547,15 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
       // Town walls: a face of stone with a walk and battlements on top; a village's palisade of stakes.
       const pts = f.geometry.coordinates.map((c) => frame.fromLL(c[0], c[1]));
       // Drawn a little thicker than the plan's line, as the old maps draw them.
-      const w = Number(pr.w ?? 2) * 1.6;
-      const palisade = village && Number(pr.w ?? 2) < 2;
-      const w0 = Number(pr.w ?? 2), Hh = palisade ? 3 : w0 >= 2.4 ? 9 : w0 >= 2 ? 7 : 4;
+      const w0 = Number(pr.w ?? 2);
+      const w = w0 * 1.6;
+      const palisade = village && w0 < 2;
+      const Hh = palisade ? 3 : w0 >= 2.4 ? 9 : w0 >= 2 ? 7 : 4;
       const col = palisade ? '#9c7f5a' : '#c4bcaa';
       for (let i = 0; i + 1 < pts.length; i++) {
         const a = pts[i], b = pts[i + 1];
         const len = dist(a, b);
-        if (len < 0.2) continue;
+        if (len < 0.2 || alongside(a, b, fi, w0)) continue;
         const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
         // The face toward the south, offset half the wall's width that way.
         let nx = uy, ny = -ux;
@@ -489,6 +577,8 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
     } else if (kind === 'tower' && f.geometry.type === 'Point') {
       const c = frame.fromLL(f.geometry.coordinates[0], f.geometry.coordinates[1]);
       const rr = Number(pr.r ?? 3);
+      if (towersAt.some((t) => dist(t.c, c) < (t.r + rr) * 0.9)) continue;
+      towersAt.push({ c, r: rr });
       const r = mulberry32(hashString(`ill#${site.sid}#t${Math.round(c[0])},${Math.round(c[1])}`));
       const cone = cl !== 'desert' && cl !== 'steppe' && r() < 0.75;
       const o: Opts = { h: village ? 6 : 12, pitch: 1.8, roof: cone ? 'cone' : 'flat', crenel: !cone, mat: { roof: cone ? pick(r, ROOFS[cl === 'med' ? 'tile' : 'slate']) : '#a89f8c', wall: pick(r, WALLS.stone) }, jit: 1 };
