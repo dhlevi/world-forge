@@ -43,6 +43,10 @@ export interface Token {
   /** The first word of a number carries its value; the rest of its words are marked (for writing it in numerals). */
   num?: number;
   inNum?: boolean;
+  /** A mark of punctuation (". , ; : ? ! “ ”" and the opening ¿ ¡), standing for itself. */
+  punct?: string;
+  /** Stressed by the speaker (written *so* in the English): written in red in the script. */
+  emph?: boolean;
 }
 export interface Grammar extends GrammarBias {
   /** Labels for the two noun classes, when there are any. */

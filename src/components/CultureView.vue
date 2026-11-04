@@ -7,7 +7,7 @@ import { ETHOS, TRADITIONS } from '../names/traits';
 import { LEXICON } from '../lang/lexicon';
 import { cognates, consonantChart, countingNotes, examples, grammarNotes, numberTable, pronounTable, soundChangeNotes, spellingNotes, vowelChart } from '../lang/describe';
 import { numberWord, writable } from '../lang/numbers';
-import { translate } from '../lang/translate';
+import { speechOf, translateText } from '../lang/translate';
 import { glyphSvg, glyphsSvg, scriptOf, sigilSvg, textSvg } from '../lang/script';
 import { cultureInfo } from '../lore/culture';
 import { fmtPeople } from '../lore/realm';
@@ -105,9 +105,23 @@ const sigils = computed(() => {
   if (!sc || !x) return [];
   return [x.endonym, x.name].map((n) => ({ name: n, svg: sigilSvg(sc, n, 132) }));
 });
-const translated = computed(() => (L.value && phrase.value.trim() ? translate(L.value, phrase.value, { capitalsProper: true }) : []));
+const translated = computed(() => (L.value && phrase.value.trim() ? translateText(L.value, phrase.value) : []));
+const translatedWords = computed(() => translated.value.filter((t) => !t.punct));
 /** How the translation is said, word by word. */
-const spoken = computed(() => (L.value ? translated.value.map((t) => L.value!.pronounce(t.form)) : []));
+const spoken = computed(() => (L.value ? translatedWords.value.map((t) => L.value!.pronounce(t.form)) : []));
+const punctChart = computed(() => (script.value ? script.value.punctChart().map((x) => ({ label: x.label, svg: glyphSvg(script.value!, x.glyph, 42) })) : []));
+/** How the people ask and exclaim, and how they write it. */
+const speechNote = computed(() => {
+  const lang = L.value;
+  if (!lang) return '';
+  const sp = speechOf(lang);
+  const qp = lang.word('question:particle').spell;
+  const q = sp.question === 'start' ? `A question to be answered yes or no opens with the particle ${qp}` : sp.question === 'end' ? `A question to be answered yes or no closes with the particle ${qp}`
+    : sp.question === 'enclitic' ? 'A question to be answered yes or no fixes a particle to its first word' : 'A question to be answered yes or no is asked by the voice alone, with no particle';
+  const x = sp.exclaim === 'start' ? `; an exclamation opens with the cry ${lang.word('exclamation:interjection').spell}` : sp.exclaim === 'end' ? `; an exclamation closes with the particle ${lang.word('exclamation:particle').spell}` : '';
+  const t = sp.turned ? ' In writing, questions and exclamations also open with the mark turned about, as Spanish does.' : '';
+  return `${q}${x}. A question word (who, what, where) comes first.${t} Stressed words are written in red ink.`;
+});
 const translatedScript = computed(() => (script.value && translated.value.length ? textSvg(script.value, writable(translated.value), { size: 34, maxWidth: 520 }) : ''));
 
 const description = computed(() => {
@@ -266,6 +280,11 @@ function showHome(): void {
         <div class="glyphs">
           <span v-for="(g, i) in numeralChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
         </div>
+        <h3>Punctuation</h3>
+        <p>{{ speechNote }}</p>
+        <div class="glyphs">
+          <span v-for="(g, i) in punctChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
+        </div>
         <h3>Written</h3>
         <div v-for="(e, i) in writtenExamples" :key="i" class="ex">
           <div class="en">{{ e.en }}</div>
@@ -318,21 +337,24 @@ function showHome(): void {
       <section v-else-if="tab === 'translate' && L">
         <textarea v-model="phrase" rows="3" placeholder="Type English: a name, a phrase or a simple sentence" />
         <div v-if="translated.length" class="ex big">
-          <div class="native">{{ translated.map((t) => t.form).join(' ') }}</div>
+          <div class="native"><template v-for="(t, i) in translated" :key="i"><template v-if="i && !t.punct?.match(/[.,;:?!”]/) && !translated[i - 1].punct?.match(/[“¿¡]/)">{{ ' ' }}</template><span :class="{ emph: t.emph }">{{ t.form }}</span></template></div>
           <div class="say"><span class="ipa">/{{ spoken.map((x) => x.ipa).join(' ') }}/</span> · sounds like <b>{{ spoken.map((x) => x.sounds).join(' ') }}</b></div>
           <div v-if="translatedScript" class="written" v-html="translatedScript" />
           <div class="gloss">
-            <span v-for="(t, i) in translated" :key="i" class="tok"><b>{{ t.form }}</b><small>{{ t.gloss }}</small></span>
+            <span v-for="(t, i) in translatedWords" :key="i" class="tok"><b :class="{ emph: t.emph }">{{ t.form }}</b><small>{{ t.gloss }}</small></span>
           </div>
         </div>
         <p class="note">The pronunciation is read from the spelling: IPA with the stressed syllable marked, then a rough English respelling with the stressed syllable in capitals<template v-if="L.tones"> (tones are not shown)</template>.</p>
-        <p class="note">Handles names and noun phrases (“the black ford”, “the king’s sword”, “city of the river”) and simple sentences with one verb (“The warriors will not fight the giants.”), in the language's word order, with its articles, plurals, possession, tenses and agreement.</p>
+        <p class="note">Handles names and noun phrases (“the black ford”, “the king’s sword”, “city of the river”) and simple sentences with one verb each (“The warriors will not fight the giants.”), in the language's word order, with its articles, plurals, possession, tenses and agreement. Several sentences and clauses can be given, with their punctuation (. , ; : ? ! and quotation marks): questions (“Is the king old?”, “Where is the queen?”) and exclamations are put in the language's own way (see Writing), and words written *so* are stressed, in red.</p>
       </section>
     </div>
   </aside>
 </template>
 
 <style scoped>
+.emph {
+  color: #a3301e;
+}
 .culture {
   position: absolute;
   top: 0;

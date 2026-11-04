@@ -31,6 +31,10 @@ export interface Glyph {
   gap?: number;
   /** Joined to the glyph before it in a column (the letters of a stacked syllable). */
   join?: boolean;
+  /** A mark of punctuation (no word divider is drawn after it). */
+  punct?: boolean;
+  /** Written in red ink (stressed words; the red verse points of hieroglyphic texts). */
+  rubric?: boolean;
 }
 
 /**
@@ -1515,6 +1519,193 @@ export class Script {
     return out;
   }
 
+  private box?: { T: number; B: number };
+  /** The body of the script's letters: the median top and bottom of its chart's glyphs. */
+  private lineBox(): { T: number; B: number } {
+    if (this.box) return this.box;
+    const tops: number[] = [], bots: number[] = [];
+    // Measured on a copy of the script: some scripts deal out their signs as they are first
+    // asked for, so this one's are left to be dealt in the order its own text asks.
+    for (const { glyph } of new Script(this.L, this.info.style).chart().slice(0, 40)) {
+      let t = Infinity, b = -Infinity;
+      for (const q of glyph.prims) {
+        if (q.k === 'circ' || q.k === 'dot') {
+          t = Math.min(t, q.p[1] - q.p[2]);
+          b = Math.max(b, q.p[1] + q.p[2]);
+          continue;
+        }
+        for (let i = 1; i < q.p.length; i += 2) {
+          t = Math.min(t, q.p[i]);
+          b = Math.max(b, q.p[i]);
+        }
+      }
+      if (t < b) {
+        tops.push(t);
+        bots.push(b);
+      }
+    }
+    const med = (a: number[], d: number) => (a.length ? a.sort((x, y) => x - y)[a.length >> 1] : d);
+    this.box = { T: med(tops, 10), B: med(bots, 90) };
+    if (this.box.B - this.box.T < 30) this.box = { T: this.box.B - 40, B: this.box.B };
+    return this.box;
+  }
+
+  private marks?: Map<string, Glyph>;
+  /**
+   * A mark of punctuation in the script's own manner: ". , ; : ? !", quotation marks “ ” and the
+   * turned ¿ ¡. Each family of scripts has its own: Latin-like dots, hooks and strokes (one of a
+   * few shapes, chosen for the script); upright strokes (dandas) for the Devanagari-like and
+   * looped scripts; groups of dots for runes and ogham; the Ethiopic-like dotted marks; wedges in
+   * clay; small circles, ticks and corner brackets for the scripts of the far east; scrolls for
+   * the glyphs; red verse points for hieroglyphs; dots and rings for the column scripts. The
+   * abjad's marks face the way it runs.
+   */
+  punct(m: string): Glyph | null {
+    if (!this.marks) this.marks = this.makeMarks();
+    return this.marks.get(m) ?? null;
+  }
+
+  private makeMarks(): Map<string, Glyph> {
+    const st = this.info.style;
+    const r = this.rng('punct');
+    const { T, B } = this.lineBox();
+    const h = B - T, M = (T + B) / 2, u = h / 80;
+    const out = new Map<string, Glyph>();
+    const g = (prims: Prim[], w: number, rubric = false): Glyph => ({ prims, w, punct: true, ...(rubric ? { rubric: true } : {}) });
+    const dot = (x: number, y: number, rr = 4.5) => D_(x, y, rr * u);
+    const mirror = (gl: Glyph): Glyph => ({ ...gl, prims: gl.prims.map((q) => ({ k: q.k, p: q.k === 'circ' || q.k === 'dot' ? [gl.w - q.p[0], q.p[1], q.p[2]] : q.p.map((v, i) => (i % 2 ? v : gl.w - v)) })) });
+    const turn = (gl: Glyph): Glyph => ({ ...gl, prims: gl.prims.map((q) => ({ k: q.k, p: q.k === 'circ' || q.k === 'dot' ? [gl.w - q.p[0], T + B - q.p[1], q.p[2]] : q.p.map((v, i) => (i % 2 ? T + B - v : gl.w - v)) })) });
+    const family = st === 'devanagari' || st === 'looped' ? 'indic' : st === 'runes' || st === 'ogham' ? 'dots' : st === 'ethiopic' ? 'ethiopic' : st === 'cuneiform' ? 'wedge'
+      : st === 'hanzi' || st === 'kana' || st === 'hangul' ? 'cjk' : st === 'glyphs' ? 'scroll' : st === 'hieroglyph' ? 'verse' : st === 'spine' || st === 'phagspa' ? 'column' : 'euro';
+    // The Latin-like marks, in one of a few shapes for each.
+    const pv = Math.floor(r() * 3), qv = Math.floor(r() * 4), ev = Math.floor(r() * 3), cv = Math.floor(r() * 2), qq = Math.floor(r() * 2);
+    const euro = () => {
+      out.set('.', g([pv === 0 ? dot(8, B - 5 * u) : pv === 1 ? C_(8, B - 5 * u, 4.5 * u) : L_(2, B - 3 * u, 16, B - 3 * u)], pv === 2 ? 20 : 16));
+      const comma: Prim[] = cv === 0 ? [dot(9, B - 6 * u, 4), Q_(11, B - 6 * u, 13, B + 6 * u, 4, B + 14 * u)] : [L_(12, B - 8 * u, 5, B + 12 * u)];
+      out.set(',', g(comma, 18));
+      out.set(':', g([dot(8, M + 2 * u), dot(8, B - 5 * u)], 16));
+      out.set(';', g([dot(9, M + 2 * u), ...comma], 18));
+      const hook: Prim[] = [Q_(3, T + 22 * u, 13, T, 23, T + 20 * u), Q_(23, T + 20 * u, 25, T + 40 * u, 13, M + 6 * u), L_(13, M + 6 * u, 13, B - 22 * u), dot(13, B - 5 * u)];
+      const q = qv === 0 ? g(hook, 28) : qv === 1 ? g([Q_(2, M, 8, M - 16 * u, 14, M), Q_(14, M, 20, M + 16 * u, 26, M), dot(14, B - 5 * u)], 28)
+        : qv === 2 ? mirror(g(hook, 28)) : g([C_(12, T + 12 * u, 7 * u), L_(12, T + 19 * u, 12, B - 22 * u), dot(12, B - 5 * u)], 24);
+      out.set('?', q);
+      out.set('!', ev === 0 ? g([L_(10, T + 6 * u, 10, B - 22 * u), dot(10, B - 5 * u)], 20)
+        : ev === 1 ? g([P_(5, T + 4 * u, 15, T + 4 * u, 10, B - 22 * u), dot(10, B - 5 * u)], 20)
+          : g([L_(5, T + 6 * u, 10, B - 22 * u, 15, T + 6 * u), dot(10, B - 5 * u)], 20));
+      if (qq === 0) {
+        out.set('“', g([Q_(8, T + 6 * u, 3, T + 12 * u, 6, T + 22 * u), Q_(18, T + 6 * u, 13, T + 12 * u, 16, T + 22 * u)], 22));
+        out.set('”', g([Q_(6, T + 6 * u, 11, T + 12 * u, 8, T + 22 * u), Q_(16, T + 6 * u, 21, T + 12 * u, 18, T + 22 * u)], 22));
+      } else {
+        out.set('“', g([L_(12, M - 12 * u, 4, M, 12, M + 12 * u), L_(22, M - 12 * u, 14, M, 22, M + 12 * u)], 26));
+        out.set('”', g([L_(4, M - 12 * u, 12, M, 4, M + 12 * u), L_(14, M - 12 * u, 22, M, 14, M + 12 * u)], 26));
+      }
+    };
+    euro();
+    switch (family) {
+      case 'indic':
+        out.set('.', g([L_(8, T, 8, B)], 16));
+        out.set('!', g([L_(6, T, 6, B), L_(15, T, 15, B)], 22));
+        out.set(',', g([L_(10, B - 16 * u, 5, B)], 15));
+        out.set('?', g([C_(9, T + 6 * u, 5 * u), L_(9, T + 11 * u, 9, B)], 18));
+        out.set(':', g([C_(8, M - 4 * u, 4 * u), C_(8, B - 6 * u, 4 * u)], 16));
+        out.set(';', g([C_(9, M - 4 * u, 4 * u), L_(11, B - 16 * u, 6, B)], 17));
+        break;
+      case 'dots': {
+        const c = M;
+        out.set('.', g([dot(12, c - 9 * u), dot(4, c), dot(20, c), dot(12, c + 9 * u)], 24));
+        out.set(',', g([dot(12, c - 7 * u), dot(6, c + 6 * u), dot(18, c + 6 * u)], 24));
+        out.set(':', g([dot(8, c - 18 * u), dot(8, c - 6 * u), dot(8, c + 6 * u), dot(8, c + 18 * u)], 16));
+        out.set(';', g([dot(8, c - 12 * u), dot(8, c), dot(8, c + 12 * u)], 16));
+        out.set('?', g([dot(12, c - 12 * u), dot(2, c), dot(22, c), dot(12, c + 12 * u), dot(12, c)], 24));
+        out.set('!', g([L_(12, T + 4 * u, 12, B - 4 * u), dot(4, c), dot(20, c)], 24));
+        out.set('“', g([L_(10, c - 12 * u, 3, c, 10, c + 12 * u)], 14));
+        out.set('”', g([L_(3, c - 12 * u, 10, c, 3, c + 12 * u)], 14));
+        break;
+      }
+      case 'ethiopic':
+        out.set('.', g([dot(5, M - 7 * u), dot(17, M - 7 * u), dot(5, M + 7 * u), dot(17, M + 7 * u)], 22));
+        out.set(',', g([dot(8, M - 8 * u), dot(8, M + 8 * u), L_(2, M, 14, M)], 16));
+        out.set(';', g([dot(8, M - 8 * u), dot(8, M + 8 * u), L_(2, M - 8 * u, 14, M - 8 * u), L_(2, M + 8 * u, 14, M + 8 * u)], 16));
+        out.set(':', g([dot(8, M - 8 * u), dot(8, M + 8 * u), L_(13, M - 12 * u, 13, M + 12 * u)], 17));
+        out.set('?', g([dot(8, M - 13 * u), dot(8, M), dot(8, M + 13 * u), L_(2, M, 14, M)], 16));
+        out.set('!', g([dot(5, M - 7 * u), dot(17, M - 7 * u), dot(5, M + 7 * u), dot(17, M + 7 * u), L_(11, T + 2 * u, 11, B - 2 * u)], 22));
+        break;
+      case 'wedge': {
+        // A wedge: a triangular head and a tail, pressed at an angle.
+        const wedge = (x: number, y: number, ang: number, len: number): Prim[] => {
+          const c = Math.cos(ang), s2 = Math.sin(ang), hw = 5 * u;
+          return [P_(x - s2 * hw, y + c * hw, x + s2 * hw, y - c * hw, x + c * hw * 1.6, y + s2 * hw * 1.6), L_(x, y, x + c * len, y + s2 * len)];
+        };
+        out.set('.', g(wedge(4, M - 10 * u, Math.PI / 4, 22 * u), 24));
+        out.set(',', g(wedge(8, B - 18 * u, Math.PI / 2, 14 * u), 16));
+        out.set(':', g([...wedge(4, M - 16 * u, 0, 12 * u), ...wedge(4, M + 6 * u, 0, 12 * u)], 20));
+        out.set(';', g([...wedge(4, M - 12 * u, 0, 12 * u), ...wedge(8, B - 16 * u, Math.PI / 2, 12 * u)], 20));
+        out.set('?', g([...wedge(4, M - 14 * u, Math.PI / 4, 20 * u), ...wedge(4, M + 10 * u, -Math.PI / 4, 20 * u)], 24));
+        out.set('!', g(wedge(10, T + 4 * u, Math.PI / 2, h - 10 * u), 20));
+        break;
+      }
+      case 'cjk': {
+        const w = 50;
+        out.set('.', g([C_(16, B - 9 * u, 6 * u)], w));
+        out.set(',', g([L_(12, B - 18 * u, 24, B - 4 * u)], w));
+        out.set(':', g([dot(25, M - 12 * u), dot(25, M + 14 * u)], w));
+        out.set(';', g([dot(25, M - 12 * u), L_(22, M + 8 * u, 28, M + 24 * u)], w));
+        out.set('?', g(tf(out.get('?')!.prims, 1, 1, 12, 0), w));
+        out.set('!', g([P_(21, T + 8 * u, 29, T + 8 * u, 25, B - 22 * u), dot(25, B - 6 * u)], w));
+        out.set('“', g([L_(40, T + 6 * u, 14, T + 6 * u, 14, T + 36 * u)], w));
+        out.set('”', g([L_(10, B - 6 * u, 36, B - 6 * u, 36, B - 36 * u)], w));
+        break;
+      }
+      case 'scroll':
+        out.set('.', g([Q_(4, M + 10 * u, 2, M - 8 * u, 14, M - 8 * u), Q_(14, M - 8 * u, 22, M + 2 * u, 12, M + 4 * u)], 26));
+        out.set(',', g([dot(10, B - 8 * u, 5)], 20));
+        out.set(':', g([dot(10, M - 8 * u, 5), dot(10, M + 12 * u, 5)], 20));
+        out.set(';', g([dot(10, M - 8 * u, 5), L_(12, M + 6 * u, 7, M + 22 * u)], 20));
+        out.set('?', g([C_(14, M - 6 * u, 10 * u), Q_(6, M + 2 * u, 0, M + 18 * u, 10, M + 22 * u), dot(14, M - 6 * u, 3)], 28));
+        out.set('!', g([C_(14, M - 6 * u, 10 * u), dot(6, M + 18 * u, 3), dot(14, M + 22 * u, 3), dot(22, M + 18 * u, 3)], 28));
+        break;
+      case 'verse':
+        // The red verse points of the old scribes, and a few red signs of their sort.
+        out.set('.', g([dot(10, T + 10 * u, 6)], 20, true));
+        out.set(',', g([dot(10, M, 4.5)], 20, true));
+        out.set(':', g([dot(10, T + 10 * u, 5), dot(10, M + 10 * u, 5)], 20, true));
+        out.set(';', g([dot(10, T + 10 * u, 5), dot(10, M + 6 * u, 4)], 20, true));
+        out.set('?', g([dot(10, T + 10 * u, 6), Q_(4, M, 10, M - 14 * u, 16, M), L_(10, M, 10, B - 8 * u)], 22, true));
+        out.set('!', g([dot(10, T + 10 * u, 6), L_(10, M - 10 * u, 10, B - 8 * u)], 20, true));
+        out.set('“', g([L_(5, T + 6 * u, 5, M)], 12, true));
+        out.set('”', g([L_(5, M, 5, B - 6 * u)], 12, true));
+        break;
+      case 'column':
+        out.set('.', g([dot(36, M - 8 * u), dot(52, M - 8 * u), C_(44, M + 8 * u, 6 * u)], 100));
+        out.set(',', g([dot(44, M - 6 * u), Q_(46, M - 6 * u, 50, M + 6 * u, 40, M + 16 * u)], 100));
+        out.set(':', g([dot(36, M), dot(52, M)], 100));
+        out.set(';', g([dot(44, M - 10 * u), dot(44, M + 10 * u)], 100));
+        out.set('?', g(tf(out.get('?')!.prims, 1, 1, 32, 0), 100));
+        out.set('!', g(tf(out.get('!')!.prims, 1, 1, 34, 0), 100));
+        break;
+    }
+    // The abjad's marks face the way it runs (its comma and question mark turned about).
+    if (st === 'abjad') {
+      out.set(',', turn(out.get(',')!));
+      out.set(';', mirror(out.get(';')!));
+      out.set('?', mirror(out.get('?')!));
+    }
+    if (!out.has('“')) {
+      out.set('“', g([L_(12, M - 12 * u, 4, M, 12, M + 12 * u), L_(22, M - 12 * u, 14, M, 22, M + 12 * u)], 26));
+      out.set('”', g([L_(4, M - 12 * u, 12, M, 4, M + 12 * u), L_(14, M - 12 * u, 22, M, 14, M + 12 * u)], 26));
+    }
+    // Spanish-like turned marks open questions and exclamations in some languages.
+    out.set('¿', turn(out.get('?')!));
+    out.set('¡', turn(out.get('!')!));
+    return out;
+  }
+
+  /** The script's marks of punctuation, for the culture window. */
+  punctChart(): { label: string; glyph: Glyph }[] {
+    const rows: [string, string][] = [['.', 'full stop'], [',', 'comma'], [';', 'semicolon'], [':', 'colon'], ['?', 'question'], ['!', 'exclamation'], ['“', 'open quote'], ['”', 'close quote']];
+    return rows.map(([m, label]) => ({ label, glyph: this.punct(m)! })).filter((x) => x.glyph);
+  }
+
   /** The glyphs to show in a chart: each letter or sign with what it says. */
   chart(): { label: string; glyph: Glyph }[] {
     const L = this.L;
@@ -1605,21 +1796,25 @@ export function handGlyph(sc: Script, g: Glyph): Glyph {
   };
 }
 
-function primSvg(q: Prim, ox: number, oy: number, k: number): string {
+/** Red ink, for stressed words and verse points. */
+export const RUBRIC = '#a3301e';
+
+function primSvg(q: Prim, ox: number, oy: number, k: number, colour?: string): string {
   const P = (i: number) => `${(q.p[i] * k + ox).toFixed(1)},${(q.p[i + 1] * k + oy).toFixed(1)}`;
+  const st = colour ? ` style="stroke:${colour}"` : '', fl = colour ? ` style="fill:${colour}"` : '';
   switch (q.k) {
     case 'line': {
       let d = `M${P(0)}`;
       for (let i = 2; i < q.p.length; i += 2) d += `L${P(i)}`;
-      return `<path d="${d}"/>`;
+      return `<path d="${d}"${st}/>`;
     }
-    case 'quad': return `<path d="M${P(0)}Q${P(2)} ${P(4)}"/>`;
-    case 'circ': return `<circle cx="${(q.p[0] * k + ox).toFixed(1)}" cy="${(q.p[1] * k + oy).toFixed(1)}" r="${(q.p[2] * k).toFixed(1)}"/>`;
-    case 'dot': return `<circle class="f" cx="${(q.p[0] * k + ox).toFixed(1)}" cy="${(q.p[1] * k + oy).toFixed(1)}" r="${(q.p[2] * k).toFixed(1)}"/>`;
+    case 'quad': return `<path d="M${P(0)}Q${P(2)} ${P(4)}"${st}/>`;
+    case 'circ': return `<circle cx="${(q.p[0] * k + ox).toFixed(1)}" cy="${(q.p[1] * k + oy).toFixed(1)}" r="${(q.p[2] * k).toFixed(1)}"${st}/>`;
+    case 'dot': return `<circle class="f" cx="${(q.p[0] * k + ox).toFixed(1)}" cy="${(q.p[1] * k + oy).toFixed(1)}" r="${(q.p[2] * k).toFixed(1)}"${fl}/>`;
     default: {
       let d = `M${P(0)}`;
       for (let i = 2; i < q.p.length; i += 2) d += `L${P(i)}`;
-      return `<path class="f" d="${d}Z"/>`;
+      return `<path class="f" d="${d}Z"${fl}/>`;
     }
   }
 }
@@ -1630,7 +1825,7 @@ export function glyphSvg(sc: Script, g0: Glyph, size = 40): string {
   const k = size / 140, pad = 20 * k;
   const W = Math.max(g.w, 60) * k + 2 * pad, H = size;
   const ox = (W - g.w * k) / 2;
-  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(0)}" height="${H}" viewBox="0 0 ${W.toFixed(1)} ${H}"><g fill="none" stroke="${sc.info.ink}" stroke-width="${(sc.info.stroke * k).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" style="--ink:${sc.info.ink}">${g.prims.map((q) => primSvg(q, ox, pad, k)).join('')}</g><style>.f{fill:${sc.info.ink};stroke:none}</style></svg>`;
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="${W.toFixed(0)}" height="${H}" viewBox="0 0 ${W.toFixed(1)} ${H}"><g fill="none" stroke="${sc.info.ink}" stroke-width="${(sc.info.stroke * k).toFixed(2)}" stroke-linecap="round" stroke-linejoin="round" style="--ink:${sc.info.ink}">${g.prims.map((q) => primSvg(q, ox, pad, k, g.rubric ? RUBRIC : undefined)).join('')}</g><style>.f{fill:${sc.info.ink};stroke:none}</style></svg>`;
 }
 
 /** Text in the script set around a ring (SVG markup for a 100 by 100 box, centred), for seals and emblems. */
@@ -1658,13 +1853,27 @@ export function glyphsSvg(sc: Script, gs: Glyph[], size = 40): string {
  */
 export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?: number } = {}): string {
   const size = o.size ?? 36, k = size / 100, gap = 26 * k;
-  // Words are spelled out; a run of digits is written in the script's numerals.
-  const words = text.split(/\s+/).map((w) => (/^\d+$/.test(w) ? w : w.replace(/[^\p{L}'-]/gu, ''))).filter(Boolean).map((w) => {
-    if (!/^\d+$/.test(w)) return sc.word(w).map((g) => handGlyph(sc, g));
-    // Numbers read from left to right even in a script written from right to left (as Arabic's do).
-    const g = sc.numeral(parseInt(w, 10)).map((x) => handGlyph(sc, x));
-    return sc.info.direction === 'rtl' ? [...g].reverse() : g;
-  });
+  // Words are spelled out; a run of digits is written in the script's numerals. Marks of
+  // punctuation are written in the script's own manner, closed up to their words; words written
+  // *so* are stressed, in red.
+  const words = text.split(/\s+/).filter(Boolean).map((chunk) => {
+    const m = chunk.match(/^([“"«¿¡]*)(\*?)(.*?)(\*?)([.,;:?!”"»]*)$/u)!;
+    const open = [...m[1]].map((c) => (c === '"' || c === '«' ? '“' : c)), close = [...m[5]].map((c) => (c === '"' || c === '»' ? '”' : c));
+    const emph = !!m[2] && !!m[4];
+    const w = /^\d+$/.test(m[3]) ? m[3] : m[3].replace(/[^\p{L}'-]/gu, '');
+    let body: Glyph[] = [];
+    if (/^\d+$/.test(w)) {
+      // Numbers read from left to right even in a script written from right to left (as Arabic's do).
+      const g = sc.numeral(parseInt(w, 10)).map((x) => handGlyph(sc, x));
+      body = sc.info.direction === 'rtl' ? [...g].reverse() : g;
+    } else if (w) body = sc.word(w).map((g) => handGlyph(sc, g));
+    if (emph) body = body.map((g) => ({ ...g, rubric: true }));
+    const mk = (c: string) => {
+      const g = sc.punct(c);
+      return g ? [handGlyph(sc, g)] : [];
+    };
+    return [...open.flatMap(mk), ...body, ...close.flatMap(mk)];
+  }).filter((w) => w.length);
   const { style, direction, ink, paper, stroke } = sc.info;
   const parts: string[] = [];
   const stem = style === 'ogham';
@@ -1692,7 +1901,7 @@ export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?:
     H = Math.max(...cols.map((c) => (c.items.length ? c.items[c.items.length - 1][1] + size : 0))) + 10;
     for (const c of cols) {
       const cx = direction === 'ttbl' ? c.x + size * 0.1 : W - c.x - size * 1.15;
-      for (const [g, gy] of c.items) for (const q of g.prims) parts.push(primSvg(q, cx + (100 - g.w) * k / 2, gy + 6, k * 0.95));
+      for (const [g, gy] of c.items) for (const q of g.prims) parts.push(primSvg(q, cx + (100 - g.w) * k / 2, gy + 6, k * 0.95, g.rubric ? RUBRIC : undefined));
     }
   } else {
     const maxW = o.maxWidth ?? 640;
@@ -1717,14 +1926,16 @@ export function textSvg(sc: Script, text: string, o: { size?: number; maxWidth?:
         const ww = w.reduce((a, g) => a + g.w * k + (stem ? 0 : 4 * k), 0);
         if (stem) parts.push(`<path d="M${(direction === 'rtl' ? x - ww - 6 : x - 6).toFixed(1)},${(y + 50 * k).toFixed(1)}h${(ww + 12).toFixed(1)}"/>`);
         // Runes and the Ethiopic-like letters part their words with a pair of dots.
-        if ((style === 'runes' || style === 'ethiopic') && w !== line[0]) {
+        // (Not after a mark of punctuation, which parts them itself.)
+        const prev = line[line.indexOf(w) - 1];
+        if ((style === 'runes' || style === 'ethiopic') && w !== line[0] && !prev?.[prev.length - 1]?.punct && !w[0]?.punct) {
           const sx = x - (direction === 'rtl' ? -1 : 1) * gap * 0.5;
           parts.push(`<circle class="f" cx="${sx.toFixed(1)}" cy="${(y + 38 * k).toFixed(1)}" r="${(4 * k).toFixed(1)}"/>`, `<circle class="f" cx="${sx.toFixed(1)}" cy="${(y + 62 * k).toFixed(1)}" r="${(4 * k).toFixed(1)}"/>`);
         }
         for (const g of direction === 'rtl' ? w : w) {
           if (g.gap) x += (direction === 'rtl' ? -1 : 1) * g.gap * k;
           const gx = direction === 'rtl' ? x - g.w * k : x;
-          for (const q of g.prims) parts.push(primSvg(q, gx, y, k));
+          for (const q of g.prims) parts.push(primSvg(q, gx, y, k, g.rubric ? RUBRIC : undefined));
           x += (direction === 'rtl' ? -1 : 1) * (g.w * k + (stem ? 0 : 4 * k));
         }
         x += (direction === 'rtl' ? -1 : 1) * gap;

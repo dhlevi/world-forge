@@ -205,7 +205,17 @@ export function numberTokens(L: Language, n: number): Token[] {
 
 /** Tokens as text to write: each number as its digits (written in the script's numerals), the rest as spelled. */
 export function writable(tokens: Token[]): string {
-  return tokens.map((t) => (t.num !== undefined ? `${t.num}` : t.inNum ? '' : t.form)).filter(Boolean).join(' ');
+  // Marks close up to the word before them (an opening mark to the word after); stressed words are *starred*.
+  let s = '';
+  for (const t of tokens) {
+    const f = t.num !== undefined ? `${t.num}` : t.inNum ? '' : t.emph && !t.punct ? `*${t.form}*` : t.form;
+    if (!f) continue;
+    if (!s) s = f;
+    else if (t.punct && !/[“¿¡]/.test(t.punct)) s += f;
+    else if (/[“¿¡]$/.test(s)) s += f;
+    else s += ` ${f}`;
+  }
+  return s;
 }
 
 /** A number in words, as one string. */

@@ -1,6 +1,7 @@
 import type { Language, Token } from './language';
 import { LEX } from './lexicon';
 import { isEnglishNumber, numberSystem, numberTokens, readEnglishNumber } from './numbers';
+import { hashString, mulberry32 } from '../gen/rng';
 
 /**
  * Translates simple English into a language: noun phrases (articles, adjectives, plurals,
@@ -18,7 +19,7 @@ const DETS = new Set(['the', 'a', 'an', 'this', 'that', 'these', 'those', 'some'
 const IRREG_PAST: Record<string, string> = {
   saw: 'see', went: 'go', came: 'come', gave: 'give', took: 'take', made: 'make', ate: 'eat', spoke: 'speak', said: 'say', knew: 'know', sang: 'sing', fought: 'fight',
   built: 'build', slept: 'sleep', fell: 'fall', stood: 'stand', sat: 'sit', grew: 'grow', found: 'find', lost: 'lose', held: 'hold', rode: 'ride', ran: 'run',
-  flew: 'fly', swam: 'swim', drank: 'drink', thought: 'think', heard: 'hear', was: 'be', were: 'be', had: 'have', did: 'do', burnt: 'burn', brought: 'bring', told: 'tell',
+  flew: 'fly', fled: 'flee', swam: 'swim', drank: 'drink', thought: 'think', heard: 'hear', was: 'be', were: 'be', had: 'have', did: 'do', burnt: 'burn', brought: 'bring', told: 'tell',
 };
 const IRREG_PLURAL: Record<string, string> = { men: 'man', women: 'woman', children: 'child', teeth: 'tooth', feet: 'foot', geese: 'goose', mice: 'mouse', wolves: 'wolf', knives: 'knife', lives: 'life', elves: 'elf', dwarves: 'dwarf', leaves: 'leaf', thieves: 'thief', oxen: 'ox' };
 const BE = new Set(['is', 'are', 'am']);
@@ -254,4 +255,201 @@ export function translate(L: Language, text: string, o: { capitalsProper?: boole
   const extra = parts.filter((p) => p.k === 'pp' || (p.k === 'np' && p !== subj && p !== obj)).flatMap((p) => (p.k === 'pp' ? L.adpose(p.prep, p.np.tokens) : p.k === 'np' ? p.np.tokens : []));
   const verb = L.verb(vp.v, vp.tense, subj?.np.person ?? 2, vp.neg);
   return L.clause(subj?.np.tokens ?? [], verb, obj?.np.tokens ?? [], extra);
+}
+
+// ---- Sentences, punctuation and emphasis ---------------------------------------------------
+
+/**
+ * How a language asks and exclaims: a yes-or-no question is marked by a particle at the start of
+ * the sentence (as Polish "czy") or at its end (as Japanese "ka"), by a particle fixed to its
+ * first word (as Latin "-ne"), or by the voice alone; an exclamation may open with an
+ * interjection ("O ...!") or close with an emphatic particle. Some languages open questions and
+ * exclamations with turned marks too (¿ ¡), as Spanish does.
+ */
+export interface Speech {
+  question: 'start' | 'end' | 'enclitic' | 'none';
+  exclaim: 'start' | 'end' | 'none';
+  turned: boolean;
+}
+const speechCache = new WeakMap<Language, Speech>();
+export function speechOf(L: Language): Speech {
+  let sp = speechCache.get(L);
+  if (sp) return sp;
+  const r = mulberry32(hashString(`${L.key}#speech`));
+  const order = L.grammar.order;
+  // Verb-final languages lean to a closing particle, verb-first ones to an opening one.
+  const w: [Speech['question'], number][] = order.endsWith('V')
+    ? [['end', 6], ['enclitic', 1.5], ['start', 1], ['none', 1.5]]
+    : order.startsWith('V') ? [['start', 6], ['enclitic', 1.5], ['end', 1], ['none', 1.5]] : [['start', 2.5], ['end', 2.5], ['enclitic', 2], ['none', 3]];
+  let t = r() * w.reduce((a, x) => a + x[1], 0), question: Speech['question'] = 'none';
+  for (const [k, x] of w) {
+    t -= x;
+    if (t < 0) {
+      question = k;
+      break;
+    }
+  }
+  const e = r();
+  sp = { question, exclaim: e < 0.5 ? 'none' : e < 0.8 ? 'start' : 'end', turned: r() < (question === 'none' ? 0.45 : 0.12) };
+  speechCache.set(L, sp);
+  return sp;
+}
+
+const WH = new Set(['who', 'what', 'where', 'when', 'why', 'how', 'which', 'whom', 'whose']);
+const AUX = new Set(['do', 'does', 'did', 'is', 'are', 'am', 'was', 'were', 'will', 'shall']);
+/** Marks that close up to the word before them, and those that open onto the word after. */
+export const CLOSING = new Set(['.', ',', ';', ':', '?', '!', '”']);
+export const OPENING = new Set(['“', '¿', '¡']);
+
+/** The question particle fixed to a word: its first syllable or so ("-ne", "-ka"). */
+function enclitic(L: Language): string {
+  const sp = L.word('question:enclitic').spell.toLowerCase();
+  return sp.match(/^[^aeiouyäöüáéíóúâêîôûåæøë]*[aeiouyäöüáéíóúâêîôûåæøë]+/)?.[0] ?? sp.slice(0, 2);
+}
+
+/**
+ * Turns a yes-or-no question's word order back to a statement's, for the translator: "is the
+ * king old" → "the king is old", "will you come" → "you will come" (a question word stays first).
+ */
+function unInvert(words: string[]): string[] {
+  const k = WH.has(words[0]) ? 1 : 0;
+  if (!AUX.has(words[k] ?? '')) return words;
+  let j = k + 1;
+  const np: string[] = [];
+  if (PRONOUN[words[j]] !== undefined) np.push(words[j++]);
+  else {
+    while (j < words.length && (DETS.has(words[j]) || POSSESSIVE[words[j]] !== undefined || LEX.get(words[j])?.pos === 'adj' || isEnglishNumber(words[j]))) np.push(words[j++]);
+    if (j < words.length) np.push(words[j++]);
+  }
+  if (!np.length) return words;
+  return [...words.slice(0, k), ...np, words[k], ...words.slice(j)];
+}
+
+/**
+ * Translates English text of one or more sentences with their punctuation: each clause between
+ * commas, semicolons and colons is translated as `translate` does, and the marks are kept as
+ * tokens of their own. A sentence ending in "?" is asked in the language's way (see Speech), its
+ * question word put first; one ending in "!" is exclaimed in its way; words written *so* are
+ * stressed. Quotation marks are kept. Each sentence begins with a capital.
+ */
+export function translateText(L: Language, text: string): Token[] {
+  const sp = speechOf(L);
+  const out: Token[] = [];
+  const mark = (m: string): Token => ({ form: m, gloss: '', punct: m });
+  // Sentences, each with its clauses and the marks after them.
+  const re = /([^.!?;:,"“”«»]+)|([.!?]+|[;:,]|["“”«»])/g;
+  let sentence: { text: string; after: string }[] = [];
+  let quoteOpen = false;
+  const flush = (end: string) => {
+    if (!sentence.length && !end) return;
+    const q = end.includes('?'), x = !q && end.includes('!');
+    const start = out.length;
+    sentence.forEach((cl, ci) => {
+      let src = cl.text;
+      const emph = new Set<string>();
+      src = src.replace(/\*([^*]+)\*|_([^_]+)_/g, (_, a: string, b: string) => {
+        // Each stressed word and its stem ("wolves" → "wolf", "fled" → "flee"), to find its tokens by their gloss.
+        for (const wd0 of (a ?? b).toLowerCase().split(/\s+/)) {
+          const wd = wd0.replace(/[^a-z']/g, '');
+          if (!wd) continue;
+          emph.add(wd);
+          emph.add(nounOf(wd).n);
+          const v = verbOf(wd);
+          if (v) emph.add(v.v);
+        }
+        return a ?? b;
+      });
+      if (q && ci === 0) {
+        const words = src.trim().split(/\s+/);
+        const lower = words.map((wd) => wd.toLowerCase());
+        const re2 = unInvert(lower);
+        if (re2 !== lower) src = re2.map((wd) => words[lower.indexOf(wd)] ?? wd).join(' ');
+      }
+      // A clause opening with "and", "but" or the like keeps it first.
+      const conj = src.trim().match(/^(and|but|or|so|then|yet)\s+/i);
+      if (conj) src = src.trim().slice(conj[0].length);
+      let toks = src.trim() ? translate(L, src, { capitalsProper: true, known: WH }) : [];
+      if (conj) toks.unshift({ form: L.word(conj[1].toLowerCase()).spell, gloss: conj[1].toLowerCase() });
+      // A question word goes first.
+      if (q) {
+        const wi = toks.findIndex((t) => WH.has(t.gloss.toLowerCase()));
+        if (wi > 0) toks = [toks[wi], ...toks.slice(0, wi), ...toks.slice(wi + 1)];
+      }
+      if (emph.size) {
+        for (const t of toks) {
+          const parts = t.gloss.toLowerCase().split(/[-.]/);
+          if (parts.some((g) => emph.has(g))) t.emph = true;
+        }
+      }
+      out.push(...toks);
+      if (cl.after) out.push(mark(cl.after));
+    });
+    const words = out.slice(start).filter((t) => !t.punct);
+    const yesNo = q && !words.some((t) => WH.has(t.gloss.toLowerCase()));
+    if (yesNo && words.length) {
+      if (sp.question === 'start') out.splice(start, 0, { form: L.word('question:particle').spell, gloss: 'Q' });
+      else if (sp.question === 'end') out.push({ form: L.word('question:particle').spell, gloss: 'Q' });
+      else if (sp.question === 'enclitic') {
+        const first = out.slice(start).find((t) => !t.punct)!;
+        first.form += enclitic(L);
+        first.gloss += '-Q';
+      }
+    }
+    if (x && words.length) {
+      if (sp.exclaim === 'start') out.splice(start, 0, { form: L.word('exclamation:interjection').spell, gloss: 'EXCL' });
+      else if (sp.exclaim === 'end') out.push({ form: L.word('exclamation:particle').spell, gloss: 'EMPH' });
+    }
+    // The opening turned mark, and a capital for the first word.
+    if (sp.turned && (q || x) && words.length) out.splice(start, 0, mark(q ? '¿' : '¡'));
+    const first = out.slice(start).find((t) => !t.punct);
+    if (first) first.form = first.form.replace(/^\p{Ll}/u, (c) => c.toUpperCase());
+    if (end) out.push(mark(q ? '?' : x ? '!' : '.'));
+    sentence = [];
+  };
+  let m: RegExpExecArray | null;
+  let pending = '';
+  while ((m = re.exec(text))) {
+    if (m[1] !== undefined) {
+      if (m[1].trim()) pending += m[1];
+      continue;
+    }
+    const p = m[2];
+    if (/^[.!?]+$/.test(p)) {
+      if (pending.trim()) sentence.push({ text: pending, after: '' });
+      pending = '';
+      flush(p);
+    } else if (p === ',' || p === ';' || p === ':') {
+      sentence.push({ text: pending, after: p });
+      pending = '';
+    } else {
+      // A quotation mark: open or close, by turns.
+      if (pending.trim()) sentence.push({ text: pending, after: '' });
+      pending = '';
+      if (!quoteOpen) {
+        flush('');
+        out.push(mark('“'));
+      } else {
+        flush('');
+        out.push(mark('”'));
+      }
+      quoteOpen = !quoteOpen;
+    }
+  }
+  if (pending.trim()) sentence.push({ text: pending, after: '' });
+  flush('');
+  // Marks never stand twice in a row (a comma before a full stop, say): the later one stays.
+  return out.filter((t, k) => !(t.punct && CLOSING.has(t.punct) && out[k + 1]?.punct && CLOSING.has(out[k + 1].punct!) && out[k + 1].punct !== '”'));
+}
+
+/** Tokens as one line of text, the marks closed up to their words. */
+export function joinTokens(tokens: Token[]): string {
+  let s = '';
+  for (const t of tokens) {
+    const f = t.form;
+    if (!s) s = f;
+    else if (t.punct && CLOSING.has(t.punct)) s += f;
+    else if (/[“¿¡]$/.test(s)) s += f;
+    else s += ` ${f}`;
+  }
+  return s;
 }
