@@ -1746,6 +1746,8 @@ export class TownManager {
       this.chapterHouses(s, out, frame);
     }
 
+    // Buildings held back (round large squares) take the last ids.
+    out.flushLater();
     // Contours show the lie of the land; the interval adapts to the relief.
     let lo = Infinity, hi = -Infinity;
     terrain.h.forEach((h, k) => {

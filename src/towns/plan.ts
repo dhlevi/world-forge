@@ -74,6 +74,21 @@ export class PlanOut {
     this.features.push({ type: 'Feature', geometry: { type: 'Polygon', coordinates: [ring] }, properties: { kind, ppm20: this.ppm20, ...(props as Record<string, string | number>) } });
   }
 
+  private later: { kind: string; p: Pt[]; props: Record<string, string | number | undefined> }[] = [];
+  /**
+   * A polygon kept back until `flushLater`: buildings added after the plan is otherwise done
+   * (the houses round a large square), so every other building keeps its id.
+   */
+  polyLater(kind: string, p: Pt[], props: Record<string, string | number | undefined> = {}): void {
+    this.later.push({ kind, p, props });
+  }
+
+  flushLater(): void {
+    const l = this.later;
+    this.later = [];
+    for (const x of l) this.poly(x.kind, x.p, x.props);
+  }
+
   line(kind: string, pts: Pt[], props: Record<string, string | number> = {}): void {
     if (pts.length < 2) return;
     this.features.push({

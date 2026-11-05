@@ -1,12 +1,12 @@
 import { Delaunay } from 'd3-delaunay';
-import { mulberry32 } from '../gen/rng';
+import { hashString, mulberry32 } from '../gen/rng';
 import { chaikin } from '../gen/rivers';
 import {
   type Poly, type Pt, area, blob, ccw, centroid, compactness, distToLine, distToSeg, frontRect, inset, longestEdge, pointInPoly, rect, rectIn, rectangularity,
   strips, subdivide,
 } from './geom';
 import { addDocks } from './harbour';
-import type { PlanFeature, PlanInput } from './plan';
+import { LocalFrame, type PlanFeature, type PlanInput } from './plan';
 import { RIVER } from './terrain';
 import { graves } from './kit';
 import { type BuildingRef, type WardInfo, type WardKind, labelCity } from './naming';
@@ -641,12 +641,14 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
    * A market: double rows of stalls with aisles between, turned to the square's long side, a
    * fountain (in a city) or a well at the heart, and a few carts drawn up at the edges.
    */
-  const market = (q: Poly, city: boolean, dense = false) => {
+  const market = (q: Poly, city: boolean, dense = false, ghost = false) => {
+    // (Laid out as a ghost, drawing nothing, it still draws its numbers from the plan's stream
+    // as it always did, so the rest of the plan keeps its shape: marketSquare draws the market.)
     const f = frameIn(q, 4);
     if (!f) return;
     const { T, box, W, H, ang } = f;
     const rC = city ? 3.4 : 1.6;
-    out.point(city ? 'fountain' : 'well', T(0, 0), { r: rC });
+    if (!ghost) out.point(city ? 'fountain' : 'well', T(0, 0), { r: rC });
     const clearC = rC + 6;
     // Back-to-back pairs of stalls in short runs of three to five, with lanes between the rows
     // and cross aisles between the runs; a run here and there is left out for an open pitch.
@@ -662,7 +664,8 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
             if (Math.hypot(cu, cv) < clearC || rnd() < 0.12) continue;
             const st = box(cu, cv, 3, 2.2);
             if (!st.every((p) => pointInPoly(q, p[0], p[1]) && !water(p))) continue;
-            out.poly('stall', st, { tone: Math.floor(rnd() * 4) });
+            const tone = Math.floor(rnd() * 4);
+            if (!ghost) out.poly('stall', st, { tone });
           }
         }
         u += 5 + rnd() * 3;
@@ -670,8 +673,232 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     }
     for (let k = 0, n = 2 + Math.floor(rnd() * 4); k < n; k++) {
       const p = T((rnd() - 0.5) * W, (rnd() < 0.5 ? -1 : 1) * (H / 2 + 1.5));
-      if (pointInPoly(q, p[0], p[1]) && !water(p)) out.poly('wagon', rect(p[0], p[1], ang + (rnd() - 0.5) * 0.4, 4, 1.8));
+      if (pointInPoly(q, p[0], p[1]) && !water(p)) {
+        const wg = rect(p[0], p[1], ang + (rnd() - 0.5) * 0.4, 4, 1.8);
+        if (!ghost) out.poly('wagon', wg);
+      }
     }
+  };
+
+  // ---- Large squares ------------------------------------------------------------------------
+  // Markets, temple closes, citadels and prison yards are laid out in the largest rectangle that
+  // fits their ward, which leaves bare margins in a large or ragged one. These fill them out, on a
+  // random stream of their own (so the rest of the plan keeps its shape), and their buildings are
+  // held back to the end of the plan (so every other building keeps its id).
+  const sq = mulberry32(hashString(`${s.id}#squares`));
+  const frame = new LocalFrame(s.lon, s.lat);
+  /** What a ward's own layout put down since feature `from` (buildings, yards, graves...), as local polygons. */
+  const placedSince = (from: number): Poly[] => {
+    const outp: Poly[] = [];
+    for (let k = from; k < out.features.length; k++) {
+      const f = out.features[k];
+      if (f.geometry.type !== 'Polygon' || f.properties.kind === 'plaza' || f.properties.kind === 'paving') continue;
+      outp.push(f.geometry.coordinates[0].slice(0, -1).map((c) => frame.fromLL(c[0], c[1])));
+    }
+    return outp;
+  };
+  /** Whether two polygons overlap (separating axes; exact for convex ones, which these are). */
+  const overlaps = (a: Poly, b: Poly, pad = 0.8): boolean => {
+    for (const P of [a, b]) {
+      for (let i = 0; i < P.length; i++) {
+        const p0 = P[i], p1 = P[(i + 1) % P.length];
+        const nx = -(p1[1] - p0[1]), ny = p1[0] - p0[0], nl = Math.hypot(nx, ny) || 1;
+        let amin = Infinity, amax = -Infinity, bmin = Infinity, bmax = -Infinity;
+        for (const v of a) {
+          const d = (v[0] * nx + v[1] * ny) / nl;
+          amin = Math.min(amin, d);
+          amax = Math.max(amax, d);
+        }
+        for (const v of b) {
+          const d = (v[0] * nx + v[1] * ny) / nl;
+          bmin = Math.min(bmin, d);
+          bmax = Math.max(bmax, d);
+        }
+        if (amax + pad < bmin || bmax + pad < amin) return false;
+      }
+    }
+    return true;
+  };
+  /** Streets and roads, for keeping their mouths open. */
+  const lanes = () => [...roadLines, ...streetRefs.map((r) => r.pts)];
+  /**
+   * Houses along the inside of a square's edges, facing in, as houses line a real market square:
+   * terraces with now and then a gap, an alley every few houses, and a gap wherever a street comes
+   * in. `rings` rows deep (the second back to back with the first); clear of what already stands.
+   * Returns the open ground left in the middle.
+   */
+  const edgeHouses = (q0: Poly, taken: Poly[], o: { rings: number; depth: [number, number]; width: [number, number]; ctx: string; gap: number; setback?: number }): Poly | null => {
+    const q = ccw(q0);
+    const ls = lanes();
+    const nearLane = (p: Pt, r: number) => ls.some((l) => distToLine(l, p[0], p[1]) < r);
+    const houses: Poly[] = [];
+    let base = o.setback ?? 0;
+    for (let ring = 0; ring < o.rings; ring++) {
+      const d = o.depth[0] + sq() * (o.depth[1] - o.depth[0]);
+      for (let e = 0; e < q.length; e++) {
+        const a = q[e], b = q[(e + 1) % q.length];
+        const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (L < 10) continue;
+        const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, nx = -uy, ny = ux;
+        // Each corner belongs to one edge: an edge's houses stop short of its far corner.
+        let t = base + 0.5;
+        let sinceAlley = 0;
+        while (t < L - base - d) {
+          const w = o.width[0] + sq() * (o.width[1] - o.width[0]);
+          if (t + w > L - base - d + 2) break;
+          const at = (tt: number, dd: number): Pt => [a[0] + ux * tt + nx * (base + dd), a[1] + uy * tt + ny * (base + dd)];
+          const h: Poly = [at(t, 0), at(t + w, 0), at(t + w, d), at(t, d)];
+          const c = at(t + w / 2, d / 2);
+          let ok = h.every((v) => pointInPoly(q, v[0], v[1]) && !water(v)) && ground.allOk(h, BUILD_GROUND) && !nearLane(c, Math.max(w, d) / 2 + 3);
+          if (ok && (taken.some((x) => overlaps(x, h)) || houses.some((x) => overlaps(x, h, -0.15)))) ok = false;
+          if (ok && sq() >= o.gap) {
+            houses.push(h);
+            out.polyLater('building', h, { ctx: o.ctx });
+          }
+          t += w;
+          sinceAlley++;
+          // An alley through to the square every few houses.
+          if (sinceAlley > 4 + sq() * 5) {
+            t += 3 + sq() * 2;
+            sinceAlley = 0;
+          }
+        }
+      }
+      base += d;
+    }
+    taken.push(...houses);
+    return inset(q, base + 2);
+  };
+  /** Trees over open ground, clear of what stands there. */
+  const scatterTrees = (poly: Poly, n: number, taken: Poly[], r0: number, r1: number) => {
+    const xs = poly.map((v) => v[0]), ys = poly.map((v) => v[1]);
+    const x0 = Math.min(...xs), x1 = Math.max(...xs), y0 = Math.min(...ys), y1 = Math.max(...ys);
+    for (let tries = 0, most = n * 5; tries < most && n > 0; tries++) {
+      const p: Pt = [x0 + sq() * (x1 - x0), y0 + sq() * (y1 - y0)];
+      const r = r0 + sq() * (r1 - r0);
+      const box: Poly = [[p[0] - r, p[1] - r], [p[0] + r, p[1] - r], [p[0] + r, p[1] + r], [p[0] - r, p[1] + r]];
+      if (!pointInPoly(poly, p[0], p[1]) || water(p) || taken.some((x) => overlaps(x, box, 0.5))) continue;
+      out.point('tree', p, { r });
+      n--;
+    }
+  };
+  /**
+   * A market over the whole of its square's open ground: double rows of stalls that bend a little
+   * and break into runs, thicker toward the middle and thinning to the edges; a fountain (a well
+   * in a town) and, in a large city square, a market hall; pens of beasts and carts at the edges.
+   */
+  const marketSquare = (P0: Poly, city: boolean, dense: boolean, taken: Poly[]) => {
+    const P = ccw(P0);
+    const A = area(P);
+    if (A < 300) return;
+    const c = centroid(P);
+    if (!pointInPoly(P, c[0], c[1])) return;
+    // Rows along the square's longest edge.
+    let best = 0, ang = 0;
+    for (let i = 0; i < P.length; i++) {
+      const a = P[i], b = P[(i + 1) % P.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      if (L > best) {
+        best = L;
+        ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+      }
+    }
+    const cs = Math.cos(ang), sn = Math.sin(ang);
+    const T = (u: number, v: number): Pt => [c[0] + u * cs - v * sn, c[1] + u * sn + v * cs];
+    const R = Math.max(...P.map((v) => Math.hypot(v[0] - c[0], v[1] - c[1])));
+    const clear: { p: Pt; r: number }[] = [];
+    // The market hall over the middle of a large city square, the fountain beside it.
+    if (city && A > 4000) {
+      const hw = Math.min(26, Math.sqrt(A) * 0.18), hh = Math.min(12, hw * 0.45);
+      const hall: Poly = [T(-hw / 2, -hh / 2), T(hw / 2, -hh / 2), T(hw / 2, hh / 2), T(-hw / 2, hh / 2)];
+      if (hall.every((v) => pointInPoly(P, v[0], v[1])) && ground.allOk(hall, BUILD_GROUND) && !taken.some((x) => overlaps(x, hall))) {
+        out.polyLater('building', hall, { use: 'hall', ctx: 'ward' });
+        taken.push(hall);
+        clear.push({ p: c, r: Math.hypot(hw, hh) / 2 + 4 });
+      }
+    }
+    const fc = clear.length ? T(0, -(Math.min(12, Math.sqrt(A) * 0.2)) - 7) : c;
+    const rC = city ? 3.4 : 1.6;
+    if (pointInPoly(P, fc[0], fc[1]) && !water(fc)) {
+      out.point(city ? 'fountain' : 'well', fc, { r: rC });
+      clear.push({ p: fc, r: rC + 5 });
+    }
+    const inside = (h: Poly) => h.every((v) => pointInPoly(P, v[0], v[1]) && !water(v));
+    // Clear of the houses round the square by a lane's width.
+    const free = (h: Poly) => !taken.some((x) => overlaps(x, h, 3)) && !clear.some((k) => h.some((v) => Math.hypot(v[0] - k.p[0], v[1] - k.p[1]) < k.r));
+    const box = (u: number, v: number, w: number, h: number, a2 = 0): Poly => {
+      const ca = Math.cos(a2), sa = Math.sin(a2);
+      return [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(([x, y]) => T(u + x * ca - y * sa, v + x * sa + y * ca));
+    };
+    const step = dense ? 9.4 : 11;
+    const phase = sq() * 6;
+    for (let v = -R; v <= R; v += step) {
+      let u = -R + sq() * 4;
+      while (u < R) {
+        const run = 3 + Math.floor(sq() * 4), bare = sq() < (dense ? 0.06 : 0.18);
+        for (let k = 0; k < run && u < R; k++, u += 3.3) {
+          if (bare) continue;
+          // Rows bend a little, and thin out toward the edges of the square.
+          const bend = Math.sin(u / 23 + phase + v * 0.07) * 2.2;
+          const rr = Math.hypot(u, v) / R;
+          if (sq() > 1.08 - rr * 0.45) continue;
+          for (const side of [0, 2.4]) {
+            const st = box(u + 1.5, v + side + 1.1 + bend, 3, 2.2, Math.cos(u / 31 + phase) * 0.06);
+            if (!inside(st) || !free(st) || sq() < 0.08) continue;
+            out.poly('stall', st, { tone: Math.floor(sq() * 4) });
+          }
+        }
+        u += 5 + sq() * 3;
+      }
+    }
+    // Pens of beasts for sale, and carts drawn up, by the edges.
+    const pens = A > 2500 ? 1 + Math.floor(sq() * 3) : 0;
+    for (let k = 0, tries = 0; k < pens && tries < 30; tries++) {
+      const t = sq() * Math.PI * 2, rr = R * (0.55 + sq() * 0.35);
+      const pc: Pt = [c[0] + Math.cos(t) * rr, c[1] + Math.sin(t) * rr];
+      const pa = ang + (sq() - 0.5) * 0.3, pw = 8 + sq() * 4, ph = 6 + sq() * 2;
+      const pen = rect(pc[0], pc[1], pa, pw, ph);
+      if (!inside(pen) || !free(pen) || !ground.allOk(pen, BUILD_GROUND)) continue;
+      out.line('picket', [...pen, pen[0]]);
+      taken.push(pen);
+      for (let b = 0, n = 2 + Math.floor(sq() * 4); b < n; b++) {
+        const bc: Pt = [pc[0] + (sq() - 0.5) * (pw - 3) * Math.cos(pa) - (sq() - 0.5) * (ph - 2) * Math.sin(pa), pc[1] + (sq() - 0.5) * (pw - 3) * Math.sin(pa) + (sq() - 0.5) * (ph - 2) * Math.cos(pa)];
+        out.poly('horse', rect(bc[0], bc[1], pa + (sq() - 0.5) * 1.2, 2.1, 0.8));
+      }
+      k++;
+    }
+    for (let k = 0, n = 2 + Math.floor(sq() * 5), tries = 0; k < n && tries < 40; tries++) {
+      const t = sq() * Math.PI * 2, rr = R * (0.6 + sq() * 0.4);
+      const wc: Pt = [c[0] + Math.cos(t) * rr, c[1] + Math.sin(t) * rr];
+      const wg = rect(wc[0], wc[1], ang + (sq() - 0.5) * 0.8, 4, 1.8);
+      if (!inside(wg) || !free(wg)) continue;
+      out.poly('wagon', wg);
+      taken.push(wg);
+      k++;
+    }
+  };
+  /** A precinct wall round a close (on its edge, with a gateway in its two longest sides). */
+  const precinctWall = (q0: Poly, w: number) => {
+    const q = ccw(q0);
+    const sides = q.map((a, i) => ({ i, L: Math.hypot(q[(i + 1) % q.length][0] - a[0], q[(i + 1) % q.length][1] - a[1]) })).sort((x, y) => y.L - x.L).slice(0, 2).map((x) => x.i);
+    let run: Pt[] = [q[0]];
+    const runs: Pt[][] = [];
+    for (let i = 0; i < q.length; i++) {
+      const a = q[i], b = q[(i + 1) % q.length];
+      if (sides.includes(i)) {
+        const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        if (L > 16) {
+          const t0 = 0.5 - 3 / L, t1 = 0.5 + 3 / L;
+          run.push([a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0]);
+          runs.push(run);
+          run = [[a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1]];
+        }
+      }
+      run.push(b);
+    }
+    runs.push(run);
+    // The last run ends where the first began: join them.
+    if (runs.length > 1) runs[0] = [...runs.pop()!.slice(0, -1), ...runs[0]];
+    for (const r of runs) if (r.length >= 2) out.line('wall', r, { w });
   };
 
   /**
@@ -857,7 +1084,13 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
         if (q) {
           out.poly('plaza', q);
-          market(q, s.tier === 'city', theme === 'merchant' && pt.kind === 'plaza');
+          const dense = theme === 'merchant' && pt.kind === 'plaza';
+          market(q, s.tier === 'city', dense, true);
+          // A large square is lined with houses; the market fills what is left.
+          const taken: Poly[] = [];
+          const A = area(q);
+          if (A > 1800) edgeHouses(q, taken, { rings: A > 15000 ? 2 : 1, depth: [8, 11], width: [5.5, 8.5], ctx: 'ward', gap: 0.12 });
+          marketSquare(q, s.tier === 'city', dense, taken);
         }
         break;
       }
@@ -905,6 +1138,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
           last = v;
         }
         const name = s.prison?.name ?? 'the Gaol';
+        const n0 = out.features.length;
         const f = frameIn(q, 4);
         if (f) {
           const bw = Math.max(14, Math.min(f.W * 0.42, 48)), bh = Math.max(10, Math.min(f.H * 0.34, 26));
@@ -936,6 +1170,8 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
             out.point('blabel', centroid(block), { name, role: 'prison' });
           }
         }
+        // Stores and sheds along the bare stretches of the wall.
+        if (area(q) > 2500) edgeHouses(q, placedSince(n0), { rings: 1, depth: [7, 9], width: [8, 12], ctx: 'ward', gap: 0.45, setback: 2.5 });
         break;
       }
       case 'ruins': {
@@ -965,7 +1201,19 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         const q = q0 && ground.fit(q0, BUILD_GROUND, rnd, 0, 0.3);
         if (!q0 || !q) break;
         out.poly('plaza', q);
+        const n0 = out.features.length;
         templeClose(q0, holy ? (town ? 'shrine' : 'great') : '');
+        // A large close is a precinct: a wall with gateways, lawns, the clergy's houses along the
+        // wall and trees over the open ground.
+        if (area(q) > 1500) {
+          const taken = placedSince(n0);
+          precinctWall(q, 1.2);
+          const lawn = inset(q, 3);
+          if (lawn) out.poly('green', lawn);
+          edgeHouses(q, taken, { rings: 1, depth: [8, 10], width: [7, 11], ctx: 'rich', gap: 0.35, setback: 1.8 });
+          const garth = inset(q, 5);
+          if (garth) scatterTrees(garth, Math.min(36, Math.round(area(garth) / 280)), taken, 2, 3.8);
+        }
         break;
       }
       case 'citadel': {
@@ -981,7 +1229,15 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
           out.point('tower', v, { r: 4 });
           last = v;
         }
+        const n0 = out.features.length;
         castle(q);
+        // Outbuildings along the bare stretches of the curtain, and a few trees.
+        if (area(q) > 2500) {
+          const taken = placedSince(n0);
+          edgeHouses(q, taken, { rings: 1, depth: [7, 9], width: [8, 14], ctx: 'garrison', gap: 0.4, setback: 2.5 });
+          const bailey = inset(q, 5);
+          if (bailey) scatterTrees(bailey, Math.min(8, Math.round(area(bailey) / 900)), taken, 2, 3.2);
+        }
         break;
       }
       case 'park': {
