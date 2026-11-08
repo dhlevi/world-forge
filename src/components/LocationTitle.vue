@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { flyTarget, openLair, openOrder, openRealm, openTown, store, world } from '../store';
+import { flyTarget, openLair, openOrder, openRealm, openRegion, openTown, store, world } from '../store';
 import { currentOrders } from './orders';
 import { HOLD_LABEL } from '../lore/orders';
 import { deepSite } from './under-style';
@@ -244,6 +244,16 @@ function onMain(): void {
   else open.value = !open.value;
 }
 
+/** Whether the map's centre is on land (the nature window is for the land). */
+const onLand = computed(() => {
+  const w = world.value;
+  if (!w || store.zoom < 4 || store.layer === 'underworld') return false;
+  const { W, H, height } = w.raster;
+  const [lon, lat] = store.center;
+  const i = ((Math.floor(((lon + 180) / 360) * W) % W) + W) % W, j = Math.min(H - 1, Math.max(0, Math.floor(((90 - lat) / 180) * H)));
+  return height[j * W + i] > 0;
+});
+
 const STANCE_TEXT: Record<string, string> = { war: 'at war with', feud: 'in a feud with', truce: 'under a truce with', trade: 'trading with', alliance: 'allied with', raids: 'raided by', peace: 'at peace with' };
 /** A delve's deep road line: where it leads, and the realm of the deep it deals with. */
 function deepLine(sid: string, hall: string, ties?: { realm: string; stance: string }): { label: string; node: number } | undefined {
@@ -278,6 +288,7 @@ function goDeep(node: number): void {
         <div v-if="info.orders?.length" class="sub deep">
           <template v-for="(q, i) in info.orders" :key="q.key"><template v-if="i"> · </template><a href="#" title="Open its window" @click.stop.prevent="openOrder = q.key">{{ q.label }}</a></template>
         </div>
+        <div v-if="onLand" class="sub deep"><a href="#" title="Its creatures, plants and curses" @click.stop.prevent="openRegion = { lon: store.center[0], lat: store.center[1] }">Nature ▸</a></div>
         <div v-if="info.town" class="sub deep"><a href="#" title="Its people, sanitation, crime and trade" @click.stop.prevent="openTown = info.town ?? null">Town life ▸</a></div>
         <div v-if="info.deep" class="sub deep"><a href="#" title="Open the hall below on the Underworld layer" @click.stop.prevent="goDeep(info.deep.node)">{{ info.deep.label }}</a></div>
       </div>

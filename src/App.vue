@@ -18,6 +18,7 @@ import MapKey from './components/MapKey.vue';
 import DeepRealmView from './components/DeepRealmView.vue';
 import OrderView from './components/OrderView.vue';
 import TownView from './components/TownView.vue';
+import RegionView from './components/RegionView.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -39,6 +40,7 @@ onMounted(regenerate);
   <DeepRealmView />
   <OrderView />
   <TownView />
+  <RegionView />
   <DwellingView />
   <LairView />
   <DungeonView />

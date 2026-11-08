@@ -1141,7 +1141,7 @@ watch(flyTarget, (t) => {
   if (!map || !t) return;
   // Flying in to an illustrated plan turns the map to face north on the way.
   const north = store.illustratedTowns && store.showSettlements && t.zoom >= ILL_ZOOM - 0.6;
-  map.flyTo({ center: [t.lon, t.lat], zoom: t.zoom, duration: 2200, essential: true, ...(north ? { bearing: 0, pitch: 0 } : {}) });
+  map.flyTo({ center: [t.lon, t.lat], zoom: t.zoom, duration: 2200, essential: true, offset: [t.offsetX ?? 0, 0], ...(north ? { bearing: 0, pitch: 0 } : {}) });
   const src = map.getSource('search-hit') as GeoJSONSource | undefined;
   if (!src) return;
   cancelAnimationFrame(hitFrame);

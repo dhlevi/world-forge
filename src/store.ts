@@ -90,7 +90,8 @@ export const search = new SearchIndex();
 /** Background index progress (blocks done of total) and a counter that bumps when the index grows. */
 export const searchState = reactive({ done: 0, total: 0, version: 0 });
 /** A place to fly to (set by the search box, handled by the map). */
-export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; name: string; t: number } | null>(null);
+/** Where to fly the map; `offsetX` (pixels) lands the place left or right of centre, clear of a side window. */
+export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; name: string; t: number; offsetX?: number } | null>(null);
 /** The cave or glade open in the lair view, if any. */
 export const openLair = shallowRef<LairSite | null>(null);
 /** The tower, crypt, ruin, mine, catacomb or sewer open in the dungeon view, if any. */
@@ -105,6 +106,8 @@ export const openFaith = shallowRef<number | null>(null);
 export const openOrder = shallowRef<string | null>(null);
 /** The town whose life (people, sanitation, crime, trade) is shown, by settlement id. */
 export const openTown = shallowRef<string | null>(null);
+/** The place whose nature (bestiary, plants, curses) is shown. */
+export const openRegion = shallowRef<{ lon: number; lat: number } | null>(null);
 /** The realm of the Underworld whose window is open (an index into `underworld.realms`). */
 export const openDeepRealm = shallowRef<number | null>(null);
 /** The faith map's key: each faith shown, with its colour. */
