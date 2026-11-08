@@ -70,14 +70,14 @@ export const ORCISH: TemplateBundle = {
   },
   given: [
     [
-      'Grashnak', 'Thrug', 'Urzog', 'Mograk', 'Durzag', 'Krull', 'Rukhar', 'Zagnor', 'Brugash', 'Varzug',
+      'Grovnak', 'Thrug', 'Urzog', 'Mograk', 'Durzag', 'Krull', 'Rukhar', 'Zagnor', 'Brugash', 'Varzug',
       'Takhra', 'Hrolg', 'Gnashk', 'Dazrak', 'Murzhul', 'Kurzan', 'Yagdush', 'Bargul', 'Drokh', 'Uzgar',
       'Gorzak', 'Ruzgo', 'Tharg', 'Zhukar', 'Molgur', 'Krathak', 'Ushnar', 'Grozdak', 'Bolzug', 'Narkhul',
       'Dagrun', 'Vorgash', 'Hakthur', 'Rognak', 'Zurdush', 'Gakhul', 'Ozgar', 'Trugmar', 'Skagh', 'Burzan',
       'Khordak', 'Mazrug',
     ],
     [
-      'Ghasha', 'Urzha', 'Morgha', 'Durza', 'Shagra', 'Kazha', 'Vashka', 'Rugha', 'Zogra', 'Bazha',
+      'Ghasha', 'Urzha', 'Morgha', 'Durza', 'Shovra', 'Kazha', 'Vashka', 'Rugha', 'Zogra', 'Bazha',
       'Ozra', 'Thraka', 'Nazhra', 'Yagra', 'Ushka', 'Gorza', 'Mukha', 'Drazha', 'Harzha', 'Lagra',
       'Ruzha', 'Takha', 'Zhurka', 'Bulgra', 'Kurza', 'Murzha', 'Ogdra', 'Shazra', 'Vurga', 'Agrush',
       'Gashka', 'Uzdra', 'Khezra', 'Drogha', 'Zaghna',

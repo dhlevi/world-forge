@@ -11,6 +11,7 @@ import {
 import type { GeneratedWorld } from '../gen/world';
 import type { Pt } from './geom';
 import { LocalFrame, type PlanFeature, PlanOut } from './plan';
+import { type TreeMode, treeTown } from './treetown';
 import { illustrate } from './illustrate';
 import { LAND, LocalTerrain, RIVER, SEA } from './terrain';
 import { buildCity } from './city';
@@ -1221,6 +1222,40 @@ export class TownManager {
     return out;
   }
 
+  /**
+   * Whether a place stands in forest (a grove), or in the oldest and densest forest (a canopy:
+   * rainforest, or forest all about it out to some 70 km): the biomes at the place and on rings
+   * about it.
+   */
+  treeMode(s: { lon: number; lat: number }): TreeMode | null {
+    const biome = this.world.raster.biome;
+    const FOREST = new Set<number>([Biome.BorealForest, Biome.TemperateForest, Biome.TemperateRainforest, Biome.TropicalDryForest, Biome.TropicalRainforest, Biome.MontaneForest]);
+    const RAIN = new Set<number>([Biome.TemperateRainforest, Biome.TropicalRainforest]);
+    let n = 0, forest = 0, rain = 0;
+    const cosL = Math.max(0.2, Math.cos((s.lat * Math.PI) / 180));
+    for (const rr of [0, 0.15, 0.3]) {
+      const k = rr === 0 ? 1 : 12;
+      for (let i = 0; i < k; i++) {
+        const t = (i / k) * Math.PI * 2;
+        const b = biome[this.cell(s.lon + (Math.cos(t) * rr) / cosL, s.lat + Math.sin(t) * rr)];
+        n++;
+        if (FOREST.has(b)) forest++;
+        if (RAIN.has(b)) rain++;
+      }
+    }
+    const share = forest / n;
+    if (!FOREST.has(biome[this.cell(s.lon, s.lat)]) && share < 0.5) return null;
+    if (share < 0.4) return null;
+    if (rain / n >= 0.3) return 'canopy';
+    if (share < 1) return 'grove';
+    // Deep in the forest: all of it forest out to a wider ring as well.
+    for (let i = 0; i < 16; i++) {
+      const t = (i / 16) * Math.PI * 2;
+      if (!FOREST.has(biome[this.cell(s.lon + (Math.cos(t) * 0.65) / cosL, s.lat + Math.sin(t) * 0.65)])) return 'grove';
+    }
+    return 'canopy';
+  }
+
   private cell(lon: number, lat: number): number {
     const { W, H } = this.world.raster;
     const i = ((Math.floor(((lon + 180) / 360) * W) % W) + W) % W;
@@ -1748,6 +1783,9 @@ export class TownManager {
 
     // Buildings held back (round large squares) take the last ids.
     out.flushLater();
+    // An elvish town in the forest builds among the great trees (after every id is given).
+    const treeMode = tpl === 'elvish' && s.kind !== 'abandoned' && !s.delve ? this.treeMode(s) : null;
+    if (treeMode) treeTown(out.features, frame, treeMode, s.tier, pxPerMeterZ20(s.lat));
     // Contours show the lie of the land; the interval adapts to the relief.
     let lo = Infinity, hi = -Infinity;
     terrain.h.forEach((h, k) => {

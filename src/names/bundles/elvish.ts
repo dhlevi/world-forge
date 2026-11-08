@@ -15,14 +15,14 @@ export const ELVISH: TemplateBundle = {
     starts: [
       'Ael', 'Eld', 'Sil', 'Thal', 'Lor', 'Gal', 'Mir', 'Ith', 'Cel', 'Nim', 'Ara', 'Fae', 'Lin', 'Ere', 'Iss', 'Quel', 'Ven', 'Aes', 'Lia', 'Myr',
       'Alf', 'Bel', 'Cir', 'Dae', 'Ear', 'Fin', 'Gil', 'Hal', 'Ilm', 'Lae', 'Mel', 'Nar', 'Oro', 'Pel', 'Rhi', 'Sae', 'Tin', 'Ul', 'Vae', 'Yav',
-      'Aer', 'Elen', 'Ilth', 'Lith', 'Naer', 'Syl', 'Tae', 'Ves', 'Aran', 'Cael', 'Ilu', 'Mith', 'Am', 'An', 'Cal', 'Eir', 'Fael', 'Isil', 'Loth',
-      'Ly', 'Nol', 'Oroph', 'Phar', 'Ril', 'Sael', 'Val', 'Yl', 'Aen', 'Ciri', 'El', 'Fen', 'Glor', 'Lien', 'Maed', 'Nym', 'Ser', 'Tir',
+      'Aer', 'Elen', 'Ilth', 'Lith', 'Naer', 'Syl', 'Tae', 'Ves', 'Aran', 'Cael', 'Ilu', 'Mev', 'Am', 'An', 'Cal', 'Eir', 'Fael', 'Isav', 'Lov',
+      'Ly', 'Nol', 'Orav', 'Phar', 'Ril', 'Sael', 'Val', 'Yl', 'Aen', 'Ciri', 'El', 'Fen', 'Gwyl', 'Lien', 'Maev', 'Nym', 'Ser', 'Tir',
     ],
     mids: ['an', 'en', 'ir', 'ae', 'il', 'or', 'ith', 'ar', 'iel', 'al', 'ue', 'ra', 'li', 'eth', 'is', 'ia'],
     ends: [
-      'ion', 'wen', 'dor', 'las', 'thil', 'ond', 'iel', 'oth', 'ath', 'ian', 'ren', 'ost', 'lin', 'nor', 'mir', 'ael', 'dil', 'loth', 'nas', 'rien',
-      'thas', 'vae', 'wyn', 'driel', 'lond', 'mar', 'neth', 'ril', 'sir', 'tar', 'uin', 'viel', 'ador', 'eth', 'ithil', 'orn', 'aen', 'alas', 'morn',
-      'vorn', 'thir', 'lor', 'aeth', 'riel', 'llon', 'we', 'vyr', 'amir', 'alor', 'el', 'fyn', 'dris', 'ndil', 'alel', 'aris',
+      'ion', 'wen', 'dor', 'las', 'thil', 'ond', 'iel', 'oth', 'ath', 'ian', 'ren', 'ost', 'lin', 'nor', 'mir', 'ael', 'dil', 'leth', 'nas', 'ravel',
+      'thas', 'vae', 'wyn', 'dral', 'lend', 'mar', 'neth', 'ril', 'sir', 'tar', 'uin', 'viel', 'ador', 'eth', 'ivel', 'orn', 'aen', 'alas', 'morn',
+      'vorn', 'thir', 'lor', 'aeth', 'riel', 'llon', 'we', 'vyr', 'amir', 'alor', 'el', 'fyn', 'dris', 'ndel', 'alel', 'aris',
     ],
     midChance: 0.55,
     terms: {
@@ -48,20 +48,20 @@ export const ELVISH: TemplateBundle = {
     forms: { def: 'i', of: 'en' },
     masc: ['ion', 'dor', 'las', 'mir', 'ren', 'thil', 'ar'], fem: ['iel', 'wen', 'ith', 'ra', 'elle', 'ia', 'is'],
     demonym: ['ian', 'ine', 'ari', 'ish'],
-    seeds: { star: 'ael', moon: 'ith', silver: 'sil', river: 'lin', forest: 'thal', wind: 'fae', light: 'mir', tree: 'lor', song: 'lin', sea: 'nen', grove: 'lorien' },
+    seeds: { star: 'ael', moon: 'ith', silver: 'sil', river: 'lin', forest: 'thal', wind: 'fae', light: 'mir', tree: 'lor', song: 'lin', sea: 'nen', grove: 'thaven' },
   },
   given: [
     [
-      'Aelindor', 'Thalion', 'Caladrel', 'Faelar', 'Ithilmar', 'Elrion', 'Saelith', 'Arandil', 'Galathir', 'Lorimel',
-      'Merethil', 'Silvaran', 'Taurendil', 'Ylvarin', 'Caelborn', 'Erevan', 'Aerandir', 'Vaelis', 'Finrael', 'Oreluin',
-      'Celegorm', 'Eärendil', 'Fëanor', 'Voronwë', 'Amras', 'Haldir', 'Legolas', 'Aegnor', 'Gildor', 'Ingwë',
-      'Maedhros', 'Lindir', 'Rilvan', 'Oropher', 'Elros', 'Círdan', 'Valandil', 'Celebrimbor', 'Galdor', 'Theron'
+      'Aelindor', 'Thaeris', 'Caladrel', 'Faelar', 'Ithilmar', 'Elrion', 'Saelith', 'Arandil', 'Galathir', 'Lorimel',
+      'Merethil', 'Silvaran', 'Taurendil', 'Ylvarin', 'Caelborn', 'Ervalen', 'Aeromel', 'Vaelis', 'Finrael', 'Oreluin',
+      'Celivar', 'Ilvanthir', 'Faerion', 'Vaerolin', 'Amrethil', 'Halvaren', 'Lisandor', 'Aethiren', 'Silvenor', 'Inthalis',
+      'Maelorin', 'Linvarel', 'Rilvan', 'Oralis', 'Ethrandil', 'Cirelath', 'Valemor', 'Caelithar', 'Galvren', 'Theron'
     ],
     [
-      'Aelinwe', 'Ithilsa', 'Lirael', 'Nimriel', 'Sylvara', 'Taelis', 'Elanwe', 'Aerwyn', 'Caelith', 'Mirael',
-      'Galadis', 'Nerys', 'Faelith', 'Ilmara', 'Vaelra', 'Eirwen', 'Lusiel', 'Amaris', 'Galadriel', 'Arwen',
-      'Idril', 'Lúthien', 'Celebrían', 'Aredhel', 'Míriel', 'Finduilas', 'Nellas', 'Melian', 'Anárion', 'Nimloth',
-      'Elenna', 'Vána', 'Silmariel', 'Laurelin', 'Eirien', 'Nariel', 'Elora', 'Rilwen', 'Tariel', 'Yavanna'
+      'Aelinwe', 'Ithilsa', 'Liravel', 'Nimriel', 'Sylvara', 'Taelis', 'Elanwe', 'Aerwyn', 'Caelith', 'Mirael',
+      'Galithra', 'Nerys', 'Faelith', 'Ilmara', 'Vaelra', 'Eirwen', 'Lusiel', 'Amaris', 'Saelindra', 'Orwyn',
+      'Isvra', 'Luvaniel', 'Caelira', 'Aravessa', 'Mirelis', 'Finthavel', 'Nelithra', 'Maeleth', 'Anavael', 'Nimara',
+      'Elvessa', 'Vessaly', 'Silvanthe', 'Lauryth', 'Eirien', 'Nariel', 'Elora', 'Rilwen', 'Tariel', 'Yllaria'
     ],
   ],
   epithets: ['the Starlit', 'Silverbough', 'the Eternal', 'Dawnbringer', 'the Fair', 'Moonsinger'],

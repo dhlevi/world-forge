@@ -258,6 +258,20 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
     },
   },
   {
+    // An elven tree town (towns/treetown.ts): the crowns of the great trees its houses are built
+    // among, their trunks, and the platforms of the houses up in the trees.
+    id: 'plan-canopy', type: 'fill', source: 'plans', minzoom: 13, filter: kind('canopy'),
+    paint: { 'fill-color': e(['match', ['get', 'tree'], 'top', '#6f8c52', '#7f9a5c']), 'fill-outline-color': '#4d5e36', 'fill-opacity': e(['interpolate', ['linear'], ['zoom'], 13, 0, 13.8, 0.85]) },
+  },
+  {
+    id: 'plan-trunk', type: 'fill', source: 'plans', minzoom: 13.5, filter: kind('trunk'),
+    paint: { 'fill-color': '#7a5c40', 'fill-outline-color': INK, 'fill-opacity': fadeIn(13.5, 14) },
+  },
+  {
+    id: 'plan-platform', type: 'fill', source: 'plans', minzoom: 13, filter: kind('platform'),
+    paint: { 'fill-color': '#b8956a', 'fill-outline-color': INK, 'fill-opacity': fadeIn(13, 13.8) },
+  },
+  {
     // Illustrated plans (towns/illustrate.ts): shadows on the ground, under the raised buildings.
     // Below ILL_ZOOM the plain plan is drawn instead (the buildings are too small to raise).
     id: 'ill-shadow', type: 'fill', source: 'plans', minzoom: ILL_ZOOM, filter: kind('ills'), layout: { visibility: 'none' },
@@ -274,6 +288,11 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
       'fill-outline-color': INK,
       'fill-opacity': fadeIn(TOWN_PLAN_ZOOM, 12.3),
     },
+  },
+  {
+    // Walkways from tree to tree between the houses up in the canopy.
+    id: 'plan-walkways', type: 'line', source: 'plans', minzoom: 13.5, filter: kind('walkway'), layout: LINE_LAYOUT,
+    paint: { 'line-color': '#7a5636', 'line-width': physWidth(0.8, 1.1), 'line-opacity': fadeIn(13.5, 14) },
   },
   {
     // Illustrated plans: the walls and roofs of every building, town walls, towers and trees,
@@ -344,7 +363,7 @@ export const SETTLEMENT_LAYERS: LayerSpecification[] = [
  * it replaces there (still drawn below it).
  */
 export const ILLUSTRATED_LAYERS = new Set(['ill-shadow', 'ill-faces']);
-export const PLAIN_ONLY_LAYERS = new Set(['plan-walls', 'plan-towers', 'plan-trees', 'plan-sails']);
+export const PLAIN_ONLY_LAYERS = new Set(['plan-walls', 'plan-towers', 'plan-trees', 'plan-sails', 'plan-canopy', 'plan-trunk', 'plan-platform', 'plan-walkways']);
 
 /** City, town and village markers; they fade out as the plans fade in. */
 export const MARKER_LAYERS: LayerSpecification[] = [

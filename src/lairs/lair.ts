@@ -416,7 +416,7 @@ function buildCave(site: LairSite): LairMap {
 
 const CAVE_HOOKS = [
   'Shepherds have lost sheep near the cave mouth, and last night a shepherd boy as well.',
-  'A dwarf prospector swears there is a vein of mithril somewhere in the deepest chamber.',
+  'A dwarf prospector swears there is a vein of starsilver somewhere in the deepest chamber.',
   'The cave was a smugglers\' store in the old days; their last cargo was never collected.',
   'Villagers leave offerings at the mouth to keep whatever lives inside from coming out.',
   'A hunting party chased a wounded beast into the cave. Only their dogs came back.',

@@ -15,20 +15,20 @@ export const DWARVEN: TemplateBundle = {
     id: 'dwarven',
     likes: (c) => (c.heightM > 900 ? 1.4 : 0.15) * near(c.temp, -6, 16, 6),
     starts: [
-      'Khaz', 'Dur', 'Bar', 'Grun', 'Thra', 'Kar', 'Zir', 'Mor', 'Bal', 'Dol', 'Gim', 'Thor', 'Bor', 'Nar', 'Dwal', 'Krag', 'Ad', 'Bif', 'Bru', 'Dag',
-      'Dain', 'Fal', 'Fun', 'Gar', 'Gund', 'Hor', 'Kel', 'Kil', 'Lok', 'Mag', 'Mun', 'Nor', 'Orn', 'Rur', 'Skor', 'Tor', 'Ul', 'Vor', 'Zar', 'Bram',
-      'Dor', 'Gor', 'Har', 'Khel', 'Thur', 'Grim', 'Brok', 'Durn', 'Barg', 'Drak', 'Durg', 'Kark', 'Khad', 'Marn', 'Nog', 'Thror', 'Vra', 'Zhur',
+      'Khav', 'Dur', 'Bar', 'Grun', 'Thra', 'Kar', 'Zir', 'Mor', 'Bal', 'Dol', 'Gev', 'Thor', 'Bor', 'Nar', 'Dvar', 'Krag', 'Ad', 'Brin', 'Bru', 'Dag',
+      'Dav', 'Fal', 'Fun', 'Gar', 'Gund', 'Hor', 'Kel', 'Kil', 'Lok', 'Mag', 'Mun', 'Nor', 'Orn', 'Rur', 'Skor', 'Tor', 'Ul', 'Vor', 'Zar', 'Bram',
+      'Dor', 'Gor', 'Har', 'Khel', 'Thur', 'Grim', 'Brok', 'Durn', 'Barg', 'Drak', 'Durg', 'Kark', 'Khad', 'Marn', 'Nog', 'Thrun', 'Vra', 'Zhur',
       'Brak', 'Dran', 'Gath', 'Mhor', 'Nal', 'Rha', 'Thrak', 'Urd', 'Zul',
     ],
     mids: ['a', 'u', 'in', 'ak', 'ar', 'or', 'um', 'ek', 'il', 'ur', 'ok', 'al', 'ag'],
     ends: [
-      'dum', 'grim', 'dur', 'hold', 'dek', 'zad', 'gol', 'rak', 'mir', 'bek', 'dun', 'thar', 'ghor', 'dar', 'gund', 'heim', 'kar', 'lok', 'mund',
-      'nar', 'rim', 'tok', 'vald', 'zul', 'baraz', 'bul', 'gar', 'hal', 'kun', 'mek', 'nul', 'thrum', 'dor', 'grund', 'deep', 'forge', 'delve',
-      'hall', 'peak', 'khaz', 'gard', 'strik', 'mord', 'gurn', 'zan', 'vaz', 'dul', 'khul', 'tar', 'kagg', 'vrak', 'zund', 'thrak', 'drak',
+      'dum', 'grim', 'dur', 'hold', 'dek', 'zak', 'gol', 'rak', 'mir', 'bek', 'dun', 'thar', 'ghor', 'dar', 'gund', 'heim', 'kar', 'lok', 'mund',
+      'nar', 'rim', 'tok', 'vald', 'zul', 'barak', 'bul', 'gar', 'hal', 'kun', 'mek', 'nul', 'thrum', 'dor', 'grund', 'deep', 'forge', 'delve',
+      'hall', 'peak', 'khav', 'gard', 'strik', 'mord', 'gurn', 'zan', 'vaz', 'dul', 'khul', 'tar', 'kagg', 'vrak', 'zund', 'thrak', 'drak',
     ],
     midChance: 0.35,
     roots: [
-      'Iron', 'Stone', 'Hammer', 'Anvil', 'Deep', 'Grey', 'Gold', 'Copper', 'Flint', 'Forge', 'Coal', 'Granite', 'Silver', 'Mithril', 'Ruby',
+      'Iron', 'Stone', 'Hammer', 'Anvil', 'Deep', 'Grey', 'Gold', 'Copper', 'Flint', 'Forge', 'Coal', 'Granite', 'Silver', 'Adamant', 'Ruby',
       'Garnet', 'Slate', 'Basalt', 'Obsidian', 'Bronze', 'Pick', 'Axe', 'Shield', 'Beard', 'Ember', 'Ash', 'Black', 'Red', 'High', 'Low', 'Under',
       'Rune', 'Gem', 'Lode', 'Tin', 'Salt', 'Quartz', 'Forged', 'Gloom', 'Frost', 'Ochre', 'Pyrite', 'Boulder', 'Magma', 'Smelt', 'Slag', 'Sledge',
       'Vein', 'Strata', 'Crag', 'Vault',
@@ -58,20 +58,20 @@ export const DWARVEN: TemplateBundle = {
     forms: { def: 'ul', poss: 'az' },
     masc: ['in', 'ur', 'ak', 'grim', 'dur', 'rik', 'ok'], fem: ['a', 'dis', 'ra', 'hild', 'ria', 'run'],
     demonym: ['ish', 'en', 'ic'],
-    seeds: { hall: 'dum', hold: 'kard', deep: 'durn', stone: 'gor', iron: 'barak', gold: 'khaz', mountain: 'zarak', gate: 'drek', axe: 'kuld', hammer: 'mor', forge: 'brund' },
+    seeds: { hall: 'dum', hold: 'kard', deep: 'durn', stone: 'gor', iron: 'barak', gold: 'khav', mountain: 'zarak', gate: 'drek', axe: 'kuld', hammer: 'mor', forge: 'brund' },
   },
   given: [
     [
-      'Thrand', 'Borin', 'Durgan', 'Baldrek', 'Gromli', 'Hargrim', 'Korin', 'Murdin', 'Nordri', 'Orsik',
-      'Rurik', 'Thordak', 'Ulfgar', 'Vondal', 'Brundar', 'Dagnal', 'Frar', 'Gimlur', 'Harbek', 'Kildrak',
-      'Morgran', 'Torvek', 'Thorin', 'Balin', 'Dwalin', 'Gloin', 'Oin', 'Bifur', 'Bofur', 'Bombur',
-      'Dain', 'Thror', 'Fundin', 'Kili', 'Fili', 'Nali', 'Narvi', 'Garmur', 'Durnir', 'Brimir',
-      'Brokk', 'Eitri', 'Sindri', 'Dvalin', 'Thorgrun', 'Kazadur', 'Kragur', 'Strakeln', 'Barundar', 'Balthor'
+      'Thrand', 'Borin', 'Durgan', 'Baldrek', 'Gromli', 'Hargrim', 'Korin', 'Murdin', 'Nordri', 'Ostvar',
+      'Rurik', 'Thordak', 'Ulmrek', 'Vorgal', 'Brundar', 'Dagnal', 'Frar', 'Gundrel', 'Haldrek', 'Kelgrum',
+      'Mordak', 'Torvek', 'Thrangar', 'Baldrun', 'Dovrik', 'Gruvald', 'Ostrek', 'Brekkar', 'Bodrun', 'Bramgar',
+      'Dornak', 'Throvald', 'Fendrik', 'Kordal', 'Fennrik', 'Nali', 'Norvak', 'Garmur', 'Durnir', 'Brimir',
+      'Brokk', 'Eitri', 'Sindri', 'Dvalin', 'Thorgrun', 'Kargrund', 'Kragur', 'Strakeln', 'Barundar', 'Balthor'
     ],
     [
-      'Dagny', 'Helja', 'Kathra', 'Mardred', 'Riswynn', 'Torbera', 'Vistra', 'Amber', 'Bardryn', 'Dis',
-      'Eldeth', 'Gunnloda', 'Hlin', 'Liftrasa', 'Sannl', 'Torgga', 'Gurdis', 'Ilde', 'Kristryd', 'Kila',
-      'Nalred', 'Tamok', 'Kragra', 'Tordis', 'Dwanil', 'Finellen', 'Vondra', 'Brakka', 'Gimra', 'Throra',
+      'Dagny', 'Hedra', 'Kalvra', 'Mordra', 'Rognvi', 'Tordrun', 'Vigdra', 'Askra', 'Brundra', 'Dorna',
+      'Eldrun', 'Gundla', 'Hlin', 'Lifdra', 'Sennrid', 'Tovra', 'Gerdrun', 'Ilvra', 'Karstrid', 'Kila',
+      'Nalred', 'Tamok', 'Kragra', 'Tordis', 'Dunvra', 'Fendra', 'Vondra', 'Brakka', 'Grimvra', 'Throra',
       'Kora', 'Runnal', 'Tasma', 'Audhild', 'Freyde', 'Brida', 'Hulda', 'Loda', 'Skadi', 'Thora'
     ],
   ],

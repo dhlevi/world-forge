@@ -461,6 +461,100 @@ export interface IllustrateSite {
   koppen: number;
 }
 
+// ---- Elven tree towns (towns/treetown.ts) ------------------------------------------------------
+
+const LEAF = ['#6f8c52', '#7a9658', '#668650', '#7f9a5c'];
+const PLANK = '#a68a62';
+
+/** A lumpy round of leaves at height `z` about (cx, cy). */
+function leaves(P: Painter, cx: number, cy: number, rad: number, z: number, col: string, ol: string, k: number, seed: number): void {
+  const pts: V[] = [];
+  for (let i = 0; i < 13; i++) {
+    const t = (i / 13) * Math.PI * 2, wob = 1 + 0.12 * Math.sin(t * 3 + seed) + 0.06 * Math.cos(t * 5 + seed * 1.3);
+    pts.push([cx + Math.cos(t) * rad * wob, cy + Math.sin(t) * rad * wob, z]);
+  }
+  P.face(pts, col, k, ol);
+}
+
+/** The local ring of a polygon feature, its centre and mean radius. */
+function roundOf(p: Pt[]): { c: Pt; r: number } {
+  const c: Pt = [p.reduce((s, v) => s + v[0], 0) / p.length, p.reduce((s, v) => s + v[1], 0) / p.length];
+  return { c, r: p.reduce((s, v) => s + dist(v, c), 0) / p.length };
+}
+
+/** A great tree with a tree home built against it: a tall trunk and a broad crown above the roofs. */
+function greatTree(P: Painter, c: Pt, R: number, seed: number): Solid {
+  const r = mulberry32(hashString(`great#${c[0].toFixed(1)},${c[1].toFixed(1)}`));
+  const green = pick(r, LEAF);
+  const tw = Math.max(0.9, R * 0.14), z0 = 7 + r() * 4;
+  P.shadow(circle([c[0] + R * 0.9, c[1] - R * 0.3], R * 0.95, 12));
+  return {
+    front: c[1] - R * 0.3,
+    draw: (key) => {
+      // The trunk, flaring at its roots.
+      P.face([[c[0] - tw * 1.6, c[1], 0], [c[0] + tw * 1.6, c[1], 0], [c[0] + tw, c[1], 1.2], [c[0] + tw * 0.8, c[1], z0 + R * 0.3], [c[0] - tw * 0.8, c[1], z0 + R * 0.3], [c[0] - tw, c[1], 1.2]], '#7a5c40', key(0));
+      P.face([[c[0] + tw * 0.3, c[1], z0 * 0.4], [c[0] + tw * 0.7, c[1], z0 * 0.4], [c[0] + tw * 2.6, c[1], z0 + R * 0.2], [c[0] + tw * 2.2, c[1], z0 + R * 0.25]], '#6d5139', key(1));
+      const cz = z0 + R * 0.45;
+      leaves(P, c[0], c[1] + R * 0.15, R, cz, green, '#4d5e36', key(2), seed);
+      leaves(P, c[0] - R * 0.35, c[1] - R * 0.05, R * 0.55, cz + 0.6, shade(green, 1.12), shade(green, 1.12), key(3), seed + 1);
+      leaves(P, c[0] + R * 0.3, c[1] + R * 0.35, R * 0.5, cz + 1.2, shade(green, 1.06), shade(green, 1.06), key(4), seed + 2);
+    },
+  };
+}
+
+/** A house on a platform high in a great tree: trunk, crown, platform, the house, and leaves in front. */
+function treetop(P: Painter, p: Pt[], z: number, crownR: number, o: Opts, seed: number): Solid {
+  const { c, r: hr } = roundOf(p);
+  const r = mulberry32(hashString(`top#${c[0].toFixed(1)},${c[1].toFixed(1)}`));
+  const green = pick(r, LEAF);
+  const tw = Math.max(1, crownR * 0.13);
+  const up = (q: Pt[], dz: number): Pt[] => q.map((v) => [v[0], v[1] + dz * ILL_K] as Pt);
+  P.shadow(circle([c[0] + crownR * 0.9 + z * 0.25, c[1] - crownR * 0.3], crownR * 0.95, 12));
+  const plat = circle(c, hr + 1.4, 10);
+  const house = polySolid(P, up(p, z), o);
+  const deck = polySolid(P, up(plat, z - 0.6), { h: 0.6, pitch: 0, roof: 'flat', mat: { roof: PLANK, wall: shade(PLANK, 0.8) }, jit: 1 });
+  return {
+    front: c[1] - crownR * 0.3,
+    draw: (key) => {
+      P.face([[c[0] - tw * 1.6, c[1], 0], [c[0] + tw * 1.6, c[1], 0], [c[0] + tw, c[1], 1.2], [c[0] + tw * 0.8, c[1], z], [c[0] - tw * 0.8, c[1], z], [c[0] - tw, c[1], 1.2]], '#7a5c40', key(0));
+      // A ladder up the trunk.
+      P.face([[c[0] - tw * 0.35, c[1] - tw, 0], [c[0] - tw * 0.15, c[1] - tw, 0], [c[0] - tw * 0.15, c[1] - tw, z], [c[0] - tw * 0.35, c[1] - tw, z]], '#5d4733', key(1));
+      // The crown behind and about the platform.
+      leaves(P, c[0], c[1] + crownR * 0.25, crownR, z - 1.2, green, '#4d5e36', key(2), seed);
+      leaves(P, c[0] - crownR * 0.4, c[1] + crownR * 0.45, crownR * 0.55, z + 1.5, shade(green, 1.1), shade(green, 1.1), key(3), seed + 1);
+      leaves(P, c[0] + crownR * 0.45, c[1] + crownR * 0.4, crownR * 0.5, z + 2.2, shade(green, 1.05), shade(green, 1.05), key(4), seed + 2);
+      deck.draw((i) => key(10 + i));
+      house.draw((i) => key(40 + i));
+      // Boughs in front, below the deck.
+      leaves(P, c[0] - crownR * 0.5, c[1] - crownR * 0.55, crownR * 0.42, z - 2.6, shade(green, 0.95), '#4d5e36', key(90), seed + 3);
+      leaves(P, c[0] + crownR * 0.55, c[1] - crownR * 0.5, crownR * 0.38, z - 3.2, shade(green, 1.02), '#4d5e36', key(91), seed + 4);
+    },
+  };
+}
+
+/** A walkway of planks hung between two platforms, with its rope rails. */
+function walkway(P: Painter, a: Pt, b: Pt, za: number, zb: number): Solid {
+  const L = dist(a, b) || 1;
+  const nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L;
+  const w = 0.6;
+  const sag = Math.min(1.6, L * 0.05);
+  const pt = (t: number, side: number, dz = 0): V => [a[0] + (b[0] - a[0]) * t + nx * w * side, a[1] + (b[1] - a[1]) * t + ny * w * side, za + (zb - za) * t - Math.sin(t * Math.PI) * sag + dz];
+  return {
+    front: Math.min(a[1], b[1]) - 0.2,
+    draw: (key) => {
+      const n = 6;
+      for (let i = 0; i < n; i++) {
+        const t0 = i / n, t1 = (i + 1) / n;
+        P.face([pt(t0, -1), pt(t1, -1), pt(t1, 1), pt(t0, 1)], shade(PLANK, i % 2 ? 1 : 0.92), key(i), '#5d4733');
+      }
+      for (const side of [-1, 1]) for (let i = 0; i < n; i++) {
+        const t0 = i / n, t1 = (i + 1) / n;
+        P.face([pt(t0, side, 1.05), pt(t1, side, 1.05), pt(t1, side, 1.2), pt(t0, side, 1.2)], '#5d4733', key(20 + i), '#5d4733');
+      }
+    },
+  };
+}
+
 /** The illustrated faces and shadows for a finished plan. */
 export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: number, site: IllustrateSite): PlanFeature[] {
   const P = new Painter(frame, ppm20);
@@ -550,6 +644,31 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
   for (const [fi, f] of features.entries()) {
     const pr = f.properties;
     const kind = pr.kind;
+    if (kind === 'canopy' && pr.tree === 'home') {
+      const { c, r: R } = roundOf(local(f));
+      solids.push(greatTree(P, c, R, (c[0] * 7 + c[1] * 3) % 10));
+      continue;
+    }
+    if (kind === 'walkway' && f.geometry.type === 'LineString') {
+      const [a, b] = f.geometry.coordinates.map((q) => frame.fromLL(q[0], q[1]));
+      solids.push(walkway(P, a, b, Number(pr.za ?? 10), Number(pr.zb ?? 10)));
+      continue;
+    }
+    if (kind === 'building' && pr.tree === 'top') {
+      const p = local(f);
+      if (p.length < 3) continue;
+      const bid = String(pr.bid ?? '');
+      const r = mulberry32(hashString(`ill#${bid}`));
+      const st: BuildStyle | null = typeof pr.cul === 'string' ? buildStyle(pr.cul, 'cottage') : null;
+      // Roofed with bark shingles, moss or leaves, to sit among the boughs.
+      const roof = shade(pick(r, ['#7d6550', '#8a7350', '#6f7d55', '#86704f']), 0.9 + r() * 0.14);
+      void st;
+      const wall = shade(st?.colour?.[0] ?? '#e2dccb', 0.95 + r() * 0.07);
+      const { r: hr } = roundOf(p);
+      const o: Opts = { h: 3 + r() * 0.6, pitch: 1.15, roof: 'cone', mat: { roof, wall }, jit: 0.93 + r() * 0.14, extra: bid ? { bid } : undefined };
+      solids.push(treetop(P, p, Number(pr.z ?? 11), hr + 4.5 + r() * 2.5, o, r() * 10));
+      continue;
+    }
     if (kind === 'building') {
       if (pr.burrow) continue;
       const p = local(f);
@@ -624,6 +743,13 @@ export function illustrate(features: PlanFeature[], frame: LocalFrame, ppm20: nu
         o = { ...o, h: 4, pitch: 1.2 };
       } else if (role === 'delvegate') {
         o = { ...o, h: 9, roof: 'flat', crenel: true, mat: { roof: '#9d9586', wall: stone } };
+      }
+      // A tree home, rounded about its tree: a low cone or dome of shingles or leaves.
+      if (pr.tree === 'home') {
+        o.roof = 'cone';
+        o.pitch = 0.7;
+        o.mat = { ...o.mat, roof: shade(pick(r, ['#7d6550', '#8a7350', '#6f7d55', '#86704f', o.mat.roof]), 0.9 + r() * 0.14) };
+        o.h = Math.min(o.h, 4.2);
       }
       // Shadows fall to the east, a little south, by the building's height.
       const sh = o.h * 0.4;

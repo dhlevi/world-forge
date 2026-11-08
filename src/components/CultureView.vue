@@ -10,6 +10,8 @@ import { numberWord, writable } from '../lang/numbers';
 import { speechOf, translateText } from '../lang/translate';
 import { glyphSvg, glyphsSvg, scriptOf, sigilSvg, textSvg } from '../lang/script';
 import { cultureInfo } from '../lore/culture';
+import { lookOf } from '../people/appearance';
+import { sketchSvg } from '../people/sketch';
 import { fmtPeople } from '../lore/realm';
 import { armsImage } from '../heraldry/draw';
 import { currentLore } from './realm-lore';
@@ -21,7 +23,7 @@ import { currentLore } from './realm-lore';
  * in the sister tongues), its script (the letters or signs, words written in it, and sigils), a
  * dictionary and a box that translates English into it (written in the script as well).
  */
-type Tab = 'overview' | 'sounds' | 'grammar' | 'writing' | 'family' | 'dictionary' | 'translate';
+type Tab = 'overview' | 'look' | 'sounds' | 'grammar' | 'writing' | 'family' | 'dictionary' | 'translate';
 const tab = ref<Tab>('overview');
 const query = ref('');
 const phrase = ref('The old king rules the great city.');
@@ -38,11 +40,14 @@ watch(openCulture, () => {
 });
 watch(world, () => (openCulture.value = null));
 
-const TABS: [Tab, string][] = [['overview', 'Overview'], ['sounds', 'Sounds'], ['grammar', 'Grammar'], ['writing', 'Writing'], ['family', 'Family'], ['dictionary', 'Dictionary'], ['translate', 'Translate']];
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['look', 'Appearance'], ['sounds', 'Sounds'], ['grammar', 'Grammar'], ['writing', 'Writing'], ['family', 'Family'], ['dictionary', 'Dictionary'], ['translate', 'Translate']];
 const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 const units = computed(() => world.value?.politics.units ?? []);
 const arms = (id: number) => armsImage(units.value[id].arms, 16, `u${id}`);
 
+/** How the people look: three figures sketched, and the description. */
+const look = computed(() => (c.value && world.value ? lookOf(world.value.raster.seed, c.value) : null));
+const lookSvg = computed(() => (look.value && c.value ? sketchSvg(look.value, `c${c.value.index}`, 420) : ''));
 const cons = computed(() => (L.value ? consonantChart(L.value) : null));
 const vows = computed(() => (L.value ? vowelChart(L.value) : null));
 const notes = computed(() => (L.value ? grammarNotes(L.value) : []));
@@ -210,6 +215,10 @@ function showHome(): void {
         <p class="note">Grown from the familiar {{ info?.templateName }} template (after {{ info?.after }}); its language has drifted {{ Math.round((L?.drift ?? 0) * 100) }}% from it.</p>
       </section>
 
+      <section v-else-if="tab === 'look' && look">
+        <div class="sketch" v-html="lookSvg" />
+        <p v-for="(t, i) in look.text" :key="i" class="look">{{ t }}</p>
+      </section>
       <section v-else-if="tab === 'sounds' && L">
         <p>Syllables: <b>{{ L.syllableStructure() }}</b> · stress: {{ L.stress === 'none' ? 'even (no fixed stress)' : `${L.stress} syllable` }}<template v-if="L.tones">, with {{ L.tones }} tones</template><template v-if="L.harmony">; vowel harmony (a word's vowels are all front or all back)</template>.</p>
         <h3>Consonants</h3>
@@ -675,5 +684,18 @@ textarea {
 }
 .nums td.g {
   white-space: nowrap;
+}
+.sketch {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 4px;
+}
+.sketch :deep(svg) {
+  max-width: 100%;
+  height: auto;
+}
+p.look {
+  margin: 6px 0;
+  line-height: 1.45;
 }
 </style>

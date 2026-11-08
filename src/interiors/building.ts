@@ -52,7 +52,10 @@ export function buildingView(f: PlanFeature, seed: string): BuildingView | null 
     burrow: !!p.burrow,
   });
   const ctx = String(p.ctx ?? '');
-  const view: BuildingView = { d, frame, place: PLACES[ctx] ?? (p.tier === 'city' ? 'in the city' : 'in town') };
+  const town = PLACES[ctx] ?? (p.tier === 'city' ? 'in the city' : 'in town');
+  // An elven tree town's houses (towns/treetown.ts).
+  const place = p.tree === 'top' ? `high in the boughs of a great tree, ${p.z ?? 11} m up, ${town}` : p.tree === 'home' ? `built against the trunk of a great tree, ${town}` : town;
+  const view: BuildingView = { d, frame, place };
   cache.set(key, view);
   if (cache.size > 200) cache.delete(cache.keys().next().value!);
   return view;
