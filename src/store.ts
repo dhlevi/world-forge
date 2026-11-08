@@ -103,6 +103,8 @@ export const openCulture = shallowRef<number | null>(null);
 export const openFaith = shallowRef<number | null>(null);
 /** The organisation whose window is open (its key, lore/orders.ts). */
 export const openOrder = shallowRef<string | null>(null);
+/** The town whose life (people, sanitation, crime, trade) is shown, by settlement id. */
+export const openTown = shallowRef<string | null>(null);
 /** The realm of the Underworld whose window is open (an index into `underworld.realms`). */
 export const openDeepRealm = shallowRef<number | null>(null);
 /** The faith map's key: each faith shown, with its colour. */

@@ -17,6 +17,7 @@ import OldWorldLegend from './components/OldWorldLegend.vue';
 import MapKey from './components/MapKey.vue';
 import DeepRealmView from './components/DeepRealmView.vue';
 import OrderView from './components/OrderView.vue';
+import TownView from './components/TownView.vue';
 import { regenerate } from './store';
 
 onMounted(regenerate);
@@ -37,6 +38,7 @@ onMounted(regenerate);
   <FaithView />
   <DeepRealmView />
   <OrderView />
+  <TownView />
   <DwellingView />
   <LairView />
   <DungeonView />

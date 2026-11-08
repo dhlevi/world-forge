@@ -10,6 +10,8 @@ export interface BuildingView {
   frame: LocalFrame;
   /** Short description of where the building stands. */
   place: string;
+  /** Who lives there (people/residents.ts), added when the building is opened. */
+  residents?: import('../people/residents').Household[];
 }
 
 const PLACES: Record<string, string> = {

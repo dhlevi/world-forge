@@ -21,7 +21,11 @@ const d = computed(() => view.value?.d ?? null);
 const tabs = computed(() => [
   ...(d.value?.floors.map((f, i) => ({ id: i, label: f.name })) ?? []),
   { id: -1, label: 'Exterior' },
+  ...(view.value?.residents ? [{ id: -2, label: view.value.residents.length ? 'Residents' : 'Residents (none)' }] : []),
 ]);
+const residents = computed(() => view.value?.residents ?? []);
+const MEANS_TEXT: Record<string, string> = { destitute: 'destitute', poor: 'poor', middling: 'of middling means', comfortable: 'comfortably off', rich: 'rich' };
+const cap = (x: string) => x.charAt(0).toUpperCase() + x.slice(1);
 const subtitle = computed(() => {
   if (!d.value) return '';
   const w = d.value.nx * d.value.cw, h = d.value.ny * d.value.ch;
@@ -42,7 +46,7 @@ watch([tab, labels, grid, zoom, pan], () => nextTick(() => draw()), { deep: true
 /** Draws the floor or exterior at the zoom and pan (or, with `whole`, all of it, for a download). */
 function draw(whole = false): void {
   const cv = canvas.value, st = stage.value, dw = d.value;
-  if (!cv || !st || !dw) return;
+  if (!cv || !st || !dw || tab.value === -2) return;
   const dpr = window.devicePixelRatio || 1;
   const W = st.clientWidth, H = st.clientHeight;
   cv.width = Math.round(W * dpr);
@@ -197,7 +201,26 @@ watch(stage, (el, old) => {
         {{ t.label }}
       </button>
     </nav>
-    <div ref="stage" class="stage">
+    <div v-if="tab === -2" class="residents">
+      <p v-if="!residents.length" class="dim">No one lives here: it stands empty, or its keepers live elsewhere.</p>
+      <section v-for="(h, i) in residents" :key="i" class="household">
+        <h3>{{ cap(h.name) }} <span class="dim">· {{ MEANS_TEXT[h.means] }}</span></h3>
+        <table>
+          <tr v-for="(p, k) in h.members" :key="k">
+            <td class="who"><b>{{ p.name }}</b><small class="dim"> {{ p.female ? '♀' : '♂' }} {{ p.age }}</small></td>
+            <td>{{ p.role === p.trade ? cap(p.role) : `${cap(p.role)}, ${p.trade}` }}</td>
+            <td class="dim">{{ cap(p.people.replace(/^the /, '')) }}</td>
+            <td class="dim">{{ p.traits.join(', ') }}</td>
+          </tr>
+        </table>
+        <p v-if="h.more" class="dim">And {{ h.more }} more.</p>
+        <template v-for="(p, k) in h.members" :key="`n${k}`">
+          <p v-if="p.note" class="note">{{ p.given }} {{ p.note }}.</p>
+          <p v-for="(t, j) in p.ties" :key="`t${j}`" class="tie">{{ p.given }}: {{ t.text }}</p>
+        </template>
+      </section>
+    </div>
+    <div v-show="tab !== -2" ref="stage" class="stage">
       <canvas
         ref="canvas" @wheel="onWheel" @mousemove="onCanvasMove"
         @pointerdown="onPointerDown" @pointermove="onPointerMove" @pointerup="onPointerUp" @pointercancel="onPointerUp"
@@ -289,6 +312,46 @@ button:hover {
   position: relative;
   flex: 1;
   min-height: 0;
+}
+.residents {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 18px 24px;
+  font-size: 15px;
+}
+.household {
+  margin-bottom: 16px;
+  max-width: 900px;
+}
+.household h3 {
+  margin: 6px 0 4px;
+  font-size: 17px;
+  font-weight: normal;
+  font-style: italic;
+  border-bottom: 1px solid rgba(43, 36, 32, 0.2);
+}
+.household table {
+  border-collapse: collapse;
+  width: 100%;
+}
+.household td {
+  padding: 2px 10px 2px 0;
+  vertical-align: top;
+}
+.household .who {
+  white-space: nowrap;
+}
+.dim {
+  opacity: 0.7;
+}
+.note,
+.tie {
+  margin: 3px 0;
+  font-size: 14px;
+}
+.note {
+  font-style: italic;
 }
 canvas {
   position: absolute;

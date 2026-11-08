@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, ref } from 'vue';
-import { flyTarget, openLair, openOrder, openRealm, store, world } from '../store';
+import { flyTarget, openLair, openOrder, openRealm, openTown, store, world } from '../store';
 import { currentOrders } from './orders';
 import { HOLD_LABEL } from '../lore/orders';
 import { deepSite } from './under-style';
@@ -37,6 +37,8 @@ interface Line {
   old?: string;
   /** A delve's deep road: the hall below (clicking opens it on the Underworld layer), and its dealings with the realm beside it. */
   deep?: { label: string; node: number };
+  /** A town or city: its id, for the town's life window. */
+  town?: string;
   /** Organisations seated here or keeping a chapter house here (each opens its window); secret ones are not shown. */
   orders?: { key: string; label: string }[];
 }
@@ -139,6 +141,7 @@ const info = computed<Line | null>(() => {
         arms: a, armsKey: `t${s.id}`, crumbs: crumbs(chain, 0), chain,
         ...(s.delve && s.deepTo ? { deep: deepLine(s.id, s.deepTo.name, s.deepTies) } : {}),
         orders: ordersIn(s.id),
+        town: s.id,
       };
     }
     if (store.here) {
@@ -275,6 +278,7 @@ function goDeep(node: number): void {
         <div v-if="info.orders?.length" class="sub deep">
           <template v-for="(q, i) in info.orders" :key="q.key"><template v-if="i"> · </template><a href="#" title="Open its window" @click.stop.prevent="openOrder = q.key">{{ q.label }}</a></template>
         </div>
+        <div v-if="info.town" class="sub deep"><a href="#" title="Its people, sanitation, crime and trade" @click.stop.prevent="openTown = info.town ?? null">Town life ▸</a></div>
         <div v-if="info.deep" class="sub deep"><a href="#" title="Open the hall below on the Underworld layer" @click.stop.prevent="goDeep(info.deep.node)">{{ info.deep.label }}</a></div>
       </div>
       <button v-if="detail.length" class="more" :title="open ? 'Hide the hierarchy' : 'Show the hierarchy'" @click.stop="open = !open">{{ open ? '▴' : '▾' }}</button>

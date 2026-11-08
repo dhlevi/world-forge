@@ -83,6 +83,11 @@ const MOTTO = [
   'Shielding the Innocents', 'We Guard the Gates', 'Standing in the Gap', 'The Watcher Never Sleeps', 'Clear Skies, Cold Steel', 'First to Answer',
 ];
 
+/** A family name in the cultures that put it first (and for the households of towns). */
+export function familyNameOf(ci: number, rnd: Rng): string {
+  return family(CULTURES[ci] ?? CULTURES[0], rnd);
+}
+
 /** A family name in the cultures that put it first. */
 function family(c: (typeof CULTURES)[number], rnd: Rng): string {
   if (c.language) return c.language.familyName(rnd);
