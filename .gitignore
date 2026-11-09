@@ -4,3 +4,4 @@ out/
 backups/
 .DS_Store
 tuning/data/
+packages/core/tuning/data/

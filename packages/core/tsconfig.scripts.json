@@ -1,0 +1,6 @@
+{
+  // The Node scripts (previews, the headless test, climate tuning) that use the core.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node"] },
+  "include": ["scripts/**/*.ts", "tuning/**/*.ts"]
+}

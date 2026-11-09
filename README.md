@@ -4,14 +4,16 @@ Demo: https://dhlevi.github.io/world-forge/
 
 A browser-based procedural fantasy world generator. You start with a whole planet on a zoomable globe (or flat map) and can zoom in through roads and villages to the streets and buildings of individual towns. Everything runs client-side, with no server.
 
-Stack: TypeScript, Vue 3, Vite, MapLibre GL JS. Node.js runs the tooling and the headless preview script.
+Stack: TypeScript, Vue 3, Vite, MapLibre GL JS. The project is two npm workspaces: **`@worldforge/core`** (`packages/core`), the generator itself, which runs anywhere (browsers, workers, Node, a game) with no browser, UI or map dependencies, and **`@worldforge/atlas`** (`apps/atlas`), the browser map built on it. Node.js runs the tooling, the headless test and the preview script.
 
 ## Quick start
 
 ```sh
 npm install
-npm run dev        # http://localhost:5173
-npm run build      # type-check + production build to dist/
+npm run dev        # the atlas, http://localhost:5173
+npm run build      # type-check both packages + production build to apps/atlas/dist/
+npm run typecheck  # the core without DOM or Node types, then the atlas
+npm run test:core -- --seed=forge --res=512   # a whole world made headless in Node, with its fingerprint
 npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # headless PNGs in out/ (tiles use the first layer)
 ```
 
@@ -19,7 +21,7 @@ npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # head
 
 `.github/workflows/deploy-pages.yml` builds the site and publishes it to GitHub Pages on every push to `main` (or by hand: **Actions › Deploy to GitHub Pages › Run workflow**). Once, in the repository's **Settings › Pages**, set **Source** to **GitHub Actions**. The site is then at `https://<owner>.github.io/<repository>/` (for this repository, https://dhlevi.github.io/world-forge/).
 
-Pages serves a project site from `/<repository>/`, so the workflow builds with `BASE_PATH=/<repository>/`, which `vite.config.ts` uses as Vite's `base`. Local builds default to `/`; to test a Pages build locally, run `BASE_PATH=/world-forge/ npm run build && BASE_PATH=/world-forge/ npm run serve` and open http://localhost:4173/world-forge/.
+Pages serves a project site from `/<repository>/`, so the workflow builds with `BASE_PATH=/<repository>/`, which `apps/atlas/vite.config.ts` uses as Vite's `base`. Local builds default to `/`; to test a Pages build locally, run `BASE_PATH=/world-forge/ npm run build && BASE_PATH=/world-forge/ npm run serve` and open http://localhost:4173/world-forge/.
 
 ## Controls
 
@@ -417,44 +419,76 @@ Dungeons are a grid of 5 ft squares (`core.ts`) carved into rooms and corridors,
 
 ## Project structure
 
+Paths such as `src/gen/` elsewhere in this README are relative to the package that holds them: the generator's folders are in `packages/core/src/`, the atlas's in `apps/atlas/src/`.
+
 ```
-index.html
-src/
-  main.ts, App.vue, store.ts, url-params.ts (settings in the page address), style.css
-  components/   MapView.vue, RealmView.vue (realm details), CultureView.vue (culture and language window), FaithView.vue (faith window), FaithLegend.vue (faith map key), MapKey.vue (key to the map symbols), under-style.ts (Underworld layer), RelationsLegend.vue (key to an open realm's colours), DeepRealmView.vue (realm of the deep), OrderView.vue and orders.ts (organisations' window), OldWorldLegend.vue (Old & New World key and figures), realm-lore.ts, LairView.vue (cave / grove view), DungeonView.vue (dungeon view with key), pan-zoom.ts (zoom and pan for the map viewers), SearchBar.vue (place search), LocationTitle.vue (where-am-I cartouche), cartouche.ts and IllusFrame.vue (illustrated plans' title cartouches and border), town-arms.ts (towns' arms), map-style.ts (settlement layer styles), label-style.ts (lettering layers), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view)
-  gen/          world.ts (pipeline), tectonics.ts, climate.ts, ocean.ts, koppen.ts, advect.ts, streamlines.ts,
-                hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), oldworld.ts (Old and New World), colonies.ts (New World colonies), features.ts (feature detection and naming), politics.ts (baronies to empires, governments, leagues, borders), detail.ts (sub-grid terrain sampler),
-                special.ts (volcanoes, ash, geysers, glaciers, mushroom forests, canyons, cliffs), prisons.ts (prison keeps and prison forts), underworld.ts (the Underworld's caverns, tunnels and ways in), deep-peoples.ts (peoples, cities, realms and horrors of the deep), biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
-  names/        bundle.ts and bundles/ (one file per culture template, including the four peoples of the deep), cultures.ts (templates and world cultures), world-cultures.ts (building a world's cultures), traits.ts (ethos, traditions, customs), names.ts (name bank), culture-map.ts
-  lang/         language.ts (generated languages), templates.ts (language templates), phonemes.ts (IPA), lexicon.ts (core vocabulary), translate.ts, sound-change.ts (sound changes for language families), describe.ts (charts, grammar notes, sound changes and cognates), script.ts (writing systems, numerals and sigils), pictographs.ts (hieroglyphic signs), numbers.ts (counting and number words), given.ts (template given names, from the bundles), text.ts
-  render/       tiles.ts (tile + equirect renderer), fantasy.ts (fantasy style + map symbols), palette.ts
-  heraldry/     arms.ts (coats of arms: generation, blazon), draw.ts (drawing)
-  lore/         world.ts (calendar, houses, wars, relations, claims, trade), realm.ts (realm details: rulers, chronicle, people), faiths.ts (generated faiths, doctrines, tenets, spread), myths.ts (creation, gods, end and legends), orders.ts (the world's organisations), scripture.ts (verses), faith-heads.ts (heads of faith), emblem.ts (holy emblems), economy.ts, names.ts (people, houses, epithets, courts)
-  search/       index.ts (search entries, matching and ranking)
-  lairs/        lair.ts (cave and grove generator), pass.ts (mountain pass generator), deep.ts (Underworld cavern and city maps), render.ts (drawing, printable page), view.ts (map card, overlay, caches)
-  keys/         flavour.ts (creatures, traps, treasure, details and rewards for the keys)
-  dungeons/     core.ts (grid, rooms, doors, town underground), kinds.ts (mine, tower, crypt, ruin, catacomb and sewer generators), prison.ts (prison generator), hold.ts (organisations' strongholds), inmates.ts (notable inmates from the world's lore), key.ts (hooks and room key), render.ts (drawing, printable page), view.ts (map features, thumbnails)
-  interiors/    dwelling.ts (interior generator), render.ts (plan and exterior drawing), style.ts (building styles by culture), building.ts (map hover preview, cache)
-  export/       worldfile.ts (save and load), gamedata.ts (world.json, grids, towns), zip.ts (the game-data zip), readme.ts
-  people/       town.ts (town life: prosperity, sanitation, crime, peoples), residents.ts (households, members and ties), appearance.ts and sketch.ts (how each people looks)
-  nature/       habitat.ts (the country about a place), bestiary.ts (creatures), flora.ts (plants), curses.ts (curse types and rumours)
-  towns/        manager.ts (villages, tracks, plan cache), city.ts, layout.ts (city layouts), village.ts, kit.ts (village building blocks), treetown.ts (elven tree towns),
-                harbour.ts (piers, boats), naming.ts (quarters, districts, streets, notable buildings), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), illustrate.ts (the illustrated plan style and its figures), geom.ts
-  worker/       world.worker.ts, towns.worker.ts, protocol.ts
-  world/        client.ts (worker pool + map protocol), probe.ts, political.ts (political map, relations and faith map tiles)
-public/fonts/   IM Fell English (SIL Open Font License, see OFL.txt)
-scripts/        preview.ts (headless generation → PNG), png.ts
+package.json          workspaces and the scripts above
+packages/core/        @worldforge/core: the generator (no browser, UI or map dependencies)
+  src/
+    gen/          world.ts (pipeline), tectonics.ts, climate.ts, ocean.ts, koppen.ts, advect.ts, streamlines.ts,
+                  hydrology.ts, rivers.ts, river-index.ts (river distances, meanders, valley carving), settlements.ts (cities, towns, roads), oldworld.ts (Old and New World), colonies.ts (New World colonies), features.ts (feature detection and naming), politics.ts (baronies to empires, governments, leagues, borders), detail.ts (sub-grid terrain sampler),
+                  special.ts (volcanoes, ash, geysers, glaciers, mushroom forests, canyons, cliffs), prisons.ts (prison keeps and prison forts), underworld.ts (the Underworld's caverns, tunnels and ways in), deep-peoples.ts (peoples, cities, realms and horrors of the deep), biomes.ts, grid.ts, noise.ts, heap.ts, rng.ts, config.ts
+    names/        bundle.ts and bundles/ (one file per culture template, including the four peoples of the deep), cultures.ts (templates and world cultures), world-cultures.ts (building a world's cultures), traits.ts (ethos, traditions, customs), names.ts (name bank), culture-map.ts
+    lang/         language.ts (generated languages), templates.ts (language templates), phonemes.ts (IPA), lexicon.ts (core vocabulary), translate.ts, sound-change.ts (sound changes for language families), describe.ts (charts, grammar notes, sound changes and cognates), script.ts (writing systems, numerals, punctuation and sigils), pictographs.ts (hieroglyphic signs), numbers.ts (counting and number words), given.ts (template given names, from the bundles), text.ts
+    lore/         world.ts (calendar, houses, wars, relations, claims, trade), realm.ts (realm details: rulers, chronicle, people), current.ts (a world's shared lore, and the WorldData type), faiths.ts (generated faiths, doctrines, tenets, spread), myths.ts (creation, gods, end and legends), orders.ts (the world's organisations), scripture.ts (verses), faith-heads.ts (heads of faith), emblem.ts (holy emblems), economy.ts, names.ts (people, houses, epithets, courts)
+    render/       tiles.ts (tile + equirect renderer, to pixel buffers), fantasy.ts (fantasy style + map symbols), palette.ts
+    towns/        manager.ts (villages, tracks, plan cache, region plans), city.ts, layout.ts (city layouts), village.ts, kit.ts (village building blocks), treetown.ts (elven tree towns),
+                  harbour.ts (piers, boats), naming.ts (quarters, districts, streets, notable buildings), ground.ts (usable-ground fitting), terrain.ts (local height/water grid, contours), plan.ts (local frame + GeoJSON), illustrate.ts (the illustrated plan style and its figures), geom.ts
+    interiors/    dwelling.ts (interior generator), style.ts (building styles by culture), building.ts (a plan building's floor plans, cached)
+    people/       town.ts (town life: prosperity, sanitation, crime, peoples), town-context.ts (a town's context from the world and its lore), residents.ts (households, members and ties), plan-residents.ts (the households of a plan building), appearance.ts and sketch.ts (how each people looks)
+    nature/       habitat.ts (the country about a place), bestiary.ts (creatures), flora.ts (plants), curses.ts (curse types and rumours)
+    dungeons/     core.ts (grid, rooms, doors, town underground), kinds.ts (mine, tower, crypt, ruin, catacomb and sewer generators), prison.ts (prison generator), hold.ts (organisations' strongholds), inmates.ts (notable inmates from the world's lore), key.ts (hooks and room key)
+    lairs/        lair.ts (cave and grove generator), pass.ts (mountain pass generator), deep.ts (Underworld cavern and city maps)
+    heraldry/     arms.ts (coats of arms: generation, blazon)
+    keys/         flavour.ts (creatures, traps, treasure, details and rewards for the keys)
+    world/        probe.ts (what lies at a point)
+    export/       worldfile.ts (world files), gamedata.ts (world.json, grids, towns), readme.ts
+    diagnostics/  fingerprint.ts (hashes of a world, to tell whether two runs made the same one)
+    settings.ts   the generator settings, checked and snapped, and their query-string form
+    env.d.ts      the few globals the core uses (performance, console, URLSearchParams)
+  scripts/        headless.ts (a whole world in Node: npm run test:core), preview.ts (headless generation → PNG), png.ts
+  tuning/         climate tuning against Earth (see below)
+apps/atlas/           @worldforge/atlas: the browser map
+  index.html, vite.config.ts, public/fonts/ (IM Fell English and UnifrakturMaguntia, SIL Open Font License, see OFL.txt)
+  src/
+    main.ts, App.vue, store.ts, url-params.ts (settings in the page address), style.css
+    components/   MapView.vue, RealmView.vue (realm details), CultureView.vue (culture and language window), FaithView.vue (faith window), FaithLegend.vue (faith map key), MapKey.vue (key to the map symbols), under-style.ts (Underworld layer), RelationsLegend.vue (key to an open realm's colours), DeepRealmView.vue (realm of the deep), OrderView.vue and orders.ts (organisations' window), OldWorldLegend.vue (Old & New World key and figures), realm-lore.ts, LairView.vue (cave / grove view), DungeonView.vue (dungeon view with key), pan-zoom.ts (zoom and pan for the map viewers), SearchBar.vue (place search), LocationTitle.vue (where-am-I cartouche), cartouche.ts and IllusFrame.vue (illustrated plans' title cartouches and border), town-arms.ts (towns' arms), map-style.ts (settlement layer styles), label-style.ts (lettering layers), ControlPanel.vue, RangeField.vue, DwellingView.vue (interior view), TownView.vue (town life), RegionView.vue (nature)
+    interiors/    render.ts (plan and exterior drawing), preview.ts (map hover preview)
+    dungeons/     render.ts (drawing, printable page), view.ts (map features, thumbnails)
+    lairs/        render.ts (drawing, printable page), view.ts (map card, overlay, caches)
+    heraldry/     draw.ts (drawing arms)
+    search/       index.ts (search entries, matching and ranking)
+    export/       zip.ts (the game-data zip), download.ts
+    worker/       world.worker.ts, towns.worker.ts, export.worker.ts, protocol.ts
+    world/        client.ts (worker pool + map protocol), political.ts (political map, relations and faith map tiles)
 ```
 
-`src/gen`, `src/render`, `src/towns`, `src/lang` and `src/lore` are DOM-free, so they run in workers and in Node (`npm run preview`). Town plans use [d3-delaunay](https://github.com/d3/d3-delaunay) for Voronoi diagrams.
+The core is type-checked with no DOM or Node types (`packages/core/tsconfig.json`), so anything that would tie it to a browser or to Node fails the check. The atlas imports it as a package: `import { generateWorld } from '@worldforge/core/gen/world'` (each file of `packages/core/src` is exported by its path). Town plans use [d3-delaunay](https://github.com/d3/d3-delaunay) for Voronoi diagrams.
+
+### Using the core headless
+
+```ts
+import { generateWorld } from '@worldforge/core/gen/world';
+import { worldLore } from '@worldforge/core/lore/current';
+import { TownManager } from '@worldforge/core/towns/manager';
+import { householdsFor } from '@worldforge/core/people/plan-residents';
+
+const world = generateWorld({ seed: 'forge', landFraction: 0.3, plates: 14, erosion: 0.5, settled: 0.6, drift: 0.3, races: true, resolution: 1024 }, () => {});
+const lore = worldLore(world);                       // history, faiths, houses, wars
+const plan = new TownManager(world).planOf(world.settlements[0]);   // every street and building
+const house = plan.find((f) => f.properties.kind === 'building')!;
+const people = householdsFor(world, house, plan);    // who lives there
+```
+
+`packages/core/scripts/headless.ts` does this for a whole world and prints its **fingerprint** (`diagnostics/fingerprint.ts`): a hash of each part (heights, climate, biomes, peoples, rivers, settlements, realms, lore, a city's plan, its households, its nature). The same settings make the same fingerprint on the same JavaScript engine. Different engines can differ: the transcendental functions (`Math.sin`, `Math.exp`, `Math.pow` and the rest) do not return identical last digits in every engine version, so Node 22 and a current Chromium make very slightly different worlds from one seed.
 
 ## Climate tuning against Earth
 
-`tuning/climate/` scores the climate model on real Earth. It runs the generator's climate pipeline on WorldClim 2.1 elevation (the `heightmap` option of `generateWorld` skips tectonics and erosion) and compares the result with observed WorldClim monthly climatology (1970–2000).
+`packages/core/tuning/climate/` scores the climate model on real Earth. It runs the generator's climate pipeline on WorldClim 2.1 elevation (the `heightmap` option of `generateWorld` skips tectonics and erosion) and compares the result with observed WorldClim monthly climatology (1970–2000).
 
 ```sh
-npm run earth:fetch                      # once: downloads ~46 MB to tuning/data/ (git-ignored)
-npm run earth:eval                       # score current parameters against tuning/climate/baseline.json
+npm run earth:fetch                      # once: downloads ~46 MB to packages/core/tuning/data/ (git-ignored)
+npm run earth:eval                       # score current parameters against packages/core/tuning/climate/baseline.json
 npm run earth:eval -- --update-baseline  # accept a new score
 npm run earth:eval -- --res=512          # faster, coarser
 ```

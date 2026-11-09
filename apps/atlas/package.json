@@ -1,0 +1,25 @@
+{
+  "name": "@worldforge/atlas",
+  "version": "1.0.0",
+  "description": "The World Forge atlas: the browser map of a generated world",
+  "license": "ISC",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "serve": "vite preview"
+  },
+  "dependencies": {
+    "@worldforge/core": "*",
+    "fflate": "^0.8.3",
+    "maplibre-gl": "^6.13.0",
+    "vue": "^3.5.43"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^6.0.9",
+    "vite": "^8.3.4",
+    "vue-tsc": "^3.3.12"
+  }
+}

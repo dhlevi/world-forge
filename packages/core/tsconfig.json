@@ -1,0 +1,16 @@
+{
+  // The core runs anywhere (browser, worker, Node, a game): no DOM or Node types here, so any use of
+  // them is a type error. src/env.d.ts declares the few globals every such place has.
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
+    "lib": ["ES2022"],
+    "types": [],
+    "strict": true,
+    "isolatedModules": true,
+    "skipLibCheck": true,
+    "noEmit": true
+  },
+  "include": ["src/**/*.ts"]
+}

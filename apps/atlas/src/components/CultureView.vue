@@ -1,0 +1,701 @@
+<script setup lang="ts">
+import { computed, ref, watch } from 'vue';
+import { flyTarget, openCulture, openFaith, openRealm, world } from '../store';
+import { CULTURES, TEMPLATE_LABEL } from '@worldforge/core/names/cultures';
+import { templateFolk } from '@worldforge/core/names/bundles/index';
+import { ETHOS, TRADITIONS } from '@worldforge/core/names/traits';
+import { LEXICON } from '@worldforge/core/lang/lexicon';
+import { cognates, consonantChart, countingNotes, examples, grammarNotes, numberTable, pronounTable, soundChangeNotes, spellingNotes, vowelChart } from '@worldforge/core/lang/describe';
+import { numberWord, writable } from '@worldforge/core/lang/numbers';
+import { speechOf, translateText } from '@worldforge/core/lang/translate';
+import { glyphSvg, glyphsSvg, scriptOf, sigilSvg, textSvg } from '@worldforge/core/lang/script';
+import { cultureInfo } from '@worldforge/core/lore/culture';
+import { lookOf } from '@worldforge/core/people/appearance';
+import { sketchSvg } from '@worldforge/core/people/sketch';
+import { fmtPeople } from '@worldforge/core/lore/realm';
+import { armsImage } from '../heraldry/draw';
+import { currentLore } from './realm-lore';
+
+/**
+ * The culture window: a people of the world, their outlook, traditions and customs, where they
+ * live and rule, and their language: its sounds (with IPA), syllables, spelling, grammar,
+ * examples word by word, its family (the proto-language, the sound changes since, and cognates
+ * in the sister tongues), its script (the letters or signs, words written in it, and sigils), a
+ * dictionary and a box that translates English into it (written in the script as well).
+ */
+type Tab = 'overview' | 'look' | 'sounds' | 'grammar' | 'writing' | 'family' | 'dictionary' | 'translate';
+const tab = ref<Tab>('overview');
+const query = ref('');
+const phrase = ref('The old king rules the great city.');
+
+const c = computed(() => (openCulture.value !== null && world.value ? CULTURES[openCulture.value] ?? null : null));
+const L = computed(() => c.value?.language ?? null);
+const info = computed(() => {
+  const ctx = currentLore();
+  return ctx && openCulture.value !== null ? cultureInfo(ctx, openCulture.value) : null;
+});
+watch(openCulture, () => {
+  tab.value = 'overview';
+  query.value = '';
+});
+watch(world, () => (openCulture.value = null));
+
+const TABS: [Tab, string][] = [['overview', 'Overview'], ['look', 'Appearance'], ['sounds', 'Sounds'], ['grammar', 'Grammar'], ['writing', 'Writing'], ['family', 'Family'], ['dictionary', 'Dictionary'], ['translate', 'Translate']];
+const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
+const units = computed(() => world.value?.politics.units ?? []);
+const arms = (id: number) => armsImage(units.value[id].arms, 16, `u${id}`);
+
+/** How the people look: three figures sketched, and the description. */
+const look = computed(() => (c.value && world.value ? lookOf(world.value.raster.seed, c.value) : null));
+const lookSvg = computed(() => (look.value && c.value ? sketchSvg(look.value, `c${c.value.index}`, 420) : ''));
+const cons = computed(() => (L.value ? consonantChart(L.value) : null));
+const vows = computed(() => (L.value ? vowelChart(L.value) : null));
+const notes = computed(() => (L.value ? grammarNotes(L.value) : []));
+const prons = computed(() => (L.value ? pronounTable(L.value) : []));
+const exs = computed(() => (L.value ? examples(L.value) : []));
+const counting = computed(() => (L.value ? countingNotes(L.value) : []));
+const numbers = computed(() => {
+  const sc = script.value;
+  return L.value && sc ? numberTable(L.value).map((x) => ({ ...x, svg: glyphsSvg(sc, sc.numeral(x.n), 30) })) : [];
+});
+const spells = computed(() => (L.value ? spellingNotes(L.value) : []));
+const fam = computed(() => info.value?.family ?? null);
+/** This people first, then its kin (at most five columns). */
+const famMembers = computed(() => (c.value && fam.value ? [c.value.index, ...fam.value.members.filter((k) => k !== c.value!.index)].slice(0, 5) : []));
+const changes = computed(() => (L.value ? soundChangeNotes(L.value) : []));
+const cogs = computed(() => (fam.value ? cognates(fam.value.proto, famMembers.value.map((k) => CULTURES[k].language!)) : []));
+const famText = computed(() => {
+  const f = fam.value, x = c.value;
+  if (!f || !x) return '';
+  if (f.members.length < 2) return `${x.name} has no living kin: it is the only descendant of ${f.protoName}, the tongue its people spoke long ago.`;
+  const others = f.members.filter((k) => k !== x.index).map((k) => CULTURES[k].name);
+  const tpls = new Set(f.members.map((k) => CULTURES[k].id));
+  return `${x.name} is one of the ${f.name} languages, which all descend from ${f.protoName}: its sisters are ${others.slice(0, -1).join(', ')}${others.length > 1 ? ' and ' : ''}${others[others.length - 1]}.${tpls.size > 1 ? ` The family spans peoples of different stock (${[...tpls].map((t) => TEMPLATE_LABEL[t] ?? t).join(', ')}), so the sisters share fewer words.` : ''}`;
+});
+/** A number in the dictionary, as the language counts it. */
+const NUM_VALUE: Record<string, number> = { one: 1, two: 2, three: 3, four: 4, five: 5, six: 6, seven: 7, eight: 8, nine: 9, ten: 10, hundred: 100, thousand: 1000 };
+function numWord(lang: NonNullable<typeof L.value>, en: string) {
+  const spell = numberWord(lang, NUM_VALUE[en] ?? 1);
+  return { spell, ipa: spell.split(' ').map((x) => lang.pronounce(x).ipa).join(' '), src: lang.word(en).src };
+}
+const dict = computed(() => {
+  const lang = L.value;
+  if (!lang) return [];
+  const q = query.value.trim().toLowerCase();
+  const seen = new Set<string>();
+  const rows = LEXICON.filter((x) => {
+    if (seen.has(x.en)) return false;
+    seen.add(x.en);
+    return true;
+  }).map((x) => ({ ...x, w: x.pos === 'num' ? numWord(lang, x.en) : lang.word(x.en), g: lang.grammar.genders && x.pos === 'n' ? lang.grammar.genders[lang.genderOf(x.en)].slice(0, 1) : '' }));
+  if (!q) return rows;
+  const hit = rows.filter((x) => x.en.includes(q) || x.w.spell.includes(q));
+  // Any other English word has a word too.
+  if (/^[a-z]+$/.test(q) && !rows.some((x) => x.en === q)) hit.unshift({ en: q, pos: 'n', cat: '', w: lang.word(q), g: '' });
+  return hit;
+});
+// The script: its letters or signs, words written in it, and sigils (SVG made here, from the language alone).
+const script = computed(() => (L.value ? scriptOf(L.value) : null));
+const numeralChart = computed(() => (script.value ? script.value.numeralChart().map((x) => ({ label: x.label, svg: glyphsSvg(script.value!, x.glyph, 42) })) : []));
+const scriptChart = computed(() => (script.value ? script.value.chart().map((x) => ({ label: x.label, svg: glyphSvg(script.value!, x.glyph, 42) })) : []));
+const scriptName = computed(() => (L.value ? L.value.word('writing').spell : ''));
+const writtenExamples = computed(() => {
+  const sc = script.value, lang = L.value, x = c.value;
+  if (!sc || !lang || !x) return [];
+  const rows = [{ en: `their own name, the ${x.endonym}`, native: x.endonym }, ...exs.value.slice(0, 5).map((e) => ({ en: e.en, native: writable(e.tokens) }))];
+  return rows.map((r) => ({ ...r, svg: textSvg(sc, r.native, { size: 32, maxWidth: 520 }) }));
+});
+const sigils = computed(() => {
+  const sc = script.value, x = c.value;
+  if (!sc || !x) return [];
+  return [x.endonym, x.name].map((n) => ({ name: n, svg: sigilSvg(sc, n, 132) }));
+});
+const translated = computed(() => (L.value && phrase.value.trim() ? translateText(L.value, phrase.value) : []));
+const translatedWords = computed(() => translated.value.filter((t) => !t.punct));
+/** How the translation is said, word by word. */
+const spoken = computed(() => (L.value ? translatedWords.value.map((t) => L.value!.pronounce(t.form)) : []));
+const punctChart = computed(() => (script.value ? script.value.punctChart().map((x) => ({ label: x.label, svg: glyphSvg(script.value!, x.glyph, 42) })) : []));
+/** How the people ask and exclaim, and how they write it. */
+const speechNote = computed(() => {
+  const lang = L.value;
+  if (!lang) return '';
+  const sp = speechOf(lang);
+  const qp = lang.word('question:particle').spell;
+  const q = sp.question === 'start' ? `A question to be answered yes or no opens with the particle ${qp}` : sp.question === 'end' ? `A question to be answered yes or no closes with the particle ${qp}`
+    : sp.question === 'enclitic' ? 'A question to be answered yes or no fixes a particle to its first word' : 'A question to be answered yes or no is asked by the voice alone, with no particle';
+  const x = sp.exclaim === 'start' ? `; an exclamation opens with the cry ${lang.word('exclamation:interjection').spell}` : sp.exclaim === 'end' ? `; an exclamation closes with the particle ${lang.word('exclamation:particle').spell}` : '';
+  const t = sp.turned ? ' In writing, questions and exclamations also open with the mark turned about, as Spanish does.' : '';
+  return `${q}${x}. A question word (who, what, where) comes first.${t} Stressed words are written in red ink.`;
+});
+const translatedScript = computed(() => (script.value && translated.value.length ? textSvg(script.value, writable(translated.value), { size: 34, maxWidth: 520 }) : ''));
+
+const description = computed(() => {
+  const x = c.value, i = info.value;
+  if (!x || !i) return '';
+  const e = ETHOS[x.ethos];
+  const tr = x.traditions.map((t) => TRADITIONS[t]?.name.toLowerCase()).filter(Boolean);
+  const where = i.realms.length ? `They rule ${i.realms.length === 1 ? 'one realm' : `${i.realms.length} realms`}${i.vassals ? `, and hold ${i.vassals} lordships within others' realms` : ''}.` : 'They rule no realm of their own.';
+  return `${cap(x.people)} (in their own tongue, the ${x.endonym}) number about ${fmtPeople(i.people)}${x.nw ? ', in the New World' : ''}. ${where} Their outlook is ${e?.name.toLowerCase() ?? 'their own'}: ${e?.text.charAt(0).toLowerCase()}${e?.text.slice(1)} They are known as ${tr.slice(0, -1).join(', ')}${tr.length > 1 ? ' and ' : ''}${tr[tr.length - 1] ?? ''}.`;
+});
+
+function close(): void {
+  openCulture.value = null;
+}
+function goRealm(id: number): void {
+  openCulture.value = null;
+  openRealm.value = id;
+}
+function goFaith(id: number): void {
+  openFaith.value = id;
+}
+function goCulture(k: number): void {
+  openCulture.value = k;
+}
+function showHome(): void {
+  const x = c.value;
+  if (x) flyTarget.value = { lon: x.hearth[0], lat: x.hearth[1], zoom: 4.5, name: x.name, t: performance.now() };
+}
+</script>
+
+<template>
+  <aside v-if="c" class="culture">
+    <header>
+      <div class="title">
+        <h2>{{ c.name }}</h2>
+        <p>{{ c.endonym }} <span v-if="c.endonymIpa" class="ipa">/{{ c.endonymIpa }}/</span><template v-if="templateFolk(c.id) !== 'Humans'"> · {{ templateFolk(c.id) }}</template> · {{ ETHOS[c.ethos]?.name }} · {{ info ? `about ${fmtPeople(info.people)} people` : '' }}</p>
+      </div>
+      <div class="actions">
+        <button title="Fly to their homeland" @click="showHome">Homeland</button>
+        <button class="close" title="Close" @click="close">✕</button>
+      </div>
+    </header>
+    <nav class="tabs">
+      <button v-for="[k, label] in TABS" :key="k" :class="{ active: tab === k }" @click="tab = k">{{ label }}</button>
+    </nav>
+    <div class="body">
+      <section v-if="tab === 'overview'">
+        <p class="prose">{{ description }}</p>
+        <h3>Outlook</h3>
+        <div class="card">
+          <h4>{{ ETHOS[c.ethos]?.name }}</h4>
+          <p>{{ ETHOS[c.ethos]?.text }}</p>
+          <p class="dim">{{ ETHOS[c.ethos]?.effect }}</p>
+        </div>
+        <h3>Traditions</h3>
+        <div v-for="t in c.traditions" :key="t" class="trad">
+          <em>{{ TRADITIONS[t]?.name }}</em> · {{ TRADITIONS[t]?.text }} <span v-if="TRADITIONS[t]?.effect !== 'Flavour.'" class="dim">{{ TRADITIONS[t]?.effect }}</span>
+        </div>
+        <template v-if="c.customs">
+          <h3>Customs</h3>
+          <dl class="facts">
+            <div><dt>War</dt><dd>{{ c.customs.martial }}</dd></div>
+            <div><dt>Marriage</dt><dd>{{ c.customs.marriage }}</dd></div>
+            <div><dt>Building</dt><dd>{{ cap(c.customs.architecture) }}</dd></div>
+            <div><dt>Dress</dt><dd>{{ cap(c.customs.dress) }}</dd></div>
+            <div><dt>Food</dt><dd>{{ cap(c.customs.food) }}</dd></div>
+            <div><dt>Festivals</dt><dd><span v-for="f in c.customs.festivals" :key="f.english" class="fest"><em>{{ f.native }}</em> ({{ f.english }})</span></dd></div>
+          </dl>
+        </template>
+        <template v-if="info?.faith">
+          <h3>Faith</h3>
+          <p><a href="#" title="Open the faith" @click.prevent="goFaith(info.faith.id)">{{ cap(info.sect ? info.sect.name : info.faith.name) }}</a><span class="dim"> · {{ info.faith.kind }}</span></p>
+          <p v-if="info.oldFaith" class="dim">Before, they kept <a href="#" @click.prevent="goFaith(info.oldFaith.id)">{{ info.oldFaith.name }}</a>, until {{ info.converted }}.</p>
+        </template>
+        <template v-if="info?.realms.length">
+          <h3>Realms they rule</h3>
+          <ul class="links">
+            <li v-for="id in info.realms.slice(0, 12)" :key="id"><a href="#" @click.prevent="goRealm(id)"><img :src="arms(id)" alt="" />{{ cap(units[id].name) }}</a> <span class="dim">about {{ fmtPeople(units[id].people) }}</span></li>
+          </ul>
+          <p v-if="info.realms.length > 12" class="note">and {{ info.realms.length - 12 }} more.</p>
+        </template>
+        <template v-if="info?.kin.length">
+          <h3>Kindred peoples<span v-if="info.family" class="dim"> ({{ info.family.name }} languages)</span></h3>
+          <p><template v-for="(k, i) in info.kin" :key="k"><a href="#" @click.prevent="goCulture(k)">{{ CULTURES[k].name }}</a><span v-if="i < info.kin.length - 1">, </span></template></p>
+        </template>
+        <p class="note">Grown from the familiar {{ info?.templateName }} template (after {{ info?.after }}); its language has drifted {{ Math.round((L?.drift ?? 0) * 100) }}% from it.</p>
+      </section>
+
+      <section v-else-if="tab === 'look' && look">
+        <div class="sketch" v-html="lookSvg" />
+        <p v-for="(t, i) in look.text" :key="i" class="look">{{ t }}</p>
+      </section>
+      <section v-else-if="tab === 'sounds' && L">
+        <p>Syllables: <b>{{ L.syllableStructure() }}</b> · stress: {{ L.stress === 'none' ? 'even (no fixed stress)' : `${L.stress} syllable` }}<template v-if="L.tones">, with {{ L.tones }} tones</template><template v-if="L.harmony">; vowel harmony (a word's vowels are all front or all back)</template>.</p>
+        <h3>Consonants</h3>
+        <div class="scroll">
+          <table class="chart">
+            <tr><th /><th v-for="p in cons!.places" :key="p">{{ p }}</th></tr>
+            <tr v-for="row in cons!.rows" :key="row.manner">
+              <th>{{ row.manner }}</th>
+              <td v-for="(cell, i) in row.cells" :key="i"><span v-for="x in cell" :key="x.ipa" class="ph"><b>{{ x.ipa }}</b><small v-if="x.spell !== x.ipa">{{ x.spell || '–' }}</small></span></td>
+            </tr>
+          </table>
+        </div>
+        <h3>Vowels</h3>
+        <table class="chart">
+          <tr><th /><th v-for="b in vows!.backs" :key="b">{{ b }}</th></tr>
+          <tr v-for="row in vows!.rows" :key="row.height">
+            <th>{{ row.height }}</th>
+            <td v-for="(cell, i) in row.cells" :key="i"><span v-for="x in cell" :key="x.ipa" class="ph"><b>{{ x.ipa }}</b><small v-if="x.spell !== x.ipa">{{ x.spell }}</small></span></td>
+          </tr>
+        </table>
+        <p class="note">Each sound is shown in IPA, with its spelling beside it where that differs.</p>
+        <template v-if="spells.length">
+          <h3>Spelling</h3>
+          <ul class="plain"><li v-for="n in spells" :key="n">{{ n }}</li></ul>
+        </template>
+        <template v-if="L.shifts.length">
+          <h3>Respellings</h3>
+          <p class="note">Old names and words kept from the template's stock are respelled (see the Family tab for the sound changes since the parent tongue):</p>
+          <ul class="plain"><li v-for="s in L.shifts" :key="s.note">{{ s.note }}</li></ul>
+        </template>
+      </section>
+
+      <section v-else-if="tab === 'grammar' && L">
+        <ul class="plain"><li v-for="n in notes" :key="n">{{ n }}</li></ul>
+        <h3>Pronouns</h3>
+        <table class="dict">
+          <tr v-for="p in prons" :key="p.en"><td>{{ p.en }}</td><td><b>{{ p.word }}</b></td><td class="ipa">/{{ p.ipa }}/</td></tr>
+        </table>
+        <h3>Possessives</h3>
+        <table class="dict">
+          <tr><th /><th /><th class="dim">“… house”</th></tr>
+          <tr v-for="p in prons" :key="p.possEn"><td>{{ p.possEn }}</td><td><b>{{ p.poss }}</b></td><td>{{ p.example }}</td></tr>
+        </table>
+        <h3>Counting</h3>
+        <ul class="plain"><li v-for="n in counting" :key="n">{{ n }}</li></ul>
+        <table class="dict nums">
+          <tr v-for="x in numbers" :key="x.n"><td class="num">{{ x.n }}</td><td class="g" v-html="x.svg" /><td><b>{{ x.word }}</b><div class="ipa dim">/{{ x.ipa }}/</div></td><td class="dim">{{ x.structure }}</td></tr>
+        </table>
+        <h3>Examples</h3>
+        <div v-for="e in exs" :key="e.en" class="ex">
+          <div class="en">{{ e.en }}</div>
+          <div class="gloss">
+            <span v-for="(t, i) in e.tokens" :key="i" class="tok"><b>{{ t.form }}</b><small>{{ t.gloss }}</small></span>
+          </div>
+        </div>
+      </section>
+
+      <section v-else-if="tab === 'writing' && L && script">
+        <p>{{ cap(c.people) }} write with {{ script.info.label }}<template v-if="scriptName">; they call their writing <i>{{ scriptName }}</i></template>.</p>
+        <ul v-if="script.info.notes.length" class="plain"><li v-for="n in script.info.notes" :key="n">{{ n }}</li></ul>
+        <h3>{{ script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary' ? 'Signs' : script.info.kind === 'featural' ? 'Letters' : 'Letters' }}</h3>
+        <div class="glyphs">
+          <span v-for="(g, i) in scriptChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
+        </div>
+        <p class="note">Each {{ script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary' ? 'sign' : 'letter' }} is shown with its sound as the transcription spells it.<template v-if="script.info.kind === 'syllabary' || script.info.kind === 'logosyllabary'"> Only the commoner syllables are shown; every syllable of the language has its own.</template></p>
+        <h3>Numerals</h3>
+        <p>{{ script.numerals.note }}</p>
+        <div class="glyphs">
+          <span v-for="(g, i) in numeralChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
+        </div>
+        <h3>Punctuation</h3>
+        <p>{{ speechNote }}</p>
+        <div class="glyphs">
+          <span v-for="(g, i) in punctChart" :key="i" class="glyph"><span class="g" v-html="g.svg" /><small>{{ g.label }}</small></span>
+        </div>
+        <h3>Written</h3>
+        <div v-for="(e, i) in writtenExamples" :key="i" class="ex">
+          <div class="en">{{ e.en }}</div>
+          <div class="written" :class="script.info.style" v-html="e.svg" />
+          <div class="dim">{{ e.native }}</div>
+        </div>
+        <h3>Sigils</h3>
+        <div class="sigils">
+          <figure v-for="sg in sigils" :key="sg.name"><span v-html="sg.svg" /><figcaption>{{ sg.name }}</figcaption></figure>
+        </div>
+        <p class="note">A sigil is made from a name: its letters become points on three rings, joined in order and mirrored, with the name written small between the outer rings.</p>
+      </section>
+
+      <section v-else-if="tab === 'family' && L">
+        <p>{{ famText }}</p>
+        <template v-if="changes.length">
+          <h3>Sound changes since {{ fam?.protoName }}</h3>
+          <ol class="plain">
+            <li v-for="(s, i) in changes" :key="i">{{ s.note }}<span v-if="s.example" class="dim"> · <i>{{ s.example }}</i></span></li>
+          </ol>
+          <p class="note">They happened in this order, and to every word alike; that is why words in sister tongues match sound for sound.</p>
+        </template>
+        <h3>Words compared</h3>
+        <div class="scroll">
+          <table class="dict cog">
+            <tr><th /><th>{{ fam?.protoName }}</th><th v-for="k in famMembers" :key="k"><a v-if="k !== c.index" href="#" @click.prevent="goCulture(k)">{{ CULTURES[k].name }}</a><template v-else>{{ CULTURES[k].name }}</template></th></tr>
+            <tr v-for="row in cogs" :key="row.en">
+              <td>{{ row.en }}</td>
+              <td class="dim">*{{ row.proto }}</td>
+              <td v-for="(w, i) in row.words" :key="i" :class="{ dim: !w.kin }" :title="w.kin ? `/${w.ipa}/, from *${row.proto}` : w.src === 'old' ? `/${w.ipa}/, a word of its own older stock` : `/${w.ipa}/, a newer word`"><b v-if="w.kin">{{ w.spell }}</b><template v-else>{{ w.spell }}{{ w.src === 'old' ? '°' : '†' }}</template></td>
+            </tr>
+          </table>
+        </div>
+        <p class="note">Starred forms are the reconstructed parent tongue's. A dagger marks a newer word that replaced the inherited one; a ring, a word kept from the people's own older stock (in kin of another stock).</p>
+        <template v-if="info?.substrate">
+          <h3>Older names</h3>
+          <p>Some places in their lands keep names from {{ info.substrate.protoName }}, the tongue of the {{ info.substrate.members.length > 1 ? `${info.substrate.name} peoples` : CULTURES[info.substrate.members[0]].people }} who lived nearby long ago; others keep {{ fam?.protoName }} names worn down by the changes above. Both show on the map with their meaning, such as a river still called by a word for “white water” no one now speaks.</p>
+        </template>
+        <p v-else class="note">Some places keep {{ fam?.protoName }} names, worn down by the changes above; their meaning is shown in English.</p>
+      </section>
+
+      <section v-else-if="tab === 'dictionary' && L">
+        <input v-model="query" class="search" type="search" placeholder="Search English or the language…" />
+        <table class="dict">
+          <tr v-for="x in dict" :key="x.en"><td>{{ x.en }}</td><td><b>{{ x.w.spell }}</b><small v-if="x.g" class="dim"> ({{ x.g }})</small><small v-if="x.w.src === 'inherited' && L.parent" class="dim" :title="`From ${fam?.protoName}`"> &lt; *{{ L.parent.word(x.en).spell }}</small></td><td class="ipa">/{{ x.w.ipa }}/</td><td class="dim say-cell">{{ L.pronounce(x.w.spell).sounds }}</td><td class="dim">{{ x.pos }}</td></tr>
+        </table>
+        <p class="note">Any English word can be looked up; words outside the core vocabulary are made on demand, the same way every time.</p>
+      </section>
+
+      <section v-else-if="tab === 'translate' && L">
+        <textarea v-model="phrase" rows="3" placeholder="Type English: a name, a phrase or a simple sentence" />
+        <div v-if="translated.length" class="ex big">
+          <div class="native"><template v-for="(t, i) in translated" :key="i"><template v-if="i && !t.punct?.match(/[.,;:?!”]/) && !translated[i - 1].punct?.match(/[“¿¡]/)">{{ ' ' }}</template><span :class="{ emph: t.emph }">{{ t.form }}</span></template></div>
+          <div class="say"><span class="ipa">/{{ spoken.map((x) => x.ipa).join(' ') }}/</span> · sounds like <b>{{ spoken.map((x) => x.sounds).join(' ') }}</b></div>
+          <div v-if="translatedScript" class="written" v-html="translatedScript" />
+          <div class="gloss">
+            <span v-for="(t, i) in translatedWords" :key="i" class="tok"><b :class="{ emph: t.emph }">{{ t.form }}</b><small>{{ t.gloss }}</small></span>
+          </div>
+        </div>
+        <p class="note">The pronunciation is read from the spelling: IPA with the stressed syllable marked, then a rough English respelling with the stressed syllable in capitals<template v-if="L.tones"> (tones are not shown)</template>.</p>
+        <p class="note">Handles names and noun phrases (“the black ford”, “the king’s sword”, “city of the river”) and simple sentences with one verb each (“The warriors will not fight the giants.”), in the language's word order, with its articles, plurals, possession, tenses and agreement. Several sentences and clauses can be given, with their punctuation (. , ; : ? ! and quotation marks): questions (“Is the king old?”, “Where is the queen?”) and exclamations are put in the language's own way (see Writing), and words written *so* are stressed, in red.</p>
+      </section>
+    </div>
+  </aside>
+</template>
+
+<style scoped>
+.emph {
+  color: #a3301e;
+}
+.culture {
+  position: absolute;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(540px, 48vw);
+  z-index: 16;
+  display: flex;
+  flex-direction: column;
+  background: #f3ead3;
+  color: #2b2420;
+  border-left: 1px solid #2b2420;
+  box-shadow: -4px 0 18px rgba(0, 0, 0, 0.25);
+  font-family: 'IM Fell English', Georgia, 'Times New Roman', serif;
+}
+header {
+  display: flex;
+  gap: 12px;
+  align-items: flex-start;
+  padding: 12px 14px 8px;
+  border-bottom: 1px solid rgba(43, 36, 32, 0.25);
+}
+.title {
+  flex: 1;
+  min-width: 0;
+}
+h2 {
+  margin: 0;
+  font-size: 23px;
+  font-weight: normal;
+  font-style: italic;
+}
+.title p {
+  margin: 3px 0 0;
+  font-size: 13.5px;
+  opacity: 0.8;
+}
+.actions {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+button {
+  font: inherit;
+  font-size: 13.5px;
+  padding: 4px 10px;
+  border: 1px solid #2b2420;
+  border-radius: 4px;
+  background: #f8f1df;
+  color: #2b2420;
+  cursor: pointer;
+}
+button:hover {
+  background: #ebdfc2;
+}
+.close {
+  background: #2b2420;
+  color: #f3ead3;
+}
+.tabs {
+  display: flex;
+  gap: 3px;
+  padding: 6px 12px 0;
+  overflow-x: auto;
+  border-bottom: 1px solid rgba(43, 36, 32, 0.25);
+  flex: none;
+}
+.tabs button {
+  border-radius: 4px 4px 0 0;
+  border-bottom: none;
+  white-space: nowrap;
+}
+.tabs button.active {
+  background: #2b2420;
+  color: #f3ead3;
+}
+.body {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  padding: 10px 16px 24px;
+  font-size: 14.5px;
+  line-height: 1.4;
+}
+h3 {
+  margin: 14px 0 5px;
+  font-size: 16px;
+  font-weight: normal;
+  font-style: italic;
+  border-bottom: 1px solid rgba(43, 36, 32, 0.2);
+}
+h4 {
+  margin: 0 0 3px;
+  font-weight: normal;
+  font-style: italic;
+  font-size: 16px;
+}
+p {
+  margin: 4px 0;
+}
+a {
+  color: #6e2a1e;
+}
+a img {
+  width: 14px;
+  vertical-align: -3px;
+  margin-right: 4px;
+}
+.prose {
+  font-size: 15.5px;
+}
+.dim,
+.note {
+  opacity: 0.75;
+}
+.note {
+  font-style: italic;
+  font-size: 13.5px;
+}
+.ipa {
+  font-family: 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'Times New Roman', serif;
+  opacity: 0.8;
+}
+.card {
+  border: 1px solid rgba(43, 36, 32, 0.3);
+  border-radius: 6px;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.25);
+}
+.trad {
+  margin: 4px 0;
+}
+.facts {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 14px;
+  margin: 8px 0;
+}
+dt {
+  font-size: 12px;
+  opacity: 0.7;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+dd {
+  margin: 0;
+}
+.fest {
+  display: block;
+}
+ul.plain,
+ul.links {
+  margin: 4px 0;
+  padding-left: 18px;
+}
+ul.links {
+  list-style: none;
+  padding-left: 0;
+}
+.scroll {
+  overflow-x: auto;
+}
+table {
+  border-collapse: collapse;
+}
+.chart th,
+.chart td {
+  border: 1px solid rgba(43, 36, 32, 0.2);
+  padding: 3px 6px;
+  font-size: 13px;
+  text-align: center;
+  vertical-align: middle;
+}
+.chart th {
+  font-weight: normal;
+  font-style: italic;
+  font-size: 12px;
+  opacity: 0.8;
+}
+.ph {
+  display: inline-block;
+  margin: 0 3px;
+  font-family: 'Charis SIL', 'Doulos SIL', 'Gentium Plus', 'Times New Roman', serif;
+}
+.ph small,
+.tok small {
+  display: block;
+  font-size: 11px;
+  opacity: 0.7;
+  font-family: 'IM Fell English', Georgia, serif;
+}
+.dict {
+  width: 100%;
+}
+.cog th {
+  font-weight: normal;
+  font-style: italic;
+  text-align: left;
+  padding-right: 10px;
+}
+.cog td {
+  white-space: nowrap;
+}
+ol.plain {
+  margin: 4px 0;
+  padding-left: 22px;
+}
+.dict td {
+  padding: 3px 8px 3px 0;
+  border-bottom: 1px solid rgba(43, 36, 32, 0.1);
+}
+.ex {
+  margin: 8px 0;
+  padding: 6px 10px;
+  border-left: 3px solid rgba(43, 36, 32, 0.25);
+}
+.ex .en {
+  font-style: italic;
+  opacity: 0.8;
+}
+.ex .native {
+  font-size: 19px;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+.say {
+  font-size: 14px;
+  margin-bottom: 4px;
+}
+.say b {
+  font-weight: normal;
+  letter-spacing: 0.02em;
+}
+.gloss {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
+  margin-top: 3px;
+}
+.tok b {
+  font-weight: normal;
+  font-size: 15.5px;
+}
+.search,
+textarea {
+  width: 100%;
+  box-sizing: border-box;
+  font: inherit;
+  font-size: 15px;
+  padding: 6px 8px;
+  border: 1px solid rgba(43, 36, 32, 0.4);
+  border-radius: 4px;
+  background: #fbf6ea;
+  color: inherit;
+}
+@media (max-width: 768px) {
+  .culture {
+    top: auto;
+    left: 0;
+    width: auto;
+    height: 72vh;
+    border-left: none;
+    border-top: 1px solid #2b2420;
+    border-radius: 12px 12px 0 0;
+  }
+  button {
+    min-height: 44px;
+  }
+  .actions {
+    flex-direction: row;
+  }
+  .facts {
+    grid-template-columns: 1fr;
+  }
+  .say-cell {
+    display: none;
+  }
+}
+.glyphs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.glyph {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 44px;
+  padding: 2px;
+  border: 1px solid rgba(43, 36, 32, 0.12);
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.35);
+}
+.glyph small {
+  font-size: 11px;
+  opacity: 0.8;
+}
+.written {
+  margin: 4px 0;
+  overflow-x: auto;
+}
+.sigils {
+  display: flex;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.sigils figure {
+  margin: 0;
+  text-align: center;
+}
+.sigils figcaption {
+  font-size: 12px;
+  font-style: italic;
+}
+.nums td.num {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+.nums td.g {
+  white-space: nowrap;
+}
+.sketch {
+  display: flex;
+  justify-content: center;
+  margin: 6px 0 4px;
+}
+.sketch :deep(svg) {
+  max-width: 100%;
+  height: auto;
+}
+p.look {
+  margin: 6px 0;
+  line-height: 1.45;
+}
+</style>

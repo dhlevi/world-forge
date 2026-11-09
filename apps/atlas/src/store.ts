@@ -1,0 +1,170 @@
+import { reactive, shallowRef } from 'vue';
+import type { WorldParams, WorldSummary } from '@worldforge/core/gen/world';
+import type { LayerId } from '@worldforge/core/render/tiles';
+import { WorldClient, type ClientWorld } from './world/client';
+import type { ProbeInfo } from '@worldforge/core/world/probe';
+import type { BuildingView } from '@worldforge/core/interiors/building';
+import type { LairSite } from '@worldforge/core/lairs/lair';
+import type { DungeonSite } from '@worldforge/core/dungeons/core';
+import { SearchIndex } from './search/index';
+import { setWorldCultures } from '@worldforge/core/names/world-cultures';
+import { readUrlParams, writeUrlParams } from './url-params';
+import { registerFaithProtocol, registerPoliticalProtocol, registerRelationsProtocol } from './world/political';
+
+const SEED_WORDS = ['amber', 'ash', 'briar', 'cinder', 'dusk', 'ember', 'fen', 'frost', 'gale', 'hollow', 'iron', 'jade', 'moor', 'oak', 'raven', 'rune', 'sable', 'storm', 'thorn', 'vale', 'wyrm'];
+
+export function randomSeed(): string {
+  const pick = () => SEED_WORDS[Math.floor(Math.random() * SEED_WORDS.length)];
+  return `${pick()}-${pick()}-${Math.floor(Math.random() * 1000)}`;
+}
+
+/** A remembered view preference (kept in this browser only). */
+function loadPref(key: string, fallback: boolean): boolean {
+  try {
+    const v = window.localStorage.getItem(`mapforge.${key}`);
+    return v === null ? fallback : v === '1';
+  } catch {
+    return fallback;
+  }
+}
+export function savePref(key: string, v: boolean): void {
+  try {
+    window.localStorage.setItem(`mapforge.${key}`, v ? '1' : '0');
+  } catch {
+    // Storage may be unavailable (a private window); the preference lasts this visit only.
+  }
+}
+
+export const store = reactive({
+  params: {
+    seed: randomSeed(),
+    landFraction: 0.30,
+    settled: 0.6,
+    drift: 0.3,
+    races: true,
+    plates: 14,
+    erosion: 0.5,
+    resolution: 1024,
+  } as WorldParams & { settled: number; drift: number; races: boolean },
+  layer: 'fantasy' as LayerId,
+  showRivers: true,
+  showSettlements: true,
+  /** Town plans drawn as an old bird's-eye map (raised buildings, roofs and trees), facing north. */
+  illustratedTowns: loadPref('illustratedTowns', true),
+  /** The location details box (terrain, climate and place under the cursor), bottom right. */
+  showProbe: loadPref('showProbe', true),
+  showLabels: true,
+  /** Place names in the local languages, in English, or both. */
+  labelMode: 'native' as 'native' | 'english' | 'both',
+  /** Political borders (empires, kingdoms, duchies, counties). */
+  showBorders: true,
+  /** Political map: realms washed in colour, with large titles and arms. */
+  showPolitical: false,
+  /** Faith map: each land washed in the colour of its people's faith (shaded by sect), with holy places. */
+  showFaiths: false,
+  /** Culture map: each land washed in the colour of its people, with their names. */
+  showCultures: false,
+  /** Race map: each land washed in the colour of its people's race (shaded by people), with their names. */
+  showRaces: false,
+  showWind: false,
+  showCurrents: false,
+  generating: false,
+  /** The settings the current world was made with (JSON of `params`), to tell when they have changed. */
+  madeWith: '',
+  stage: '',
+  progress: 0,
+  error: '',
+  summary: null as WorldSummary | null,
+  probe: null as ProbeInfo | null,
+  /** Map centre (lon, lat), for distances in search results. */
+  center: [0, 20] as [number, number],
+  /** Map zoom (updated when the map settles). */
+  zoom: 1.6,
+  /** The map's visible area [west, south, east, north] (updated when the map settles). */
+  bounds: null as [number, number, number, number] | null,
+  /** The village under the map centre at close zoom, if any (from the towns worker's data). */
+  here: null as { name: string; en?: string; kind: string; population: number; realm?: string; war?: string; faith?: string; what?: string; cause?: string; ago?: string; curse?: string; order?: string } | null,
+});
+
+export const world = shallowRef<ClientWorld | null>(null);
+/** The building open in the Dwelling view, if any. */
+export const openBuilding = shallowRef<BuildingView | null>(null);
+/** Place-name search over the world, the background index and drawn plans. */
+export const search = new SearchIndex();
+/** Background index progress (blocks done of total) and a counter that bumps when the index grows. */
+export const searchState = reactive({ done: 0, total: 0, version: 0 });
+/** A place to fly to (set by the search box, handled by the map). */
+/** Where to fly the map; `offsetX` (pixels) lands the place left or right of centre, clear of a side window. */
+export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; name: string; t: number; offsetX?: number; quiet?: boolean } | null>(null);
+/** The cave or glade open in the lair view, if any. */
+export const openLair = shallowRef<LairSite | null>(null);
+/** The tower, crypt, ruin, mine, catacomb or sewer open in the dungeon view, if any. */
+export const openDungeon = shallowRef<DungeonSite | null>(null);
+/** The realm (political unit id) open in the realm details window, if any. */
+export const openRealm = shallowRef<number | null>(null);
+/** The culture (index into CULTURES) open in the culture window, if any. */
+export const openCulture = shallowRef<number | null>(null);
+/** The faith (id in the world lore's faiths) open in the faith window, if any. */
+export const openFaith = shallowRef<number | null>(null);
+/** The organisation whose window is open (its key, lore/orders.ts). */
+export const openOrder = shallowRef<string | null>(null);
+/** The town whose life (people, sanitation, crime, trade) is shown, by settlement id. */
+export const openTown = shallowRef<string | null>(null);
+/** The place whose nature (bestiary, plants, curses) is shown. */
+export const openRegion = shallowRef<{ lon: number; lat: number } | null>(null);
+/** The realm of the Underworld whose window is open (an index into `underworld.realms`). */
+export const openDeepRealm = shallowRef<number | null>(null);
+/** The faith map's key: each faith shown, with its colour. */
+export const faithLegend = shallowRef<{ id: number; name: string; rgb: [number, number, number] }[]>([]);
+/** The culture or race map's key: each people or race shown, with its colour (`culture`: the people a click opens). */
+export const groupLegend = shallowRef<{ title: string; note: string; items: { id: number; name: string; rgb: [number, number, number]; culture?: number; sub?: string }[] }>({ title: '', note: '', items: [] });
+export const client = new WorldClient();
+client.registerProtocol();
+registerPoliticalProtocol();
+registerRelationsProtocol();
+registerFaithProtocol();
+
+/** The world settings have changed since the current world was made (Generate applies them). */
+export const settingsChanged = (): boolean => !!store.madeWith && JSON.stringify(store.params) !== store.madeWith;
+
+// Settings given in the page address (a bookmarked or shared world) replace the defaults.
+readUrlParams(store.params);
+
+/**
+ * Makes the world anew from the settings, and puts them in the page address: a new step in the
+ * browser history, or (`replace`, for the first world and for Back / Forward) the current one.
+ */
+export async function regenerate(opts?: { replace?: boolean } | Event): Promise<void> {
+  const first = !store.madeWith;
+  const replace = first || (!!opts && 'replace' in opts && !!opts.replace);
+  store.madeWith = JSON.stringify(store.params);
+  writeUrlParams(store.params, replace);
+  store.generating = true;
+  store.error = '';
+  store.progress = 0;
+  try {
+    const result = await client.generate({ ...store.params }, (stage, pct) => {
+      store.stage = stage;
+      store.progress = pct;
+    });
+    if (result.gen !== client.latestGen) return;
+    // The world's cultures and languages, rebuilt on this thread for names and lore.
+    setWorldCultures(result.raster.cultures);
+    // A world without fantasy races has no Underworld to show.
+    if (store.layer === 'underworld' && !result.raster.underworld) store.layer = 'fantasy';
+    world.value = result;
+    store.summary = result.summary;
+    store.generating = false;
+  } catch (err) {
+    store.error = err instanceof Error ? err.message : String(err);
+    store.generating = false;
+  }
+}
+
+// Back and Forward return to the worlds made before (their settings are in the address).
+if (typeof window !== 'undefined') {
+  window.addEventListener('popstate', () => {
+    if (!readUrlParams(store.params)) return;
+    if (JSON.stringify(store.params) !== store.madeWith) void regenerate({ replace: true });
+  });
+}

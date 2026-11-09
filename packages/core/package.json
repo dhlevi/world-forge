@@ -1,0 +1,22 @@
+{
+  "name": "@worldforge/core",
+  "version": "1.0.0",
+  "description": "The World Forge generator: worlds, peoples, languages, lore, towns, interiors, nature and export, with no browser, UI or map dependencies",
+  "license": "ISC",
+  "private": true,
+  "type": "module",
+  "exports": {
+    "./*": "./src/*.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.scripts.json"
+  },
+  "dependencies": {
+    "d3-delaunay": "^6.0.4"
+  },
+  "devDependencies": {
+    "@types/d3-delaunay": "^6.0.4",
+    "fflate": "^0.8.3",
+    "geotiff": "^3.0.5"
+  }
+}
