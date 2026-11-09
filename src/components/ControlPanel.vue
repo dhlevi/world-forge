@@ -1,7 +1,9 @@
 <script setup lang="ts">
-import { ref } from 'vue';
-import { LAYERS } from '../render/tiles';
-import { randomSeed, regenerate, settingsChanged, store, world } from '../store';
+import { reactive, ref } from 'vue';
+import { LAYERS, type LayerId } from '../render/tiles';
+import { flyTarget, randomSeed, regenerate, settingsChanged, store, world } from '../store';
+import { downloadBlob, readWorldFile, worldFileName, worldFileText } from '../export/worldfile';
+import type { UrlParams } from '../url-params';
 import RangeField from './RangeField.vue';
 
 const collapsed = ref(false);
@@ -16,6 +18,55 @@ const RESOLUTIONS = [
 function randomize(): void {
   store.params.seed = randomSeed();
   regenerate();
+}
+
+// ---- Save, load and export (export/worldfile.ts, export/zip.ts) ----
+const fileIn = ref<HTMLInputElement | null>(null);
+const exp = reactive({ busy: false, stage: '', pct: 0, error: '', max: 25, residents: true });
+/** The settings the shown world was made with (not those changed since). */
+const madeParams = (): UrlParams => (store.madeWith ? JSON.parse(store.madeWith) : { ...store.params });
+
+function saveWorld(): void {
+  const p = madeParams();
+  const text = worldFileText(p, { center: store.center, zoom: store.zoom, layer: store.layer });
+  downloadBlob(new Blob([text], { type: 'application/json' }), worldFileName(p.seed));
+}
+async function loadWorld(e: Event): Promise<void> {
+  const input = e.target as HTMLInputElement;
+  const file = input.files?.[0];
+  input.value = '';
+  if (!file) return;
+  exp.error = '';
+  try {
+    const { view } = readWorldFile(await file.text(), store.params);
+    await regenerate();
+    if (view) {
+      if (view.layer && LAYERS.some((l) => l.id === view.layer)) store.layer = view.layer as LayerId;
+      flyTarget.value = { lon: view.center[0], lat: view.center[1], zoom: view.zoom, name: '', t: performance.now(), quiet: true };
+    }
+  } catch (err) {
+    exp.error = err instanceof Error ? err.message : String(err);
+  }
+}
+async function exportData(): Promise<void> {
+  const w = world.value;
+  if (!w || exp.busy) return;
+  exp.busy = true;
+  exp.error = '';
+  try {
+    // Loaded on first use: the export code stays out of the page until it is wanted.
+    const { exportGameData } = await import('../export/zip');
+    const p = madeParams();
+    const blob = await exportGameData(w, p, { bounds: store.bounds, maxTowns: exp.max, residents: exp.residents }, (stage, pct) => {
+      exp.stage = stage;
+      exp.pct = pct;
+    });
+    downloadBlob(blob, `${worldFileName(p.seed).replace(/\.world\.json$/, '')}.gamedata.zip`);
+  } catch (err) {
+    exp.error = err instanceof Error ? err.message : String(err);
+  } finally {
+    exp.busy = false;
+  }
 }
 </script>
 
@@ -144,6 +195,37 @@ function randomize(): void {
           <input v-model="store.showCurrents" type="checkbox" />
           Ocean currents
         </label>
+      </section>
+
+      <section>
+        <h2>Save &amp; export</h2>
+        <div class="row">
+          <button :disabled="!world || store.generating" title="Save the seed, the settings and the view in a small file that makes this world again" @click="saveWorld">Save world</button>
+          <button :disabled="store.generating" title="Open a saved world file and make its world" @click="fileIn?.click()">Load world</button>
+          <input ref="fileIn" type="file" accept=".json,application/json" hidden @change="loadWorld" />
+        </div>
+        <label class="field">
+          <span>Towns in full</span>
+          <select v-model.number="exp.max" title="How many cities, towns and villages of the map view to export with every building">
+            <option :value="0">None</option>
+            <option :value="10">Up to 10</option>
+            <option :value="25">Up to 25</option>
+            <option :value="60">Up to 60</option>
+          </select>
+        </label>
+        <label class="check" title="The households of every building: names, ages, trades and ties">
+          <input v-model="exp.residents" type="checkbox" :disabled="exp.max === 0" />
+          Residents of each building
+        </label>
+        <button class="primary" :disabled="!world || store.generating || exp.busy" @click="exportData">
+          {{ exp.busy ? 'Exporting…' : 'Export game data (.zip)' }}
+        </button>
+        <div v-if="exp.busy" class="progress">
+          <div class="bar" :style="{ width: `${Math.round(exp.pct * 100)}%` }" />
+          <span>{{ exp.stage }}</span>
+        </div>
+        <p v-else class="summary">World data, height and climate grids, and the towns of the map view (the largest first). Zoom to the region you want in full.</p>
+        <p v-if="exp.error" class="error">{{ exp.error }}</p>
       </section>
     </div>
   </aside>
@@ -281,6 +363,11 @@ button.primary.pending {
 .error {
   margin: 0;
   color: #f08a7a;
+}
+.row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px;
 }
 .layers {
   display: grid;

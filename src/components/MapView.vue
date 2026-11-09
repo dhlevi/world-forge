@@ -7,9 +7,8 @@ import 'maplibre-gl/dist/maplibre-gl.css';
 import IllusFrame from './IllusFrame.vue';
 import { type CartoucheSite, Cartouches } from './cartouche';
 import { townArms } from './town-arms';
-import { townContext } from './town-context';
-import { type Household, type Neighbour, type ResidentBuilding, residents } from '../people/residents';
-import { LocalFrame } from '../towns/plan';
+import type { Household } from '../people/residents';
+import { householdsFor } from '../people/plan-residents';
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { savePref, faithLegend, flyTarget, groupLegend, openCulture, openDeepRealm, openFaith, openBuilding, openDungeon, openLair, openRealm, search, searchState, store, world } from '../store';
 import { blockEntry, faithEntries, orderEntries, planEntries, themeEntries, worldEntries } from '../search/index';
@@ -717,58 +716,14 @@ function openInterior(f: PlanFeature): void {
   openBuilding.value = { ...v };
 }
 
-/** A plan building as people/residents.ts needs it: its properties and floor area. */
-function residentBuilding(f: PlanFeature, frame: LocalFrame): ResidentBuilding & { c: number[] } {
-  const p = f.properties;
-  const ring = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0].slice(0, -1).map((q) => frame.fromLL(q[0], q[1])) : [];
-  let a = 0, cx = 0, cy = 0;
-  for (let i = 0, j = ring.length - 1; i < ring.length; j = i++) a += ring[j][0] * ring[i][1] - ring[i][0] * ring[j][1];
-  for (const q of ring) {
-    cx += q[0] / ring.length;
-    cy += q[1] / ring.length;
-  }
-  return {
-    bid: String(p.bid), ctx: String(p.ctx ?? 'ward'), tier: String(p.tier ?? 'town'), areaM2: Math.abs(a) / 2, c: [cx, cy],
-    ...(typeof p.role === 'string' ? { role: p.role } : {}), ...(typeof p.use === 'string' ? { use: p.use } : {}), ...(typeof p.label === 'string' ? { label: p.label } : {}),
-    ...(shopOf(f) ? { shop: shopOf(f) } : {}),
-  };
-}
-
-const SHOP_ROOMS = new Set(['Smithy', 'Bakery', 'Taproom', 'Shop', 'Workshop', 'Butcher', 'Tailor', 'Apothecary', 'Chandlery', 'Pawnshop', 'Foundry']);
-/** The trade room on a building's ground floor (from its floor plan, made and kept on first need). */
-function shopOf(f: PlanFeature): string | undefined {
-  if (!world.value || f.properties.role || f.properties.use) return undefined;
-  const v = buildingView(f, world.value.raster.seed);
-  return v?.d.floors[v.d.ground]?.rooms.find((rm) => SHOP_ROOMS.has(rm.name))?.name;
-}
-
-/** The households of a building, with ties to the households of the buildings nearest it. */
+/** The households of a building (people/plan-residents.ts), a village's from its marker. */
 function residentsFor(f: PlanFeature): Household[] {
-  const w = world.value!;
   const sid = String(f.properties.sid ?? '');
-  const ring = f.geometry.type === 'Polygon' ? f.geometry.coordinates[0] : [];
-  const lon0 = ring.reduce((a, q) => a + q[0], 0) / Math.max(1, ring.length), lat0 = ring.reduce((a, q) => a + q[1], 0) / Math.max(1, ring.length);
-  const frame = new LocalFrame(lon0, lat0);
-  // A village is known only from its marker (the towns worker's data).
   const vf = lastVillages.find((x) => x.properties.id === sid);
-  const vc = vf && vf.geometry.type === 'Point' ? (vf.geometry.coordinates as number[]) : [lon0, lat0];
-  const { ctx, stats } = townContext(w, sid, { lon: vc[0], lat: vc[1], kind: String(vf?.properties.kind ?? f.properties.ctx ?? 'farming'), population: Number(vf?.properties.population ?? 150), name: String(vf?.properties.name ?? '') });
-  const me = residentBuilding(f, frame);
-  const DIRS = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east'];
-  const near: Neighbour[] = [];
-  for (const g of planIndex.values()) {
-    if (g === f || String(g.properties.sid ?? '') !== sid || g.geometry.type !== 'Polygon') continue;
-    const q = g.geometry.coordinates[0][0];
-    const loc = frame.fromLL(q[0], q[1]);
-    const d = Math.hypot(loc[0] - me.c[0], loc[1] - me.c[1]);
-    if (d > 70) continue;
-    const nb = residentBuilding(g, frame);
-    const dist = Math.hypot(nb.c[0] - me.c[0], nb.c[1] - me.c[1]);
-    const ang = Math.atan2(nb.c[1] - me.c[1], nb.c[0] - me.c[0]);
-    near.push({ ...nb, dist, dir: DIRS[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8] });
-  }
-  near.sort((a, b) => a.dist - b.dist);
-  return residents(ctx, me, near.slice(0, 8), stats);
+  const village = vf && vf.geometry.type === 'Point'
+    ? { lon: (vf.geometry.coordinates as number[])[0], lat: (vf.geometry.coordinates as number[])[1], kind: String(vf.properties.kind ?? f.properties.ctx ?? 'farming'), population: Number(vf.properties.population ?? 150), name: String(vf.properties.name ?? '') }
+    : undefined;
+  return householdsFor(world.value!, f, planIndex.values(), village);
 }
 
 function onHover(e: MapMouseEvent): void {
@@ -1059,6 +1014,8 @@ onMounted(() => {
       const c = map.getCenter();
       store.center = [c.lng, c.lat];
       store.zoom = map.getZoom();
+      const b = map.getBounds();
+      store.bounds = [b.getWest(), b.getSouth(), b.getEast(), b.getNorth()];
       store.here = villageHere();
     }
   });
@@ -1143,7 +1100,8 @@ watch(flyTarget, (t) => {
   const north = store.illustratedTowns && store.showSettlements && t.zoom >= ILL_ZOOM - 0.6;
   map.flyTo({ center: [t.lon, t.lat], zoom: t.zoom, duration: 2200, essential: true, offset: [t.offsetX ?? 0, 0], ...(north ? { bearing: 0, pitch: 0 } : {}) });
   const src = map.getSource('search-hit') as GeoJSONSource | undefined;
-  if (!src) return;
+  // A quiet flight (a loaded world file's view) has no pulse.
+  if (!src || t.quiet) return;
   cancelAnimationFrame(hitFrame);
   const t0 = performance.now();
   const tick = () => {

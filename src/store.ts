@@ -78,6 +78,8 @@ export const store = reactive({
   center: [0, 20] as [number, number],
   /** Map zoom (updated when the map settles). */
   zoom: 1.6,
+  /** The map's visible area [west, south, east, north] (updated when the map settles). */
+  bounds: null as [number, number, number, number] | null,
   /** The village under the map centre at close zoom, if any (from the towns worker's data). */
   here: null as { name: string; en?: string; kind: string; population: number; realm?: string; war?: string; faith?: string; what?: string; cause?: string; ago?: string; curse?: string; order?: string } | null,
 });
@@ -91,7 +93,7 @@ export const search = new SearchIndex();
 export const searchState = reactive({ done: 0, total: 0, version: 0 });
 /** A place to fly to (set by the search box, handled by the map). */
 /** Where to fly the map; `offsetX` (pixels) lands the place left or right of centre, clear of a side window. */
-export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; name: string; t: number; offsetX?: number } | null>(null);
+export const flyTarget = shallowRef<{ lon: number; lat: number; zoom: number; name: string; t: number; offsetX?: number; quiet?: boolean } | null>(null);
 /** The cave or glade open in the lair view, if any. */
 export const openLair = shallowRef<LairSite | null>(null);
 /** The tower, crypt, ruin, mine, catacomb or sewer open in the dungeon view, if any. */

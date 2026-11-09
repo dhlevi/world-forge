@@ -409,6 +409,36 @@ export class TownManager {
     return res;
   }
 
+  /**
+   * The settlements whose plans stand in an area (cities, towns and villages), the largest first,
+   * at most `max` of them: for the game-data export (export/gamedata.ts).
+   */
+  regionSites(b: Bounds, max: number): Settlement[] {
+    const cLon = (b.west + b.east) / 2, cLat = (b.south + b.north) / 2;
+    const inView = (s: Settlement) => {
+      const lon = wrapLon(s.lon - cLon) + cLon;
+      return lon > b.west && lon < b.east && s.lat > b.south && s.lat < b.north;
+    };
+    const want: Settlement[] = [];
+    const radiusKm = distKm(b.west, b.south, b.east, b.north) / 2 + 5;
+    this.sites.forEach(cLon, cLat, radiusKm, (s) => inView(s) && want.push(s));
+    for (let by = Math.floor(b.south); by <= Math.floor(b.north); by++) {
+      for (let bx = Math.floor(b.west); bx <= Math.floor(b.east); bx++) {
+        for (const v of this.block(bx, by).villages) if (inView(v)) want.push(v);
+      }
+    }
+    const rank = (s: Settlement) => (s.tier === 'city' ? 3e9 : s.tier === 'town' ? 2e9 : 0) + s.population;
+    const seen = new Set<string>();
+    return want.filter((s) => !seen.has(s.id) && seen.add(s.id)).sort((x, y) => rank(y) - rank(x)).slice(0, max);
+  }
+
+  /** A settlement's finished plan (made now if need be, with the tracks that reach it first). */
+  planOf(s: Settlement): PlanFeature[] {
+    const bx = Math.floor(s.lon), by = Math.floor(s.lat);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) this.block(bx + dx, by + dy);
+    return this.plans.get(s.id) ?? this.plan(s);
+  }
+
   // ---- Search index -------------------------------------------------------------------------
 
   private indexQueue: number[] | null = null;
