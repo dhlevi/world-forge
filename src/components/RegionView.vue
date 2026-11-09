@@ -6,7 +6,7 @@ import { personName } from '../lore/names';
 import { HABITAT_LABEL, regionAt } from '../nature/habitat';
 import { DANGER_WORD, bestiary } from '../nature/bestiary';
 import { floraOf } from '../nature/flora';
-import { curseOfHeart, curseRumours } from '../nature/curses';
+import { curseOfHeart, curseRumours, signText } from '../nature/curses';
 
 /**
  * The nature of the country about a place: its creatures (nature/bestiary.ts), its plants
@@ -116,16 +116,16 @@ const USES: [keyof import('../nature/flora').Uses, string][] = [['food', 'Food']
             <div class="head"><a href="#" title="Show this cursed land on the map" @click.prevent="go(x.h.lon, x.h.lat, 9, x.h.region)"><b>{{ cap(x.h.region) }}</b></a><i v-if="x.h.regionEn !== x.h.region" class="local"> {{ x.h.regionEn }}</i><span class="tag d4">{{ x.type.name }}</span></div>
             <div class="meta">{{ x.km < 20 ? 'Here' : `${Math.round(x.km)} km ${x.dir}` }} · its heart is {{ x.h.kind === 'village' ? 'the village of ' : x.h.kind === 'crypt' ? 'the crypt of ' : 'the ruin of ' }}<a href="#" title="Go to the heart of the curse" @click.prevent="go(x.h.lon, x.h.lat, 12.5, x.h.name)">{{ x.h.name }}</a></div>
             <p>{{ x.h.story }}</p>
-            <p class="small"><i>What it does:</i> {{ x.type.effects.join('; ') }}.</p>
-            <p class="small"><i>Signs:</i> {{ x.type.signs.join('; ') }}.</p>
-            <p class="small"><i>How it might be lifted:</i> {{ x.type.lifting.join('; or ') }}.</p>
+            <p class="small"><i>What it does:</i> {{ cap(x.type.effects.join('; ')) }}.</p>
+            <p class="small"><i>Signs:</i> {{ cap(signText(x.type, x.type.targets.includes('land') ? 'land' : x.type.targets.includes('place') ? 'place' : 'bloodline').join('; ')) }}.</p>
+            <p class="small"><i>It might be lifted by</i> {{ x.type.lifting.join(', or by ') }}.</p>
           </div>
         </template>
         <h3>Rumours<template v-if="data.near"> heard in <a href="#" title="Go to the town" @click.prevent="go(data.near.lon, data.near.lat, 13, data.near.name ?? '')">{{ data.near.name }}</a></template></h3>
         <div v-for="(x, i) in data.rumours" :key="i" class="entry">
           <div class="head"><b>{{ x.type.name }}</b><span class="tag" :class="`d${Math.min(5, x.type.severity + 1)}`">{{ ['', 'a nuisance', 'troubling', 'grave', 'dire', 'a doom'][x.type.severity] }}</span></div>
           <p>{{ x.text }}</p>
-          <p class="small"><i>What it does:</i> {{ x.type.effects[0] }}. <i>Lifted by:</i> {{ x.type.lifting[0] }}.</p>
+          <p class="small"><i>What it does:</i> {{ cap(x.type.effects[0]) }}. <i>It might be lifted by</i> {{ x.type.lifting[0] }}.</p>
         </div>
       </section>
     </div>
