@@ -1553,12 +1553,15 @@ export class Script {
   private marks?: Map<string, Glyph>;
   /**
    * A mark of punctuation in the script's own manner: ". , ; : ? !", quotation marks “ ” and the
-   * turned ¿ ¡. Each family of scripts has its own: Latin-like dots, hooks and strokes (one of a
-   * few shapes, chosen for the script); upright strokes (dandas) for the Devanagari-like and
-   * looped scripts; groups of dots for runes and ogham; the Ethiopic-like dotted marks; wedges in
-   * clay; small circles, ticks and corner brackets for the scripts of the far east; scrolls for
-   * the glyphs; red verse points for hieroglyphs; dots and rings for the column scripts. The
-   * abjad's marks face the way it runs.
+   * turned ¿ ¡. Each script picks its own from a library of shapes (dots, rings, bars, ticks,
+   * hooks, cups, diamonds, groups of dots, stalks, loops, spirals, forks, wedges, daggers and
+   * more), leaning to those of its family: rounded marks for the flowing scripts, strokes and
+   * groups of dots for the angular ones, upright strokes and rings for the Devanagari-like and
+   * looped, dotted marks for the Ethiopic-like, corner brackets for the scripts of the far east,
+   * wedges in clay, scrolls for the glyphs and red verse points for hieroglyphs. Its full stop,
+   * comma, colon and semicolon are always unlike each other (the semicolon is a sign over its
+   * comma), and the Latin shapes come up only now and then in a Latin-like script. The abjad's
+   * marks face the way it runs.
    */
   punct(m: string): Glyph | null {
     if (!this.marks) this.marks = this.makeMarks();
@@ -1577,112 +1580,198 @@ export class Script {
     const turn = (gl: Glyph): Glyph => ({ ...gl, prims: gl.prims.map((q) => ({ k: q.k, p: q.k === 'circ' || q.k === 'dot' ? [gl.w - q.p[0], T + B - q.p[1], q.p[2]] : q.p.map((v, i) => (i % 2 ? T + B - v : gl.w - v)) })) });
     const family = st === 'devanagari' || st === 'looped' ? 'indic' : st === 'runes' || st === 'ogham' ? 'dots' : st === 'ethiopic' ? 'ethiopic' : st === 'cuneiform' ? 'wedge'
       : st === 'hanzi' || st === 'kana' || st === 'hangul' ? 'cjk' : st === 'glyphs' ? 'scroll' : st === 'hieroglyph' ? 'verse' : st === 'spine' || st === 'phagspa' ? 'column' : 'euro';
-    // The Latin-like marks, in one of a few shapes for each.
-    const pv = Math.floor(r() * 3), qv = Math.floor(r() * 4), ev = Math.floor(r() * 3), cv = Math.floor(r() * 2), qq = Math.floor(r() * 2);
-    const euro = () => {
-      out.set('.', g([pv === 0 ? dot(8, B - 5 * u) : pv === 1 ? C_(8, B - 5 * u, 4.5 * u) : L_(2, B - 3 * u, 16, B - 3 * u)], pv === 2 ? 20 : 16));
-      const comma: Prim[] = cv === 0 ? [dot(9, B - 6 * u, 4), Q_(11, B - 6 * u, 13, B + 6 * u, 4, B + 14 * u)] : [L_(12, B - 8 * u, 5, B + 12 * u)];
-      out.set(',', g(comma, 18));
-      out.set(':', g([dot(8, M + 2 * u), dot(8, B - 5 * u)], 16));
-      out.set(';', g([dot(9, M + 2 * u), ...comma], 18));
-      const hook: Prim[] = [Q_(3, T + 22 * u, 13, T, 23, T + 20 * u), Q_(23, T + 20 * u, 25, T + 40 * u, 13, M + 6 * u), L_(13, M + 6 * u, 13, B - 22 * u), dot(13, B - 5 * u)];
-      const q = qv === 0 ? g(hook, 28) : qv === 1 ? g([Q_(2, M, 8, M - 16 * u, 14, M), Q_(14, M, 20, M + 16 * u, 26, M), dot(14, B - 5 * u)], 28)
-        : qv === 2 ? mirror(g(hook, 28)) : g([C_(12, T + 12 * u, 7 * u), L_(12, T + 19 * u, 12, B - 22 * u), dot(12, B - 5 * u)], 24);
-      out.set('?', q);
-      out.set('!', ev === 0 ? g([L_(10, T + 6 * u, 10, B - 22 * u), dot(10, B - 5 * u)], 20)
-        : ev === 1 ? g([P_(5, T + 4 * u, 15, T + 4 * u, 10, B - 22 * u), dot(10, B - 5 * u)], 20)
-          : g([L_(5, T + 6 * u, 10, B - 22 * u, 15, T + 6 * u), dot(10, B - 5 * u)], 20));
-      if (qq === 0) {
-        out.set('“', g([Q_(8, T + 6 * u, 3, T + 12 * u, 6, T + 22 * u), Q_(18, T + 6 * u, 13, T + 12 * u, 16, T + 22 * u)], 22));
-        out.set('”', g([Q_(6, T + 6 * u, 11, T + 12 * u, 8, T + 22 * u), Q_(16, T + 6 * u, 21, T + 12 * u, 18, T + 22 * u)], 22));
-      } else {
-        out.set('“', g([L_(12, M - 12 * u, 4, M, 12, M + 12 * u), L_(22, M - 12 * u, 14, M, 22, M + 12 * u)], 26));
-        out.set('”', g([L_(4, M - 12 * u, 12, M, 4, M + 12 * u), L_(14, M - 12 * u, 22, M, 14, M + 12 * u)], 26));
-      }
+    type Mk = { prims: Prim[]; w: number };
+    const Y0 = B - 5 * u;
+    // ---- A library of marks, each a shape of its own (in x from 0; small marks sit on the line) ----
+    // Small marks: for the full stop, comma, colon and semicolon.
+    const SMALL: Record<string, () => Mk> = {
+      dot: () => ({ prims: [dot(8, Y0)], w: 16 }),
+      ring: () => ({ prims: [C_(8, Y0, 4.5 * u)], w: 16 }),
+      bar: () => ({ prims: [L_(2, B - 3 * u, 16, B - 3 * u)], w: 20 }),
+      tick: () => ({ prims: [L_(8, B - 16 * u, 8, B)], w: 16 }),
+      slash: () => ({ prims: [L_(12, B - 10 * u, 4, B + 10 * u)], w: 16 }),
+      comma: () => ({ prims: [dot(9, B - 6 * u, 4), Q_(11, B - 6 * u, 13, B + 6 * u, 4, B + 14 * u)], w: 18 }),
+      cup: () => ({ prims: [Q_(2, B - 10 * u, 9, B + 6 * u, 16, B - 10 * u)], w: 18 }),
+      raised: () => ({ prims: [dot(8, M)], w: 16 }),
+      diamond: () => ({ prims: [P_(8, Y0 - 6 * u, 13, Y0, 8, Y0 + 6 * u, 3, Y0)], w: 16 }),
+      pair: () => ({ prims: [dot(5, Y0, 3.6), dot(15, Y0, 3.6)], w: 20 }),
+      trio: () => ({ prims: [dot(10, Y0 - 10 * u, 3.6), dot(4, Y0, 3.6), dot(16, Y0, 3.6)], w: 20 }),
+      cross: () => ({ prims: [L_(3, M - 6 * u, 13, M + 6 * u), L_(13, M - 6 * u, 3, M + 6 * u)], w: 16 }),
+      chevron: () => ({ prims: [L_(2, B - 12 * u, 8, B - 2 * u, 14, B - 12 * u)], w: 16 }),
+      hookleft: () => ({ prims: [Q_(12, B - 14 * u, 2, B - 6 * u, 10, B + 6 * u)], w: 16 }),
+      crescent: () => ({ prims: [Q_(13, M - 8 * u, 1, M, 13, M + 8 * u)], w: 16 }),
+      ringdot: () => ({ prims: [C_(9, Y0 - 2 * u, 6 * u), dot(9, Y0 - 2 * u, 2)], w: 18 }),
+      wave: () => ({ prims: [Q_(2, M + 2 * u, 6, M - 6 * u, 10, M + 2 * u), Q_(10, M + 2 * u, 14, M + 10 * u, 18, M + 2 * u)], w: 20 }),
+      stroke: () => ({ prims: [L_(8, M - 14 * u, 8, M + 14 * u)], w: 16 }),
+      lowbar: () => ({ prims: [L_(2, B + 6 * u, 16, B + 6 * u)], w: 18 }),
     };
-    euro();
-    switch (family) {
-      case 'indic':
-        out.set('.', g([L_(8, T, 8, B)], 16));
-        out.set('!', g([L_(6, T, 6, B), L_(15, T, 15, B)], 22));
-        out.set(',', g([L_(10, B - 16 * u, 5, B)], 15));
-        out.set('?', g([C_(9, T + 6 * u, 5 * u), L_(9, T + 11 * u, 9, B)], 18));
-        out.set(':', g([C_(8, M - 4 * u, 4 * u), C_(8, B - 6 * u, 4 * u)], 16));
-        out.set(';', g([C_(9, M - 4 * u, 4 * u), L_(11, B - 16 * u, 6, B)], 17));
-        break;
-      case 'dots': {
-        const c = M;
-        out.set('.', g([dot(12, c - 9 * u), dot(4, c), dot(20, c), dot(12, c + 9 * u)], 24));
-        out.set(',', g([dot(12, c - 7 * u), dot(6, c + 6 * u), dot(18, c + 6 * u)], 24));
-        out.set(':', g([dot(8, c - 18 * u), dot(8, c - 6 * u), dot(8, c + 6 * u), dot(8, c + 18 * u)], 16));
-        out.set(';', g([dot(8, c - 12 * u), dot(8, c), dot(8, c + 12 * u)], 16));
-        out.set('?', g([dot(12, c - 12 * u), dot(2, c), dot(22, c), dot(12, c + 12 * u), dot(12, c)], 24));
-        out.set('!', g([L_(12, T + 4 * u, 12, B - 4 * u), dot(4, c), dot(20, c)], 24));
-        out.set('“', g([L_(10, c - 12 * u, 3, c, 10, c + 12 * u)], 14));
-        out.set('”', g([L_(3, c - 12 * u, 10, c, 3, c + 12 * u)], 14));
-        break;
+    /** A mark set above another (the semicolon's way: a sign over the comma). */
+    const over = (top: string, below: Mk): Mk => {
+      const t: Prim[] = top === 'dot' ? [dot(9, M - 2 * u)] : top === 'ring' ? [C_(9, M - 2 * u, 4 * u)] : top === 'bar' ? [L_(3, M - 2 * u, 15, M - 2 * u)] : top === 'tick' ? [L_(9, M - 10 * u, 9, M + 2 * u)] : [P_(9, M - 8 * u, 13, M - 2 * u, 9, M + 4 * u, 5, M - 2 * u)];
+      return { prims: [...t, ...below.prims], w: Math.max(18, below.w) };
+    };
+    // Colons: two of a kind, or a mark of its own.
+    const COLON: Record<string, () => Mk> = {
+      dots: () => ({ prims: [dot(8, M + 2 * u), dot(8, Y0)], w: 16 }),
+      rings: () => ({ prims: [C_(8, M - 2 * u, 4 * u), C_(8, Y0, 4 * u)], w: 16 }),
+      bars: () => ({ prims: [L_(2, M, 14, M), L_(2, B - 4 * u, 14, B - 4 * u)], w: 16 }),
+      ticks: () => ({ prims: [L_(5, M - 6 * u, 5, B - 2 * u), L_(13, M - 6 * u, 13, B - 2 * u)], w: 18 }),
+      threedots: () => ({ prims: [dot(8, M - 12 * u, 3.6), dot(8, M + 1 * u, 3.6), dot(8, Y0 + 2 * u, 3.6)], w: 16 }),
+      dotbar: () => ({ prims: [dot(9, M - 6 * u), L_(2, M + 6 * u, 16, M + 6 * u), dot(9, Y0 + 4 * u)], w: 18 }),
+      sidedots: () => ({ prims: [dot(4, M + 4 * u, 3.6), dot(16, M + 4 * u, 3.6)], w: 20 }),
+      diamonds: () => ({ prims: [P_(8, M - 8 * u, 12, M - 2 * u, 8, M + 4 * u, 4, M - 2 * u), P_(8, Y0 - 6 * u, 12, Y0, 8, Y0 + 6 * u, 4, Y0)], w: 16 }),
+    };
+    // Question marks.
+    const hook: Prim[] = [Q_(3, T + 22 * u, 13, T, 23, T + 20 * u), Q_(23, T + 20 * u, 25, T + 40 * u, 13, M + 6 * u), L_(13, M + 6 * u, 13, B - 22 * u), dot(13, B - 5 * u)];
+    const flip = (m: Mk): Mk => ({ prims: m.prims.map((q) => ({ k: q.k, p: q.k === 'circ' || q.k === 'dot' ? [m.w - q.p[0], q.p[1], q.p[2]] : q.p.map((v, i) => (i % 2 ? v : m.w - v)) })), w: m.w });
+    const QUES: Record<string, () => Mk> = {
+      latin: () => ({ prims: hook, w: 28 }),
+      mirrored: () => flip({ prims: hook, w: 28 }),
+      tilde: () => ({ prims: [Q_(2, M, 8, M - 16 * u, 14, M), Q_(14, M, 20, M + 16 * u, 26, M), dot(14, Y0)], w: 28 }),
+      stalkring: () => ({ prims: [C_(12, T + 12 * u, 7 * u), L_(12, T + 19 * u, 12, B - 22 * u), dot(12, Y0)], w: 24 }),
+      zigzag: () => ({ prims: [L_(4, T + 8 * u, 18, T + 18 * u, 4, T + 30 * u, 18, M + 6 * u), dot(11, Y0)], w: 22 }),
+      crescentdot: () => ({ prims: [Q_(20, T + 6 * u, -2, M - 10 * u, 20, M + 10 * u), dot(14, Y0)], w: 24 }),
+      triangle: () => ({ prims: [L_(12, T + 6 * u, 21, M - 2 * u, 3, M - 2 * u, 12, T + 6 * u), dot(12, Y0)], w: 24 }),
+      fork: () => ({ prims: [L_(4, T + 6 * u, 12, M - 8 * u, 20, T + 6 * u), L_(12, M - 8 * u, 12, B - 20 * u), dot(12, Y0)], w: 24 }),
+      loop: () => ({ prims: [Q_(12, M, 0, T + 10 * u, 12, T + 4 * u), Q_(12, T + 4 * u, 24, T + 10 * u, 12, M), L_(12, M, 12, B - 20 * u), dot(12, Y0)], w: 24 }),
+      high: () => ({ prims: [C_(10, T + 8 * u, 6 * u), L_(4, T + 18 * u, 16, T + 18 * u)], w: 20 }),
+      dotarc: () => ({ prims: [dot(4, M, 3.6), dot(12, M - 12 * u, 3.6), dot(20, M, 3.6), dot(12, Y0, 4.5)], w: 24 }),
+      spiral: () => ({ prims: [Q_(12, M - 4 * u, 4, M - 4 * u, 6, M - 14 * u), Q_(6, M - 14 * u, 12, T + 4 * u, 20, M - 12 * u), Q_(20, M - 12 * u, 22, M + 2 * u, 12, M + 6 * u), dot(12, Y0)], w: 26 }),
+      cross: () => ({ prims: [L_(12, T + 6 * u, 12, M + 6 * u), L_(4, T + 18 * u, 20, T + 18 * u), dot(12, Y0)], w: 24 }),
+      bentstroke: () => ({ prims: [L_(6, T + 6 * u, 18, T + 6 * u, 10, M + 4 * u), dot(10, Y0)], w: 22 }),
+    };
+    // Exclamation marks.
+    const EXCL: Record<string, () => Mk> = {
+      latin: () => ({ prims: [L_(10, T + 6 * u, 10, B - 22 * u), dot(10, Y0)], w: 20 }),
+      wedge: () => ({ prims: [P_(5, T + 4 * u, 15, T + 4 * u, 10, B - 22 * u), dot(10, Y0)], w: 20 }),
+      vee: () => ({ prims: [L_(5, T + 6 * u, 10, B - 22 * u, 15, T + 6 * u), dot(10, Y0)], w: 20 }),
+      double: () => ({ prims: [L_(6, T + 6 * u, 6, B - 4 * u), L_(15, T + 6 * u, 15, B - 4 * u)], w: 22 }),
+      dagger: () => ({ prims: [L_(10, T + 4 * u, 10, B - 4 * u), L_(3, T + 18 * u, 17, T + 18 * u)], w: 20 }),
+      star: () => ({ prims: [L_(12, M - 14 * u, 12, M + 14 * u), L_(2, M - 7 * u, 22, M + 7 * u), L_(2, M + 7 * u, 22, M - 7 * u)], w: 24 }),
+      bolt: () => ({ prims: [L_(14, T + 4 * u, 6, M - 2 * u, 15, M - 2 * u, 8, B - 18 * u), dot(9, Y0)], w: 22 }),
+      flanked: () => ({ prims: [L_(12, T + 6 * u, 12, B - 4 * u), dot(3, M, 3.6), dot(21, M, 3.6)], w: 24 }),
+      ringstem: () => ({ prims: [C_(10, T + 9 * u, 6 * u), L_(10, T + 15 * u, 10, B - 4 * u)], w: 20 }),
+      tridot: () => ({ prims: [dot(10, T + 8 * u, 4.5), dot(10, M - 4 * u, 4.5), dot(10, Y0, 4.5), L_(3, M - 4 * u, 17, M - 4 * u)], w: 20 }),
+      downtri: () => ({ prims: [P_(3, T + 6 * u, 19, T + 6 * u, 11, M), dot(11, Y0)], w: 22 }),
+    };
+    // Quotation marks: [open, close].
+    const QUOTE: Record<string, () => [Mk, Mk]> = {
+      curly: () => [{ prims: [Q_(8, T + 6 * u, 3, T + 12 * u, 6, T + 22 * u), Q_(18, T + 6 * u, 13, T + 12 * u, 16, T + 22 * u)], w: 22 }, { prims: [Q_(6, T + 6 * u, 11, T + 12 * u, 8, T + 22 * u), Q_(16, T + 6 * u, 21, T + 12 * u, 18, T + 22 * u)], w: 22 }],
+      angles: () => [{ prims: [L_(12, M - 12 * u, 4, M, 12, M + 12 * u), L_(22, M - 12 * u, 14, M, 22, M + 12 * u)], w: 26 }, { prims: [L_(4, M - 12 * u, 12, M, 4, M + 12 * u), L_(14, M - 12 * u, 22, M, 14, M + 12 * u)], w: 26 }],
+      single: () => [{ prims: [L_(12, M - 14 * u, 4, M, 12, M + 14 * u)], w: 16 }, { prims: [L_(4, M - 14 * u, 12, M, 4, M + 14 * u)], w: 16 }],
+      corners: () => [{ prims: [L_(16, T + 6 * u, 6, T + 6 * u, 6, T + 30 * u)], w: 20 }, { prims: [L_(4, B - 30 * u, 4, B - 4 * u, 14, B - 4 * u)], w: 20 }],
+      lowhigh: () => [{ prims: [L_(6, B - 4 * u, 3, B + 8 * u), L_(14, B - 4 * u, 11, B + 8 * u)], w: 18 }, { prims: [L_(6, T + 4 * u, 3, T + 16 * u), L_(14, T + 4 * u, 11, T + 16 * u)], w: 18 }],
+      bars: () => [{ prims: [L_(5, T + 6 * u, 5, M - 4 * u), L_(12, T + 6 * u, 12, M - 4 * u)], w: 18 }, { prims: [L_(5, M + 4 * u, 5, B - 4 * u), L_(12, M + 4 * u, 12, B - 4 * u)], w: 18 }],
+      brackets: () => [{ prims: [Q_(12, T + 4 * u, 2, M, 12, B - 4 * u)], w: 16 }, { prims: [Q_(4, T + 4 * u, 14, M, 4, B - 4 * u)], w: 16 }],
+      diamonds: () => [{ prims: [P_(8, M - 7 * u, 13, M, 8, M + 7 * u, 3, M), L_(16, M, 22, M)], w: 24 }, { prims: [L_(2, M, 8, M), P_(16, M - 7 * u, 21, M, 16, M + 7 * u, 11, M)], w: 24 }],
+    };
+
+    // ---- What each family of scripts draws from (the first choices are its own) ----
+    const round = st === 'elvish' || st === 'abjad' || st === 'looped';
+    const angular = st === 'square' || st === 'syllabics' || st === 'runes' || st === 'ogham';
+    const CH: Record<string, { stop: string[]; comma: string[]; colon: string[]; ques: string[]; excl: string[]; quote: string[] }> = {
+      euro: {
+        stop: round ? ['dot', 'ring', 'ringdot', 'raised', 'diamond', 'pair'] : angular ? ['bar', 'tick', 'diamond', 'pair', 'trio', 'cross', 'dot'] : ['dot', 'ring', 'bar', 'diamond', 'raised', 'pair', 'trio'],
+        comma: round ? ['cup', 'hookleft', 'crescent', 'slash', 'comma', 'wave'] : angular ? ['slash', 'tick', 'chevron', 'lowbar', 'stroke', 'comma'] : ['comma', 'slash', 'cup', 'chevron', 'hookleft', 'tick'],
+        colon: round ? ['dots', 'rings', 'sidedots', 'threedots', 'dotbar'] : angular ? ['bars', 'ticks', 'diamonds', 'threedots', 'dots'] : ['dots', 'rings', 'bars', 'threedots', 'diamonds', 'dotbar'],
+        ques: round ? ['mirrored', 'loop', 'spiral', 'crescentdot', 'tilde', 'stalkring', 'dotarc'] : angular ? ['zigzag', 'triangle', 'fork', 'bentstroke', 'cross', 'tilde'] : ['tilde', 'stalkring', 'loop', 'latin', 'fork', 'crescentdot', 'zigzag', 'high'],
+        excl: round ? ['ringstem', 'wedge', 'flanked', 'tridot', 'latin', 'downtri'] : angular ? ['dagger', 'double', 'bolt', 'vee', 'star', 'flanked'] : ['wedge', 'vee', 'latin', 'dagger', 'ringstem', 'flanked', 'downtri'],
+        quote: round ? ['curly', 'angles', 'brackets', 'single'] : angular ? ['angles', 'corners', 'bars', 'diamonds', 'single'] : ['curly', 'angles', 'lowhigh', 'single', 'diamonds'],
+      },
+      indic: { stop: ['stroke', 'ringdot', 'tick'], comma: ['slash', 'hookleft', 'cup', 'raised'], colon: ['rings', 'dots', 'sidedots'], ques: ['stalkring', 'loop', 'spiral', 'crescentdot', 'high'], excl: ['double', 'ringstem', 'flanked', 'tridot'], quote: ['single', 'brackets', 'curly', 'angles'] },
+      dots: { stop: ['trio', 'pair', 'diamond', 'cross'], comma: ['dot', 'raised', 'tick', 'slash'], colon: ['threedots', 'diamonds', 'dots', 'sidedots'], ques: ['dotarc', 'triangle', 'fork', 'zigzag'], excl: ['flanked', 'dagger', 'star', 'tridot'], quote: ['single', 'angles', 'bars'] },
+      ethiopic: { stop: ['pair', 'trio', 'diamond'], comma: ['raised', 'stroke', 'tick'], colon: ['threedots', 'dotbar', 'sidedots'], ques: ['dotarc', 'triangle', 'tilde', 'fork'], excl: ['flanked', 'tridot', 'double'], quote: ['angles', 'single', 'brackets'] },
+      wedge: { stop: [], comma: [], colon: [], ques: [], excl: [], quote: ['single', 'angles', 'corners'] },
+      cjk: { stop: ['ring', 'ringdot', 'dot'], comma: ['slash', 'tick', 'hookleft'], colon: ['dots', 'rings', 'sidedots'], ques: ['stalkring', 'tilde', 'loop', 'crescentdot', 'spiral', 'high'], excl: ['wedge', 'ringstem', 'downtri', 'vee'], quote: ['corners', 'brackets', 'single'] },
+      scroll: { stop: [], comma: ['dot', 'ring', 'cup'], colon: ['dots', 'rings', 'sidedots'], ques: [], excl: [], quote: ['brackets', 'single', 'curly'] },
+      verse: { stop: [], comma: [], colon: [], ques: [], excl: [], quote: [] },
+      column: { stop: ['ringdot', 'pair', 'trio'], comma: ['raised', 'cup', 'tick'], colon: ['sidedots', 'dots', 'bars'], ques: ['stalkring', 'loop', 'crescentdot', 'tilde', 'fork'], excl: ['ringstem', 'flanked', 'wedge', 'double'], quote: ['single', 'angles', 'brackets'] },
+    };
+    const ch = CH[family];
+    // A choice weighted toward the first of a list (the family's own); the Latin shapes come up
+    // only now and then, and only in a Latin-like script.
+    const choose = (xs: string[], used: Set<string> = new Set()): string | null => {
+      const ok = xs.filter((x) => !used.has(x) && (x !== 'latin' || (st === 'latin' && r() < 0.25)) && (x !== 'comma' || st === 'latin' || r() < 0.3));
+      if (!ok.length) return null;
+      let t = r() * ok.reduce((a, _x, i) => a + 1 / (1 + i * 0.35), 0);
+      for (let i = 0; i < ok.length; i++) {
+        t -= 1 / (1 + i * 0.35);
+        if (t <= 0) return ok[i];
       }
-      case 'ethiopic':
-        out.set('.', g([dot(5, M - 7 * u), dot(17, M - 7 * u), dot(5, M + 7 * u), dot(17, M + 7 * u)], 22));
-        out.set(',', g([dot(8, M - 8 * u), dot(8, M + 8 * u), L_(2, M, 14, M)], 16));
-        out.set(';', g([dot(8, M - 8 * u), dot(8, M + 8 * u), L_(2, M - 8 * u, 14, M - 8 * u), L_(2, M + 8 * u, 14, M + 8 * u)], 16));
-        out.set(':', g([dot(8, M - 8 * u), dot(8, M + 8 * u), L_(13, M - 12 * u, 13, M + 12 * u)], 17));
-        out.set('?', g([dot(8, M - 13 * u), dot(8, M), dot(8, M + 13 * u), L_(2, M, 14, M)], 16));
-        out.set('!', g([dot(5, M - 7 * u), dot(17, M - 7 * u), dot(5, M + 7 * u), dot(17, M + 7 * u), L_(11, T + 2 * u, 11, B - 2 * u)], 22));
-        break;
+      return ok[ok.length - 1];
+    };
+    // Vertical scripts set each mark in the middle of a cell of their own width.
+    const cell = family === 'cjk' ? 50 : family === 'column' ? 100 : 0;
+    const put = (m: string, mk: Mk, rubric = false) => out.set(m, cell ? g(tf(mk.prims, 1, 1, (cell - mk.w) / 2, 0), cell, rubric) : g(mk.prims, mk.w, rubric));
+    const usedSmall = new Set<string>();
+    const stopK = choose(ch.stop, usedSmall);
+    if (stopK) {
+      usedSmall.add(stopK);
+      put('.', SMALL[stopK]());
+    }
+    const commaK = choose(ch.comma, usedSmall);
+    if (commaK) {
+      usedSmall.add(commaK);
+      put(',', SMALL[commaK]());
+      // The semicolon: a sign over the comma (one unlike the full stop, where it can be).
+      const topK = choose(['dot', 'ring', 'bar', 'tick', 'diamond'].filter((x) => x !== stopK && x !== commaK));
+      put(';', over(topK ?? 'dot', SMALL[commaK]()));
+    }
+    const colonK = choose(ch.colon);
+    if (colonK) put(':', COLON[colonK]());
+    const quesK = choose(ch.ques);
+    if (quesK) put('?', QUES[quesK]());
+    const exclK = choose(ch.excl);
+    if (exclK) put('!', EXCL[exclK]());
+    const quoteK = choose(ch.quote);
+    if (quoteK) {
+      const [a, b] = QUOTE[quoteK]();
+      put('“', a);
+      put('”', b);
+    }
+    // Families with marks wholly their own.
+    switch (family) {
       case 'wedge': {
-        // A wedge: a triangular head and a tail, pressed at an angle.
+        // A wedge: a triangular head and a tail, pressed at an angle (in one of two ductus).
         const wedge = (x: number, y: number, ang: number, len: number): Prim[] => {
           const c = Math.cos(ang), s2 = Math.sin(ang), hw = 5 * u;
           return [P_(x - s2 * hw, y + c * hw, x + s2 * hw, y - c * hw, x + c * hw * 1.6, y + s2 * hw * 1.6), L_(x, y, x + c * len, y + s2 * len)];
         };
-        out.set('.', g(wedge(4, M - 10 * u, Math.PI / 4, 22 * u), 24));
+        const tilt = r() < 0.5 ? Math.PI / 4 : -Math.PI / 6;
+        const side = r() < 0.5;
+        out.set('.', g(wedge(4, M - 10 * u, tilt, 22 * u), 24));
         out.set(',', g(wedge(8, B - 18 * u, Math.PI / 2, 14 * u), 16));
-        out.set(':', g([...wedge(4, M - 16 * u, 0, 12 * u), ...wedge(4, M + 6 * u, 0, 12 * u)], 20));
+        out.set(':', g(side ? [...wedge(2, M, 0, 10 * u), ...wedge(16, M, 0, 10 * u)] : [...wedge(4, M - 16 * u, 0, 12 * u), ...wedge(4, M + 6 * u, 0, 12 * u)], side ? 30 : 20));
         out.set(';', g([...wedge(4, M - 12 * u, 0, 12 * u), ...wedge(8, B - 16 * u, Math.PI / 2, 12 * u)], 20));
-        out.set('?', g([...wedge(4, M - 14 * u, Math.PI / 4, 20 * u), ...wedge(4, M + 10 * u, -Math.PI / 4, 20 * u)], 24));
-        out.set('!', g(wedge(10, T + 4 * u, Math.PI / 2, h - 10 * u), 20));
+        out.set('?', g(r() < 0.5 ? [...wedge(4, M - 14 * u, Math.PI / 4, 20 * u), ...wedge(4, M + 10 * u, -Math.PI / 4, 20 * u)] : [...wedge(4, M - 14 * u, 0, 18 * u), ...wedge(10, M + 4 * u, Math.PI / 2, 14 * u), ...wedge(18, M - 14 * u, Math.PI, 14 * u)], 26));
+        out.set('!', g(r() < 0.5 ? wedge(10, T + 4 * u, Math.PI / 2, h - 10 * u) : [...wedge(6, T + 4 * u, Math.PI / 2, h - 14 * u), ...wedge(16, T + 4 * u, Math.PI / 2, h - 14 * u)], 24));
         break;
       }
-      case 'cjk': {
-        const w = 50;
-        out.set('.', g([C_(16, B - 9 * u, 6 * u)], w));
-        out.set(',', g([L_(12, B - 18 * u, 24, B - 4 * u)], w));
-        out.set(':', g([dot(25, M - 12 * u), dot(25, M + 14 * u)], w));
-        out.set(';', g([dot(25, M - 12 * u), L_(22, M + 8 * u, 28, M + 24 * u)], w));
-        out.set('?', g(tf(out.get('?')!.prims, 1, 1, 12, 0), w));
-        out.set('!', g([P_(21, T + 8 * u, 29, T + 8 * u, 25, B - 22 * u), dot(25, B - 6 * u)], w));
-        out.set('“', g([L_(40, T + 6 * u, 14, T + 6 * u, 14, T + 36 * u)], w));
-        out.set('”', g([L_(10, B - 6 * u, 36, B - 6 * u, 36, B - 36 * u)], w));
-        break;
-      }
-      case 'scroll':
-        out.set('.', g([Q_(4, M + 10 * u, 2, M - 8 * u, 14, M - 8 * u), Q_(14, M - 8 * u, 22, M + 2 * u, 12, M + 4 * u)], 26));
-        out.set(',', g([dot(10, B - 8 * u, 5)], 20));
-        out.set(':', g([dot(10, M - 8 * u, 5), dot(10, M + 12 * u, 5)], 20));
-        out.set(';', g([dot(10, M - 8 * u, 5), L_(12, M + 6 * u, 7, M + 22 * u)], 20));
+      case 'scroll': {
+        const sv = Math.floor(r() * 3);
+        out.set('.', g(sv === 0 ? [Q_(4, M + 10 * u, 2, M - 8 * u, 14, M - 8 * u), Q_(14, M - 8 * u, 22, M + 2 * u, 12, M + 4 * u)] : sv === 1 ? [C_(12, M, 8 * u), dot(12, M, 3)] : [Q_(2, M + 8 * u, 12, M - 14 * u, 22, M + 8 * u), L_(2, M + 8 * u, 22, M + 8 * u)], 26));
         out.set('?', g([C_(14, M - 6 * u, 10 * u), Q_(6, M + 2 * u, 0, M + 18 * u, 10, M + 22 * u), dot(14, M - 6 * u, 3)], 28));
-        out.set('!', g([C_(14, M - 6 * u, 10 * u), dot(6, M + 18 * u, 3), dot(14, M + 22 * u, 3), dot(22, M + 18 * u, 3)], 28));
+        out.set('!', g(r() < 0.5 ? [C_(14, M - 6 * u, 10 * u), dot(6, M + 18 * u, 3), dot(14, M + 22 * u, 3), dot(22, M + 18 * u, 3)] : [C_(14, M - 6 * u, 10 * u), L_(14, M + 4 * u, 14, B - 2 * u)], 28));
         break;
-      case 'verse':
+      }
+      case 'verse': {
         // The red verse points of the old scribes, and a few red signs of their sort.
-        out.set('.', g([dot(10, T + 10 * u, 6)], 20, true));
-        out.set(',', g([dot(10, M, 4.5)], 20, true));
-        out.set(':', g([dot(10, T + 10 * u, 5), dot(10, M + 10 * u, 5)], 20, true));
-        out.set(';', g([dot(10, T + 10 * u, 5), dot(10, M + 6 * u, 4)], 20, true));
-        out.set('?', g([dot(10, T + 10 * u, 6), Q_(4, M, 10, M - 14 * u, 16, M), L_(10, M, 10, B - 8 * u)], 22, true));
-        out.set('!', g([dot(10, T + 10 * u, 6), L_(10, M - 10 * u, 10, B - 8 * u)], 20, true));
+        const hi = r() < 0.5 ? T + 10 * u : M - 6 * u;
+        out.set('.', g([dot(10, hi, 6)], 20, true));
+        out.set(',', g([dot(10, M + 8 * u, 4.5)], 20, true));
+        out.set(':', g([dot(10, hi, 5), dot(10, M + 10 * u, 5)], 20, true));
+        out.set(';', g([dot(10, hi, 5), L_(12, M + 4 * u, 7, M + 18 * u)], 20, true));
+        out.set('?', g([dot(10, hi, 6), Q_(4, M + 4 * u, 10, M - 10 * u, 16, M + 4 * u), L_(10, M + 4 * u, 10, B - 8 * u)], 22, true));
+        out.set('!', g([dot(10, hi, 6), L_(10, M - 6 * u, 10, B - 8 * u)], 20, true));
         out.set('“', g([L_(5, T + 6 * u, 5, M)], 12, true));
         out.set('”', g([L_(5, M, 5, B - 6 * u)], 12, true));
         break;
-      case 'column':
-        out.set('.', g([dot(36, M - 8 * u), dot(52, M - 8 * u), C_(44, M + 8 * u, 6 * u)], 100));
-        out.set(',', g([dot(44, M - 6 * u), Q_(46, M - 6 * u, 50, M + 6 * u, 40, M + 16 * u)], 100));
-        out.set(':', g([dot(36, M), dot(52, M)], 100));
-        out.set(';', g([dot(44, M - 10 * u), dot(44, M + 10 * u)], 100));
-        out.set('?', g(tf(out.get('?')!.prims, 1, 1, 32, 0), 100));
-        out.set('!', g(tf(out.get('!')!.prims, 1, 1, 34, 0), 100));
-        break;
+      }
+    }
+    // Some scripts set their full stop at the middle of the line, as some old hands did.
+    if (family === 'euro' && stopK && stopK !== 'raised' && r() < 0.2) {
+      const m0 = out.get('.')!;
+      out.set('.', { ...m0, prims: tf(m0.prims, 1, 1, 0, M - Y0) });
     }
     // The abjad's marks face the way it runs (its comma and question mark turned about).
     if (st === 'abjad') {
