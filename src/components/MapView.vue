@@ -858,6 +858,8 @@ function placeAt(lon: number, lat: number): string | undefined {
 function scheduleProbe(lngLat: LngLat): void {
   cancelAnimationFrame(probeFrame);
   probeFrame = requestAnimationFrame(() => {
+    // Hidden from the panel (Location details): nothing is worked out.
+    if (!store.showProbe) return;
     const info = world.value ? probeWorld(world.value.raster, lngLat.lng, lngLat.lat) : null;
     if (info && world.value) info.place = placeAt(lngLat.lng, lngLat.lat);
     store.probe = info;
@@ -1163,6 +1165,10 @@ watch(() => store.showPolitical, (show) => {
   setVisibility('political', show);
   setVisibility('labels', store.showLabels);
 });
+watch(() => store.showProbe, (show) => {
+  savePref('showProbe', show);
+  if (!show) store.probe = null;
+});
 watch(() => store.illustratedTowns, (ill) => {
   savePref('illustratedTowns', ill);
   applyPlanStyle();
@@ -1188,7 +1194,8 @@ watch(() => store.showSettlements, (show) => {
       <img :src="lairCard.img" alt="" width="220" height="160" />
       <div class="lair-hint">{{ touchOnly ? 'Tap again to open' : 'Double-click to open' }}</div>
     </div>
-    <div v-if="store.probe" class="probe">
+    <div v-if="store.probe && store.showProbe" class="probe">
+      <button class="probe-close" title="Hide location details (show them again from the panel)" aria-label="Hide location details" @click="store.showProbe = false">×</button>
       <div class="probe-title">{{ store.probe.terrain }}</div>
       <div v-if="store.probe.place" class="probe-place">{{ store.probe.place }}</div>
       <div v-if="store.probe.climate">{{ store.probe.climate }}</div>
@@ -1263,6 +1270,29 @@ watch(() => store.showSettlements, (show) => {
 .lair-card img {
   display: block;
   border: 1px solid rgba(43, 36, 32, 0.35);
+}
+.probe-close {
+  position: absolute;
+  top: 4px;
+  right: 5px;
+  width: 20px;
+  height: 20px;
+  padding: 0;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #9fb0c2;
+  font-size: 15px;
+  line-height: 20px;
+  cursor: pointer;
+  pointer-events: auto;
+}
+.probe-close:hover {
+  background: rgba(255, 255, 255, 0.12);
+  color: #fff;
+}
+.probe-title {
+  padding-right: 18px;
 }
 .probe-place {
   font-style: italic;

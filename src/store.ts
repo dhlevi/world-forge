@@ -51,6 +51,8 @@ export const store = reactive({
   showSettlements: true,
   /** Town plans drawn as an old bird's-eye map (raised buildings, roofs and trees), facing north. */
   illustratedTowns: loadPref('illustratedTowns', true),
+  /** The location details box (terrain, climate and place under the cursor), bottom right. */
+  showProbe: loadPref('showProbe', true),
   showLabels: true,
   /** Place names in the local languages, in English, or both. */
   labelMode: 'native' as 'native' | 'english' | 'both',

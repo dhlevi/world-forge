@@ -195,6 +195,10 @@ async function exportData(): Promise<void> {
           <input v-model="store.showCurrents" type="checkbox" />
           Ocean currents
         </label>
+        <label class="check" title="The box at the bottom right with the terrain, climate and place under the cursor">
+          <input v-model="store.showProbe" type="checkbox" />
+          Location details
+        </label>
       </section>
 
       <section>
