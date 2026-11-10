@@ -4,6 +4,7 @@ import type { Rng } from '../gen/rng';
 import { type Poly, type Pt, area, centroid, distToLine } from './geom';
 import type { PlanFeature, PlanOut } from './plan';
 import type { CityTheme } from '../lore/themes';
+import { DMath } from '../dmath';
 
 /**
  * Names and lettering for town plans: quarters (groups of wards), districts (market, castle,
@@ -82,7 +83,7 @@ const GUILDS: { id: string; label: string[]; w: number; at: 'plaza' | 'gate' | '
 
 const DIRS = ['East', 'North-east', 'North', 'North-west', 'West', 'South-west', 'South', 'South-east'];
 export function compass(p: Pt): string {
-  const a = Math.atan2(p[1], p[0]);
+  const a = DMath.atan2(p[1], p[0]);
   return DIRS[((Math.round(a / (Math.PI / 4)) % 8) + 8) % 8];
 }
 const short = (dir: string) => dir.replace('North-', 'North').replace('South-', 'South').replace('east', 'east').replace('west', 'west');
@@ -156,8 +157,8 @@ export function labelCity(n: CityNaming): void {
   const q = Math.max(1, Math.min(7, Math.round(inner.length / (n.town ? 5 : 7))));
   if (inner.length >= 5) {
     const seeds: number[] = [];
-    const dist = (a: number, b: number) => Math.hypot(wards[a].c[0] - wards[b].c[0], wards[a].c[1] - wards[b].c[1]);
-    seeds.push(inner.reduce((a, b) => (Math.hypot(...wards[b].c) < Math.hypot(...wards[a].c) ? b : a)));
+    const dist = (a: number, b: number) => DMath.hypot2(wards[a].c[0] - wards[b].c[0], wards[a].c[1] - wards[b].c[1]);
+    seeds.push(inner.reduce((a, b) => (DMath.hypot(...wards[b].c) < DMath.hypot(...wards[a].c) ? b : a)));
     while (seeds.length < q) {
       let best = -1, bd = -1;
       for (const i of inner) {
@@ -191,7 +192,7 @@ export function labelCity(n: CityNaming): void {
       if (!g.length) return;
       const has = (kind: WardKind) => g.some((i) => wards[i].kind === kind);
       const share = (kind: WardKind) => g.filter((i) => wards[i].kind === kind).length / g.length;
-      const gateIdx = n.gates.findIndex((gp) => g.some((i) => Math.hypot(wards[i].c[0] - gp[0], wards[i].c[1] - gp[1]) < 0.9 * Math.sqrt(area(wards[i].poly))));
+      const gateIdx = n.gates.findIndex((gp) => g.some((i) => DMath.hypot2(wards[i].c[0] - gp[0], wards[i].c[1] - gp[1]) < 0.9 * Math.sqrt(area(wards[i].poly))));
       const name = unique(() => {
         if (k === 0 && rnd() < 0.6) return 'Old Town';
         if (has('citadel')) return pick(['Castle Quarter', 'Castle Ward', 'the Castlegate']);
@@ -213,7 +214,7 @@ export function labelCity(n: CityNaming): void {
         cx += wards[i].c[0] / g.length;
         cy += wards[i].c[1] / g.length;
       }
-      const at = g.reduce((a, b) => (Math.hypot(wards[b].c[0] - cx, wards[b].c[1] - cy) < Math.hypot(wards[a].c[0] - cx, wards[a].c[1] - cy) ? b : a));
+      const at = g.reduce((a, b) => (DMath.hypot2(wards[b].c[0] - cx, wards[b].c[1] - cy) < DMath.hypot2(wards[a].c[0] - cx, wards[a].c[1] - cy) ? b : a));
       // Keep clear of the district label on the same ward.
       const w = wards[at];
       const spot: Pt = w.kind === 'ward' || w.kind === 'rich' ? labelSpot(w) : [w.c[0] * 0.85 + cx * 0.15, w.c[1] * 0.85 + cy * 0.15 + 25];
@@ -225,7 +226,7 @@ export function labelCity(n: CityNaming): void {
   for (const i of n.outer) {
     let g = -1, bd = Infinity;
     n.gates.forEach((gp, k) => {
-      const d = Math.hypot(wards[i].c[0] - gp[0], wards[i].c[1] - gp[1]);
+      const d = DMath.hypot2(wards[i].c[0] - gp[0], wards[i].c[1] - gp[1]);
       if (d < bd) {
         bd = d;
         g = k;
@@ -237,7 +238,7 @@ export function labelCity(n: CityNaming): void {
     if (list.length < 2) continue;
     const waterside = list.filter((i) => wards[i].waterside).length > list.length / 2;
     const name = unique(() => waterside ? pick(['Fishertown', 'Riverside', 'the Strand', 'Waterside']) : pick([`${short(compass(n.gates[g]))} End`, `${proper(`sub${g}`)} End`, `${proper(`sub${g}`)}`, `Without ${gateName(g)}`]));
-    const mid = list.reduce((a, b) => (Math.hypot(...wards[b].c) < Math.hypot(...wards[a].c) ? b : a));
+    const mid = list.reduce((a, b) => (DMath.hypot(...wards[b].c) < DMath.hypot(...wards[a].c) ? b : a));
     out.point('qlabel', labelSpot(wards[mid]), { name });
   }
 
@@ -271,14 +272,14 @@ export function labelCity(n: CityNaming): void {
   const big = (b: BuildingRef) => sizeOf(b) >= bigMin;
   const nearestTo = (pts: Pt[], filter: (b: BuildingRef) => boolean, count: number, maxD = Infinity) => {
     const cands = n.buildings.filter((b) => !taken.has(b) && filter(b))
-      .map((b) => ({ b, d: Math.min(...pts.map((p) => Math.hypot(b.c[0] - p[0], b.c[1] - p[1]))) + rnd() * 25 }))
+      .map((b) => ({ b, d: Math.min(...pts.map((p) => DMath.hypot2(b.c[0] - p[0], b.c[1] - p[1]))) + rnd() * 25 }))
       .filter((x) => x.d < maxD)
       .sort((a, b) => a.d - b.d);
     const outB: BuildingRef[] = [];
     for (const x of cands) {
       if (outB.length >= count) break;
       // Spread them out a little.
-      if (outB.some((o) => Math.hypot(o.c[0] - x.b.c[0], o.c[1] - x.b.c[1]) < 40)) continue;
+      if (outB.some((o) => DMath.hypot2(o.c[0] - x.b.c[0], o.c[1] - x.b.c[1]) < 40)) continue;
       outB.push(x.b);
     }
     return outB;

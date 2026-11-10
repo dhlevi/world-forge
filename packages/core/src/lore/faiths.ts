@@ -1,5 +1,5 @@
 import { table } from '../names/bundles';
-import { hashString, mulberry32, type Rng } from '../gen/rng';
+import { hashString, mulberry32, type Rng, shuffle } from '../gen/rng';
 import type { PolUnit } from '../gen/politics';
 import type { LabelFeature } from '../gen/features';
 import { CULTURES, FAMILIES as LANG_FAMILIES } from '../names/cultures';
@@ -7,6 +7,7 @@ import type { NameBank } from '../names/names';
 import type { Charge } from '../heraldry/arms';
 import type { Language } from '../lang/language';
 import { PROPER, nameCase, translate } from '../lang/translate';
+import { DMath } from '../dmath';
 
 /**
  * The world's faiths, generated from familiar **archetypes** (a church, the faith of the
@@ -1684,7 +1685,7 @@ export interface FaithWorld {
 
 const distKm = (a: number, b: number, c: number, d: number) => {
   const dl = ((((c - a) % 360) + 540) % 360) - 180;
-  return Math.hypot(dl * 111.32 * Math.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
+  return DMath.hypot2(dl * 111.32 * DMath.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
 };
 
 /** An English name said in a language: {P} and other proper names pass through unchanged. */
@@ -1818,7 +1819,7 @@ export function faithPlan(seed: string): FaithPlan {
       const mf = faiths[m];
       const founder = founders[k] === ci;
       const spread = 1 + mf.tenets.reduce((s, t) => s + (TENETS[t].spread ?? 0), 0) + (mf.doctrines.conversion === 'sword' ? 0.15 : 0);
-      const p = founder ? 1 : Math.min(0.92, 0.9 * Math.exp(-d / (2600 * spread)) * (OPEN[cul.id] ?? 1) * (famOf(ci) === mf.langFamily ? 1.25 : 1));
+      const p = founder ? 1 : Math.min(0.92, 0.9 * DMath.exp(-d / (2600 * spread)) * (OPEN[cul.id] ?? 1) * (famOf(ci) === mf.langFamily ? 1.25 : 1));
       if (r() >= p) continue;
       const old = ofCulture[ci];
       if (old !== m) {
@@ -1900,7 +1901,7 @@ export function buildFaiths(seed: string, year: number, bank: NameBank, units: P
       else if (fam === 'spirits' && k > 0) n = say(L, cap(dom.replace(/^the /, '')));
       deities.push({ name: n, domain: dom });
     }
-    const beliefs = [...def.beliefs].sort(() => r() - 0.5).slice(0, 3);
+    const beliefs = shuffle([...def.beliefs], r).slice(0, 3);
     const scrEn = pick(r, def.scripture);
     const headTitle = pick(r, def.head);
     return {

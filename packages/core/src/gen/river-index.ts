@@ -2,6 +2,7 @@ import type { RiverCollection } from './rivers';
 import { riverWidthM } from './rivers';
 import { Simplex3 } from './noise';
 import { hashString, mulberry32 } from './rng';
+import { DMath } from '../dmath';
 
 const M_PER_DEG = (Math.PI * 6371000) / 180;
 const BIN_DEG = 0.5;
@@ -52,8 +53,8 @@ export class RiverIndex {
       // Cumulative length for the taper.
       const cum = [0];
       for (let k = 1; k < c.length; k++) {
-        const cl = Math.cos((c[k][1] * Math.PI) / 180);
-        cum.push(cum[k - 1] + Math.hypot((c[k][0] - c[k - 1][0]) * cl, c[k][1] - c[k - 1][1]));
+        const cl = DMath.cos((c[k][1] * Math.PI) / 180);
+        cum.push(cum[k - 1] + DMath.hypot2((c[k][0] - c[k - 1][0]) * cl, c[k][1] - c[k - 1][1]));
       }
       const total = cum[cum.length - 1] || 1;
       for (let k = 0; k + 1 < c.length; k++) {
@@ -115,8 +116,8 @@ export class RiverIndex {
   warp(lon: number, lat: number, minLambdaM: number, out: Float64Array): void {
     out[0] = 0;
     out[1] = 0;
-    const cl = Math.cos((lat * Math.PI) / 180), sl = Math.sin((lat * Math.PI) / 180);
-    const x = cl * Math.cos((lon * Math.PI) / 180), y = cl * Math.sin((lon * Math.PI) / 180);
+    const cl = DMath.cos((lat * Math.PI) / 180), sl = DMath.sin((lat * Math.PI) / 180);
+    const x = cl * DMath.cos((lon * Math.PI) / 180), y = cl * DMath.sin((lon * Math.PI) / 180);
     for (let k = 0; k < MEANDER.length; k++) {
       const [lam, frac] = MEANDER[k];
       if (lam < minLambdaM) break;
@@ -131,11 +132,11 @@ export class RiverIndex {
   /** Nearest river (with meanders at full detail) within maxM of a point, or null. */
   nearest(lon: number, lat: number, maxM: number): RiverHit | null {
     this.warp(lon, lat, 0, this.w);
-    const cosQ = Math.max(0.02, Math.cos((lat * Math.PI) / 180));
+    const cosQ = Math.max(0.02, DMath.cos((lat * Math.PI) / 180));
     lon += this.w[0] / (M_PER_DEG * cosQ);
     lat += this.w[1] / M_PER_DEG;
     const dLat = maxM / M_PER_DEG;
-    const cosL = Math.max(0.02, Math.cos((lat * Math.PI) / 180));
+    const cosL = Math.max(0.02, DMath.cos((lat * Math.PI) / 180));
     const dLon = Math.min(180, dLat / cosL);
     const mx = M_PER_DEG * cosL;
     let best: RiverHit | null = null;
@@ -149,7 +150,7 @@ export class RiverIndex {
       const vx = bx - ax, vy = by - ay;
       const l2 = vx * vx + vy * vy;
       const t = l2 > 0 ? Math.min(1, Math.max(0, -(ax * vx + ay * vy) / l2)) : 0;
-      const d = Math.hypot(ax + vx * t, ay + vy * t);
+      const d = DMath.hypot2(ax + vx * t, ay + vy * t);
       const half = seg[o + 4] + (seg[o + 5] - seg[o + 4]) * t;
       const bank = d - half;
       if (bank <= maxM && (!best || bank < best.bankM)) best = { bankM: bank, halfM: half, order: seg[o + 6] };

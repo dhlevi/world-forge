@@ -3,6 +3,7 @@ import { buildingView } from '../interiors/building';
 import { LocalFrame, type PlanFeature } from '../towns/plan';
 import { townContext } from './town-context';
 import { type Household, type Neighbour, type ResidentBuilding, residents } from './residents';
+import { DMath } from '../dmath';
 
 /**
  * The households of a plan building (people/residents.ts), worked out from the drawn plan: the
@@ -78,11 +79,11 @@ export function householdsFor(w: WorldData, f: PlanFeature, others: Iterable<Pla
     if (g === f || String(g.properties.sid ?? '') !== sid || g.geometry.type !== 'Polygon') continue;
     const q = g.geometry.coordinates[0][0];
     const loc = frame.fromLL(q[0], q[1]);
-    const d = Math.hypot(loc[0] - me.c[0], loc[1] - me.c[1]);
+    const d = DMath.hypot2(loc[0] - me.c[0], loc[1] - me.c[1]);
     if (d > 70) continue;
     const nb = residentBuilding(g, frame, seed);
-    const dist = Math.hypot(nb.c[0] - me.c[0], nb.c[1] - me.c[1]);
-    const ang = Math.atan2(nb.c[1] - me.c[1], nb.c[0] - me.c[0]);
+    const dist = DMath.hypot2(nb.c[0] - me.c[0], nb.c[1] - me.c[1]);
+    const ang = DMath.atan2(nb.c[1] - me.c[1], nb.c[0] - me.c[0]);
     near.push({ ...nb, dist, dir: DIRS[((Math.round(ang / (Math.PI / 4)) % 8) + 8) % 8] });
   }
   near.sort((a, b) => a.dist - b.dist);

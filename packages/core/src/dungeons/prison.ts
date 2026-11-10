@@ -1,8 +1,9 @@
-import type { Rng } from '../gen/rng';
+import { type Rng, shuffle } from '../gen/rng';
 import {
   type DLevel, type DRoom, type DungeonSite, FLOOR, PIT, type PropKind, type Rect, RUBBLE, VOID,
   at, carveCorridor, carveRect, centre, connectAll, doorsForRooms, newLevel, overlaps, pick, reach, roomOf, set,
 } from './core';
+import { DMath } from '../dmath';
 
 /**
  * A prison: a city's prison keep or a remote prison fort. Three levels, each reached from the
@@ -184,7 +185,7 @@ export function yardLevel(rnd: Rng, W: number, H: number, large: boolean, spec: 
   // The stair down to the cells, in the turnkeys' room.
   const tk = rooms.find((q) => q.tag === spec.stair) ?? rooms[1];
   const p: [number, number] = [tk.r.x + 1, tk.r.y + 1];
-  L.props = L.props.filter((q) => Math.hypot(q.x - p[0] - 0.5, q.y - p[1] - 0.5) > 1.2);
+  L.props = L.props.filter((q) => DMath.hypot2(q.x - p[0] - 0.5, q.y - p[1] - 0.5) > 1.2);
   L.links.push({ x: p[0], y: p[1], dir: 'down', to: 1, style: 'stairs' });
   L.rooms.find((q) => q.x === tk.r.x && q.y === tk.r.y)?.tags.push('down:stairs');
   return L;
@@ -237,7 +238,7 @@ function galleryLevel(rnd: Rng, W: number, H: number, up: [number, number], larg
     }
   }
   // The notable inmates' cells are numbered; the rest are not.
-  const held = new Set<Rect>(cellRects.slice().sort(() => rnd() - 0.5).slice(0, large ? 7 : 5));
+  const held = new Set<Rect>(shuffle(cellRects.slice(), rnd).slice(0, large ? 7 : 5));
   for (const r of cellRects) rooms.push({ r, tag: held.has(r) ? 'prison-held' : 'prison-cell', n: held.has(r) });
   doorsForRooms(L, rooms.map((q) => q.r), rnd, () => 'bars');
   for (const d of L.doors) {
@@ -254,7 +255,7 @@ function galleryLevel(rnd: Rng, W: number, H: number, up: [number, number], larg
   const p: [number, number] = [pitStair.x + 1, pitStair.y + 1];
   L.links.push({ x: p[0], y: p[1], dir: 'down', to: 2, style: 'stairs' });
   L.rooms.find((q) => q.tags[0] === 'prison-pitstair')?.tags.push('down:stairs');
-  L.props = L.props.filter((q) => !L.links.some((l) => Math.hypot(q.x - l.x - 0.5, q.y - l.y - 0.5) < 1.2));
+  L.props = L.props.filter((q) => !L.links.some((l) => DMath.hypot2(q.x - l.x - 0.5, q.y - l.y - 0.5) < 1.2));
   return L;
 }
 
@@ -264,7 +265,7 @@ export function pitLevel(rnd: Rng, W: number, H: number, up: [number, number], s
   const cy = Math.max(9, Math.min(H - 10, up[1]));
   const land: Rect = { x: Math.max(2, Math.min(W - 5, up[0] - 1)), y: Math.max(2, Math.min(H - 5, up[1] - 1)), w: 3, h: 3 };
   carveRect(L, land.x, land.y, land.w, land.h);
-  const want = spec.rooms.slice().sort(() => rnd() - 0.5);
+  const want = shuffle(spec.rooms.slice(), rnd);
   const placed: { r: Rect; tag: string; side: number }[] = [{ r: land, tag: spec.landing, side: 0 }];
   const next = [3, 3];
   want.forEach(([tag, w, h], k) => {
@@ -310,7 +311,7 @@ export function pitLevel(rnd: Rng, W: number, H: number, up: [number, number], s
     L.rooms.push(roomOf(q.r, 1, [q.tag]));
   }
   // An escape tunnel: from one of the held cells, behind a loose stone, away from the passage.
-  const from = placed.filter((q) => q.tag === spec.tunnel).sort(() => rnd() - 0.5)[0];
+  const from = shuffle(placed.filter((q) => q.tag === spec.tunnel), rnd)[0];
   if (from) {
     const dir = from.side;
     let x = from.r.x + 1, y = dir < 0 ? from.r.y - 1 : from.r.y + from.r.h;
@@ -339,7 +340,7 @@ export function pitLevel(rnd: Rng, W: number, H: number, up: [number, number], s
     }
   }
   L.links.push({ x: up[0], y: up[1], dir: 'up', to: upTo, style: 'stairs' });
-  L.props = L.props.filter((q) => Math.hypot(q.x - up[0] - 0.5, q.y - up[1] - 0.5) > 1.2);
+  L.props = L.props.filter((q) => DMath.hypot2(q.x - up[0] - 0.5, q.y - up[1] - 0.5) > 1.2);
   void reach;
   void connectAll;
   return L;

@@ -3,6 +3,7 @@ import { mulberry32 } from '../gen/rng';
 import { type Poly, type Pt, area, ccw, centroid, distToLine, inset, pointInPoly, rect, segHitsPoly, split } from './geom';
 import type { PlanFeature, PlanInput } from './plan';
 import { BUILD_GROUND, FIELD_GROUND, contourStrips, plantField } from './ground';
+import { DMath } from '../dmath';
 
 /** Steepest ground (m/m) a building goes on; fields and meadows stop at MAX_FIELD_SLOPE. */
 const MAX_BUILD_SLOPE = 0.35;
@@ -34,21 +35,21 @@ export class Kit {
   }
 
   polar(r: number, a: number): Pt {
-    return [r * Math.cos(a), r * Math.sin(a)];
+    return [r * DMath.cos(a), r * DMath.sin(a)];
   }
 
   /** Gently winding polyline from a to b, vertices every ~12 m. */
   curvy(a: Pt, b: Pt, amp: number): Pt[] {
     const { rnd } = this;
     const dx = b[0] - a[0], dy = b[1] - a[1];
-    const len = Math.hypot(dx, dy) || 1;
+    const len = DMath.hypot2(dx, dy) || 1;
     const n = Math.max(2, Math.ceil(len / 12));
     const a1 = (rnd() - 0.5) * 2 * amp, a2 = (rnd() - 0.5) * amp;
     const px = -dy / len, py = dx / len;
     const pts: Pt[] = [];
     for (let k = 0; k <= n; k++) {
       const t = k / n;
-      const off = len * (a1 * Math.sin(Math.PI * t) + a2 * Math.sin(2 * Math.PI * t));
+      const off = len * (a1 * DMath.sin(Math.PI * t) + a2 * DMath.sin(2 * Math.PI * t));
       pts.push([a[0] + dx * t + px * off, a[1] + dy * t + py * off]);
     }
     return pts;
@@ -68,8 +69,8 @@ export class Kit {
     ex.forEach((e, i) => {
       let to = hub;
       if (i > 0 && clear > 0) {
-        const first = this.lanes[this.lanes.length - i].pts.filter((p) => Math.hypot(...p) >= clear);
-        if (first.length) to = first.reduce((a, b) => (Math.hypot(b[0] - e.p[0], b[1] - e.p[1]) < Math.hypot(a[0] - e.p[0], a[1] - e.p[1]) ? b : a));
+        const first = this.lanes[this.lanes.length - i].pts.filter((p) => DMath.hypot(...p) >= clear);
+        if (first.length) to = first.reduce((a, b) => (DMath.hypot2(b[0] - e.p[0], b[1] - e.p[1]) < DMath.hypot2(a[0] - e.p[0], a[1] - e.p[1]) ? b : a));
       }
       this.lane(this.curvy(e.p, to, 0.12), e.cls === 'track' ? 3.5 : 5, e.cls);
     });
@@ -81,13 +82,13 @@ export class Kit {
     const { rnd } = this;
     for (let b = 0; b < count && this.lanes.length; b++) {
       const lane = this.lanes[Math.floor(rnd() * this.lanes.length)];
-      const near = lane.pts.map((_, k) => k).filter((k) => k > 0 && k < lane.pts.length - 1 && Math.hypot(...lane.pts[k]) < maxR);
+      const near = lane.pts.map((_, k) => k).filter((k) => k > 0 && k < lane.pts.length - 1 && DMath.hypot(...lane.pts[k]) < maxR);
       if (!near.length) continue;
       const k = near[Math.floor(rnd() * near.length)];
       const t = [lane.pts[k + 1][0] - lane.pts[k - 1][0], lane.pts[k + 1][1] - lane.pts[k - 1][1]];
-      const ang = Math.atan2(t[1], t[0]) + (rnd() < 0.5 ? 1 : -1) * (Math.PI / 2 + (rnd() - 0.5) * 0.6);
+      const ang = DMath.atan2(t[1], t[0]) + (rnd() < 0.5 ? 1 : -1) * (Math.PI / 2 + (rnd() - 0.5) * 0.6);
       const from = lane.pts[k], l = length * (0.6 + 0.6 * rnd());
-      this.lane(this.curvy(from, [from[0] + Math.cos(ang) * l, from[1] + Math.sin(ang) * l], 0.15), 3);
+      this.lane(this.curvy(from, [from[0] + DMath.cos(ang) * l, from[1] + DMath.sin(ang) * l], 0.15), 3);
     }
   }
 
@@ -104,19 +105,19 @@ export class Kit {
    * building turns to run along the contour, as terraced houses do.
    */
   house(c: Pt, ang: number, w: number, d: number, use?: string, front?: number): boolean {
-    const r = 0.5 * Math.hypot(w, d);
+    const r = 0.5 * DMath.hypot2(w, d);
     if (this.inp.water(c) || this.inBlocked(c) || this.nearLane(c, Math.min(w, d) / 2 + 1)) return false;
-    const g = this.inp.terrain.grad(c), sl = Math.hypot(...g);
+    const g = this.inp.terrain.grad(c), sl = DMath.hypot(...g);
     if (sl > MAX_BUILD_SLOPE) return false;
     if (sl > 0.1) {
-      const along = Math.atan2(g[0], -g[1]);
+      const along = DMath.atan2(g[0], -g[1]);
       // Snap to whichever contour-parallel orientation is closer, blending in as the slope steepens.
       let delta = (((along - ang) % Math.PI) + 1.5 * Math.PI) % Math.PI - Math.PI / 2;
       if (Math.abs(delta) > Math.PI / 2) delta -= Math.sign(delta) * Math.PI;
       ang += delta * Math.min(1, (sl - 0.1) / 0.12);
       if (w < d && sl > 0.16) [w, d] = [d, w];
     }
-    if (this.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + r - 1.5)) return false;
+    if (this.houses.some((h) => DMath.hypot2(h.c[0] - c[0], h.c[1] - c[1]) < h.r + r - 1.5)) return false;
     // Every corner must stand on dry, workable ground, not just the centre.
     const fp = rect(c[0], c[1], ang, w, d);
     if (!this.inp.ground.allOk(fp, BUILD_GROUND)) return false;
@@ -137,20 +138,20 @@ export class Kit {
       let along = rnd() * 6;
       for (let k = 0; k + 1 < pts.length; k++) {
         const a = pts[k], b = pts[k + 1];
-        const segLen = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const segLen = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
         if (segLen < 1e-6) continue;
         const ux = (b[0] - a[0]) / segLen, uy = (b[1] - a[1]) / segLen;
         for (; along < segLen; along += size[0] + rnd() * 6) {
           const p: Pt = [a[0] + ux * along, a[1] + uy * along];
-          const dd = Math.hypot(...p) / reach;
-          const prob = density * Math.exp(-0.9 * dd * dd);
+          const dd = DMath.hypot(...p) / reach;
+          const prob = density * DMath.exp(-0.9 * dd * dd);
           for (const side of [-1, 1]) {
             if (rnd() > prob) continue;
             let w = size[0] + rnd() * (size[1] - size[0]), d = size[0] + 1 + rnd() * (size[1] - size[0] + 1);
             if (rnd() < 0.3) [w, d] = [d, w];
             const off = lane.w / 2 + 2 + rnd() * 5 + d / 2;
             // The front door faces the lane.
-            this.house([p[0] - uy * side * off, p[1] + ux * side * off], Math.atan2(uy, ux) + (rnd() - 0.5) * 0.15, w, d, undefined, Math.atan2(-ux * side, uy * side));
+            this.house([p[0] - uy * side * off, p[1] + ux * side * off], DMath.atan2(uy, ux) + (rnd() - 0.5) * 0.15, w, d, undefined, DMath.atan2(-ux * side, uy * side));
           }
         }
         along -= segLen;
@@ -178,7 +179,7 @@ export class Kit {
       if (!cp) continue;
       const poly = ccw(cp.slice(0, -1).map(([x, y]) => [x, y] as Pt));
       const c = centroid(poly);
-      const dc = Math.hypot(...c);
+      const dc = DMath.hypot(...c);
       if (dc > r1 || dc < r0 || inp.water(c)) continue;
       const first = inset(poly, 2.5);
       if (!first) continue;
@@ -186,7 +187,7 @@ export class Kit {
       coarse.forEach((pts, li) => {
         for (let k = 0; k + 1 < pts.length; k++) {
           const a = pts[k], b = pts[k + 1];
-          const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+          const l = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
           if (l < 1e-6) continue;
           const n: Pt = [-(b[1] - a[1]) / l, (b[0] - a[0]) / l];
           parts = parts.flatMap((q) => (segHitsPoly(q, a, b) ? split(q, a, n, this.lanes[li].w / 2 + 2.5).filter((h) => h.length >= 3) : [q]));
@@ -232,7 +233,7 @@ export class Kit {
 
   tree(p: Pt, r: number, kind = 'tree'): boolean {
     if (this.inp.water(p) || this.nearLane(p, r + 1) || this.inBlocked(p)) return false;
-    if (this.houses.some((h) => Math.hypot(h.c[0] - p[0], h.c[1] - p[1]) < h.r + r)) return false;
+    if (this.houses.some((h) => DMath.hypot2(h.c[0] - p[0], h.c[1] - p[1]) < h.r + r)) return false;
     if (this.fields.some((f) => pointInPoly(f, p[0], p[1]))) return false;
     this.inp.out.point(kind, p, { r });
     return true;
@@ -252,7 +253,7 @@ export class Kit {
     for (const h of [...this.houses]) {
       if (rnd() >= prob) continue;
       const a = rnd() * 2 * Math.PI;
-      this.tree([h.c[0] + Math.cos(a) * (h.r + 4), h.c[1] + Math.sin(a) * (h.r + 4)], 2.5 + rnd() * 1.5);
+      this.tree([h.c[0] + DMath.cos(a) * (h.r + 4), h.c[1] + DMath.sin(a) * (h.r + 4)], 2.5 + rnd() * 1.5);
     }
   }
 
@@ -262,7 +263,7 @@ export class Kit {
     for (let y = -r1; y <= r1; y += spacing) {
       for (let x = -r1; x <= r1; x += spacing) {
         const p: Pt = [x + (rnd() - 0.5) * spacing, y + (rnd() - 0.5) * spacing];
-        const d = Math.hypot(...p);
+        const d = DMath.hypot(...p);
         // Ragged clearing edge.
         if (d > r1 || d < r0 * (0.85 + 0.3 * rnd()) || rnd() > density) continue;
         this.tree(p, spacing * (0.45 + 0.25 * rnd()));
@@ -275,15 +276,15 @@ export class Kit {
 export function graves(q: Poly, rnd: () => number, out: PlanInput['out'], ground: PlanInput['ground']): void {
   let best = 0, bl = 0;
   for (let k = 0; k < q.length; k++) {
-    const a = q[k], b = q[(k + 1) % q.length], l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const a = q[k], b = q[(k + 1) % q.length], l = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
     if (l > bl) {
       bl = l;
       best = k;
     }
   }
   const a = q[best], b = q[(best + 1) % q.length];
-  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
-  const ux = Math.cos(ang), uy = Math.sin(ang);
+  const ang = DMath.atan2(b[1] - a[1], b[0] - a[0]);
+  const ux = DMath.cos(ang), uy = DMath.sin(ang);
   const c = centroid(q);
   let n = 0;
   for (let v = -200; v <= 200 && n < 500; v += 4.5) {

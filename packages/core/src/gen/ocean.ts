@@ -1,6 +1,7 @@
 import { type Grid, blurKm, smoothstep } from './grid';
 import { buildUpstream, sampleUpstream } from './advect';
 import { CLIMATE as C } from './config';
+import { DMath } from '../dmath';
 
 export interface Ocean {
   /** Surface current (0 on land), east/north-positive; ~1 in strong boundary currents. */
@@ -48,8 +49,8 @@ function computeCurrents(g: Grid, h: Float32Array, windU: Float32Array) {
   const westP = new Float32Array(N), eastP = new Float32Array(N), basinW = new Float32Array(N);
   for (let c = 0; c < N; c++) {
     if (h[c] > 0) continue;
-    westP[c] = Math.exp(-distW[c] / C.westBoundaryKm);
-    eastP[c] = Math.exp(-distE[c] / C.eastBoundaryKm);
+    westP[c] = DMath.exp(-distW[c] / C.westBoundaryKm);
+    eastP[c] = DMath.exp(-distE[c] / C.eastBoundaryKm);
     basinW[c] = smoothstep(C.minBasinKm, C.fullBasinKm, distW[c] + distE[c]);
   }
   const pWs = blurKm(g, westP, C.boundarySmoothKm);
@@ -91,7 +92,7 @@ export function computeOcean(
   const step = Math.max(C.oceanStepKm, g.dyKm);
 
   const oceanUp = buildUpstream(g, currentU, currentV, step);
-  const relax = 1 - Math.exp(-step / C.sstRelaxKm);
+  const relax = 1 - DMath.exp(-step / C.sstRelaxKm);
   let t = Float32Array.from(baseTemp), next = new Float32Array(N);
   for (let it = 0, n = Math.ceil(C.sstTravelKm / step); it < n; it++) {
     for (let c = 0; c < N; c++) {
@@ -110,7 +111,7 @@ export function computeOcean(
   }
 
   const windUp = buildUpstream(g, windU, windV, step);
-  const decay = Math.exp(-step / C.inlandAnomalyKm);
+  const decay = DMath.exp(-step / C.inlandAnomalyKm);
   let a = Float32Array.from(sea), nextA = new Float32Array(N);
   for (let it = 0, n = Math.ceil((3 * C.inlandAnomalyKm) / step); it < n; it++) {
     for (let c = 0; c < N; c++) nextA[c] = h[c] <= 0 ? sea[c] : sampleUpstream(windUp, a, c) * decay;

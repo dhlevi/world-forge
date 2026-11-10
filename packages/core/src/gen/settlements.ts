@@ -8,6 +8,7 @@ import { HYDROLOGY, SETTLEMENTS as S } from './config';
 import type { FlowRouting } from './hydrology';
 import type { DetailSampler } from './detail';
 import { chaikin, riverVertex, riverWidthM } from './rivers';
+import { DMath } from '../dmath';
 
 export type Tier = 'city' | 'town' | 'village';
 export type VillageKind = 'farming' | 'fishing' | 'logging' | 'mining' | 'monastery' | 'keep' | 'tribal' | 'camp' | 'shrine' | 'abandoned' | 'prison' | 'order' | 'vineyard';
@@ -159,7 +160,7 @@ export function makeSettlement(
   const population = tier === 'city'
     ? Math.round(6000 + 40000 * clamp01((score - S.cityMinScore) / 0.5) * (0.4 + 0.6 * r1) + 4000 * r2)
     : tier === 'town'
-      ? Math.round(500 + 5500 * (clamp01((score - S.townMinScore) / 0.8) * (0.25 + 0.75 * r1)) ** 1.5)
+      ? Math.round(500 + 5500 * DMath.pow(clamp01((score - S.townMinScore) / 0.8) * (0.25 + 0.75 * r1), 1.5))
       : camp
         ? Math.round((kind === 'keep' ? 60 : 20) + (kind === 'keep' ? 240 : 120) * r1)
         : Math.round(40 + 500 * clamp01((score - S.villageMinScore) / 0.6) * (0.4 + 0.6 * r1));
@@ -177,11 +178,11 @@ export function makeSettlement(
 
 /** Share of a town's core (a disc of `coreM`) that is water at full shoreline detail, from 24 samples. */
 function coreWater(sampler: DetailSampler, lon: number, lat: number, coreM: number): number {
-  const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+  const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
   let w = 0;
   for (let q = 0; q < 24; q++) {
     const a = q * 2.39996, r = coreM * Math.sqrt((q + 0.5) / 24);
-    if (sampler.isWater(lon + Math.cos(a) * r * kLon, lat + Math.sin(a) * r * kLat)) w++;
+    if (sampler.isWater(lon + DMath.cos(a) * r * kLon, lat + DMath.sin(a) * r * kLat)) w++;
   }
   return w / 24;
 }
@@ -195,14 +196,14 @@ function coreWater(sampler: DetailSampler, lon: number, lat: number, coreM: numb
  */
 function landfall(sampler: DetailSampler, s: Settlement): boolean {
   if (coreWater(sampler, s.lon, s.lat, s.coreM) <= 0.5) return true;
-  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((s.lat * Math.PI) / 180));
+  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, DMath.cos((s.lat * Math.PI) / 180));
   let best: [number, number] | null = null, bestW = Infinity;
   // Out to 3 km for a better spot, and on to 8 km while there is no dry ground at all.
   for (let d = 0.3; d <= 8; d += d < 3 ? 0.3 : 0.5) {
     if (d > 3 && best) break;
     for (let q = 0; q < 12; q++) {
       const a = (q / 12) * Math.PI * 2 + d;
-      const x = s.lon + Math.cos(a) * d * kmLon, y = s.lat + Math.sin(a) * d * kmLat;
+      const x = s.lon + DMath.cos(a) * d * kmLon, y = s.lat + DMath.sin(a) * d * kmLat;
       if (sampler.isWater(x, y)) continue;
       const w = coreWater(sampler, x, y, s.coreM);
       if (w < bestW) {
@@ -220,11 +221,11 @@ function landfall(sampler: DetailSampler, s: Settlement): boolean {
 /** Moves a point off water (at full shoreline detail) to the nearest land within ~20 km. */
 export function nudgeOntoLand(sampler: DetailSampler, lon: number, lat: number): [number, number] {
   if (!sampler.isWater(lon, lat)) return [lon, lat];
-  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
   for (let r = 0.25; r <= 20; r += 0.25) {
     for (let k = 0; k < 16; k++) {
       const a = (k / 16) * 2 * Math.PI;
-      const x = lon + Math.cos(a) * r * kmLon, y = lat + Math.sin(a) * r * kmLat;
+      const x = lon + DMath.cos(a) * r * kmLon, y = lat + DMath.sin(a) * r * kmLat;
       if (!sampler.isWater(x, y)) return [x, y];
     }
   }
@@ -233,12 +234,12 @@ export function nudgeOntoLand(sampler: DetailSampler, lon: number, lat: number):
 
 /** The nearest open water (sea or lake, at full shoreline detail) within `maxKm`, or null. */
 export function nearestWater(sampler: DetailSampler, lon: number, lat: number, maxKm: number): [number, number] | null {
-  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+  const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
   for (let r = 0.25; r <= maxKm; r += r < 3 ? 0.25 : 0.75) {
     const n = r < 3 ? 10 : 14;
     for (let k = 0; k < n; k++) {
       const a = (k / n) * 2 * Math.PI;
-      const x = lon + Math.cos(a) * r * kmLon, y = lat + Math.sin(a) * r * kmLat;
+      const x = lon + DMath.cos(a) * r * kmLon, y = lat + DMath.sin(a) * r * kmLat;
       if (sampler.height(x, y, 0.8, false) <= 0) return [x, y];
     }
   }
@@ -310,7 +311,7 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
       const s = habitability(f.temp[c], f.tempWarm[c], f.precip[c], h, slope, f.biome[c] as Biome);
       if (s <= 0) continue;
       let bonus = 1;
-      if (isRiver[c]) bonus += S.riverBonus * (1 + 0.15 * Math.min(4, Math.log2(f.acc[c] / thr)));
+      if (isRiver[c]) bonus += S.riverBonus * (1 + 0.15 * Math.min(4, DMath.log2(f.acc[c] / thr)));
       if (sea) bonus += S.coastBonus;
       if (lake) bonus += S.lakeBonus;
       score[c] = s * bonus;
@@ -370,11 +371,11 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
       lon = (p[0] + qx) / 2;
       lat = (p[1] + q[1]) / 2;
       s = makeSettlement(tier, id, lon, lat, score[c], sseed, coastal[c] === 1, true);
-      const cosL = Math.cos((lat * Math.PI) / 180);
+      const cosL = DMath.cos((lat * Math.PI) / 180);
       const ex = (qx - p[0]) * cosL, ny = q[1] - p[1];
-      const len = Math.hypot(ex, ny) || 1;
+      const len = DMath.hypot2(ex, ny) || 1;
       const side = sseed & 1 ? 1 : -1;
-      const offKm = (riverWidthM(Math.log2(f.acc[c] / thr)) / 2 + s.coreM * 0.3) / 1000;
+      const offKm = (riverWidthM(DMath.log2(f.acc[c] / thr)) / 2 + s.coreM * 0.3) / 1000;
       s.lon += ((-ny / len) * side * offKm) / (111.2 * Math.max(0.05, cosL));
       s.lat += ((ex / len) * side * offKm) / 111.2;
     } else {
@@ -390,9 +391,9 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
       const w = nearestWater(sampler, s.lon, s.lat, s.river ? (s.coreM * 1.4) / 1000 : 25);
       if (!w) s.coastal = false;
       else if (!s.river) {
-        const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((s.lat * Math.PI) / 180));
+        const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, DMath.cos((s.lat * Math.PI) / 180));
         const dx = (s.lon - w[0]) / kmLon, dy = (s.lat - w[1]) / kmLat;
-        const d = Math.hypot(dx, dy);
+        const d = DMath.hypot2(dx, dy);
         const want = (s.coreM * 0.55) / 1000;
         if (d > want) {
           const t = want / d;
@@ -405,7 +406,7 @@ export function buildSettlements(g: Grid, f: SettlementFields, seed: number, sam
     // the town no ground to build on: it moves to the nearest spot whose core is mostly land.
     {
       // Coastal towns, and any with water at two of four points around the core (lake towns).
-      const kLat = s.coreM * 0.5 / 111200, kLon = kLat / Math.max(0.05, Math.cos((s.lat * Math.PI) / 180));
+      const kLat = s.coreM * 0.5 / 111200, kLon = kLat / Math.max(0.05, DMath.cos((s.lat * Math.PI) / 180));
       const wet = [[1, 0], [-1, 0], [0, 1], [0, -1]].filter(([x, y]) => sampler.isWater(s.lon + x * kLon, s.lat + y * kLat)).length;
       if ((s.coastal || wet >= 2) && !landfall(sampler, s)) drowned.add(s.id);
     }
@@ -450,7 +451,7 @@ function neighbourhoodEdges(sts: Settlement[], idx: number[], maxKm: number): [n
       for (const y of bins.get(b) ?? []) {
         if (b === lb && y <= x) continue;
         const dLon = Math.abs((((sts[idx[y]].lon - sts[idx[x]].lon) % 360) + 540) % 360 - 180);
-        const cosMin = Math.cos((Math.min(89.9, Math.max(Math.abs(sts[idx[x]].lat), Math.abs(sts[idx[y]].lat))) * Math.PI) / 180);
+        const cosMin = DMath.cos((Math.min(89.9, Math.max(Math.abs(sts[idx[x]].lat), Math.abs(sts[idx[y]].lat))) * Math.PI) / 180);
         if (dLon * 111.2 * cosMin > maxKm) continue;
         const d = D(idx[x], idx[y]);
         if (d > maxKm) continue;
@@ -554,7 +555,7 @@ function buildRoads(
         if (f.height[n] <= 0 || f.lakeDepth[n] > 0) continue;
         const d = g.nbDist[j * 8 + k];
         const slope = Math.abs(Math.max(0, f.height[n]) - hc) / d;
-        let cost = d * (1 + (slope / S.roadSlopeRefMPerKm) ** 2) * BIOME_ROAD_COST[f.biome[n] as Biome];
+        let cost = d * (1 + DMath.pow(slope / S.roadSlopeRefMPerKm, 2)) * BIOME_ROAD_COST[f.biome[n] as Biome];
         if (onRoad[n] && onRoad[c]) cost *= S.roadReuseFactor;
         if (isRiver[n] !== isRiver[c]) cost += S.roadBridgeKm / 2;
         const ng = gc + cost;
@@ -563,7 +564,7 @@ function buildRoads(
           gScore[n] = ng;
           from[n] = c;
           const [nx, ny, nz] = xyz(n);
-          const chordKm = Math.hypot(nx - gx, ny - gy, nz - gz) * 6371;
+          const chordKm = DMath.hypot(nx - gx, ny - gy, nz - gz) * 6371;
           heap.push(n, ng + S.roadReuseFactor * chordKm);
         }
       }
@@ -731,18 +732,18 @@ class FineRoute {
     let along = 0;
     const total = (() => {
       let t = 0;
-      for (let k = 1; k < n; k++) t += Math.hypot((orig[k][0] - orig[k - 1][0]) * 111.2 * Math.cos((orig[k][1] * Math.PI) / 180), (orig[k][1] - orig[k - 1][1]) * 111.2);
+      for (let k = 1; k < n; k++) t += DMath.hypot2((orig[k][0] - orig[k - 1][0]) * 111.2 * DMath.cos((orig[k][1] * Math.PI) / 180), (orig[k][1] - orig[k - 1][1]) * 111.2);
       return t;
     })();
     for (let k = 1; k < n - 1; k++) {
       const p = orig[k], a = orig[k - 1], b = orig[k + 1];
-      const cl = Math.max(0.05, Math.cos((p[1] * Math.PI) / 180));
-      along += Math.hypot((p[0] - a[0]) * 111.2 * cl, (p[1] - a[1]) * 111.2);
+      const cl = Math.max(0.05, DMath.cos((p[1] * Math.PI) / 180));
+      along += DMath.hypot2((p[0] - a[0]) * 111.2 * cl, (p[1] - a[1]) * 111.2);
       const fade = Math.min(1, along / 1.5, (total - along) / 1.5);
       if (fade <= 0) continue;
-      const tx = (b[0] - a[0]) * cl, ty = b[1] - a[1], tl = Math.hypot(tx, ty) || 1;
+      const tx = (b[0] - a[0]) * cl, ty = b[1] - a[1], tl = DMath.hypot2(tx, ty) || 1;
       const la = (p[1] * Math.PI) / 180, lo = (p[0] * Math.PI) / 180;
-      const v = this.noise.noise(Math.cos(la) * Math.cos(lo) * fq + 17.3, Math.cos(la) * Math.sin(lo) * fq, Math.sin(la) * fq);
+      const v = this.noise.noise(DMath.cos(la) * DMath.cos(lo) * fq + 17.3, DMath.cos(la) * DMath.sin(lo) * fq, DMath.sin(la) * fq);
       const off = (v * wobbleM * fade) / 1000 / 111.2;
       line[k][0] = p[0] + ((-ty / tl) * off) / cl;
       line[k][1] = p[1] + (tx / tl) * off;
@@ -765,9 +766,9 @@ class FineRoute {
   private solve(a: number[], b: number[], strip: Strip): number[][] {
     const { slopeRefMPerKm, wanderKm, wander, valley } = ROUTE;
     const { stepKm, laneKm, lanes } = strip;
-    const la = (a[1] + b[1]) / 2, cl = Math.max(0.05, Math.cos((la * Math.PI) / 180));
+    const la = (a[1] + b[1]) / 2, cl = Math.max(0.05, DMath.cos((la * Math.PI) / 180));
     const dx = (b[0] - a[0]) * 111.2 * cl, dy = (b[1] - a[1]) * 111.2;
-    const L = Math.hypot(dx, dy);
+    const L = DMath.hypot2(dx, dy);
     if (L < stepKm * 1.5) return [];
     const nS = Math.max(2, Math.round(L / stepKm)), st = L / nS;
     const ux = dx / L, uy = dy / L, nx = -uy, ny = ux;
@@ -799,7 +800,7 @@ class FineRoute {
           else if (bank.bankM > valley.nearM) f *= valley.factor;
         }
         // Gentle wander: a smooth noise field makes open ground a little cheaper in places.
-        const x = Math.cos((lat * Math.PI) / 180) * Math.cos((lon * Math.PI) / 180), y = Math.cos((lat * Math.PI) / 180) * Math.sin((lon * Math.PI) / 180), z = Math.sin((lat * Math.PI) / 180);
+        const x = DMath.cos((lat * Math.PI) / 180) * DMath.cos((lon * Math.PI) / 180), y = DMath.cos((lat * Math.PI) / 180) * DMath.sin((lon * Math.PI) / 180), z = DMath.sin((lat * Math.PI) / 180);
         const fq = 6371 / wanderKm;
         f *= 1 + wander * this.noise.noise(x * fq, y * fq, z * fq);
         fac[n] = f;
@@ -816,9 +817,9 @@ class FineRoute {
           if (tp < 0 || tp >= T || !reach(i - 1, tp)) continue;
           const p = (i - 1) * T + tp;
           if (cost[p] === Infinity) continue;
-          const d = Math.hypot(st, dt * laneKm);
+          const d = DMath.hypot2(st, dt * laneKm);
           const slope = Math.abs(h[n] - h[p]) / d;
-          const c = cost[p] + d * (1 + (slope / slopeRefMPerKm) ** 2) * 0.5 * (fac[n] + fac[p]) + add[n];
+          const c = cost[p] + d * (1 + DMath.pow(slope / slopeRefMPerKm, 2)) * 0.5 * (fac[n] + fac[p]) + add[n];
           if (c < cost[n]) {
             cost[n] = c;
             back[n] = dt;
@@ -843,13 +844,13 @@ function simplifyInPlace(line: number[][], tolKm: number): void {
   if (line.length < 3) return;
   const keep = new Uint8Array(line.length);
   keep[0] = keep[line.length - 1] = 1;
-  const cl = Math.max(0.05, Math.cos((line[line.length >> 1][1] * Math.PI) / 180));
+  const cl = Math.max(0.05, DMath.cos((line[line.length >> 1][1] * Math.PI) / 180));
   const stack: [number, number][] = [[0, line.length - 1]];
   while (stack.length) {
     const [i0, i1] = stack.pop()!;
     const ax = line[i0][0] * cl, ay = line[i0][1], bx = line[i1][0] * cl, by = line[i1][1];
     const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
-    let best = -1, bd = (tolKm / 111.2) ** 2;
+    let best = -1, bd = DMath.pow(tolKm / 111.2, 2);
     for (let k = i0 + 1; k < i1; k++) {
       const px = line[k][0] * cl - ax, py = line[k][1] - ay;
       const t = l2 > 0 ? Math.max(0, Math.min(1, (px * dx + py * dy) / l2)) : 0;
@@ -929,8 +930,8 @@ export function fitRoadToLand(
       coarse.push(b);
       continue;
     }
-    const cl = Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180);
-    const d = Math.hypot((b[0] - a[0]) * cl, b[1] - a[1]) * 111.2;
+    const cl = DMath.cos((((a[1] + b[1]) / 2) * Math.PI) / 180);
+    const d = DMath.hypot2((b[0] - a[0]) * cl, b[1] - a[1]) * 111.2;
     const n = Math.max(1, Math.ceil(d / (4 * stepKm)));
     for (let t = 1; t <= n; t++) coarse.push(t === n ? b : [a[0] + ((b[0] - a[0]) * t) / n, a[1] + ((b[1] - a[1]) * t) / n]);
   }
@@ -953,19 +954,19 @@ export function fitRoadToLand(
 
   // Within the towns at either end the town plan routes the streets; only the open country counts.
   const s0 = line[0], s1 = line[line.length - 1];
-  const kmFrom = (p: number[], q: number[]) => Math.hypot((p[0] - q[0]) * Math.cos((p[1] * Math.PI) / 180), p[1] - q[1]) * 111.2;
+  const kmFrom = (p: number[], q: number[]) => DMath.hypot2((p[0] - q[0]) * DMath.cos((p[1] * Math.PI) / 180), p[1] - q[1]) * 111.2;
   const inTown = pts.map((p) => kmFrom(p, s0) < startKm || kmFrom(p, s1) < endKm);
   const wetAt = (k: number) => !inTown[k] && wet(pts[k][0], pts[k][1]);
 
   // Nudge wet points to the nearest land within maxKm, then 60 m further inland.
   const nudge = (p: number[], maxKm: number): boolean => {
-    const kmLon = kmLat / Math.max(0.05, Math.cos((p[1] * Math.PI) / 180));
+    const kmLon = kmLat / Math.max(0.05, DMath.cos((p[1] * Math.PI) / 180));
     for (let r = 0.05; r <= maxKm; r *= 1.4) {
       for (let q = 0; q < 12; q++) {
         const a = (q / 12) * 2 * Math.PI;
-        const x = p[0] + Math.cos(a) * r * kmLon, y = p[1] + Math.sin(a) * r * kmLat;
+        const x = p[0] + DMath.cos(a) * r * kmLon, y = p[1] + DMath.sin(a) * r * kmLat;
         if (wet(x, y)) continue;
-        const x2 = p[0] + Math.cos(a) * (r + 0.06) * kmLon, y2 = p[1] + Math.sin(a) * (r + 0.06) * kmLat;
+        const x2 = p[0] + DMath.cos(a) * (r + 0.06) * kmLon, y2 = p[1] + DMath.sin(a) * (r + 0.06) * kmLat;
         const inland = !wet(x2, y2);
         p[0] = inland ? x2 : x;
         p[1] = inland ? y2 : y;
@@ -1004,7 +1005,7 @@ export function fitRoadToLand(
   const pieces: number[][][] = [];
   const segKm = (k: number) => {
     const a = pts[k - 1], b = pts[k];
-    return Math.hypot((b[0] - a[0]) * Math.cos((((a[1] + b[1]) / 2) * Math.PI) / 180), b[1] - a[1]) * 111.2;
+    return DMath.hypot2((b[0] - a[0]) * DMath.cos((((a[1] + b[1]) / 2) * Math.PI) / 180), b[1] - a[1]) * 111.2;
   };
   // A crossing spans from the first wet point until 300 m of dry land, so hopping across an
   // archipelago by its islets still counts as one long crossing.

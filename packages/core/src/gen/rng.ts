@@ -1,3 +1,4 @@
+import { DMath } from '../dmath';
 export type Rng = () => number;
 
 export function hashString(s: string): number {
@@ -30,5 +31,33 @@ export function randomUnitVector(rng: Rng): [number, number, number] {
   const z = 2 * rng() - 1;
   const t = 2 * Math.PI * rng();
   const r = Math.sqrt(1 - z * z);
-  return [r * Math.cos(t), r * Math.sin(t), z];
+  return [r * DMath.cos(t), r * DMath.sin(t), z];
+}
+
+/**
+ * Shuffles an array in place (Fisher-Yates, one draw from `r` per item, in order) and returns it.
+ * `arr.sort(() => r() - 0.5)` is not a substitute: how often, and in what order, an engine calls a
+ * comparator is its own affair, so the draws and the result differ between engines.
+ */
+export function shuffle<T>(a: T[], r: Rng): T[] {
+  for (let i = a.length - 1; i > 0; i--) {
+    const j = Math.floor(r() * (i + 1));
+    const t = a[i];
+    a[i] = a[j];
+    a[j] = t;
+  }
+  return a;
+}
+
+/**
+ * Sorts an array in place by a key worked out once for each item, in order (so a key may draw
+ * random numbers, as a jittered order does), ties kept in their order; returns it. Deterministic in
+ * every engine, unlike a comparator that draws random numbers itself.
+ */
+export function sortByKey<T>(a: T[], key: (x: T, i: number) => number): T[] {
+  const keys = a.map(key);
+  const idx = a.map((_, i) => i).sort((p, q) => keys[p] - keys[q] || p - q);
+  const copy = a.slice();
+  for (let i = 0; i < idx.length; i++) a[i] = copy[idx[i]];
+  return a;
 }

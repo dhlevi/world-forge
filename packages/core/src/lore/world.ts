@@ -7,6 +7,7 @@ import { type Economy, type Land, addLand, coinOf, emptyLand, finishLand, GOOD_I
 import { buildFaiths, enmity, type FaithWorld } from './faiths';
 import type { LabelFeature } from '../gen/features';
 import { cultureId, familyFirst, type House, houseMotto, houseName, personName } from './names';
+import { DMath } from '../dmath';
 
 /**
  * The world's history and diplomacy, made once per world (on first use) from its political map:
@@ -95,7 +96,7 @@ export interface WorldLore {
 const pick = <T>(rnd: Rng, a: readonly T[]): T => a[Math.floor(rnd() * a.length)];
 const distKm = (a: number, b: number, c: number, d: number) => {
   const dl = ((((c - a) % 360) + 540) % 360) - 180;
-  return Math.hypot(dl * 111.32 * Math.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
+  return DMath.hypot2(dl * 111.32 * DMath.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
 };
 
 const ERAS = [['of the Reckoning', 'R'], ['after the Founding', 'AF'], ['of the Crowning', 'C'], ['after the Sundering', 'AS'], ['of the Long Count', 'LC'], ['of the Lamp', 'L'], ['after the Flood', 'AFl'], ['of the New Dawn', 'ND'], ['of the New Gods', 'NG'], ['after the Cataclysm', 'AC']];

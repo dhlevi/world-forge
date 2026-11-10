@@ -2,6 +2,7 @@ import { hashString, mulberry32, type Rng } from '../gen/rng';
 import { Simplex3, fbm } from '../gen/noise';
 import { hookTail } from '../keys/flavour';
 import { Field, type LairMap, type LairSite, type Pt, annotate, blob, distSeg, empty, lairSize, wander } from './lair';
+import { DMath } from '../dmath';
 
 /**
  * A mountain pass where a road crosses a range: the trail climbs from one edge of the map by
@@ -81,7 +82,7 @@ export function buildPass(site: LairSite): LairMap {
   const snowy = has('snow');
   // The road's way across the map, through a saddle near the middle.
   const th = site.dir ?? rnd() * Math.PI * 2;
-  const u: Pt = [Math.cos(th), Math.sin(th)], v: Pt = [-u[1], u[0]];
+  const u: Pt = [DMath.cos(th), DMath.sin(th)], v: Pt = [-u[1], u[0]];
   const C: Pt = [W / 2 + (rnd() - 0.5) * W * 0.08, H / 2 + (rnd() - 0.5) * H * 0.08];
   const toEdge = (p: Pt, d: Pt): Pt => {
     // Where a ray from p leaves the map (3 m past the edge).
@@ -134,7 +135,7 @@ export function buildPass(site: LairSite): LairMap {
       field.stamp(Math.min(a[0], b[0]) - w, Math.min(a[1], b[1]) - w, Math.max(a[0], b[0]) + w, Math.max(a[1], b[1]) + w, (x, y) => 1 - distSeg([x, y], a, b) / w);
     }
   };
-  const round = (c: Pt, r: number) => field.stamp(c[0] - r, c[1] - r, c[0] + r, c[1] + r, (x, y) => 1 - Math.hypot(x - c[0], y - c[1]) / r);
+  const round = (c: Pt, r: number) => field.stamp(c[0] - r, c[1] - r, c[0] + r, c[1] + r, (x, y) => 1 - DMath.hypot2(x - c[0], y - c[1]) / r);
   corridor(path, 3.4 + rnd());
   corridor(descent, 3.6 + rnd(), tunnelSeg ?? undefined);
   for (const c of corners) round(c, 5.5 + 2 * rnd());
@@ -166,7 +167,7 @@ export function buildPass(site: LairSite): LairMap {
   const onEdge = (p: Pt) => p[0] < 0.05 || p[1] < 0.05 || p[0] > W - 0.05 || p[1] > H - 0.05;
   const m: LairMap = { ...empty(site, W, H), outlines: field.contours(), open, onEdge, trail, tunnels: tunnelSeg ? [tunnelSeg] : [], bridges: [], fords: [], snow: [], cairns: [] };
   m.levels = [m];
-  const inward = (p: Pt, q: Pt) => Math.atan2(q[1] - p[1], q[0] - p[0]);
+  const inward = (p: Pt, q: Pt) => DMath.atan2(q[1] - p[1], q[0] - p[0]);
   m.mouths = [
     { p: [Math.max(0, Math.min(W, A[0])), Math.max(0, Math.min(H, A[1]))], dir: inward(A, path[Math.min(3, path.length - 1)]) },
     { p: [Math.max(0, Math.min(W, B[0])), Math.max(0, Math.min(H, B[1]))], dir: inward(B, descent[Math.max(0, descent.length - 4)]) },
@@ -191,7 +192,7 @@ export function buildPass(site: LairSite): LairMap {
   }
   const gorge = rnd() < 0.55;
   if (hit) {
-    const a = path[hk - 1], b = path[hk], l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+    const a = path[hk - 1], b = path[hk], l = DMath.hypot2(b[0] - a[0], b[1] - a[1]) || 1;
     const d: Pt = [(b[0] - a[0]) / l, (b[1] - a[1]) / l], half = gorge ? 4.2 : 1.6;
     if (gorge) m.bridges!.push({ a: [hit[0] - d[0] * half, hit[1] - d[1] * half], b: [hit[0] + d[0] * half, hit[1] + d[1] * half], rope: true });
     else m.fords!.push(hit);
@@ -205,7 +206,7 @@ export function buildPass(site: LairSite): LairMap {
     if (f <= 0.04 || busy(p, 2.2)) continue;
     if (f < 0.3 && rnd() < 0.5) {
       for (let q = 0; q < 2 + Math.floor(rnd() * 4); q++) m.dots.push({ p: [p[0] + (rnd() - 0.5) * 2, p[1] + (rnd() - 0.5) * 2], r: 0.1 + 0.2 * rnd() });
-    } else if (rnd() < 0.05) m.rocks.push(blob(p, 0.5 + 1.1 * rnd() ** 2, rnd, 6 + Math.floor(rnd() * 3)));
+    } else if (rnd() < 0.05) m.rocks.push(blob(p, 0.5 + 1.1 * DMath.pow(rnd(), 2), rnd, 6 + Math.floor(rnd() * 3)));
   }
   m.dots = m.dots.filter((d) => field.at(d.p) > 0.03 && !busy(d.p, 1.6));
   if (snowy) {
@@ -252,7 +253,7 @@ export function buildPass(site: LairSite): LairMap {
     let lp = p;
     for (let k = 0; k < 16; k++) {
       const a = (k / 16) * Math.PI * 2, r = 2.5 + (k % 2) * 1.5;
-      const c: Pt = [p[0] + Math.cos(a) * r, p[1] + Math.sin(a) * r];
+      const c: Pt = [p[0] + DMath.cos(a) * r, p[1] + DMath.sin(a) * r];
       if (field.at(c) > 0.15 && !busy(c, 1.2) && c[0] > 2 && c[1] > 2 && c[0] < W - 2 && c[1] < H - 2) {
         lp = c;
         break;

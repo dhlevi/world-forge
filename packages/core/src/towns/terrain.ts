@@ -1,4 +1,5 @@
 import { type Pt, joinSegments } from './geom';
+import { DMath } from '../dmath';
 
 export const LAND = 0, SEA = 1, RIVER = 2;
 
@@ -51,7 +52,7 @@ export class LocalTerrain {
   }
 
   slope(p: Pt): number {
-    return Math.hypot(...this.grad(p));
+    return DMath.hypot(...this.grad(p));
   }
 
   typeAt(p: Pt): number {
@@ -69,7 +70,7 @@ export class LocalTerrain {
         const k = j * n + i;
         if (w[k] !== LAND) continue;
         const p = this.node(i, j);
-        if (Math.hypot(...p) > maxR) continue;
+        if (DMath.hypot(...p) > maxR) continue;
         let nx = 0, ny = 0, type = LAND, adjacent = false;
         // Normal from a 5×5 neighbourhood so piers point out across the water, not along a rough shore.
         for (let dj = -2; dj <= 2; dj++) {
@@ -79,13 +80,13 @@ export class LocalTerrain {
             const t = w[jj * n + ii];
             if (t === LAND) continue;
             if (Math.abs(di) <= 1 && Math.abs(dj) <= 1) adjacent = true;
-            const wgt = 1 / Math.hypot(di, dj);
+            const wgt = 1 / DMath.hypot2(di, dj);
             nx += di * wgt;
             ny += dj * wgt;
             type = Math.max(type, t);
           }
         }
-        const l = Math.hypot(nx, ny);
+        const l = DMath.hypot2(nx, ny);
         if (adjacent && l > 0) found.push({ p, n: [nx / l, ny / l], type });
       }
     }
@@ -95,7 +96,7 @@ export class LocalTerrain {
     }
     const kept: ShorePoint[] = [];
     for (const s of found) {
-      if (kept.every((q) => Math.hypot(q.p[0] - s.p[0], q.p[1] - s.p[1]) >= minSep)) kept.push(s);
+      if (kept.every((q) => DMath.hypot2(q.p[0] - s.p[0], q.p[1] - s.p[1]) >= minSep)) kept.push(s);
     }
     return kept;
   }
@@ -109,7 +110,7 @@ export class LocalTerrain {
         const k = j * n + i;
         if (w[k] || w[k + 1] || w[k + n] || w[k + n + 1]) continue;
         const c0 = this.node(i, j);
-        if (Math.hypot(c0[0] + this.cs / 2, c0[1] + this.cs / 2) > maxR) continue;
+        if (DMath.hypot2(c0[0] + this.cs / 2, c0[1] + this.cs / 2) > maxR) continue;
         const corners: [Pt, number][] = [
           [c0, h[k]], [this.node(i + 1, j), h[k + 1]], [this.node(i + 1, j + 1), h[k + n + 1]], [this.node(i, j + 1), h[k + n]],
         ];

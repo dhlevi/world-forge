@@ -1,5 +1,5 @@
 import { Delaunay } from 'd3-delaunay';
-import { hashString, mulberry32 } from '../gen/rng';
+import { hashString, mulberry32, shuffle } from '../gen/rng';
 import { chaikin } from '../gen/rivers';
 import {
   type Poly, type Pt, area, blob, ccw, centroid, compactness, distToLine, distToSeg, frontRect, inset, longestEdge, pointInPoly, rect, rectIn, rectangularity,
@@ -13,13 +13,14 @@ import { type BuildingRef, type WardInfo, type WardKind, labelCity } from './nam
 import { BUILD_GROUND, contourStrips, plantField } from './ground';
 import { type CityLayout, makeLayout } from './layout';
 import { CULTURES } from '../names/cultures';
+import { DMath } from '../dmath';
 
 const GATE_HALF = 6;
 const key = (p: Pt) => `${Math.round(p[0] * 10)},${Math.round(p[1] * 10)}`;
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 const mid = (a: Pt, b: Pt): Pt => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
 const toward = (a: Pt, b: Pt, d: number): Pt => {
-  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const len = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
   const t = Math.min(0.4, d / Math.max(1e-6, len));
   return [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
 };
@@ -164,7 +165,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   const waterFactor = (u: number, v: number, ek: string) => {
     let w = edgeWater.get(ek);
     if (w === undefined) {
-      const a = P[u], b = P[v], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const a = P[u], b = P[v], L = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
       const n = Math.max(2, Math.ceil(L / 8));
       let river = 0, sea = 0;
       for (let k = 0; k < n; k++) {
@@ -206,10 +207,10 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       }
     }
   };
-  const len = (u: number, v: number) => Math.hypot(P[u][0] - P[v][0], P[u][1] - P[v][1]);
+  const len = (u: number, v: number) => DMath.hypot2(P[u][0] - P[v][0], P[u][1] - P[v][1]);
   const nodeH = P.map((p) => terrain.height(p));
   // Streets avoid steep grades (cost doubles at ~6%).
-  const grade = (u: number, v: number) => 1 + (Math.abs(nodeH[u] - nodeH[v]) / Math.max(1, len(u, v)) / lay.gradeRef) ** 2;
+  const grade = (u: number, v: number) => 1 + DMath.pow(Math.abs(nodeH[u] - nodeH[v]) / Math.max(1, len(u, v)) / lay.gradeRef, 2);
 
   // Gates: the wall vertex best facing each incoming road.
   const gates: { k: number; exit: (typeof exits)[number] | null }[] = [];
@@ -218,11 +219,11 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     return Math.min(d, wall.length - d) < 2 && g.k !== k;
   });
   for (const e of exits) {
-    const ang = Math.atan2(e.p[1], e.p[0]);
+    const ang = DMath.atan2(e.p[1], e.p[0]);
     let best = -1, bestScore = -Infinity;
     for (let k = 0; k < wall.length; k++) {
       if (gateNear(k) || water(wall[k])) continue;
-      const sc2 = Math.cos(Math.atan2(wall[k][1], wall[k][0]) - ang);
+      const sc2 = DMath.cos(DMath.atan2(wall[k][1], wall[k][0]) - ang);
       if (sc2 > bestScore) {
         bestScore = sc2;
         best = k;
@@ -282,7 +283,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     let target = -1, bestD = Infinity;
     for (let n = 0; n < P.length; n++) {
       if (Math.abs(P[n][0]) >= B * 0.99 || Math.abs(P[n][1]) >= B * 0.99) continue;
-      const d = Math.hypot(P[n][0] - ex[0], P[n][1] - ex[1]);
+      const d = DMath.hypot2(P[n][0] - ex[0], P[n][1] - ex[1]);
       if (d < bestD) {
         bestD = d;
         target = n;
@@ -293,7 +294,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     if (target >= 0 && !road) continue;
     const line = road ? road.map((n) => P[n]) : [wall[g.k]];
     // Skip the last graph vertex if it lies beyond the exit so the road doesn't double back.
-    if (line.length > 1 && Math.hypot(...line[line.length - 1]) > Math.hypot(...ex)) line.pop();
+    if (line.length > 1 && DMath.hypot(...line[line.length - 1]) > DMath.hypot(...ex)) line.pop();
     line.push(ex);
     for (let k = 0; road && k + 1 < road.length; k++) mainEdges.add(ekey(road[k], road[k + 1]));
     const smooth = chaikin(line, 2) as Pt[];
@@ -331,7 +332,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const toWater = (p: Pt): Pt | null => {
       let best: Pt | null = null, bd = Infinity;
       for (let a = 0; a < 16; a++) {
-        const ca = Math.cos((a / 16) * Math.PI * 2), sa = Math.sin((a / 16) * Math.PI * 2);
+        const ca = DMath.cos((a / 16) * Math.PI * 2), sa = DMath.sin((a / 16) * Math.PI * 2);
         for (let d = 8; d <= 200; d += 8) {
           const q: Pt = [p[0] + ca * d, p[1] + sa * d];
           if (!water(q)) continue;
@@ -347,7 +348,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     // Only corners where a lesser street runs in from the wall can start a canal.
     const opens = (k: number) => adj[nodeId.get(key(wall[k]))!].some((e) => inEdge(e.ek) && !mainEdges.has(e.ek));
     const starts = wall.map((p, k) => ({ k, w: water(p) || !opens(k) ? null : toWater(p) })).filter((x) => x.w && !gates.some((g) => g.k === x.k))
-      .map((x) => ({ ...x, d: Math.hypot(x.w![0] - wall[x.k][0], x.w![1] - wall[x.k][1]) })).sort((a, b) => a.d - b.d);
+      .map((x) => ({ ...x, d: DMath.hypot2(x.w![0] - wall[x.k][0], x.w![1] - wall[x.k][1]) })).sort((a, b) => a.d - b.d);
     // Wall corners that open on the water: a water gate leads in from each.
     const gateOf = new Map<number, Pt>();
     for (const st of starts) gateOf.set(nodeId.get(key(wall[st.k]))!, st.w!);
@@ -356,11 +357,11 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const innerNodes = [...new Set(inner.filter((i) => patches[i].inside).flatMap((i) => patches[i].poly.map((p) => nodeId.get(key(p))!)))]
       .filter((n) => !wallNode.has(n) && adj[n].some((e) => inEdge(e.ek) && !mainEdges.has(e.ek)));
     const sources: number[] = [];
-    if (innerNodes.length) sources.push(innerNodes.reduce((a, b) => (Math.hypot(...P[b]) < Math.hypot(...P[a]) ? b : a)));
+    if (innerNodes.length) sources.push(innerNodes.reduce((a, b) => (DMath.hypot(...P[b]) < DMath.hypot(...P[a]) ? b : a)));
     while (sources.length < (town ? 3 : 6) && sources.length < innerNodes.length) {
       let best = -1, bd = -1;
       for (const n of innerNodes) {
-        const d = Math.min(...sources.map((q) => Math.hypot(P[n][0] - P[q][0], P[n][1] - P[q][1])));
+        const d = Math.min(...sources.map((q) => DMath.hypot2(P[n][0] - P[q][0], P[n][1] - P[q][1])));
         if (d > bd) {
           bd = d;
           best = n;
@@ -383,7 +384,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       if (w && !gated.has(end)) {
         gated.add(end);
         line.push(w);
-        const a = P[end], b = P[path[path.length - 2]], L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+        const a = P[end], b = P[path[path.length - 2]], L = DMath.hypot2(b[0] - a[0], b[1] - a[1]) || 1;
         const nx = -(b[1] - a[1]) / L, ny = (b[0] - a[0]) / L, off = CANAL_W / 2 + 2;
         out.point('tower', [a[0] + nx * off, a[1] + ny * off], { r: town ? 3 : 3.8 });
         out.point('tower', [a[0] - nx * off, a[1] - ny * off], { r: town ? 3 : 3.8 });
@@ -394,7 +395,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         if (!street || bridged.has(n)) continue;
         bridged.add(n);
         const d = [P[street.to][0] - P[n][0], P[street.to][1] - P[n][1]];
-        out.poly('bridge', rect(P[n][0], P[n][1], Math.atan2(d[1], d[0]), CANAL_W + 6, 5.5));
+        out.poly('bridge', rect(P[n][0], P[n][1], DMath.atan2(d[1], d[0]), CANAL_W + 6, 5.5));
       }
     }
   }
@@ -456,7 +457,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       case 'merchant': {
         const m = nbrs(plaza).filter(free);
         if (m.length && !town) patches[pick(m)].kind = 'plaza';
-        const cq = plazas.flatMap((pz) => nbrs(pz)).filter(free).sort(() => rnd() - 0.5);
+        const cq = shuffle(plazas.flatMap((pz) => nbrs(pz)).filter(free), rnd);
         for (const i of cq.slice(0, town ? 1 : 3)) patches[i].kind = 'counting';
         break;
       }
@@ -516,7 +517,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const parks = inner.filter((i) => patches[i].kind === 'park');
     const pc = patches[plaza].c;
     if (parks.length && rnd() < 0.6) {
-      patches[parks.reduce((a, b) => (Math.hypot(patches[b].c[0] - pc[0], patches[b].c[1] - pc[1]) > Math.hypot(patches[a].c[0] - pc[0], patches[a].c[1] - pc[1]) ? b : a))].kind = 'graveyard';
+      patches[parks.reduce((a, b) => (DMath.hypot2(patches[b].c[0] - pc[0], patches[b].c[1] - pc[1]) > DMath.hypot2(patches[a].c[0] - pc[0], patches[a].c[1] - pc[1]) ? b : a))].kind = 'graveyard';
     } else if (rnd() < 0.5) {
       const c = inner.filter((i) => free(i) && touchesWall(i) && !patches[i].poly.some((q) => gateNodes.has(key(q))));
       if (c.length) patches[pick(c)].kind = 'graveyard';
@@ -586,7 +587,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     // A rectangle (grown by the margin) lies inside when its corners do and no vertex of the
     // polygon pokes into it (an inset of a ragged polygon is unreliable).
     const fits = (c: Pt, ang: number, w: number, h: number) => {
-      const cs = Math.cos(ang), sn = Math.sin(ang), hw = w / 2 + margin, hh = h / 2 + margin;
+      const cs = DMath.cos(ang), sn = DMath.sin(ang), hw = w / 2 + margin, hh = h / 2 + margin;
       for (const [su, sv] of [[-1, -1], [1, -1], [1, 1], [-1, 1]]) {
         const x = c[0] + su * hw * cs - sv * hh * sn, y = c[1] + su * hw * sn + sv * hh * cs;
         if (!pointInPoly(q, x, y)) return false;
@@ -598,10 +599,10 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       return true;
     };
     const c0 = centroid(q);
-    const lens = q.map((p, k) => Math.hypot(q[(k + 1) % q.length][0] - p[0], q[(k + 1) % q.length][1] - p[1]));
+    const lens = q.map((p, k) => DMath.hypot2(q[(k + 1) % q.length][0] - p[0], q[(k + 1) % q.length][1] - p[1]));
     const maxLen = Math.max(...lens);
     const angs = q.map((p, k) => ({ k, len: lens[k] })).filter((x) => x.len >= maxLen * 0.3).sort((x, y) => y.len - x.len).slice(0, 4)
-      .map(({ k }) => Math.atan2(q[(k + 1) % q.length][1] - q[k][1], q[(k + 1) % q.length][0] - q[k][0]));
+      .map(({ k }) => DMath.atan2(q[(k + 1) % q.length][1] - q[k][1], q[(k + 1) % q.length][0] - q[k][0]));
     const centres: Pt[] = [c0];
     // Up to eight directions out from the middle (a ragged shore has hundreds of vertices).
     const stepV = Math.max(1, Math.floor(q.length / 8));
@@ -631,7 +632,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       [W, H] = [H, W];
       ang += Math.PI / 2;
     }
-    const ca = Math.cos(ang), sa = Math.sin(ang);
+    const ca = DMath.cos(ang), sa = DMath.sin(ang);
     const T = (u: number, v: number): Pt => [c[0] + u * ca - v * sa, c[1] + u * sa + v * ca];
     const box = (u: number, v: number, w: number, h: number): Poly => [T(u - w / 2, v - h / 2), T(u + w / 2, v - h / 2), T(u + w / 2, v + h / 2), T(u - w / 2, v + h / 2)];
     return { T, box, W, H, ang };
@@ -661,7 +662,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
           if (bare) continue;
           for (const side of [0, 2.4]) {
             const cu = u + 1.5, cv = v + side + 1.1;
-            if (Math.hypot(cu, cv) < clearC || rnd() < 0.12) continue;
+            if (DMath.hypot2(cu, cv) < clearC || rnd() < 0.12) continue;
             const st = box(cu, cv, 3, 2.2);
             if (!st.every((p) => pointInPoly(q, p[0], p[1]) && !water(p))) continue;
             const tone = Math.floor(rnd() * 4);
@@ -702,7 +703,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     for (const P of [a, b]) {
       for (let i = 0; i < P.length; i++) {
         const p0 = P[i], p1 = P[(i + 1) % P.length];
-        const nx = -(p1[1] - p0[1]), ny = p1[0] - p0[0], nl = Math.hypot(nx, ny) || 1;
+        const nx = -(p1[1] - p0[1]), ny = p1[0] - p0[0], nl = DMath.hypot2(nx, ny) || 1;
         let amin = Infinity, amax = -Infinity, bmin = Infinity, bmax = -Infinity;
         for (const v of a) {
           const d = (v[0] * nx + v[1] * ny) / nl;
@@ -737,7 +738,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       const d = o.depth[0] + sq() * (o.depth[1] - o.depth[0]);
       for (let e = 0; e < q.length; e++) {
         const a = q[e], b = q[(e + 1) % q.length];
-        const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const L = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
         if (L < 10) continue;
         const ux = (b[0] - a[0]) / L, uy = (b[1] - a[1]) / L, nx = -uy, ny = ux;
         // Each corner belongs to one edge: an edge's houses stop short of its far corner.
@@ -796,15 +797,15 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     // Rows along the square's longest edge.
     let best = 0, ang = 0;
     for (let i = 0; i < P.length; i++) {
-      const a = P[i], b = P[(i + 1) % P.length], L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+      const a = P[i], b = P[(i + 1) % P.length], L = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
       if (L > best) {
         best = L;
-        ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+        ang = DMath.atan2(b[1] - a[1], b[0] - a[0]);
       }
     }
-    const cs = Math.cos(ang), sn = Math.sin(ang);
+    const cs = DMath.cos(ang), sn = DMath.sin(ang);
     const T = (u: number, v: number): Pt => [c[0] + u * cs - v * sn, c[1] + u * sn + v * cs];
-    const R = Math.max(...P.map((v) => Math.hypot(v[0] - c[0], v[1] - c[1])));
+    const R = Math.max(...P.map((v) => DMath.hypot2(v[0] - c[0], v[1] - c[1])));
     const clear: { p: Pt; r: number }[] = [];
     // The market hall over the middle of a large city square, the fountain beside it.
     if (city && A > 4000) {
@@ -813,7 +814,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       if (hall.every((v) => pointInPoly(P, v[0], v[1])) && ground.allOk(hall, BUILD_GROUND) && !taken.some((x) => overlaps(x, hall))) {
         out.polyLater('building', hall, { use: 'hall', ctx: 'ward' });
         taken.push(hall);
-        clear.push({ p: c, r: Math.hypot(hw, hh) / 2 + 4 });
+        clear.push({ p: c, r: DMath.hypot2(hw, hh) / 2 + 4 });
       }
     }
     const fc = clear.length ? T(0, -(Math.min(12, Math.sqrt(A) * 0.2)) - 7) : c;
@@ -824,9 +825,9 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     }
     const inside = (h: Poly) => h.every((v) => pointInPoly(P, v[0], v[1]) && !water(v));
     // Clear of the houses round the square by a lane's width.
-    const free = (h: Poly) => !taken.some((x) => overlaps(x, h, 3)) && !clear.some((k) => h.some((v) => Math.hypot(v[0] - k.p[0], v[1] - k.p[1]) < k.r));
+    const free = (h: Poly) => !taken.some((x) => overlaps(x, h, 3)) && !clear.some((k) => h.some((v) => DMath.hypot2(v[0] - k.p[0], v[1] - k.p[1]) < k.r));
     const box = (u: number, v: number, w: number, h: number, a2 = 0): Poly => {
-      const ca = Math.cos(a2), sa = Math.sin(a2);
+      const ca = DMath.cos(a2), sa = DMath.sin(a2);
       return [[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]].map(([x, y]) => T(u + x * ca - y * sa, v + x * sa + y * ca));
     };
     const step = dense ? 9.4 : 11;
@@ -838,11 +839,11 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         for (let k = 0; k < run && u < R; k++, u += 3.3) {
           if (bare) continue;
           // Rows bend a little, and thin out toward the edges of the square.
-          const bend = Math.sin(u / 23 + phase + v * 0.07) * 2.2;
-          const rr = Math.hypot(u, v) / R;
+          const bend = DMath.sin(u / 23 + phase + v * 0.07) * 2.2;
+          const rr = DMath.hypot2(u, v) / R;
           if (sq() > 1.08 - rr * 0.45) continue;
           for (const side of [0, 2.4]) {
-            const st = box(u + 1.5, v + side + 1.1 + bend, 3, 2.2, Math.cos(u / 31 + phase) * 0.06);
+            const st = box(u + 1.5, v + side + 1.1 + bend, 3, 2.2, DMath.cos(u / 31 + phase) * 0.06);
             if (!inside(st) || !free(st) || sq() < 0.08) continue;
             out.poly('stall', st, { tone: Math.floor(sq() * 4) });
           }
@@ -854,21 +855,21 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
     const pens = A > 2500 ? 1 + Math.floor(sq() * 3) : 0;
     for (let k = 0, tries = 0; k < pens && tries < 30; tries++) {
       const t = sq() * Math.PI * 2, rr = R * (0.55 + sq() * 0.35);
-      const pc: Pt = [c[0] + Math.cos(t) * rr, c[1] + Math.sin(t) * rr];
+      const pc: Pt = [c[0] + DMath.cos(t) * rr, c[1] + DMath.sin(t) * rr];
       const pa = ang + (sq() - 0.5) * 0.3, pw = 8 + sq() * 4, ph = 6 + sq() * 2;
       const pen = rect(pc[0], pc[1], pa, pw, ph);
       if (!inside(pen) || !free(pen) || !ground.allOk(pen, BUILD_GROUND)) continue;
       out.line('picket', [...pen, pen[0]]);
       taken.push(pen);
       for (let b = 0, n = 2 + Math.floor(sq() * 4); b < n; b++) {
-        const bc: Pt = [pc[0] + (sq() - 0.5) * (pw - 3) * Math.cos(pa) - (sq() - 0.5) * (ph - 2) * Math.sin(pa), pc[1] + (sq() - 0.5) * (pw - 3) * Math.sin(pa) + (sq() - 0.5) * (ph - 2) * Math.cos(pa)];
+        const bc: Pt = [pc[0] + (sq() - 0.5) * (pw - 3) * DMath.cos(pa) - (sq() - 0.5) * (ph - 2) * DMath.sin(pa), pc[1] + (sq() - 0.5) * (pw - 3) * DMath.sin(pa) + (sq() - 0.5) * (ph - 2) * DMath.cos(pa)];
         out.poly('horse', rect(bc[0], bc[1], pa + (sq() - 0.5) * 1.2, 2.1, 0.8));
       }
       k++;
     }
     for (let k = 0, n = 2 + Math.floor(sq() * 5), tries = 0; k < n && tries < 40; tries++) {
       const t = sq() * Math.PI * 2, rr = R * (0.6 + sq() * 0.4);
-      const wc: Pt = [c[0] + Math.cos(t) * rr, c[1] + Math.sin(t) * rr];
+      const wc: Pt = [c[0] + DMath.cos(t) * rr, c[1] + DMath.sin(t) * rr];
       const wg = rect(wc[0], wc[1], ang + (sq() - 0.5) * 0.8, 4, 1.8);
       if (!inside(wg) || !free(wg)) continue;
       out.poly('wagon', wg);
@@ -879,13 +880,13 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   /** A precinct wall round a close (on its edge, with a gateway in its two longest sides). */
   const precinctWall = (q0: Poly, w: number) => {
     const q = ccw(q0);
-    const sides = q.map((a, i) => ({ i, L: Math.hypot(q[(i + 1) % q.length][0] - a[0], q[(i + 1) % q.length][1] - a[1]) })).sort((x, y) => y.L - x.L).slice(0, 2).map((x) => x.i);
+    const sides = q.map((a, i) => ({ i, L: DMath.hypot2(q[(i + 1) % q.length][0] - a[0], q[(i + 1) % q.length][1] - a[1]) })).sort((x, y) => y.L - x.L).slice(0, 2).map((x) => x.i);
     let run: Pt[] = [q[0]];
     const runs: Pt[][] = [];
     for (let i = 0; i < q.length; i++) {
       const a = q[i], b = q[(i + 1) % q.length];
       if (sides.includes(i)) {
-        const L = Math.hypot(b[0] - a[0], b[1] - a[1]);
+        const L = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
         if (L > 16) {
           const t0 = 0.5 - 3 / L, t1 = 0.5 + 3 / L;
           run.push([a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0]);
@@ -1105,7 +1106,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         const c = f ? f.T(0, 0) : centroid(q);
         const r = f ? Math.max(6, Math.min(11, Math.min(f.W, f.H) * 0.22)) : 7;
         const oct: Pt[] = [];
-        for (let k = 0; k < 8; k++) oct.push([c[0] + r * Math.cos((k + 0.5) * Math.PI / 4), c[1] + r * Math.sin((k + 0.5) * Math.PI / 4)]);
+        for (let k = 0; k < 8; k++) oct.push([c[0] + r * DMath.cos((k + 0.5) * Math.PI / 4), c[1] + r * DMath.sin((k + 0.5) * Math.PI / 4)]);
         if (ground.allOk(oct, BUILD_GROUND)) {
           const picked = `the ${pick(['Violet', 'Silver', 'Azure', 'Grey', 'Star', 'Moon', 'High', 'Black', 'White', 'Crystal', 'Amber'])} Tower`;
           const name = s.tower?.name ?? picked;
@@ -1133,7 +1134,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         out.line('wall', [...q, q[0]], { w: 2.4 });
         let last: Pt | null = null;
         for (const v of q) {
-          if (last && Math.hypot(v[0] - last[0], v[1] - last[1]) < 12) continue;
+          if (last && DMath.hypot2(v[0] - last[0], v[1] - last[1]) < 12) continue;
           out.point('tower', v, { r: 3.4 });
           last = v;
         }
@@ -1225,7 +1226,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         out.line('wall', [...q, q[0]], { w: 3 });
         let last: Pt | null = null;
         for (const v of q) {
-          if (last && Math.hypot(v[0] - last[0], v[1] - last[1]) < 15) continue;
+          if (last && DMath.hypot2(v[0] - last[0], v[1] - last[1]) < 15) continue;
           out.point('tower', v, { r: 4 });
           last = v;
         }
@@ -1271,7 +1272,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
         if (drill) out.poly('plaza', drill);
         // Blocks separated by alleys (terraces along the contours on slopes), then lots; lots off
         // the block edge become courtyards. Harbour wards are warehouses.
-        const g = terrain.grad(pt.c), sl = Math.hypot(...g);
+        const g = terrain.grad(pt.c), sl = DMath.hypot(...g);
         // Blocks small enough that every house fronts a street or alley (about two lots deep),
         // always parted by alleys at the first cuts; every lot must reach the block edge.
         // Every cut between blocks leaves an alley, so no block is walled in by its neighbours;
@@ -1305,12 +1306,12 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   const forgeWorks = () => {
     const fw = inner.filter((i) => patches[i].kind === 'forge');
     const at = fw.length ? patches[fw[0]].c : [0, 0] as Pt;
-    const g = gates.length ? gates.reduce((a, b) => (Math.hypot(wall[b.k][0] - at[0], wall[b.k][1] - at[1]) < Math.hypot(wall[a.k][0] - at[0], wall[a.k][1] - at[1]) ? b : a)) : null;
+    const g = gates.length ? gates.reduce((a, b) => (DMath.hypot2(wall[b.k][0] - at[0], wall[b.k][1] - at[1]) < DMath.hypot2(wall[a.k][0] - at[0], wall[a.k][1] - at[1]) ? b : a)) : null;
     const clear = (c: Pt, r: number) => !water(c) && clearOfWalls(c) && !pointInPoly(wall, c[0], c[1])
-      && buildingRefs.every((b) => Math.hypot(b.c[0] - c[0], b.c[1] - c[1]) > r + 10)
+      && buildingRefs.every((b) => DMath.hypot2(b.c[0] - c[0], b.c[1] - c[1]) > r + 10)
       && roadLines.every((l) => distToLine(l, c[0], c[1]) > r + 6);
     if (g) {
-      const gp = wall[g.k], gl = Math.hypot(...gp) || 1, dir: Pt = [gp[0] / gl, gp[1] / gl], perp: Pt = [-dir[1], dir[0]];
+      const gp = wall[g.k], gl = DMath.hypot(...gp) || 1, dir: Pt = [gp[0] / gl, gp[1] / gl], perp: Pt = [-dir[1], dir[0]];
       for (let t = 0, n = 0; t < 30 && n < (town ? 3 : 5); t++) {
         const d = 50 + rnd() * 90, side = (rnd() < 0.5 ? -1 : 1) * (20 + rnd() * 60), r = 6 + rnd() * 10;
         const c: Pt = [gp[0] + dir[0] * d + perp[0] * side, gp[1] + dir[1] * d + perp[1] * side];
@@ -1320,12 +1321,12 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       }
     }
     const banks = terrain.shore(R * 0.9, 40, rnd).filter((b) => b.type === RIVER && !pointInPoly(wall, b.p[0], b.p[1]))
-      .sort((a, b) => Math.hypot(...a.p) - Math.hypot(...b.p));
+      .sort((a, b) => DMath.hypot(...a.p) - DMath.hypot(...b.p));
     let mills = 0;
     for (const bank of banks) {
       if (mills >= (town ? 1 : 3)) break;
       const c: Pt = [bank.p[0] - bank.n[0] * 9, bank.p[1] - bank.n[1] * 9];
-      const ang = Math.atan2(bank.n[0], -bank.n[1]);
+      const ang = DMath.atan2(bank.n[0], -bank.n[1]);
       const m = rect(c[0], c[1], ang, 12, 9);
       if (!clear(c, 8) || !ground.allOk(m, BUILD_GROUND)) continue;
       out.poly('building', m, { use: 'mill', mill: 'water' });
@@ -1340,13 +1341,13 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   if (theme === 'fortress' && s.walls) {
     const sgn = area(wall) > 0 ? 1 : -1;
     const nrm = (a: Pt, b: Pt): Pt => {
-      const L = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+      const L = DMath.hypot2(b[0] - a[0], b[1] - a[1]) || 1;
       return [(sgn * (b[1] - a[1])) / L, (-sgn * (b[0] - a[0])) / L];
     };
     const off = town ? 20 : 26;
     outerWall = wall.map((p, k) => {
       const n1 = nrm(wall[(k + wall.length - 1) % wall.length], p), n2 = nrm(p, wall[(k + 1) % wall.length]);
-      const bx = n1[0] + n2[0], by = n1[1] + n2[1], bl = Math.hypot(bx, by) || 1;
+      const bx = n1[0] + n2[0], by = n1[1] + n2[1], bl = DMath.hypot2(bx, by) || 1;
       const d = off / Math.max(0.5, (bx * n1[0] + by * n1[1]) / bl);
       return [p[0] + (bx / bl) * d, p[1] + (by / bl) * d];
     });
@@ -1359,7 +1360,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
   // Outside the walls: suburbs along the roads, then farmland.
   patches.forEach((pt, i) => {
     if (pt.inside || pt.water || pt.poly.length < 3) return;
-    const d = Math.hypot(...pt.c);
+    const d = DMath.hypot(...pt.c);
     if (d > R) return;
     const dRoad = roadLines.length ? Math.min(...roadLines.map((l) => distToLine(l, pt.c[0], pt.c[1]))) : Infinity;
     if (dRoad < Math.sqrt(area(pt.poly) / Math.PI) + 15 && shapeD(pt.c) < Rin * 1.9 && d < R * 0.9) {
@@ -1405,7 +1406,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
       const v = toward(q[k], centroid(q), 14);
       const n = q[(k + 1) % q.length];
       const hc: Pt = [v[0], v[1]];
-      const farm = rect(hc[0], hc[1], Math.atan2(n[1] - q[k][1], n[0] - q[k][0]), 11, 7);
+      const farm = rect(hc[0], hc[1], DMath.atan2(n[1] - q[k][1], n[0] - q[k][0]), 11, 7);
       if (ground.allOk(farm, BUILD_GROUND) && clearOfWalls(hc)) addBuilding(farm, i, { ctx: 'farm' });
     }
   });
@@ -1436,7 +1437,7 @@ export function buildCity({ s, exits, water, terrain, ground, out, names, cultur
  */
 function siteAxis(style: CityLayout, terrain: PlanInput['terrain'], water: (p: Pt) => boolean, exits: PlanInput['exits'], Rin: number, rnd: () => number): Pt {
   const r0 = rnd() * Math.PI;
-  const fallback: Pt = [Math.cos(r0), Math.sin(r0)];
+  const fallback: Pt = [DMath.cos(r0), DMath.sin(r0)];
   // Principal axis of a set of points.
   const axisOf = (ps: Pt[]): Pt | null => {
     if (ps.length < 6) return null;
@@ -1444,8 +1445,8 @@ function siteAxis(style: CityLayout, terrain: PlanInput['terrain'], water: (p: P
     for (const p of ps) { mx += p[0] / ps.length; my += p[1] / ps.length; }
     let sxx = 0, syy = 0, sxy = 0;
     for (const p of ps) { const x = p[0] - mx, y = p[1] - my; sxx += x * x; syy += y * y; sxy += x * y; }
-    const a = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-    return [Math.cos(a), Math.sin(a)];
+    const a = 0.5 * DMath.atan2(2 * sxy, sxx - syy);
+    return [DMath.cos(a), DMath.sin(a)];
   };
   const river: Pt[] = [], sea: Pt[] = [];
   const reach = Rin * 1.6, step = Math.max(10, Rin / 12);
@@ -1462,25 +1463,25 @@ function siteAxis(style: CityLayout, terrain: PlanInput['terrain'], water: (p: P
   // Shore: across the mean direction to the water.
   if (sea.length >= 6 && style !== 'grid') {
     let sx = 0, sy = 0;
-    for (const p of sea) { const d = Math.hypot(p[0], p[1]) || 1; sx += p[0] / d; sy += p[1] / d; }
-    const l = Math.hypot(sx, sy);
+    for (const p of sea) { const d = DMath.hypot2(p[0], p[1]) || 1; sx += p[0] / d; sy += p[1] / d; }
+    const l = DMath.hypot2(sx, sy);
     if (l > 0.5) return [-sy / l, sx / l];
   }
   // Roads: two exits roughly opposite make a through road.
-  const ang = exits.map((e) => Math.atan2(e.p[1], e.p[0]));
+  const ang = exits.map((e) => DMath.atan2(e.p[1], e.p[0]));
   for (let a = 0; a < ang.length; a++) {
     for (let b = a + 1; b < ang.length; b++) {
-      if (Math.cos(ang[a] - ang[b]) < -0.7) {
-        const dx = Math.cos(ang[a]) - Math.cos(ang[b]), dy = Math.sin(ang[a]) - Math.sin(ang[b]);
-        const l = Math.hypot(dx, dy) || 1;
+      if (DMath.cos(ang[a] - ang[b]) < -0.7) {
+        const dx = DMath.cos(ang[a]) - DMath.cos(ang[b]), dy = DMath.sin(ang[a]) - DMath.sin(ang[b]);
+        const l = DMath.hypot2(dx, dy) || 1;
         return [dx / l, dy / l];
       }
     }
   }
   // Valley or hillside: along the contours.
-  const g = terrain.grad([0, 0]), gl = Math.hypot(g[0], g[1]);
+  const g = terrain.grad([0, 0]), gl = DMath.hypot2(g[0], g[1]);
   if (gl > 0.03) return [-g[1] / gl, g[0] / gl];
-  if (ang.length) return [Math.cos(ang[0]), Math.sin(ang[0])];
+  if (ang.length) return [DMath.cos(ang[0]), DMath.sin(ang[0])];
   return fallback;
 }
 
@@ -1498,7 +1499,7 @@ function squareUp(lot: Poly, block: Poly): Poly | null {
     const a = lot[k], b = lot[(k + 1) % lot.length];
     const m = mid(a, b);
     if (!block.some((p, j) => distToSeg(m[0], m[1], p, block[(j + 1) % block.length]) < 0.3)) continue;
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const len = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
     if (len > bestLen) {
       bestLen = len;
       e = k;
@@ -1517,10 +1518,10 @@ function streetFront(lot: Poly, block: Poly): number | undefined {
     const a = lot[k], b = lot[(k + 1) % lot.length];
     const m = mid(a, b);
     if (!block.some((p, j) => distToSeg(m[0], m[1], p, block[(j + 1) % block.length]) < 0.3)) continue;
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const len = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
     if (len <= bestLen) continue;
     bestLen = len;
-    best = Math.atan2(m[1] - c[1], m[0] - c[0]);
+    best = DMath.atan2(m[1] - c[1], m[0] - c[0]);
   }
   return best;
 }
@@ -1534,14 +1535,14 @@ function roadFront(c: Pt, roads: Pt[][]): number | undefined {
       const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
       const t = l2 > 0 ? Math.max(0, Math.min(1, ((c[0] - a[0]) * dx + (c[1] - a[1]) * dy) / l2)) : 0;
       const p: Pt = [a[0] + dx * t, a[1] + dy * t];
-      const d = Math.hypot(p[0] - c[0], p[1] - c[1]);
+      const d = DMath.hypot2(p[0] - c[0], p[1] - c[1]);
       if (d < bd) {
         bd = d;
         best = p;
       }
     }
   }
-  return best ? Math.atan2(best[1] - c[1], best[0] - c[0]) : undefined;
+  return best ? DMath.atan2(best[1] - c[1], best[0] - c[0]) : undefined;
 }
 
 /**
@@ -1555,7 +1556,7 @@ function drawWall(corners: Pt[], gateIdx: number[], water: (p: Pt) => boolean, o
   const gateSet = new Set(gateIdx);
   corners.forEach((a, k) => {
     const b = corners[(k + 1) % corners.length];
-    const m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 14));
+    const m = Math.max(1, Math.ceil(DMath.hypot2(b[0] - a[0], b[1] - a[1]) / 14));
     if (gateSet.has(k)) gate.add(wall.length);
     for (let t = 0; t < m; t++) {
       wall.push([a[0] + ((b[0] - a[0]) * t) / m, a[1] + ((b[1] - a[1]) * t) / m]);
@@ -1602,7 +1603,7 @@ function drawWall(corners: Pt[], gateIdx: number[], water: (p: Pt) => boolean, o
     // Towers at the corners, and where the wall meets the water.
     const shoreEnd = segWater[k] !== segWater[prev];
     if (!corner[k] && !shoreEnd) continue;
-    if (!shoreEnd && last && Math.hypot(wall[k][0] - last[0], wall[k][1] - last[1]) < 22) continue;
+    if (!shoreEnd && last && DMath.hypot2(wall[k][0] - last[0], wall[k][1] - last[1]) < 22) continue;
     out.point('tower', wall[k], { r: towerR });
     last = wall[k];
   }

@@ -11,6 +11,7 @@ import type { NameBank } from '../names/names';
 import { BUNDLE, table } from '../names/bundles';
 import { type FaithFamily, faithOfCulture } from '../lore/faiths';
 import { type Arms, type Charge, cadetArms, newArms, vassalArms } from '../heraldry/arms';
+import { DMath } from '../dmath';
 
 /**
  * The political map, built from the bottom up in five tiers. Every city and town seats a
@@ -848,7 +849,7 @@ function simplify(line: number[][], tol: number): number[][] {
     for (let k = a + 1; k < b; k++) {
       const px = line[k][0] - ax, py = line[k][1] - ay;
       const t = l2 > 0 ? Math.max(0, Math.min(1, (px * dx + py * dy) / l2)) : 0;
-      const d = (px - t * dx) ** 2 + (py - t * dy) ** 2;
+      const d = DMath.pow(px - t * dx, 2) + DMath.pow(py - t * dy, 2);
       if (d > bd) {
         bd = d;
         best = k;

@@ -1,17 +1,18 @@
+import { DMath } from '../dmath';
 export const EARTH_RADIUS_KM = 6371;
 
 const DEG = Math.PI / 180;
 
 /** Great-circle distance in km. */
 export function distKm(lon1: number, lat1: number, lon2: number, lat2: number): number {
-  const s1 = Math.sin(((lat2 - lat1) * DEG) / 2), s2 = Math.sin(((lon2 - lon1) * DEG) / 2);
-  const a = s1 * s1 + Math.cos(lat1 * DEG) * Math.cos(lat2 * DEG) * s2 * s2;
-  return 2 * EARTH_RADIUS_KM * Math.asin(Math.min(1, Math.sqrt(a)));
+  const s1 = DMath.sin(((lat2 - lat1) * DEG) / 2), s2 = DMath.sin(((lon2 - lon1) * DEG) / 2);
+  const a = s1 * s1 + DMath.cos(lat1 * DEG) * DMath.cos(lat2 * DEG) * s2 * s2;
+  return 2 * EARTH_RADIUS_KM * DMath.asin(Math.min(1, Math.sqrt(a)));
 }
 
 /** Web Mercator pixels per metre at zoom 20 (256-px tiles); halves with each zoom level below. */
 export function pxPerMeterZ20(latDeg: number): number {
-  return (256 * 2 ** 20) / (40075016.686 * Math.max(0.01, Math.cos(latDeg * DEG)));
+  return (256 * DMath.pow(2, 20)) / (40075016.686 * Math.max(0.01, DMath.cos(latDeg * DEG)));
 }
 
 /** 8-neighbourhood offsets. Index k is shared by DI/DJ and Grid.nbDist. */
@@ -48,8 +49,8 @@ export function makeGrid(W: number, H: number): Grid {
   for (let j = 0; j < H; j++) {
     const lat = Math.PI / 2 - ((j + 0.5) * Math.PI) / H;
     latDeg[j] = (lat * 180) / Math.PI;
-    sinLat[j] = Math.sin(lat);
-    cosLat[j] = Math.cos(lat);
+    sinLat[j] = DMath.sin(lat);
+    cosLat[j] = DMath.cos(lat);
     dxKm[j] = (2 * Math.PI * R * cosLat[j]) / W;
     areaKm2[j] = dxKm[j] * dyKm;
   }
@@ -57,8 +58,8 @@ export function makeGrid(W: number, H: number): Grid {
   for (let i = 0; i < W; i++) {
     const lon = -Math.PI + ((i + 0.5) * 2 * Math.PI) / W;
     lonDeg[i] = (lon * 180) / Math.PI;
-    sinLon[i] = Math.sin(lon);
-    cosLon[i] = Math.cos(lon);
+    sinLon[i] = DMath.sin(lon);
+    cosLon[i] = DMath.cos(lon);
   }
   const nbDist = new Float64Array(H * 8);
   for (let j = 0; j < H; j++) {
@@ -67,7 +68,7 @@ export function makeGrid(W: number, H: number): Grid {
       if (nj < 0 || nj >= H) nbDist[j * 8 + k] = Infinity;
       else if (DJ[k] === 0) nbDist[j * 8 + k] = dxKm[j];
       else if (DI[k] === 0) nbDist[j * 8 + k] = dyKm;
-      else nbDist[j * 8 + k] = Math.hypot((dxKm[j] + dxKm[nj]) / 2, dyKm);
+      else nbDist[j * 8 + k] = DMath.hypot2((dxKm[j] + dxKm[nj]) / 2, dyKm);
     }
   }
   return { W, H, N: W * H, sinLat, cosLat, latDeg, sinLon, cosLon, lonDeg, dxKm, dyKm, areaKm2, nbDist };

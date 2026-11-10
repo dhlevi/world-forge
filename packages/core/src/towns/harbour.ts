@@ -1,6 +1,7 @@
 import { type Pt, hull, rect } from './geom';
 import type { PlanOut } from './plan';
 import { type LocalTerrain, SEA, type ShorePoint } from './terrain';
+import { DMath } from '../dmath';
 
 export interface DockOptions {
   /** Only shoreline within this distance of the centre gets piers. */
@@ -35,7 +36,7 @@ export function addDocks(t: LocalTerrain, water: (p: Pt) => boolean, out: PlanOu
     // Try a few angles and lengths so piers find a way out past a rough shoreline.
     search: for (const f of [1, 0.6, 0.35]) {
       for (const turn of [0, 0.3, -0.3, 0.6, -0.6]) {
-        const d: Pt = [s.n[0] * Math.cos(turn) - s.n[1] * Math.sin(turn), s.n[0] * Math.sin(turn) + s.n[1] * Math.cos(turn)];
+        const d: Pt = [s.n[0] * DMath.cos(turn) - s.n[1] * DMath.sin(turn), s.n[0] * DMath.sin(turn) + s.n[1] * DMath.cos(turn)];
         if (L0 * f >= 6 && clear(s.p, d, 4, L0 * f + beyond)) {
           L = L0 * f;
           dir = d;
@@ -45,7 +46,7 @@ export function addDocks(t: LocalTerrain, water: (p: Pt) => boolean, out: PlanOu
     }
     if (L === 0) continue;
     s.n = dir;
-    const ang = Math.atan2(s.n[1], s.n[0]);
+    const ang = DMath.atan2(s.n[1], s.n[0]);
     const c = along(s.p, s.n, (L - 2) / 2);
     out.poly('pier', rect(c[0], c[1], ang, L + 2, o.pierW));
     used.push(s);
@@ -66,9 +67,9 @@ export function addDocks(t: LocalTerrain, water: (p: Pt) => boolean, out: PlanOu
 
   for (let k = 0, tries = 0; k < (o.ships ?? 0) && tries < 60; tries++) {
     const r = o.maxR * (0.6 + 0.7 * rnd()), a = rnd() * 2 * Math.PI;
-    const p: Pt = [r * Math.cos(a), r * Math.sin(a)];
+    const p: Pt = [r * DMath.cos(a), r * DMath.sin(a)];
     if (t.typeAt(p) !== SEA) continue;
-    if (![0, 1, 2, 3].every((q) => water(along(p, [Math.cos(q * 1.57), Math.sin(q * 1.57)], 35)))) continue;
+    if (![0, 1, 2, 3].every((q) => water(along(p, [DMath.cos(q * 1.57), DMath.sin(q * 1.57)], 35)))) continue;
     out.poly('boat', hull(p, rnd() * 2 * Math.PI, 22 + rnd() * 14, 7));
     k++;
   }

@@ -6,6 +6,7 @@ import { cultureFolk, personName } from '../lore/names';
 import { type Ctx, realmDetails, type RealmDetails } from '../lore/realm';
 import type { Dungeon, DRoom, Inmate } from './core';
 import { isHeld } from './prison';
+import { DMath } from '../dmath';
 
 /**
  * The notable inmates of a prison, one for each numbered cell (and the condemned cell and the
@@ -175,7 +176,7 @@ function scene(d: Dungeon, c: Ctx | null, p: Politics | null, r: Rng): Scene {
     const b = p.baronyOf[j * p.W + i];
     if (b >= 0) det = realmDetails(c, c.L.topOf[b]);
   }
-  const km = (a: { lon: number; lat: number }) => Math.hypot((a.lon - lon) * Math.cos((lat * Math.PI) / 180), a.lat - lat);
+  const km = (a: { lon: number; lat: number }) => DMath.hypot2((a.lon - lon) * DMath.cos((lat * Math.PI) / 180), a.lat - lat);
   const towns = det ? det.people.settlements.slice().sort((a, b) => km(a) - km(b)).slice(0, 6).map((x) => x.name) : [];
   const enemies: Scene['enemies'] = [];
   if (det && c) {
@@ -201,7 +202,7 @@ function scene(d: Dungeon, c: Ctx | null, p: Politics | null, r: Rng): Scene {
   for (const L of d.levels) {
     const t = L.rooms.find((x) => x.tags[0] === 'prison-tunnel');
     if (!t) continue;
-    const near = L.rooms.filter((x) => x.tags[0] === 'prison-held' && x.n).sort((a, b) => Math.hypot(a.lx - t.lx, a.ly - t.ly) - Math.hypot(b.lx - t.lx, b.ly - t.ly))[0];
+    const near = L.rooms.filter((x) => x.tags[0] === 'prison-held' && x.n).sort((a, b) => DMath.hypot2(a.lx - t.lx, a.ly - t.ly) - DMath.hypot2(b.lx - t.lx, b.ly - t.ly))[0];
     if (near) tunnelCell = near.n;
   }
   return {

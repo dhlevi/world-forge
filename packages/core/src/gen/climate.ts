@@ -3,6 +3,7 @@ import { Simplex3, fbm } from './noise';
 import { buildUpstream, sampleUpstream } from './advect';
 import { computeOcean } from './ocean';
 import { CLIMATE as C } from './config';
+import { DMath } from '../dmath';
 
 export interface Climate {
   /** Sea-level-equivalent annual mean temperature, °C. */
@@ -28,14 +29,14 @@ export interface Climate {
 }
 
 /** Relative saturation vapour capacity (Clausius–Clapeyron), 1 at 25 °C. */
-const saturation = (t: number) => Math.exp(C.saturationPerC * (t - 25));
+const saturation = (t: number) => DMath.exp(C.saturationPerC * (t - 25));
 
 /** Three-cell circulation: trades, westerlies, polar easterlies. */
 function prevailingWind(latDeg: number): [number, number] {
   const a = Math.abs(latDeg);
   const phi = (latDeg * Math.PI) / 180;
-  const u = a <= 60 ? -Math.cos(3 * phi) : -0.6 * Math.sin(((a - 60) * 3 * Math.PI) / 180);
-  const v = -C.meridionalWind * Math.sin(6 * phi);
+  const u = a <= 60 ? -DMath.cos(3 * phi) : -0.6 * DMath.sin(((a - 60) * 3 * Math.PI) / 180);
+  const v = -C.meridionalWind * DMath.sin(6 * phi);
   return [u, v];
 }
 
@@ -71,7 +72,7 @@ export function computeWind(
       const c = j * W + i;
       const x = cl * g.cosLon[i], y = cl * g.sinLon[i];
       const ang = C.windMeanderRad * fbm(noise, x * f + 50, y * f, z * f, 3);
-      const ca = Math.cos(ang), sa = Math.sin(ang);
+      const ca = DMath.cos(ang), sa = DMath.sin(ang);
       let u = u0 * ca - v0 * sa;
       let v = u0 * sa + v0 * ca;
       const ie = i + 1 === W ? 0 : i + 1, iw = i === 0 ? W - 1 : i - 1;
@@ -84,7 +85,7 @@ export function computeWind(
 
       const gx = (hs[j * W + ie] - hs[j * W + iw]) / (2 * g.dxKm[j]);
       const gy = (hs[jn + i] - hs[js + i]) / dyKm;
-      const gm = Math.hypot(gx, gy);
+      const gm = DMath.hypot2(gx, gy);
       if (gm > 1e-6) {
         const nx = gx / gm, ny = gy / gm;
         const uphill = u * nx + v * ny;
@@ -155,7 +156,7 @@ export function computeClimate(
   const cont = continentality(g, h, windU, windV);
   const amp = new Float32Array(N);
   for (let j = 0, c = 0; j < H; j++) {
-    const latF = Math.pow(Math.abs(g.sinLat[j]), C.seasonalAmpLatExponent);
+    const latF = DMath.pow(Math.abs(g.sinLat[j]), C.seasonalAmpLatExponent);
     for (let i = 0; i < W; i++, c++) {
       amp[c] = latF * (C.oceanSeasonalAmpC + (C.landSeasonalAmpC - C.oceanSeasonalAmpC) * cont[c]);
     }
@@ -200,7 +201,7 @@ function continentality(g: Grid, h: Float32Array, windU: Float32Array, windV: Fl
   const { N } = g;
   const step = Math.max(C.oceanStepKm, g.dyKm);
   const up = buildUpstream(g, windU, windV, step);
-  const decay = Math.exp(-step / C.continentalityKm);
+  const decay = DMath.exp(-step / C.continentalityKm);
   let m = new Float32Array(N), next = new Float32Array(N);
   for (let c = 0; c < N; c++) m[c] = h[c] <= 0 ? 1 : 0;
   for (let it = 0, n = Math.ceil((3 * C.continentalityKm) / step); it < n; it++) {
@@ -269,15 +270,15 @@ function advectMoisture(
   const step = Math.max(C.advectStepKm, g.dyKm);
   const up = buildUpstream(g, windU, windV, step);
 
-  const evap = 1 - Math.exp(-step / C.evapLengthKm);
-  const rainLand = 1 - Math.exp(-step / C.rainLengthLandKm);
-  const rainSea = 1 - Math.exp(-step / C.rainLengthSeaKm);
+  const evap = 1 - DMath.exp(-step / C.evapLengthKm);
+  const rainLand = 1 - DMath.exp(-step / C.rainLengthLandKm);
+  const rainSea = 1 - DMath.exp(-step / C.rainLengthSeaKm);
   const satSea = new Float32Array(N), cap = new Float32Array(N), stability = new Float32Array(N);
   let m = new Float32Array(N), next = new Float32Array(N);
   for (let c = 0; c < N; c++) {
     satSea[c] = saturation(tempSea[c]);
     cap[c] = saturation(temp[c]);
-    stability[c] = Math.exp(Math.min(0, anomaly[c]) / C.coldStabilityC);
+    stability[c] = DMath.exp(Math.min(0, anomaly[c]) / C.coldStabilityC);
     m[c] = 0.5 * satSea[c];
   }
 

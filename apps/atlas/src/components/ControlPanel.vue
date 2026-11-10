@@ -3,6 +3,7 @@ import { reactive, ref } from 'vue';
 import { LAYERS, type LayerId } from '@worldforge/core/render/tiles';
 import { flyTarget, randomSeed, regenerate, settingsChanged, store, world } from '../store';
 import { readWorldFile, worldFileName, worldFileText } from '@worldforge/core/export/worldfile';
+import { GENERATOR_VERSION } from '@worldforge/core/version';
 import { downloadBlob } from '../export/download';
 import type { UrlParams } from '../url-params';
 import RangeField from './RangeField.vue';
@@ -23,7 +24,7 @@ function randomize(): void {
 
 // ---- Save, load and export (export/worldfile.ts, export/zip.ts) ----
 const fileIn = ref<HTMLInputElement | null>(null);
-const exp = reactive({ busy: false, stage: '', pct: 0, error: '', max: 25, residents: true });
+const exp = reactive({ busy: false, stage: '', pct: 0, error: '', note: '', max: 25, residents: true });
 /** The settings the shown world was made with (not those changed since). */
 const madeParams = (): UrlParams => (store.madeWith ? JSON.parse(store.madeWith) : { ...store.params });
 
@@ -38,8 +39,12 @@ async function loadWorld(e: Event): Promise<void> {
   input.value = '';
   if (!file) return;
   exp.error = '';
+  exp.note = '';
   try {
-    const { view } = readWorldFile(await file.text(), store.params);
+    const { view, generator } = readWorldFile(await file.text(), store.params);
+    if (generator !== GENERATOR_VERSION) {
+      exp.note = `This file was saved by an ${generator < GENERATOR_VERSION ? 'earlier' : 'later'} version of the generator (${generator}; this is ${GENERATOR_VERSION}), so the world made from it may differ a little from the one saved.`;
+    }
     await regenerate();
     if (view) {
       if (view.layer && LAYERS.some((l) => l.id === view.layer)) store.layer = view.layer as LayerId;
@@ -230,6 +235,7 @@ async function exportData(): Promise<void> {
           <span>{{ exp.stage }}</span>
         </div>
         <p v-else class="summary">World data, height and climate grids, and the towns of the map view (the largest first). Zoom to the region you want in full.</p>
+        <p v-if="exp.note" class="pending-note">{{ exp.note }}</p>
         <p v-if="exp.error" class="error">{{ exp.error }}</p>
       </section>
     </div>

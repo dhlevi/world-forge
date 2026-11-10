@@ -1,7 +1,8 @@
-import { hashString, mulberry32, type Rng } from '../gen/rng';
+import { hashString, mulberry32, type Rng, shuffle } from '../gen/rng';
 import type { Token } from '../lang/language';
 import { PROPER, translate } from '../lang/translate';
 import { type Faith, type FaithFamily, TENETS, godly } from './faiths';
+import { DMath } from '../dmath';
 
 /**
  * Verses of a faith's scripture: one or two for each of its tenets, and for its doctrines (its
@@ -1188,7 +1189,7 @@ export function scriptureVerses(f: Faith): Verse[] {
   const bk = BOOKS[f.family];
   const cite = () => {
     const b = fill(pick(r, bk.books));
-    const ch = 1 + Math.floor(r() ** 1.4 * 40), v = 1 + Math.floor(r() * 50);
+    const ch = 1 + Math.floor(DMath.pow(r(), 1.4) * 40), v = 1 + Math.floor(r() * 50);
     return bk.oral ? `${b}, stanza ${v}` : b.endsWith('book') ? `${b} ${ch}, verse ${v}` : `${b} ${ch}:${v}`;
   };
   const out: Verse[] = [];
@@ -1202,7 +1203,7 @@ export function scriptureVerses(f: Faith): Verse[] {
     add(pick(r, vs), TENETS[t]?.name ?? t);
   }
   const groups = Object.keys(DOCTRINE_VERSES).filter((g) => DOCTRINE_VERSES[g][f.doctrines[g as keyof Faith['doctrines']]]);
-  for (const g of groups.sort(() => r() - 0.5).slice(0, 3)) add(pick(r, DOCTRINE_VERSES[g][f.doctrines[g as keyof Faith['doctrines']]]), GROUP_ABOUT[g]);
-  for (const s of [...GENERAL[f.family]].sort(() => r() - 0.5).slice(0, 2)) add(s, 'Sayings');
+  for (const g of shuffle(groups, r).slice(0, 3)) add(pick(r, DOCTRINE_VERSES[g][f.doctrines[g as keyof Faith['doctrines']]]), GROUP_ABOUT[g]);
+  for (const s of shuffle([...GENERAL[f.family]], r).slice(0, 2)) add(s, 'Sayings');
   return out;
 }

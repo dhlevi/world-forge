@@ -1,6 +1,7 @@
 import { hashString, mulberry32 } from '../gen/rng';
 import type { Language, Token } from './language';
 import { join } from './text';
+import { DMath } from '../dmath';
 
 /**
  * Counting: each language counts in a base (ten for most; twenty, sixty, twelve, or ten with
@@ -135,7 +136,7 @@ function parts(L: Language, sys: NumberSystem, n: number): Part[] {
   const b = sys.base;
   if (n === 0) return [one(root(L, 'number:zero'), 0)];
   const out: Part[] = [];
-  const b3 = b ** 3;
+  const b3 = DMath.pow(b, 3);
   let rest = n;
   const pow = (p: number) => root(L, POWER_KEYS[sys.kind][p - 1]);
   // The largest power is counted with a whole number of its own ("twenty-one thousand").
@@ -151,7 +152,7 @@ function parts(L: Language, sys: NumberSystem, n: number): Part[] {
     }
   }
   for (let p = 2; p >= 0; p--) {
-    const bp = b ** p;
+    const bp = DMath.pow(b, p);
     const d = Math.floor(rest / bp);
     rest %= bp;
     if (!d) continue;

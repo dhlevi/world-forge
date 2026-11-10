@@ -6,6 +6,7 @@ import type { LabelFeature } from './features';
 import type { Vent } from './special';
 import type { NameBank, Named } from '../names/names';
 import type { FeatureKind } from '../names/cultures';
+import { DMath } from '../dmath';
 
 /**
  * The Underworld (fantasy worlds only): a network of caverns and tunnels below the continents, on
@@ -127,17 +128,17 @@ export function underworld(
     const n: Named = named ?? (kind === 'hall'
       ? bank.named(f.culture[c] ?? 0, rr() < 0.5 ? 'the Lost Hold of {0}' : 'the Sealed Halls of {0}', [bank.featureNamed('deepHall', f.culture[c] ?? 0, `deep${id}`)].map((q) => ({ name: q.name.replace(/^the /i, ''), en: q.en.replace(/^the /i, '') })))
       : bank.featureNamed(FEATURE[kind], f.culture[c] ?? 0, `deep${id}`));
-    const node: DeepNode = { id, tier, kind, lon: lo, lat: la, r, name: n.name, en: n.en, seed: Math.floor(rr() * 2 ** 31), culture: f.culture[c] ?? 0, ring: [] };
+    const node: DeepNode = { id, tier, kind, lon: lo, lat: la, r, name: n.name, en: n.en, seed: Math.floor(rr() * DMath.pow(2, 31)), culture: f.culture[c] ?? 0, ring: [] };
     // An irregular outline: a few harmonics round a circle (a long, narrow shape for chasms and rifts).
     const ph = [rr() * 6.3, rr() * 6.3, rr() * 6.3], amp = [0.18 + 0.1 * rr(), 0.1 + 0.08 * rr(), 0.06];
     const long = kind === 'chasm' || kind === 'rift' ? 2.6 : kind === 'sea' ? 1.5 : 1.15 + 0.3 * rr();
     const rot = rr() * Math.PI;
-    const kLat = 1 / 111.2, kLon = kLat / Math.max(0.1, Math.cos((la * Math.PI) / 180));
+    const kLat = 1 / 111.2, kLon = kLat / Math.max(0.1, DMath.cos((la * Math.PI) / 180));
     for (let k = 0; k < 48; k++) {
       const a = (k / 48) * Math.PI * 2;
-      const s = 1 + amp[0] * Math.sin(2 * a + ph[0]) + amp[1] * Math.sin(3 * a + ph[1]) + amp[2] * Math.sin(5 * a + ph[2]);
-      const x0 = Math.cos(a) * r * s * Math.sqrt(long), y0 = (Math.sin(a) * r * s) / Math.sqrt(long);
-      const x = x0 * Math.cos(rot) - y0 * Math.sin(rot), y = x0 * Math.sin(rot) + y0 * Math.cos(rot);
+      const s = 1 + amp[0] * DMath.sin(2 * a + ph[0]) + amp[1] * DMath.sin(3 * a + ph[1]) + amp[2] * DMath.sin(5 * a + ph[2]);
+      const x0 = DMath.cos(a) * r * s * Math.sqrt(long), y0 = (DMath.sin(a) * r * s) / Math.sqrt(long);
+      const x = x0 * DMath.cos(rot) - y0 * DMath.sin(rot), y = x0 * DMath.sin(rot) + y0 * DMath.cos(rot);
       node.ring.push([lo + x * kLon, la + y * kLat]);
     }
     node.ring.push(node.ring[0]);
@@ -153,7 +154,7 @@ export function underworld(
     const a = ru() * Math.PI * 2, d = 25 + 30 * ru();
     const c = cellAt(s.lon, s.lat), base = { name: s.name ?? '', en: s.nameEn ?? s.name ?? '' };
     const named = bank.named(s.culture ?? f.culture[c] ?? 0, ru() < 0.5 ? 'the Halls of {0}' : ru() < 0.5 ? '{0} Deephall' : 'the Deep Gate of {0}', [base]);
-    addNode(0, 'hall', s.lon + (Math.cos(a) * d) / (111.2 * Math.max(0.1, Math.cos((s.lat * Math.PI) / 180))), s.lat + (Math.sin(a) * d) / 111.2, 22 + 18 * ru(), ru, named);
+    addNode(0, 'hall', s.lon + (DMath.cos(a) * d) / (111.2 * Math.max(0.1, DMath.cos((s.lat * Math.PI) / 180))), s.lat + (DMath.sin(a) * d) / 111.2, 22 + 18 * ru(), ru, named);
   }
   const nUpper = Math.max(30, Math.min(140, Math.round(landArea / 1.6e6)));
   const cand: { c: number; s: number }[] = [];
@@ -291,7 +292,7 @@ export function underworld(
     if (n.tier !== 0 || entrances.some((e) => e.node === n.id) || re() > 0.55) continue;
     for (let t = 0; t < 12; t++) {
       const a = re() * Math.PI * 2, d = 30 + 110 * re();
-      const lo = n.lon + (Math.cos(a) * d) / (111.2 * Math.max(0.1, Math.cos((n.lat * Math.PI) / 180))), la = n.lat + (Math.sin(a) * d) / 111.2;
+      const lo = n.lon + (DMath.cos(a) * d) / (111.2 * Math.max(0.1, DMath.cos((n.lat * Math.PI) / 180))), la = n.lat + (DMath.sin(a) * d) / 111.2;
       const c = cellAt(lo, la);
       if (!land(c) || (f.biome[c] as Biome) === Biome.IceSheet || f.special[c] === 3) continue;
       if (towns.some((s) => distKm(s.lon, s.lat, lo, la) < 20)) continue;

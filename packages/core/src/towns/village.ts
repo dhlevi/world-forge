@@ -8,13 +8,14 @@ import { deityName, innName } from '../names/names';
 import { graves } from './kit';
 import { hash32 } from '../gen/rng';
 import type { Settlement } from '../gen/settlements';
+import { DMath } from '../dmath';
 
 const unit = (p: Pt): Pt => {
-  const l = Math.hypot(...p) || 1;
+  const l = DMath.hypot(...p) || 1;
   return [p[0] / l, p[1] / l];
 };
 const toward = (a: Pt, b: Pt, d: number): Pt => {
-  const l = Math.hypot(b[0] - a[0], b[1] - a[1]) || 1;
+  const l = DMath.hypot2(b[0] - a[0], b[1] - a[1]) || 1;
   return [a[0] + ((b[0] - a[0]) * d) / l, a[1] + ((b[1] - a[1]) * d) / l];
 };
 
@@ -74,7 +75,7 @@ function age(k: Kit): void {
   for (const h of k.houses) {
     if (rnd() < 0.45) {
       const a = rnd() * Math.PI * 2, d = h.r + 1.5 + rnd() * 3;
-      inp.out.point('tree', [h.c[0] + Math.cos(a) * d, h.c[1] + Math.sin(a) * d], { r: 1.6 + rnd() * 1.8 });
+      inp.out.point('tree', [h.c[0] + DMath.cos(a) * d, h.c[1] + DMath.sin(a) * d], { r: 1.6 + rnd() * 1.8 });
     }
   }
 }
@@ -108,9 +109,9 @@ function villageLabels(k: Kit): void {
       if (s.population > 150) {
         for (let t = 0; t < 8; t++) {
           const a = rnd() * 2 * Math.PI;
-          const c: Pt = [b.c[0] + Math.cos(a) * 20, b.c[1] + Math.sin(a) * 20];
+          const c: Pt = [b.c[0] + DMath.cos(a) * 20, b.c[1] + DMath.sin(a) * 20];
           const q = rect(c[0], c[1], a, 16, 12);
-          if (q.some((v) => inp.water(v)) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 10) || q.some((v) => k.nearLane(v, 1))) continue;
+          if (q.some((v) => inp.water(v)) || k.houses.some((h) => DMath.hypot2(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 10) || q.some((v) => k.nearLane(v, 1))) continue;
           out.poly('graveyard', q);
           out.line('hedge', [...q, q[0]]);
           graves(q, rnd, out, inp.ground);
@@ -127,7 +128,7 @@ function villageLabels(k: Kit): void {
       used.add(b);
     }
   }
-  const ordinary = k.buildings.filter((b) => !b.use && !used.has(b)).sort((a, b) => Math.hypot(...a.c) - Math.hypot(...b.c));
+  const ordinary = k.buildings.filter((b) => !b.use && !used.has(b)).sort((a, b) => DMath.hypot(...a.c) - DMath.hypot(...b.c));
   const farmingLike = !s.delve && (!s.kind || s.kind === 'farming' || s.kind === 'fishing' || s.kind === 'vineyard');
   if (farmingLike && s.population > 120 && ordinary[0]) mark(ordinary.shift()!, 'inn', innName(names.rng(`${s.id}:inn`)));
   if (farmingLike && s.population > 220 && ordinary.length > 3) mark(ordinary.splice(2, 1)[0], 'smithy', 'Smithy');
@@ -151,7 +152,7 @@ function square(k: Kit): void {
   const ring: Pt[] = [];
   for (let q = 0; q < 14; q++) {
     const a = (q / 14) * Math.PI * 2;
-    ring.push([Math.cos(a) * rS * (0.88 + 0.24 * rnd()), Math.sin(a) * rS * (0.88 + 0.24 * rnd())]);
+    ring.push([DMath.cos(a) * rS * (0.88 + 0.24 * rnd()), DMath.sin(a) * rS * (0.88 + 0.24 * rnd())]);
   }
   if (ring.filter((p) => inp.water(p)).length > 3) return;
   inp.out.poly(market ? 'square' : 'green', ring, { square: market ? 'market' : 'green' });
@@ -168,8 +169,8 @@ function square(k: Kit): void {
   if (!market) return;
   for (let n = 4 + Math.floor(rnd() * 5), t = 0; n > 0 && t < 60; t++) {
     const p = k.polar(rS * (0.35 + 0.5 * rnd()), rnd() * Math.PI * 2);
-    if (inp.water(p) || k.nearLane(p, 2.4) || k.houses.some((h) => Math.hypot(h.c[0] - p[0], h.c[1] - p[1]) < h.r + 2.4)) continue;
-    inp.out.poly('stall', rect(p[0], p[1], Math.atan2(p[1], p[0]) + Math.PI / 2, 3.2, 2.2));
+    if (inp.water(p) || k.nearLane(p, 2.4) || k.houses.some((h) => DMath.hypot2(h.c[0] - p[0], h.c[1] - p[1]) < h.r + 2.4)) continue;
+    inp.out.poly('stall', rect(p[0], p[1], DMath.atan2(p[1], p[0]) + Math.PI / 2, 3.2, 2.2));
     k.houses.push({ c: p, r: 2.2 });
     n--;
   }
@@ -184,21 +185,21 @@ function mill(k: Kit): void {
   if (inp.s.population < 120) return;
   // The nearest stretches of river bank within the plan; a mill out of the village gets a track.
   const banks = inp.terrain.shore(Math.max(core * 1.6, k.R * 0.95), 12, rnd).filter((s) => s.type === RIVER)
-    .sort((p, q) => Math.hypot(...p.p) - Math.hypot(...q.p));
+    .sort((p, q) => DMath.hypot(...p.p) - DMath.hypot(...q.p));
   for (const bank of banks.slice(0, 6)) {
     for (let t = 0; t < 4; t++) {
       const d = 9 + t * 2;
       const c: Pt = [bank.p[0] - bank.n[0] * d, bank.p[1] - bank.n[1] * d];
-      const ang = Math.atan2(bank.n[0], -bank.n[1]);
+      const ang = DMath.atan2(bank.n[0], -bank.n[1]);
       if (!k.house(c, ang, 12, 9, 'mill')) continue;
       k.buildings[k.buildings.length - 1].f.properties.mill = 'water';
       // The wheel against the wall that faces the stream.
       const wc: Pt = [c[0] + bank.n[0] * 5.6, c[1] + bank.n[1] * 5.6];
       inp.out.poly('millwheel', rect(wc[0], wc[1], ang, 5, 1.4));
-      if (Math.hypot(...c) > core) {
+      if (DMath.hypot(...c) > core) {
         let near: Pt = [0, 0], bd = Infinity;
         for (const l of k.lanes) for (const p of l.pts) {
-          const dd = Math.hypot(p[0] - c[0], p[1] - c[1]);
+          const dd = DMath.hypot2(p[0] - c[0], p[1] - c[1]);
           if (dd < bd) {
             bd = dd;
             near = p;
@@ -214,7 +215,7 @@ function mill(k: Kit): void {
   for (let q = 0; q < 36; q++) {
     const p = k.polar(core * (0.75 + 0.7 * rnd()), (q / 36) * Math.PI * 2 + rnd() * 0.15);
     if (inp.water(p) || k.inBlocked(p) || k.nearLane(p, 7) || inp.terrain.slope(p) > 0.12) continue;
-    if (k.houses.some((h) => Math.hypot(h.c[0] - p[0], h.c[1] - p[1]) < h.r + 8)) continue;
+    if (k.houses.some((h) => DMath.hypot2(h.c[0] - p[0], h.c[1] - p[1]) < h.r + 8)) continue;
     const h = inp.terrain.height(p);
     if (h > bestH) {
       bestH = h;
@@ -224,7 +225,7 @@ function mill(k: Kit): void {
   if (!best) return;
   const r = 3.6;
   const tower: Pt[] = [];
-  for (let q = 0; q < 16; q++) tower.push([best[0] + Math.cos((q / 16) * Math.PI * 2) * r, best[1] + Math.sin((q / 16) * Math.PI * 2) * r]);
+  for (let q = 0; q < 16; q++) tower.push([best[0] + DMath.cos((q / 16) * Math.PI * 2) * r, best[1] + DMath.sin((q / 16) * Math.PI * 2) * r]);
   if (!inp.ground.allOk(tower, { maxSlope: 0.2, marginM: 1 })) return;
   inp.out.poly('building', tower, { use: 'mill', mill: 'wind' });
   k.buildings.push({ f: inp.out.features[inp.out.features.length - 1], c: best, use: 'mill' });
@@ -232,7 +233,7 @@ function mill(k: Kit): void {
   // The sails: two long arms crossing over the cap.
   const a = rnd() * Math.PI;
   for (const da of [0, Math.PI / 2]) {
-    const ca = Math.cos(a + da), sa = Math.sin(a + da);
+    const ca = DMath.cos(a + da), sa = DMath.sin(a + da);
     inp.out.line('sails', [[best[0] - ca * 9, best[1] - sa * 9], [best[0] + ca * 9, best[1] + sa * 9]]);
   }
   k.blocked.push(rect(best[0], best[1], 0, 14, 14));
@@ -251,16 +252,16 @@ function witchHut(k: Kit): void {
     if (!k.house(c, rnd() * Math.PI, 7, 6, 'witch')) continue;
     // An herb garden beside it, and the copse round about.
     const ga = rnd() * Math.PI * 2;
-    const gc: Pt = [c[0] + Math.cos(ga) * 8, c[1] + Math.sin(ga) * 8];
+    const gc: Pt = [c[0] + DMath.cos(ga) * 8, c[1] + DMath.sin(ga) * 8];
     if (!inp.water(gc) && !k.fields.some((f) => pointInPoly(f, gc[0], gc[1]))) inp.out.poly('garden', rect(gc[0], gc[1], ga, 6, 4));
     for (let q = 0; q < 14; q++) {
       const a = rnd() * Math.PI * 2, d = 9 + rnd() * 14;
-      k.tree([c[0] + Math.cos(a) * d, c[1] + Math.sin(a) * d], 2.5 + rnd() * 2);
+      k.tree([c[0] + DMath.cos(a) * d, c[1] + DMath.sin(a) * d], 2.5 + rnd() * 2);
     }
     // A footpath to the nearest lane.
     let near: Pt | null = null, bd = Infinity;
     for (const l of k.lanes) for (const p of l.pts) {
-      const d = Math.hypot(p[0] - c[0], p[1] - c[1]);
+      const d = DMath.hypot2(p[0] - c[0], p[1] - c[1]);
       if (d < bd) {
         bd = d;
         near = p;
@@ -281,15 +282,15 @@ function camp(k: Kit): void {
   const out = inp.out;
   const w = core * 2, h = core * 1.5;
   const e0 = inp.exits[0]?.p ?? k.polar(R, rnd() * 2 * Math.PI);
-  const a = Math.atan2(e0[1], e0[0]);
-  const T = (u: number, v: number): Pt => [u * Math.cos(a) - v * Math.sin(a), u * Math.sin(a) + v * Math.cos(a)];
+  const a = DMath.atan2(e0[1], e0[0]);
+  const T = (u: number, v: number): Pt => [u * DMath.cos(a) - v * DMath.sin(a), u * DMath.sin(a) + v * DMath.cos(a)];
   out.poly('trodden', rect(0, 0, a, w + 40, h + 40));
   // Ditch and palisade, each side broken by a gate at its middle.
   const sides = (hw: number, hh: number, kind: string, props: Record<string, number>, gap: number) => {
     const c: Pt[] = [[-hw, -hh], [hw, -hh], [hw, hh], [-hw, hh]];
     for (let q = 0; q < 4; q++) {
       const [u0, v0] = c[q], [u1, v1] = c[(q + 1) % 4];
-      const mu = (u0 + u1) / 2, mv = (v0 + v1) / 2, l = Math.hypot(u1 - u0, v1 - v0);
+      const mu = (u0 + u1) / 2, mv = (v0 + v1) / 2, l = DMath.hypot2(u1 - u0, v1 - v0);
       const du = (u1 - u0) / l, dv = (v1 - v0) / l;
       out.line(kind, [T(u0, v0), T(mu - du * gap, mv - dv * gap)], props);
       out.line(kind, [T(mu + du * gap, mv + dv * gap), T(u1, v1)], props);
@@ -302,7 +303,7 @@ function camp(k: Kit): void {
   const streets: [Pt, Pt][] = [[T(-w / 2 - 10, 0), T(w / 2 + 10, 0)], [T(0, -h / 2 - 10), T(0, h / 2 + 10)]];
   for (const [p, q] of streets) k.lane([p, q], 6, 'street');
   const gates = [T(w / 2 + 12, 0), T(-w / 2 - 12, 0), T(0, h / 2 + 12), T(0, -h / 2 - 12)];
-  const gate = gates.reduce((b, g) => (Math.hypot(g[0] - e0[0], g[1] - e0[1]) < Math.hypot(b[0] - e0[0], b[1] - e0[1]) ? g : b));
+  const gate = gates.reduce((b, g) => (DMath.hypot2(g[0] - e0[0], g[1] - e0[1]) < DMath.hypot2(b[0] - e0[0], b[1] - e0[1]) ? g : b));
   k.exitLanes(gate);
   // The commander's pavilion where the streets cross, and its standard.
   const pav = T(9, 9);
@@ -320,7 +321,7 @@ function camp(k: Kit): void {
         continue;
       }
       for (let u = 7; u < w / 2 - 2; u += 5) {
-        if (Math.hypot(u - 9, v - 9) < 9 && su > 0 && sv > 0) continue;
+        if (DMath.hypot2(u - 9, v - 9) < 9 && su > 0 && sv > 0) continue;
         const c = T(su * u + (rnd() - 0.5) * 0.6, sv * v + (rnd() - 0.5) * 0.6);
         if (inp.water(c) || rnd() < 0.08 || !inp.ground.ok(c, { maxSlope: 0.3, marginM: 1 })) continue;
         out.poly('tent', rect(c[0], c[1], a + (rnd() - 0.5) * 0.08, 3.6, 2.6));
@@ -354,12 +355,12 @@ function delveGate(k: Kit): void {
   const core = Math.min(k.core, 140 + pop / 300);
   // The gate faces the road that comes up to it (or else down the slope), cut into the rise.
   const g = inp.terrain.grad([0, 0]);
-  const gl = Math.hypot(...g);
+  const gl = DMath.hypot(...g);
   const ex = inp.exits[0]?.p;
-  const el = ex ? Math.hypot(...ex) : 0;
+  const el = ex ? DMath.hypot(...ex) : 0;
   const up: Pt = ex && el > 1 ? [-ex[0] / el, -ex[1] / el] : gl > 1e-4 ? [g[0] / gl, g[1] / gl] : k.polar(1, rnd() * Math.PI * 2);
   const perp: Pt = [-up[1], up[0]];
-  const a = Math.atan2(perp[1], perp[0]);
+  const a = DMath.atan2(perp[1], perp[0]);
   let gate: Pt = [up[0] * core * 0.45, up[1] * core * 0.45];
   for (let t = 0; t < 8 && inp.water(gate); t++) gate = [gate[0] * 0.8, gate[1] * 0.8];
   const at = (u: number, v: number): Pt => [gate[0] + perp[0] * u + up[0] * v, gate[1] + perp[1] * u + up[1] * v];
@@ -418,7 +419,7 @@ function delveGate(k: Kit): void {
   });
   for (let t = 0, n = 0; t < 40 && n < 3 + Math.round(big * 5); t++) {
     const c = at((rnd() < 0.5 ? -1 : 1) * (40 + rnd() * 40), -10 - rnd() * 60);
-    if (inp.water(c) || k.inBlocked(c) || k.nearLane(c, 6) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 12)) continue;
+    if (inp.water(c) || k.inBlocked(c) || k.nearLane(c, 6) || k.houses.some((h) => DMath.hypot2(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 12)) continue;
     const heap = blob(c, 7 + rnd() * 9, rnd);
     out.poly('spoil', heap);
     k.blocked.push(heap);
@@ -439,7 +440,7 @@ function stepPyramid(k: Kit, c: Pt, side: number, a: number): void {
   }
   // The stair, from the ground to the top platform, up the face toward -v.
   const top = side * (1 - (tiers - 1) / (tiers + 0.6));
-  const sd: Pt = [Math.sin(a), -Math.cos(a)];
+  const sd: Pt = [DMath.sin(a), -DMath.cos(a)];
   const mid: Pt = [c[0] + sd[0] * (side + top) / 4, c[1] + sd[1] * (side + top) / 4];
   out.poly('pyramid', rect(mid[0], mid[1], a + Math.PI / 2, (side - top) / 2 + 1, Math.max(3, side * 0.14)), { tier: 9 });
   out.poly('building', rect(c[0], c[1], a, top * 0.55, top * 0.55), { use: 'temple', role: 'temple', label: 'the Sky Temple' });
@@ -454,7 +455,7 @@ function totemRing(k: Kit, c: Pt, r: number): void {
   const n = 8 + Math.floor(k.rnd() * 5), a0 = k.rnd() * Math.PI;
   for (let q = 0; q < n; q++) {
     const a = a0 + (q / n) * Math.PI * 2;
-    out.point('totem', [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r], { r: 0.9 });
+    out.point('totem', [c[0] + DMath.cos(a) * r, c[1] + DMath.sin(a) * r], { r: 0.9 });
   }
   out.point('fire', c, { r: 1.6 });
   k.houses.push({ c, r: r + 2 });
@@ -470,7 +471,7 @@ function shrine(k: Kit): void {
   const out = inp.out;
   const sh = inp.s.shrine;
   const style = sh?.style ?? 'chapel';
-  const round = (c: Pt, r: number, n = 16): Pt[] => Array.from({ length: n }, (_, q) => [c[0] + Math.cos((q / n) * Math.PI * 2) * r, c[1] + Math.sin((q / n) * Math.PI * 2) * r] as Pt);
+  const round = (c: Pt, r: number, n = 16): Pt[] => Array.from({ length: n }, (_, q) => [c[0] + DMath.cos((q / n) * Math.PI * 2) * r, c[1] + DMath.sin((q / n) * Math.PI * 2) * r] as Pt);
   const lodge = (c: Pt, r: number) => {
     const ring = round(c, r, 12);
     if (inp.water(c) || k.inBlocked(c) || !inp.ground.allOk(ring, { maxSlope: 0.35, marginM: 1 })) return false;
@@ -481,7 +482,7 @@ function shrine(k: Kit): void {
   // Paths stop at the edge of a stone ring, a totem ground or a pyramid's court.
   const toEdge = (r: number) => {
     const e = inp.exits[0]?.p ?? k.polar(R, rnd() * Math.PI * 2);
-    const l = Math.hypot(...e) || 1;
+    const l = DMath.hypot(...e) || 1;
     k.exitLanes([(e[0] / l) * r, (e[1] / l) * r], r + 4);
   };
   switch (style) {
@@ -495,7 +496,7 @@ function shrine(k: Kit): void {
       for (let q = 0; q < n; q++) {
         if (rnd() < 0.12) continue;
         const a = a0 + (q / n) * Math.PI * 2 + (rnd() - 0.5) * 0.08;
-        out.point('menhir', [Math.cos(a) * r, Math.sin(a) * r], { r: 0.8 + rnd() * 0.6 });
+        out.point('menhir', [DMath.cos(a) * r, DMath.sin(a) * r], { r: 0.8 + rnd() * 0.6 });
       }
       out.point('menhir', [0, 0], { r: 1.6 });
       k.houses.push({ c: [0, 0], r: r + 6 });
@@ -512,7 +513,7 @@ function shrine(k: Kit): void {
       for (let t = 0; t < 12; t++) {
         const c = k.polar(14 + rnd() * 12, rnd() * Math.PI * 2);
         const q = rect(c[0], c[1], rnd() * Math.PI, 9, 6);
-        if (q.some((v) => inp.water(v) || k.inBlocked(v)) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 6) || q.some((v) => k.nearLane(v, 1))) continue;
+        if (q.some((v) => inp.water(v) || k.inBlocked(v)) || k.houses.some((h) => DMath.hypot2(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 6) || q.some((v) => k.nearLane(v, 1))) continue;
         out.poly('garden', q);
         k.blocked.push(q);
         break;
@@ -573,7 +574,7 @@ function tribal(k: Kit): void {
   const rG = Math.max(10, core * 0.22) * (holyNw ? 1.5 : 1);
   for (let q = 0; q < 16; q++) {
     const a = (q / 16) * Math.PI * 2;
-    plaza.push([Math.cos(a) * rG * (0.9 + 0.2 * rnd()), Math.sin(a) * rG * (0.9 + 0.2 * rnd())]);
+    plaza.push([DMath.cos(a) * rG * (0.9 + 0.2 * rnd()), DMath.sin(a) * rG * (0.9 + 0.2 * rnd())]);
   }
   inp.out.poly('green', plaza);
   k.blocked.push(plaza);
@@ -600,11 +601,11 @@ function tribal(k: Kit): void {
   for (let t = 0; t < nHouses * 2; t++) {
     const rMax = Math.min(core, rG + 82);
     const c = k.polar(rG + 10 + rnd() * (rMax - rG - 10), rnd() * Math.PI * 2);
-    if (inp.water(c) || k.inBlocked(c) || k.nearLane(c, 3) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 5)) continue;
+    if (inp.water(c) || k.inBlocked(c) || k.nearLane(c, 3) || k.houses.some((h) => DMath.hypot2(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 5)) continue;
     if (rnd() < 0.6) {
       const r = 3 + rnd() * 2;
       const ring: Pt[] = [];
-      for (let q = 0; q < 12; q++) ring.push([c[0] + Math.cos((q / 12) * Math.PI * 2) * r, c[1] + Math.sin((q / 12) * Math.PI * 2) * r]);
+      for (let q = 0; q < 12; q++) ring.push([c[0] + DMath.cos((q / 12) * Math.PI * 2) * r, c[1] + DMath.sin((q / 12) * Math.PI * 2) * r]);
       if (!inp.ground.allOk(ring, { maxSlope: 0.3, marginM: 1 })) continue;
       inp.out.poly('building', ring, { use: 'lodge' });
       k.houses.push({ c, r: r + 1 });
@@ -617,17 +618,17 @@ function tribal(k: Kit): void {
   if (big) {
     const ring: Pt[] = [];
     // Just outside the houses.
-    const rP = Math.max(rG + 30, ...k.houses.map((h) => Math.hypot(...h.c) + h.r)) + 8;
+    const rP = Math.max(rG + 30, ...k.houses.map((h) => DMath.hypot(...h.c) + h.r)) + 8;
     for (let q = 0; q <= 48; q++) {
       const a = (q / 48) * Math.PI * 2;
-      const wob = 1 + 0.05 * Math.sin(a * 3 + rnd()) + 0.03 * Math.sin(a * 7);
-      ring.push([Math.cos(a) * rP * wob, Math.sin(a) * rP * wob]);
+      const wob = 1 + 0.05 * DMath.sin(a * 3 + rnd()) + 0.03 * DMath.sin(a * 7);
+      ring.push([DMath.cos(a) * rP * wob, DMath.sin(a) * rP * wob]);
     }
     // Gaps for the gates.
-    const gates = ends.map((e) => Math.atan2(e[1], e[0]));
+    const gates = ends.map((e) => DMath.atan2(e[1], e[0]));
     let run: Pt[] = [];
     for (const p of ring) {
-      const a = Math.atan2(p[1], p[0]);
+      const a = DMath.atan2(p[1], p[0]);
       const atGate = gates.some((g) => Math.abs(((a - g + 3 * Math.PI) % (2 * Math.PI)) - Math.PI) < 0.09);
       if (atGate || inp.water(p)) {
         if (run.length > 1) inp.out.line('wall', run, { w: 1.4 });
@@ -674,7 +675,7 @@ function farming(k: Kit): void {
   const { rnd, core, R, inp } = k;
   const ends = k.exitLanes();
   if (ends.length === 1) {
-    const a = Math.atan2(-ends[0][1], -ends[0][0]) + (rnd() - 0.5) * 1.2;
+    const a = DMath.atan2(-ends[0][1], -ends[0][0]) + (rnd() - 0.5) * 1.2;
     k.lane(k.curvy([0, 0], k.polar(core * (1 + 0.6 * rnd()), a), 0.15), 3);
   }
   k.branches(Math.min(4, Math.round((inp.s.population / 150) * (0.5 + rnd()))), core, core);
@@ -695,7 +696,7 @@ function fishing(k: Kit): void {
   const docks = addDocks(inp.terrain, inp.water, inp.out, rnd, {
     maxR: core + 150, spacing: 22, pierW: 3, seaLen: [10, 28], boatLen: [6, 11], boatProb: 0.85,
   });
-  docks.sort((a, b) => Math.hypot(...a.p) - Math.hypot(...b.p));
+  docks.sort((a, b) => DMath.hypot(...a.p) - DMath.hypot(...b.p));
   for (const d of docks.slice(0, 3)) k.lane(k.curvy([0, 0], d.p, 0.1), 3);
   k.branches(Math.min(3, Math.round((inp.s.population / 200) * (0.5 + rnd()))), core, core * 0.8);
   if (hasWell(inp.s)) square(k);
@@ -706,7 +707,7 @@ function fishing(k: Kit): void {
     if (rnd() > 0.5) continue;
     const side = rnd() < 0.5 ? 1 : -1;
     const c: Pt = [d.p[0] - d.n[1] * side * 7 - d.n[0] * 3, d.p[1] + d.n[0] * side * 7 - d.n[1] * 3];
-    if (!inp.water(c) && !k.nearLane(c, 2)) inp.out.poly('boat', rect(c[0], c[1], Math.atan2(d.n[1], d.n[0]), 7, 2.4));
+    if (!inp.water(c) && !k.nearLane(c, 2)) inp.out.poly('boat', rect(c[0], c[1], DMath.atan2(d.n[1], d.n[0]), 7, 2.4));
   }
   k.fieldRing(core * 0.7, R, 4500, 0.3);
   k.clumps(3, core * 0.5, R);
@@ -723,7 +724,7 @@ function logging(k: Kit): void {
   let mill: Pt | null = null;
   for (let t = 0; t < 20 && !mill; t++) {
     const c: Pt = bank && t < 5 ? [bank.p[0] - bank.n[0] * (10 + t * 3), bank.p[1] - bank.n[1] * (10 + t * 3)] : k.polar(10 + rnd() * 20, rnd() * 2 * Math.PI);
-    const ang = bank ? Math.atan2(bank.n[0], -bank.n[1]) : rnd() * Math.PI;
+    const ang = bank ? DMath.atan2(bank.n[0], -bank.n[1]) : rnd() * Math.PI;
     if (k.house(c, ang, 24, 12, 'mill')) mill = c;
   }
   const base = mill ?? [0, 0];
@@ -731,12 +732,12 @@ function logging(k: Kit): void {
     const p = k.polar(18 + rnd() * 25, rnd() * 2 * Math.PI);
     const c: Pt = [base[0] + p[0], base[1] + p[1]];
     const ang = rnd() * Math.PI;
-    if (inp.water(c) || k.nearLane(c, 4) || k.houses.some((h) => Math.hypot(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 7)) continue;
+    if (inp.water(c) || k.nearLane(c, 4) || k.houses.some((h) => DMath.hypot2(h.c[0] - c[0], h.c[1] - c[1]) < h.r + 7)) continue;
     // A stack is two or three rows of logs.
     const rows = 2 + Math.floor(rnd() * 2);
     for (let r = 0; r < rows; r++) {
       const off = (r - (rows - 1) / 2) * 2.6;
-      inp.out.poly('logs', rect(c[0] - Math.sin(ang) * off, c[1] + Math.cos(ang) * off, ang, 9 + rnd() * 3, 2.2));
+      inp.out.poly('logs', rect(c[0] - DMath.sin(ang) * off, c[1] + DMath.cos(ang) * off, ang, 9 + rnd() * 3, 2.2));
     }
     k.houses.push({ c, r: 6 });
     n--;
@@ -751,16 +752,16 @@ function logging(k: Kit): void {
 function mining(k: Kit): void {
   const { rnd, core, R, inp } = k;
   const g = inp.terrain.grad([0, 0]);
-  const up: Pt = Math.hypot(...g) > 0.005 ? unit(g) : k.polar(1, rnd() * 2 * Math.PI);
+  const up: Pt = DMath.hypot(...g) > 0.005 ? unit(g) : k.polar(1, rnd() * 2 * Math.PI);
   k.exitLanes();
   const adits = 1 + (rnd() < 0.5 ? 1 : 0) + (rnd() < 0.2 ? 1 : 0);
   for (let a = 0; a < adits; a++) {
     const turn = a === 0 ? 0 : (a % 2 ? 1 : -1) * (0.5 + rnd() * 0.5);
-    const dir: Pt = [up[0] * Math.cos(turn) - up[1] * Math.sin(turn), up[0] * Math.sin(turn) + up[1] * Math.cos(turn)];
+    const dir: Pt = [up[0] * DMath.cos(turn) - up[1] * DMath.sin(turn), up[0] * DMath.sin(turn) + up[1] * DMath.cos(turn)];
     const reach = Math.max(core * 1.2, 80) + rnd() * 60;
     const e: Pt = [dir[0] * reach, dir[1] * reach];
     if (inp.water(e)) continue;
-    const ang = Math.atan2(dir[1], dir[0]);
+    const ang = DMath.atan2(dir[1], dir[0]);
     inp.out.poly('mine', rect(e[0], e[1], ang, 6, 6));
     k.blocked.push(rect(e[0], e[1], ang, 14, 14));
     k.lane(k.curvy([0, 0], [e[0] - dir[0] * 5, e[1] - dir[1] * 5], 0.08), 3);
@@ -786,8 +787,8 @@ function monastery(k: Kit): void {
   const w = 60 + rnd() * 30, h = 75 + rnd() * 35;
   // Local frame with the gate at -v, facing the first incoming track.
   const d = unit(inp.exits[0]?.p ?? k.polar(R, rnd() * 2 * Math.PI));
-  const a = Math.atan2(d[0], -d[1]);
-  const T = (u: number, v: number): Pt => [u * Math.cos(a) - v * Math.sin(a), u * Math.sin(a) + v * Math.cos(a)];
+  const a = DMath.atan2(d[0], -d[1]);
+  const T = (u: number, v: number): Pt => [u * DMath.cos(a) - v * DMath.sin(a), u * DMath.sin(a) + v * DMath.cos(a)];
   const box = (u: number, v: number, lw: number, lh: number, kind = 'building', props: Record<string, string> = {}) => {
     const c = T(u, v);
     out.poly(kind, rect(c[0], c[1], a, lw, lh), props);
@@ -796,7 +797,7 @@ function monastery(k: Kit): void {
   out.poly('plaza', compound);
   out.line('wall', [T(-4, -h / 2), T(-w / 2, -h / 2), T(-w / 2, h / 2), T(w / 2, h / 2), T(w / 2, -h / 2), T(4, -h / 2)], { w: 1.5 });
   k.blocked.push(rect(0, 0, a, w + 6, h + 6));
-  k.exitLanes(T(0, -h / 2 - 6), Math.hypot(w, h) * 0.75);
+  k.exitLanes(T(0, -h / 2 - 6), DMath.hypot2(w, h) * 0.75);
   inp.out.line('road', [T(0, -h / 2 - 6), T(0, -h / 2 + 4)], { cls: 'track' });
 
   const cx = -w * 0.12;
@@ -848,8 +849,8 @@ function fortPlan(k: Kit, main: Record<string, string>, alone: boolean, fields: 
   const out = inp.out;
   const S = 54 + rnd() * 12;
   const e0 = inp.exits[0]?.p ?? k.polar(R, rnd() * 2 * Math.PI);
-  const ga = Math.atan2(e0[1], e0[0]);
-  const ca = Math.cos(ga), sa = Math.sin(ga);
+  const ga = DMath.atan2(e0[1], e0[0]);
+  const ca = DMath.cos(ga), sa = DMath.sin(ga);
   // Local frame: u toward the gate.
   const T = (u: number, v: number): Pt => [u * ca - v * sa, u * sa + v * ca];
   const h = S / 2;
@@ -888,10 +889,10 @@ function keep(k: Kit): void {
   const rk = Math.max(28, Math.min(60, core * 0.45));
   const ring = blob([0, 0], rk, rnd, 14);
   const e0 = inp.exits[0]?.p ?? k.polar(R, rnd() * 2 * Math.PI);
-  const ga = Math.atan2(e0[1], e0[0]);
+  const ga = DMath.atan2(e0[1], e0[0]);
   let g = 0;
   ring.forEach((p, i) => {
-    if (Math.cos(Math.atan2(p[1], p[0]) - ga) > Math.cos(Math.atan2(ring[g][1], ring[g][0]) - ga)) g = i;
+    if (DMath.cos(DMath.atan2(p[1], p[0]) - ga) > DMath.cos(DMath.atan2(ring[g][1], ring[g][0]) - ga)) g = i;
   });
   const n = ring.length, at = (i: number) => ring[((i % n) + n) % n];
   const gate = ring[g];
@@ -913,13 +914,13 @@ function keep(k: Kit): void {
   const kc = k.polar(rk * 0.25, ga + Math.PI + (rnd() - 0.5));
   out.poly('building', rect(kc[0], kc[1], rnd() * Math.PI, ks, ks), { use: 'keep' });
   const hc = k.polar(rk * 0.45, ga + Math.PI / 2 * (rnd() < 0.5 ? 1 : -1));
-  out.poly('building', rect(hc[0], hc[1], Math.atan2(hc[1], hc[0]) + Math.PI / 2, 18, 8), { use: 'hall' });
+  out.poly('building', rect(hc[0], hc[1], DMath.atan2(hc[1], hc[0]) + Math.PI / 2, 18, 8), { use: 'hall' });
   for (let i = 2; i < n - 1; i++) {
     if (rnd() > 0.35) continue;
     const p = at(g + i), q = at(g + i + 1);
     const m: Pt = [((p[0] + q[0]) / 2) * 0.82, ((p[1] + q[1]) / 2) * 0.82];
-    if (Math.hypot(m[0] - kc[0], m[1] - kc[1]) < ks || Math.hypot(m[0] - hc[0], m[1] - hc[1]) < 12) continue;
-    out.poly('building', rect(m[0], m[1], Math.atan2(q[1] - p[1], q[0] - p[0]), 8, 5), { use: 'store' });
+    if (DMath.hypot2(m[0] - kc[0], m[1] - kc[1]) < ks || DMath.hypot2(m[0] - hc[0], m[1] - hc[1]) < 12) continue;
+    out.poly('building', rect(m[0], m[1], DMath.atan2(q[1] - p[1], q[0] - p[0]), 8, 5), { use: 'store' });
   }
   const outside: Pt = [gate[0] * 1.5, gate[1] * 1.5];
   out.line('road', [outside, gate], { cls: 'track' });

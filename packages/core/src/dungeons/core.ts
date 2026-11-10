@@ -1,5 +1,6 @@
 import type { Rng } from '../gen/rng';
 import type { KeyNote } from '../keys/flavour';
+import { DMath } from '../dmath';
 
 /**
  * Dungeons in the manner of Watabou's One Page Dungeon: a grid of 5 ft squares carved into rooms
@@ -188,7 +189,7 @@ export function carveRect(L: DLevel, x: number, y: number, w: number, h: number,
 
 export function carveCircle(L: DLevel, cx: number, cy: number, r: number, v = FLOOR): void {
   for (let j = Math.floor(cy - r); j <= Math.ceil(cy + r); j++) {
-    for (let i = Math.floor(cx - r); i <= Math.ceil(cx + r); i++) if (Math.hypot(i + 0.5 - cx, j + 0.5 - cy) <= r) set(L, i, j, v);
+    for (let i = Math.floor(cx - r); i <= Math.ceil(cx + r); i++) if (DMath.hypot2(i + 0.5 - cx, j + 0.5 - cy) <= r) set(L, i, j, v);
   }
 }
 

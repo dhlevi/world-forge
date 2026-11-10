@@ -4,6 +4,7 @@ import type { Politics } from './politics';
 import type { Settlement } from './settlements';
 import { CULTURES } from '../names/cultures';
 import type { NameBank } from '../names/names';
+import { DMath } from '../dmath';
 
 /**
  * Prisons, chosen after everything else on random streams of their own (so nothing else moves):
@@ -46,7 +47,7 @@ const FORT_NAMES: Record<PrisonFort['setting'], string[]> = {
 
 const distKm = (a: number, b: number, c: number, d: number) => {
   const dl = ((((c - a) % 360) + 540) % 360) - 180;
-  return Math.hypot(dl * 111.32 * Math.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
+  return DMath.hypot2(dl * 111.32 * DMath.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
 };
 
 export function prisons(f: PrisonFields, p: Politics, settlements: Settlement[], bank: NameBank, seed: string): PrisonFort[] {
@@ -79,7 +80,7 @@ export function prisons(f: PrisonFields, p: Politics, settlements: Settlement[],
   const lonOf = (c: number) => ((c % PW) + 0.5) / PW * 360 - 180;
   const latOf = (c: number) => 90 - ((((c / PW) | 0) + 0.5) / PH) * 180;
   const dyKm = (180 / PH) * 111.2;
-  const cellKm2 = (c: number) => dyKm * dyKm * Math.max(0.05, Math.cos((latOf(c) * Math.PI) / 180));
+  const cellKm2 = (c: number) => dyKm * dyKm * Math.max(0.05, DMath.cos((latOf(c) * Math.PI) / 180));
   const land = (c: number) => f.height[full(c)] > 0 && f.lakeDepth[full(c)] <= 0;
   const cellAt = (lon: number, lat: number) => Math.min(PH - 1, Math.max(0, Math.floor(((90 - lat) / 180) * PH))) * PW + ((Math.floor(((lon + 180) / 360) * PW) % PW) + PW) % PW;
   /** Cells within `km` of a cell. */
@@ -89,11 +90,11 @@ export function prisons(f: PrisonFields, p: Politics, settlements: Settlement[],
     for (let dj = -rj; dj <= rj; dj++) {
       const j = j0 + dj;
       if (j < 0 || j >= PH) continue;
-      const dx = dyKm * Math.max(0.05, Math.cos((latOf(j * PW) * Math.PI) / 180));
+      const dx = dyKm * Math.max(0.05, DMath.cos((latOf(j * PW) * Math.PI) / 180));
       const ri = Math.min(PW / 2, Math.ceil(km / dx));
       for (let di = -ri; di <= ri; di++) {
         const c = j * PW + (((i0 + di) % PW) + PW) % PW;
-        if (Math.hypot(dj * dyKm, di * dx) <= km) fn(c);
+        if (DMath.hypot2(dj * dyKm, di * dx) <= km) fn(c);
       }
     }
   };

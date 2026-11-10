@@ -4,6 +4,7 @@ import { EARTH_RADIUS_KM, smoothstep } from './grid';
 import { RENDER as RC } from './config';
 import type { RasterWorld } from './world';
 import { type RiverIndex, carveRiver } from './river-index';
+import { DMath } from '../dmath';
 
 const DEG = Math.PI / 180;
 /** Farthest a river valley reaches from its bank (valleyM of the widest rivers). */
@@ -28,11 +29,17 @@ export class DetailSampler {
   private lambda0Km: number;
   private cw = new Float64Array(4);
   private rw = new Float64Array(4);
+  /** Per octave (worked out once, the same values as computing them each time): wavelength, frequency and both amplitudes. */
+  private oct: { lam: number; f: number; amp: number; coastAmp: number }[] = [];
 
   /** With `rivers`, heights include the carved river valleys drawn by the tile renderer. */
   constructor(private world: DetailWorld, readonly rivers: RiverIndex | null = null) {
     this.noise = new Simplex3(mulberry32(hashString(world.seed + '#detail')));
     this.lambda0Km = (2 * (2 * Math.PI * EARTH_RADIUS_KM)) / world.W;
+    for (let k = 0; k < RC.maxOctaves; k++) {
+      const lam = this.lambda0Km / DMath.pow(2, k);
+      this.oct.push({ lam, f: EARTH_RADIUS_KM / lam, amp: RC.detailAmpM * DMath.pow(lam / this.lambda0Km, RC.detailHurst), coastAmp: RC.coastAmpM * DMath.pow(lam / this.lambda0Km, RC.coastHurst) });
+    }
   }
 
   /** Elevation (m) including detail octaves down to a pixel size of `pxKm` (default: all). */
@@ -54,20 +61,17 @@ export class DetailSampler {
     const h00 = height[o0 + a], h10 = height[o0 + b], h01 = height[o1 + a], h11 = height[o1 + b];
     base = Math.min(Math.max(h00, h10, h01, h11), Math.max(Math.min(h00, h10, h01, h11), base));
 
-    const octF = Math.min(RC.maxOctaves, Math.max(0, Math.log2(this.lambda0Km / (2 * pxKm)) + 1));
+    const octF = Math.min(RC.maxOctaves, Math.max(0, DMath.log2(this.lambda0Km / (2 * pxKm)) + 1));
     const nOct = Math.ceil(octF);
     if (nOct === 0) return base;
-    const cosLat = Math.cos(lat * DEG), sinLat = Math.sin(lat * DEG);
-    const x = cosLat * Math.cos(lon * DEG), y = cosLat * Math.sin(lon * DEG);
+    const cosLat = DMath.cos(lat * DEG), sinLat = DMath.sin(lat * DEG);
+    const x = cosLat * DMath.cos(lon * DEG), y = cosLat * DMath.sin(lon * DEG);
     const rough = base > 0 ? Math.min(RC.maxRough, RC.baseRough + (RC.mountainRoughPerKm * base) / 1000) : RC.oceanRough;
-    const coast = Math.exp(-((base / RC.coastWidthM) ** 2));
+    const coast = DMath.exp(-(DMath.pow(base / RC.coastWidthM, 2)));
     const ridge = smoothstep(RC.ridgeStartM, RC.ridgeFullM, base);
     let sum = 0;
     for (let k = 0; k < nOct; k++) {
-      const lam = this.lambda0Km / 2 ** k;
-      const f = EARTH_RADIUS_KM / lam;
-      const amp = RC.detailAmpM * Math.pow(lam / this.lambda0Km, RC.detailHurst);
-      const coastAmp = RC.coastAmpM * Math.pow(lam / this.lambda0Km, RC.coastHurst);
+      const { f, amp, coastAmp } = this.oct[k];
       let v = this.noise.noise(x * f + k * 31.7, y * f, sinLat * f);
       if (ridge > 0) v += (0.6 - 1.6 * Math.abs(v) - v) * ridge;
       sum += Math.min(1, octF - k) * v * (rough * amp + coast * coastAmp);

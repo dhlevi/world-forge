@@ -1,4 +1,5 @@
 import { KOPPEN as K } from './config';
+import { DMath } from '../dmath';
 
 export interface KoppenClass {
   code: string;
@@ -49,7 +50,7 @@ function monthsAbove10(mean: number, warm: number, cold: number): number {
   const x = (10 - mean) / amp;
   if (x <= -1) return 12;
   if (x >= 1) return 0;
-  return (12 * Math.acos(x)) / Math.PI;
+  return (12 * DMath.acos(x)) / Math.PI;
 }
 
 /**

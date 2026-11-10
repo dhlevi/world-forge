@@ -1,3 +1,4 @@
+import { DMath } from '../dmath';
 /** Planar geometry in local metres (x east, y north). Polygons are CCW without a closing vertex. */
 
 export type Pt = [number, number];
@@ -14,7 +15,7 @@ export function compactness(p: Poly): number {
   let per = 0;
   for (let i = 0; i < p.length; i++) {
     const a = p[i], b = p[(i + 1) % p.length];
-    per += Math.hypot(b[0] - a[0], b[1] - a[1]);
+    per += DMath.hypot2(b[0] - a[0], b[1] - a[1]);
   }
   return per > 0 ? (4 * Math.PI * Math.abs(area(p))) / (per * per) : 0;
 }
@@ -60,7 +61,7 @@ export function inset(p: Poly, offsets: number[] | number): Poly | null {
     const off = typeof offsets === 'number' ? offsets : offsets[i];
     if (off <= 0) continue;
     const a = p[i], b = p[(i + 1) % n];
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const len = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
     if (len < 1e-6) continue;
     r = clipHalf(r, a[0], a[1], -(b[1] - a[1]) / len, (b[0] - a[0]) / len, off);
   }
@@ -106,8 +107,8 @@ export function blob(c: Pt, r: number, rnd: () => number, n = 10): Poly {
   const out: Poly = [];
   for (let k = 0; k < n; k++) {
     const t = (k / n) * 2 * Math.PI;
-    const rr = r * (1 + a1 * Math.sin(2 * t + ph) + a2 * Math.sin(3 * t - ph));
-    out.push([c[0] + rr * Math.cos(t), c[1] + rr * Math.sin(t)]);
+    const rr = r * (1 + a1 * DMath.sin(2 * t + ph) + a2 * DMath.sin(3 * t - ph));
+    out.push([c[0] + rr * DMath.cos(t), c[1] + rr * DMath.sin(t)]);
   }
   return out;
 }
@@ -115,7 +116,7 @@ export function blob(c: Pt, r: number, rnd: () => number, n = 10): Poly {
 /** Pointed boat hull of length l and beam w, bow towards `angle`. */
 export function hull(c: Pt, angle: number, l: number, w: number): Poly {
   const shape: Pt[] = [[l / 2, 0], [l * 0.25, w / 2], [-l * 0.4, w / 2], [-l / 2, w * 0.3], [-l / 2, -w * 0.3], [-l * 0.4, -w / 2], [l * 0.25, -w / 2]];
-  const co = Math.cos(angle), si = Math.sin(angle);
+  const co = DMath.cos(angle), si = DMath.sin(angle);
   return shape.map(([x, y]) => [c[0] + x * co - y * si, c[1] + x * si + y * co] as Pt);
 }
 
@@ -163,7 +164,7 @@ export function longestEdge(p: Poly): number {
   let best = 0, bestLen = -1;
   for (let i = 0; i < p.length; i++) {
     const a = p[i], b = p[(i + 1) % p.length];
-    const l = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const l = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
     if (l > bestLen) {
       bestLen = l;
       best = i;
@@ -185,7 +186,7 @@ export function distToSeg(px: number, py: number, a: Pt, b: Pt): number {
   const dx = b[0] - a[0], dy = b[1] - a[1];
   const l2 = dx * dx + dy * dy;
   const t = l2 > 0 ? Math.max(0, Math.min(1, ((px - a[0]) * dx + (py - a[1]) * dy) / l2)) : 0;
-  return Math.hypot(px - a[0] - t * dx, py - a[1] - t * dy);
+  return DMath.hypot2(px - a[0] - t * dx, py - a[1] - t * dy);
 }
 
 export function distToLine(pts: Pt[], x: number, y: number): number {
@@ -206,7 +207,7 @@ export function segHitsPoly(p: Poly, a: Pt, b: Pt): boolean {
 }
 
 export function rect(cx: number, cy: number, angle: number, w: number, h: number): Poly {
-  const c = Math.cos(angle), s = Math.sin(angle);
+  const c = DMath.cos(angle), s = DMath.sin(angle);
   return ([[-w / 2, -h / 2], [w / 2, -h / 2], [w / 2, h / 2], [-w / 2, h / 2]] as Pt[]).map(
     ([x, y]) => [cx + x * c - y * s, cy + x * s + y * c] as Pt,
   );
@@ -216,9 +217,9 @@ export function rect(cx: number, cy: number, angle: number, w: number, h: number
 export function rectIn(p: Poly, frac: number): Poly | null {
   const e = longestEdge(p);
   const a = p[e], b = p[(e + 1) % p.length];
-  const ang = Math.atan2(b[1] - a[1], b[0] - a[0]);
+  const ang = DMath.atan2(b[1] - a[1], b[0] - a[0]);
   const [cx, cy] = centroid(p);
-  const c = Math.cos(ang), s = Math.sin(ang);
+  const c = DMath.cos(ang), s = DMath.sin(ang);
   let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
   for (const [x, y] of p) {
     const u = (x - cx) * c + (y - cy) * s, v = -(x - cx) * s + (y - cy) * c;
@@ -248,14 +249,14 @@ export function subdivide(
   }
   const e = longestEdge(p);
   const q0 = p[e], q1 = p[(e + 1) % p.length];
-  const len = Math.hypot(q1[0] - q0[0], q1[1] - q0[1]);
+  const len = DMath.hypot2(q1[0] - q0[0], q1[1] - q0[1]);
   const t = 0.4 + 0.2 * rnd();
   const m: Pt = [q0[0] + (q1[0] - q0[0]) * t, q0[1] + (q1[1] - q0[1]) * t];
   // Slight skew keeps blocks from looking like a grid.
   const sk = (rnd() - 0.5) * skew;
   let nx = (q1[0] - q0[0]) / len, ny = (q1[1] - q0[1]) / len;
   [nx, ny] = [nx - ny * sk, ny + nx * sk];
-  const nl = Math.hypot(nx, ny);
+  const nl = DMath.hypot2(nx, ny);
   const gap = rnd() < alleyChance ? alley / 2 : 0;
   const [l, r] = split(p, m, [nx / nl, ny / nl], gap);
   if (l.length >= 3) subdivide(l, minArea, rnd, alley, alleyChance * decay, out, depth + 1, decay, skew);
@@ -267,7 +268,7 @@ export function subdivide(
 export function hatch(p: Poly, gap: number): Pt[][] {
   const e = longestEdge(p);
   const a = p[e], b = p[(e + 1) % p.length];
-  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const len = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
   const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
   // Lines run parallel to the edge; step along its normal.
   const nx = -uy, ny = ux;
@@ -306,7 +307,7 @@ export function rectangularity(p: Poly): number {
   let best = Infinity;
   for (let k = 0; k < p.length; k++) {
     const a = p[k], b = p[(k + 1) % p.length];
-    const ang = Math.atan2(b[1] - a[1], b[0] - a[0]), c = Math.cos(ang), s = Math.sin(ang);
+    const ang = DMath.atan2(b[1] - a[1], b[0] - a[0]), c = DMath.cos(ang), s = DMath.sin(ang);
     let u0 = Infinity, u1 = -Infinity, v0 = Infinity, v1 = -Infinity;
     for (const [x, y] of p) {
       const u = x * c + y * s, v = -x * s + y * c;
@@ -323,7 +324,7 @@ export function rectangularity(p: Poly): number {
  */
 export function frontRect(p: Poly, e: number, minSide = 3.5): Poly | null {
   const a = p[e], b = p[(e + 1) % p.length];
-  const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+  const len = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
   if (len < minSide) return null;
   const ux = (b[0] - a[0]) / len, uy = (b[1] - a[1]) / len;
   // Inward normal: toward the centroid.

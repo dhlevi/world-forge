@@ -12,7 +12,7 @@ Stack: TypeScript, Vue 3, Vite, MapLibre GL JS. The project is two npm workspace
 npm install
 npm run dev        # the atlas, http://localhost:5173
 npm run build      # type-check both packages + production build to apps/atlas/dist/
-npm run typecheck  # the core without DOM or Node types, then the atlas
+npm run typecheck  # the core without DOM or Node types, its determinism check, then the atlas
 npm run test:core -- --seed=forge --res=512   # a whole world made headless in Node, with its fingerprint
 npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # headless PNGs in out/ (tiles use the first layer)
 ```
@@ -444,9 +444,12 @@ packages/core/        @worldforge/core: the generator (no browser, UI or map dep
     world/        probe.ts (what lies at a point)
     export/       worldfile.ts (world files), gamedata.ts (world.json, grids, towns), readme.ts
     diagnostics/  fingerprint.ts (hashes of a world, to tell whether two runs made the same one)
+    dmath.ts      deterministic maths: sin, cos, atan2, exp, log, pow and the rest, the same in every engine
+    version.ts    the generator version, raised whenever a seed would come out differently
+    format.ts     number formatting that does not depend on locale data
     settings.ts   the generator settings, checked and snapped, and their query-string form
     env.d.ts      the few globals the core uses (performance, console, URLSearchParams)
-  scripts/        headless.ts (a whole world in Node: npm run test:core), preview.ts (headless generation → PNG), png.ts
+  scripts/        headless.ts (a whole world in Node: npm run test:core), check-determinism.mjs (run by typecheck), preview.ts (headless generation → PNG), png.ts
   tuning/         climate tuning against Earth (see below)
 apps/atlas/           @worldforge/atlas: the browser map
   index.html, vite.config.ts, public/fonts/ (IM Fell English and UnifrakturMaguntia, SIL Open Font License, see OFL.txt)
@@ -480,7 +483,17 @@ const house = plan.find((f) => f.properties.kind === 'building')!;
 const people = householdsFor(world, house, plan);    // who lives there
 ```
 
-`packages/core/scripts/headless.ts` does this for a whole world and prints its **fingerprint** (`diagnostics/fingerprint.ts`): a hash of each part (heights, climate, biomes, peoples, rivers, settlements, realms, lore, a city's plan, its households, its nature). The same settings make the same fingerprint on the same JavaScript engine. Different engines can differ: the transcendental functions (`Math.sin`, `Math.exp`, `Math.pow` and the rest) do not return identical last digits in every engine version, so Node 22 and a current Chromium make very slightly different worlds from one seed.
+`packages/core/scripts/headless.ts` does this for a whole world and prints its **fingerprint** (`diagnostics/fingerprint.ts`): a hash of each part (heights, climate, biomes, peoples, rivers, settlements, realms, lore, a city's plan, its households, its nature).
+
+### Deterministic worlds
+
+The same settings make exactly the same world in every JavaScript engine and version: Node, Chromium, Electron, a worker or a game. Three things would otherwise let engines disagree, and the core avoids all three:
+
+- **Maths.** `Math.sin`, `Math.exp`, `Math.pow` and the other transcendental functions are only required to be close to the true value, and engines differ in the last digits (Node 22 and a current Chromium disagreed on nearly all of them). The core uses `DMath` (`dmath.ts`) instead: ports of fdlibm built only from operations IEEE 754 makes exact everywhere (+ − × ÷, square root, a number's bits). Sine, cosine, exp, log, atan, atan2 and asin match fdlibm exactly; the rest are within a few units in the last place, and a fractional power within about 1e-14. The `**` operator is `Math.pow` underneath, so the core writes `DMath.pow`.
+- **Shuffles and sorts.** `arr.sort(() => r() - 0.5)` and comparators that draw random numbers depend on how often, and in what order, the engine's sort calls them. The core uses `shuffle` and `sortByKey` (`gen/rng.ts`), which draw one number per item in order.
+- **Locale.** `localeCompare` and `toLocaleString` depend on the engine's locale data; the core compares plainly and formats numbers with `thousands` (`format.ts`).
+
+`npm run typecheck` runs `packages/core/scripts/check-determinism.mjs`, which fails on any of these in the core (map tiles, the illustrated town faces and the appearance sketches, which make pictures only, may use the engine's faster `Math`). The fingerprints of two test worlds (`forge` at low detail, `oak-moor-7` at medium) and 300 complete floor plans are identical in Node 22 and Chromium 153. Worlds made this way are **generator version 2** (`version.ts`); world files and game-data exports record the version, and the atlas warns when a world file was saved by another. Version 1 worlds (saved before) come out slightly differently now. The one known exception is d3-delaunay, which nudges points with `Math.sin` only when a whole point set lies on one line, which town plans do not produce.
 
 ## Climate tuning against Earth
 

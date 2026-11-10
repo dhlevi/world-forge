@@ -7,11 +7,13 @@ import { CULTURES, TEMPLATE_LABEL, type WorldCulture } from '../names/cultures';
 import { templateFolk } from '../names/bundles';
 import { LEXICON } from '../lang/lexicon';
 import { worldLore } from '../lore/current';
+import { GENERATOR_VERSION } from '../version';
 import { lookOf } from '../people/appearance';
 import { LocalFrame, type PlanFeature } from '../towns/plan';
 import type { Household } from '../people/residents';
 import type { TownStats } from '../people/town';
 import type { UrlParams } from '../settings';
+import { DMath } from '../dmath';
 
 /**
  * The game-data export: the world as plain data for a game engine. `worldJson` gives the world
@@ -35,7 +37,7 @@ function thin(pts: number[][], tol: number): number[][] {
   while (stack.length) {
     const [a, b] = stack.pop()!;
     const [ax, ay] = pts[a], [bx, by] = pts[b];
-    const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1e-12;
+    const dx = bx - ax, dy = by - ay, L = DMath.hypot2(dx, dy) || 1e-12;
     let best = -1, bi = -1;
     for (let i = a + 1; i < b; i++) {
       const d = Math.abs((pts[i][0] - ax) * dy - (pts[i][1] - ay) * dx) / L;
@@ -135,7 +137,7 @@ export function worldJson(w: World, params: UrlParams): Record<string, unknown> 
   const wars = (L?.wars ?? []).map((x) => ({ id: x.id, name: x.name, attackers: x.attackers, defenders: x.defenders, start: x.start, end: x.end, cause: x.cause, winner: x.winner, status: x.status, peace: x.peace }));
 
   return {
-    format: 'world-forge.gamedata', version: GAME_DATA_VERSION, exportedAt: new Date().toISOString(),
+    format: 'world-forge.gamedata', version: GAME_DATA_VERSION, generator: GENERATOR_VERSION, exportedAt: new Date().toISOString(),
     settings: params,
     year: L?.year, era: L?.era,
     grid: {

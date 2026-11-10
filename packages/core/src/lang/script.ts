@@ -1,8 +1,9 @@
-import { hashString, mulberry32, type Rng } from '../gen/rng';
+import { hashString, mulberry32, type Rng, shuffle, sortByKey } from '../gen/rng';
 import type { Language } from './language';
 import { CONS, VOW, isVowel } from './phonemes';
 import { numberSystem } from './numbers';
 import { DETERMINATIVES, PICTOGRAPHS, type Pictograph } from './pictographs';
+import { DMath } from '../dmath';
 
 /**
  * Writing systems. Every language has a script, chosen from its template (Nordic runes, Celtic
@@ -462,7 +463,7 @@ export class Script {
     const nm = LT_MARKS.length;
     if (!this.latinMap) {
       const r = this.rng('latin-order');
-      const all = Array.from({ length: LT_BODIES.length * nm }, (_, i) => i).sort(() => r() - 0.5);
+      const all = shuffle(Array.from({ length: LT_BODIES.length * nm }, (_, i) => i), r);
       const plain = all.filter((c) => [0, 3, 4].includes(c % nm) && LT_ROUND.has(Math.floor(c / nm)));
       this.latinMap = new Map();
       const used = new Set<number>();
@@ -561,7 +562,7 @@ export class Script {
     const TOTAL = PH_HEADS.length * PH_BODIES.length * PH_FEET.length;
     if (!this.phagsMap) {
       const r = this.rng('phags-order');
-      const order = Array.from({ length: TOTAL }, (_, i) => i).sort(() => r() - 0.5);
+      const order = shuffle(Array.from({ length: TOTAL }, (_, i) => i), r);
       this.phagsMap = new Map();
       const keys = [...this.L.consonants.map((c) => c.ipa), ...this.L.vowels.map((v) => v.ipa)].sort();
       keys.forEach((k, i) => this.phagsMap!.set(k, order[i]));
@@ -627,9 +628,9 @@ export class Script {
       const r = this.rng('abjad-order');
       const total = AB_SKEL.length * AB_DOTS.length;
       const reserved = new Set([AB_RESERVED.alif, AB_RESERVED.ya]);
-      const order = Array.from({ length: total }, (_, i) => i).filter((i) => !reserved.has(i)).sort(() => r() - 0.5);
+      const order = shuffle(Array.from({ length: total }, (_, i) => i).filter((i) => !reserved.has(i)), r);
       // Commoner looks first: few dots, and the plain skeletons shared by several letters.
-      order.sort((x, y) => AB_DOTS[x % AB_DOTS.length].length - AB_DOTS[y % AB_DOTS.length].length + (r() - 0.5) * 2.2);
+      sortByKey(order, (x) => AB_DOTS[x % AB_DOTS.length].length + (r() - 0.5) * 2.2);
       this.abjadMap = new Map();
       [...this.L.consonants.map((c) => c.ipa)].sort().forEach((k, i) => this.abjadMap!.set(k, order[i % order.length]));
       const longs = this.L.vowels.map((v) => v.ipa).filter((v) => /ː/.test(v)).sort();
@@ -790,7 +791,7 @@ export class Script {
         return out;
       });
       // Shuffle, take 28, and give each its own small differences of proportion.
-      const order = forms.map((_, i) => i).sort(() => r() - 0.5);
+      const order = shuffle(forms.map((_, i) => i), r);
       this.radicals = order.slice(0, 28).map((i) => {
         const sx = 0.92 + r() * 0.12, sy = 0.92 + r() * 0.12;
         return forms[i]().map((p) => ({ k: p.k, p: p.p.map((v, n) => Math.max(4, Math.min(96, n % 2 ? 50 + (v - 50) * sy : 50 + (v - 50) * sx))) }));
@@ -968,7 +969,7 @@ export class Script {
   private pict(key: string): Pictograph {
     if (!this.pictMap) {
       const r = this.rng('pict-order');
-      const order = PICTOGRAPHS.map((_, i) => i).sort(() => r() - 0.5);
+      const order = shuffle(PICTOGRAPHS.map((_, i) => i), r);
       this.pictMap = new Map();
       const keys = [...this.L.consonants.map((c) => c.ipa).sort(), ...[...new Set(this.L.vowels.map((v) => `v:${v.ipa.replace('ː', '')}`))].sort()];
       keys.forEach((k, i) => this.pictMap!.set(k, order[i % order.length]));
@@ -1049,7 +1050,7 @@ export class Script {
     if (c === null) return SYL_SHAPES[0];
     if (!this.sylMap) {
       const r = this.rng('syl-order');
-      const order = SYL_SHAPES.map((_, i) => i).slice(1).sort(() => r() - 0.5);
+      const order = shuffle(SYL_SHAPES.map((_, i) => i).slice(1), r);
       this.sylMap = new Map();
       this.L.consonants.map((x) => x.ipa).sort().forEach((k, i) => this.sylMap!.set(k, order[i % order.length]));
     }
@@ -1286,7 +1287,7 @@ export class Script {
     if (nm.kind === 'positional' && ALPHA_DIGITS.has(st)) {
       const set = DIGIT_FORMS.abjad;
       const r = this.rng('digit-forms');
-      const order = [0, ...Array.from({ length: set.length - 1 }, (_, i) => i + 1).sort(() => r() - 0.5)];
+      const order = [0, ...shuffle(Array.from({ length: set.length - 1 }, (_, i) => i + 1), r)];
       const fam = this.digitFamily;
       const form = (x: number): Prim[] => (x === 0 ? this.zero().prims.filter((p) => !(p.k === 'line' && p.p[1] === 20)) : st === 'abjad' ? set[order[x - 1]] : penDigit(x, fam, st === 'elvish'));
       const head = st === 'devanagari' ? [L_(4, 20, 50, 20)] : [];
@@ -1348,9 +1349,9 @@ export class Script {
       const ds = b <= 20 ? Array.from({ length: b }, (_, i) => i) : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 19, 20, 30, 40, 50, 59];
       return [...ds.map((d) => ({ label: `${d}`, glyph: this.digit(d) })), row(b), row(b + 1), row(b * b)];
     }
-    if (nm.kind === 'multiplicative') return [...Array.from({ length: Math.min(b, 10) - 1 }, (_, i) => row(i + 1)), ...(b > 10 ? [row(10)] : []), row(b), row(b * b), row(b ** 3), row(3 * b + 4)];
+    if (nm.kind === 'multiplicative') return [...Array.from({ length: Math.min(b, 10) - 1 }, (_, i) => row(i + 1)), ...(b > 10 ? [row(10)] : []), row(b), row(b * b), row(DMath.pow(b, 3)), row(3 * b + 4)];
     const G = this.addGroup;
-    return [row(1), row(G), row(b), row(G * b), row(b * b), row(G * b * b), row(b ** 3)];
+    return [row(1), row(G), row(b), row(G * b), row(b * b), row(G * b * b), row(DMath.pow(b, 3))];
   }
 
   // ---- Writing words -----------------------------------------------------------------------------
@@ -1734,7 +1735,7 @@ export class Script {
       case 'wedge': {
         // A wedge: a triangular head and a tail, pressed at an angle (in one of two ductus).
         const wedge = (x: number, y: number, ang: number, len: number): Prim[] => {
-          const c = Math.cos(ang), s2 = Math.sin(ang), hw = 5 * u;
+          const c = DMath.cos(ang), s2 = DMath.sin(ang), hw = 5 * u;
           return [P_(x - s2 * hw, y + c * hw, x + s2 * hw, y - c * hw, x + c * hw * 1.6, y + s2 * hw * 1.6), L_(x, y, x + c * len, y + s2 * len)];
         };
         const tilt = r() < 0.5 ? Math.PI / 4 : -Math.PI / 6;
@@ -1924,7 +1925,7 @@ export function ringText(sc: Script, text: string, radius = 40, ink = sc.info.in
   const parts: string[] = [];
   gl.forEach((g, i) => {
     const t = -Math.PI / 2 + ((i + 0.5) / Math.max(10, gl.length)) * Math.PI * 2;
-    const gx = 50 + Math.cos(t) * radius - (g.w * k) / 2, gy = 50 + Math.sin(t) * radius - 50 * k;
+    const gx = 50 + DMath.cos(t) * radius - (g.w * k) / 2, gy = 50 + DMath.sin(t) * radius - 50 * k;
     for (const q of g.prims) parts.push(primSvg(q, gx, gy, k));
   });
   return `<g fill="none" stroke="${ink}" stroke-width="0.9" stroke-linecap="round" stroke-linejoin="round">${parts.join('').replace(/class="f"/g, `fill="${ink}" stroke="none"`)}</g>`;
@@ -2053,9 +2054,9 @@ export function sigilSvg(sc: Script, name: string, size = 140): string {
     const ring = h % 3, k = (h >>> 3) % 9;
     const a = -Math.PI / 2 + (k / 8) * Math.PI;
     const rr = R * [0.35, 0.7, 1][ring];
-    return [cx + Math.cos(a) * rr, cy + Math.sin(a) * rr];
+    return [cx + DMath.cos(a) * rr, cy + DMath.sin(a) * rr];
   };
-  const pts = (letters.length > 1 ? letters : [...letters, 'n', 'a']).map(at).filter((p, i, a) => i === 0 || Math.hypot(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1);
+  const pts = (letters.length > 1 ? letters : [...letters, 'n', 'a']).map(at).filter((p, i, a) => i === 0 || DMath.hypot2(p[0] - a[i - 1][0], p[1] - a[i - 1][1]) > 1);
   if (pts.length < 2) pts.push([cx, cy + R]);
   const hn = hashString(`${sc.seed}:sigil:${name}`);
   const rnd = mulberry32(hn);
@@ -2083,8 +2084,8 @@ export function sigilSvg(sc: Script, name: string, size = 140): string {
     parts.push(`<circle cx="${sx.toFixed(1)}" cy="${sy.toFixed(1)}" r="${(size * 0.028).toFixed(1)}"/>`);
     const [ex, ey] = ps[ps.length - 1];
     const [px, py] = ps[ps.length - 2];
-    const a = Math.atan2(ey - py, ex - px) + Math.PI / 2, b = size * 0.04;
-    if (bar) parts.push(`<path d="M${f(ex + Math.cos(a) * b)},${f(ey + Math.sin(a) * b)}L${f(ex - Math.cos(a) * b)},${f(ey - Math.sin(a) * b)}"/>`);
+    const a = DMath.atan2(ey - py, ex - px) + Math.PI / 2, b = size * 0.04;
+    if (bar) parts.push(`<path d="M${f(ex + DMath.cos(a) * b)},${f(ey + DMath.sin(a) * b)}L${f(ex - DMath.cos(a) * b)},${f(ey - DMath.sin(a) * b)}"/>`);
     else parts.push(`<circle cx="${f(ex)}" cy="${f(ey)}" r="${f(size * 0.03)}"/>`);
   }
   parts.push(`<path d="M${cx},${(cy - R - size * 0.05).toFixed(1)}V${(cy + R + size * 0.05).toFixed(1)}" stroke-width="1" stroke-dasharray="2 3"/>`);
@@ -2093,7 +2094,7 @@ export function sigilSvg(sc: Script, name: string, size = 140): string {
   const k = size / 1000;
   gl.forEach((g, i) => {
     const t = -Math.PI / 2 + ((i + 0.5) / Math.max(6, gl.length)) * Math.PI * 2;
-    const gx = cx + Math.cos(t) * (R + size * 0.1) - (g.w * k) / 2, gy = cy + Math.sin(t) * (R + size * 0.1) - 50 * k;
+    const gx = cx + DMath.cos(t) * (R + size * 0.1) - (g.w * k) / 2, gy = cy + DMath.sin(t) * (R + size * 0.1) - 50 * k;
     for (const q of g.prims) parts.push(primSvg(q, gx, gy, k).replace(/^<(path|circle)/, '<$1 stroke-width="1"'));
   });
   return `<svg xmlns="http://www.w3.org/2000/svg" width="${size}" height="${size}" viewBox="0 0 ${size} ${size}"><g fill="none" stroke="${ink}" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">${parts.join('')}</g><style>.f{fill:${ink};stroke:none}</style></svg>`;

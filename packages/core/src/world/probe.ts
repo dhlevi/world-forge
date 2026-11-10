@@ -4,6 +4,7 @@ import { DEEP_LABEL } from '../gen/underworld';
 import { KOPPEN_CLASSES } from '../gen/koppen';
 import { CLIMATE } from '../gen/config';
 import type { RasterWorld } from '../gen/world';
+import { DMath } from '../dmath';
 
 export interface ProbeInfo {
   /** The town or city under the cursor, with its layout (set by the map view). */
@@ -33,21 +34,21 @@ export interface ProbeInfo {
 const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 function describeWind(u: number, v: number): string {
-  const speed = Math.hypot(u, v);
+  const speed = DMath.hypot2(u, v);
   if (speed < 0.1) return 'Calm';
   // Winds are named for the direction they blow from.
-  const from = (Math.atan2(-u, -v) * 180) / Math.PI;
+  const from = (DMath.atan2(-u, -v) * 180) / Math.PI;
   const dir = COMPASS[Math.round((((from % 360) + 360) % 360) / 45) % 8];
   return `${speed < 0.4 ? 'Light' : speed < 0.75 ? 'Moderate' : 'Steady'} from ${dir}`;
 }
 
 function describeCurrent(u: number, v: number, anomaly: number): string {
-  const speed = Math.hypot(u, v);
+  const speed = DMath.hypot2(u, v);
   const temp = anomaly > 1 ? 'warm' : anomaly < -1 ? 'cold' : 'mild';
   const sign = anomaly >= 0 ? '+' : '';
   if (speed < 0.1) return `slack, ${temp} (${sign}${anomaly.toFixed(1)} °C)`;
   // Currents are named for the direction they flow toward.
-  const to = (Math.atan2(u, v) * 180) / Math.PI;
+  const to = (DMath.atan2(u, v) * 180) / Math.PI;
   const dir = COMPASS[Math.round((((to % 360) + 360) % 360) / 45) % 8];
   return `${temp}, flowing ${dir} (${sign}${anomaly.toFixed(1)} °C)`;
 }
@@ -98,7 +99,7 @@ export function probeWorld(w: RasterWorld, lon: number, lat: number): ProbeInfo 
   if (v && h > 0) {
     for (let k = 0; k < v.length; k += 4) {
       const dlo = ((((v[k] - wrapped) % 360) + 540) % 360) - 180;
-      const d = Math.hypot(dlo * 111.2 * Math.cos((lat * Math.PI) / 180), (v[k + 1] - lat) * 111.2);
+      const d = DMath.hypot2(dlo * 111.2 * DMath.cos((lat * Math.PI) / 180), (v[k + 1] - lat) * 111.2);
       if (d < 150) {
         terrain += ` · ${['extinct', 'dormant', 'active'][v[k + 3]]} volcano ${Math.round(d)} km away`;
         break;

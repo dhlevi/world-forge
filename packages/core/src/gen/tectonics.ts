@@ -3,6 +3,7 @@ import { MinHeap } from './heap';
 import { Simplex3, fbm, ridged } from './noise';
 import { type Rng, hash32, randomUnitVector } from './rng';
 import { TECTONICS as T } from './config';
+import { DMath } from '../dmath';
 
 export interface TectonicResult {
   /** Elevation in metres, before sea level is normalised. */
@@ -16,7 +17,7 @@ export interface TectonicResult {
   volcanic: Float32Array;
 }
 
-const gauss = (u: number) => Math.exp(-u * u);
+const gauss = (u: number) => DMath.exp(-u * u);
 
 /**
  * Builds a heightfield from a simple plate model:
@@ -54,7 +55,7 @@ export function buildTectonics(g: Grid, rng: Rng, numPlates: number, landFractio
       const qx = x + T.plateWarp * fbm(warpX, x * f, y * f, z * f, 4);
       const qy = y + T.plateWarp * fbm(warpY, x * f, y * f, z * f, 4);
       const qz = z + T.plateWarp * fbm(warpZ, x * f, y * f, z * f, 4);
-      const qn = 1 / Math.hypot(qx, qy, qz);
+      const qn = 1 / DMath.hypot(qx, qy, qz);
       let best = 0, bestScore = Infinity;
       for (let k = 0; k < P; k++) {
         const s = (1 - (qx * sx[k] + qy * sy[k] + qz * sz[k]) * qn) * wInv[k];
@@ -130,7 +131,7 @@ export function buildTectonics(g: Grid, rng: Rng, numPlates: number, landFractio
         let tx = g.cosLat[nj] * g.cosLon[ni] - x;
         let ty = g.cosLat[nj] * g.sinLon[ni] - y;
         let tz = g.sinLat[nj] - z;
-        const tl = 1 / Math.hypot(tx, ty, tz);
+        const tl = 1 / DMath.hypot(tx, ty, tz);
         tx *= tl; ty *= tl; tz *= tl;
         // Surface velocity v = omega × p.
         const rvx = (oy[a] - oy[b]) * z - (oz[a] - oz[b]) * y;
@@ -326,8 +327,8 @@ function suturedRange(su: Sutures, warp: Simplex3, seg: Simplex3, x: number, y: 
   const amp = su.amp[i1 * su.sx.length + i2];
   if (amp === 0) return 0;
   const nx = su.sx[i1] - su.sx[i2], ny = su.sy[i1] - su.sy[i2], nz = su.sz[i1] - su.sz[i2];
-  const qn = Math.hypot(qx, qy, qz);
-  const distKm = (Math.abs(qx * nx + qy * ny + qz * nz) / (Math.hypot(nx, ny, nz) * qn)) * EARTH_RADIUS_KM;
+  const qn = DMath.hypot(qx, qy, qz);
+  const distKm = (Math.abs(qx * nx + qy * ny + qz * nz) / (DMath.hypot(nx, ny, nz) * qn)) * EARTH_RADIUS_KM;
   if (distKm > 3 * T.sutureWidthKm) return 0;
   const sf = T.rangeSegmentFreq;
   const segment = smoothstep(-0.15, 0.35, seg.noise(x * sf + 40, y * sf, z * sf));

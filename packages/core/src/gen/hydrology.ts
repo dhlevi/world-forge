@@ -1,6 +1,7 @@
 import { type Grid, neighbor } from './grid';
 import { MinHeap } from './heap';
 import { EROSION } from './config';
+import { DMath } from '../dmath';
 
 export interface FlowRouting {
   /** Land cells (plus coastal outlets) ordered from outlet upstream; receivers precede donors. */
@@ -149,7 +150,7 @@ export function erode(g: Grid, h: Float32Array, precip: Float32Array, strength: 
       if (r === c) continue;
       const base = h[r] > 0 ? h[r] : 0;
       if (h[c] <= base) continue;
-      const F = (K * Math.pow(acc[c], EROSION.m)) / recvDist[c];
+      const F = (K * DMath.pow(acc[c], EROSION.m)) / recvDist[c];
       h[c] = (h[c] + F * base) / (1 + F);
     }
   }

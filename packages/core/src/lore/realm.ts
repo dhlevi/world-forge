@@ -11,6 +11,8 @@ import { type Faith, type Sect, toleranceOf } from './faiths';
 import type { LabelFeature } from '../gen/features';
 import { COURT, cultureFolk, cultureId, cultureLabel, epithet, familyFirst, givenName, type House, houseName, personName, roman, traits } from './names';
 import { buildWorldLore, type Claim, type Relation, type War, type WorldLore } from './world';
+import { DMath } from '../dmath';
+import { thousands } from '../format';
 
 /**
  * Everything the realm details window shows, for a unit of any tier: its rulers and their houses,
@@ -247,7 +249,7 @@ function reignsOf(c: Ctx, id: number): Reign[] {
     while (t < Y) {
       const cur = dyn[k];
       const change = k + 1 < dyn.length ? dyn[k + 1].from : Infinity;
-      let len = 2 + Math.floor(r() ** 1.15 * 40);
+      let len = 2 + Math.floor(DMath.pow(r(), 1.15) * 40);
       let end = t + len;
       let endText = '';
       let nextHow = '';
@@ -804,8 +806,8 @@ function buildChronicle(c: Ctx, id: number, reigns: Reign[], wars: WarView[], r:
 
 export function fmtPeople(n: number): string {
   if (n >= 1e6) return `${(n / 1e6).toFixed(n >= 1e7 ? 0 : 1)} million`;
-  if (n >= 1e4) return (Math.round(n / 1000) * 1000).toLocaleString('en');
-  return (Math.round(n / 10) * 10).toLocaleString('en');
+  if (n >= 1e4) return thousands(Math.round(n / 1000) * 1000);
+  return thousands(Math.round(n / 10) * 10);
 }
 
 export function listAnd(a: string[]): string {

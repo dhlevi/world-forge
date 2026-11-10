@@ -1,6 +1,7 @@
 import { hashString, mulberry32 } from '../gen/rng';
 import { type Pt, area, roundPoly } from './geom';
 import type { LocalFrame, PlanFeature } from './plan';
+import { DMath } from '../dmath';
 
 /**
  * Elven tree towns: an elvish town or village in the forest builds its houses among great trees.
@@ -27,12 +28,12 @@ function crown(c: Pt, r: number, seed: number): Pt[] {
   const n = 14;
   for (let i = 0; i < n; i++) {
     const t = (i / n) * Math.PI * 2;
-    const wob = 1 + 0.1 * Math.sin(t * 3 + seed) + 0.06 * Math.cos(t * 5 + seed * 1.7);
-    out.push([c[0] + Math.cos(t) * r * wob, c[1] + Math.sin(t) * r * wob]);
+    const wob = 1 + 0.1 * DMath.sin(t * 3 + seed) + 0.06 * DMath.cos(t * 5 + seed * 1.7);
+    out.push([c[0] + DMath.cos(t) * r * wob, c[1] + DMath.sin(t) * r * wob]);
   }
   return out;
 }
-const ring = (c: Pt, r: number, n = 12): Pt[] => Array.from({ length: n }, (_, i) => [c[0] + Math.cos((i / n) * Math.PI * 2) * r, c[1] + Math.sin((i / n) * Math.PI * 2) * r] as Pt);
+const ring = (c: Pt, r: number, n = 12): Pt[] => Array.from({ length: n }, (_, i) => [c[0] + DMath.cos((i / n) * Math.PI * 2) * r, c[1] + DMath.sin((i / n) * Math.PI * 2) * r] as Pt);
 
 /** Turns the houses of a finished plan into tree homes and treetop houses (in place). */
 export function treeTown(features: PlanFeature[], frame: LocalFrame, mode: TreeMode, tier: string, ppm20: number): void {
@@ -89,16 +90,16 @@ export function treeTown(features: PlanFeature[], frame: LocalFrame, mode: TreeM
   const seen = new Set<string>();
   const reach = 38;
   tops.forEach((t, i) => {
-    const near = tops.map((u, j) => ({ j, d: Math.hypot(u.c[0] - t.c[0], u.c[1] - t.c[1]) })).filter((x) => x.j !== i && x.d < reach).sort((a, b) => a.d - b.d).slice(0, 2);
+    const near = tops.map((u, j) => ({ j, d: DMath.hypot2(u.c[0] - t.c[0], u.c[1] - t.c[1]) })).filter((x) => x.j !== i && x.d < reach).sort((a, b) => a.d - b.d).slice(0, 2);
     for (const { j } of near) {
       const key = i < j ? `${i},${j}` : `${j},${i}`;
       if (seen.has(key)) continue;
       seen.add(key);
       const u = tops[j];
-      const dx = u.c[0] - t.c[0], dy = u.c[1] - t.c[1], L = Math.hypot(dx, dy) || 1;
+      const dx = u.c[0] - t.c[0], dy = u.c[1] - t.c[1], L = DMath.hypot2(dx, dy) || 1;
       const a: Pt = [t.c[0] + (dx / L) * t.r * 0.9, t.c[1] + (dy / L) * t.r * 0.9];
       const b: Pt = [u.c[0] - (dx / L) * u.r * 0.9, u.c[1] - (dy / L) * u.r * 0.9];
-      if (Math.hypot(b[0] - a[0], b[1] - a[1]) < 1) continue;
+      if (DMath.hypot2(b[0] - a[0], b[1] - a[1]) < 1) continue;
       add.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: [frame.toLL(a), frame.toLL(b)] }, properties: { kind: 'walkway', ppm20, za: t.z, zb: u.z } });
     }
   });

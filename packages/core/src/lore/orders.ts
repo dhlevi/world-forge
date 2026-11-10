@@ -1,4 +1,4 @@
-import { hashString, mulberry32, type Rng } from '../gen/rng';
+import { hashString, mulberry32, type Rng, shuffle, sortByKey } from '../gen/rng';
 import type { LabelFeature } from '../gen/features';
 import type { CurseHeart } from '../gen/special';
 import type { Underworld } from '../gen/underworld';
@@ -8,6 +8,7 @@ import { namePhrase, type Named } from '../names/names';
 import { fantasyRaces } from '../names/world-cultures';
 import { cultureFolk, personName } from './names';
 import { type Ctx, realmDetails } from './realm';
+import { DMath } from '../dmath';
 
 /**
  * The world's organisations: monster-hunter schools, assassins' brotherhoods, knightly orders, a
@@ -110,7 +111,7 @@ const cap = (t: string) => t.charAt(0).toUpperCase() + t.slice(1);
 const the = (n: string) => (/^the /i.test(n) || !/ of /.test(n) ? n : `the ${n}`);
 const distKm = (a: number, b: number, c: number, d: number) => {
   const dl = ((((c - a) % 360) + 540) % 360) - 180;
-  return Math.hypot(dl * 111.32 * Math.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
+  return DMath.hypot2(dl * 111.32 * DMath.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
 };
 
 // ---- Names, ranks, notes ------------------------------------------------------------------------
@@ -216,7 +217,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
   };
   /** A cast of members of mostly one people, now and then another. */
   const cast = (r: Rng, kind: OrderKind, ci: number, n: number, others: number[], femaleP = 0.3): OrderMember[] => {
-    const notes = NOTES[kind].slice().sort(() => r() - 0.5);
+    const notes = shuffle(NOTES[kind].slice(), r);
     return Array.from({ length: n }, (_, k) => member(r, others.length && r() < 0.3 ? pick(r, others) : ci, RANKS[kind][k % RANKS[kind].length] ?? 'member', notes[k % notes.length], femaleP));
   };
   const make = (kind: OrderKind, k: number, base: Omit<Partial<Order>, 'name'> & { name: Named; culture: number; seat: OrderSeat; about: string; secret?: boolean }, r: Rng, femaleP = 0.3): Order => {
@@ -237,7 +238,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
   const holdSite = (r: Rng, lon: number, lat: number, km: number): [number, number] => {
     for (let t = 0; t < 24; t++) {
       const a = r() * Math.PI * 2, d = (t < 12 ? 0.5 : 1) * (km * (0.3 + 0.7 * r()));
-      const x = lon + (Math.cos(a) * d) / (111.32 * Math.max(0.1, Math.cos((lat * Math.PI) / 180))), y = lat + (Math.sin(a) * d) / 110.57;
+      const x = lon + (DMath.cos(a) * d) / (111.32 * Math.max(0.1, DMath.cos((lat * Math.PI) / 180))), y = lat + (DMath.sin(a) * d) / 110.57;
       if (topAt(x, y) >= 0 && farFromTowns(x, y, 20)) return [x, y];
     }
     return [lon, lat];
@@ -257,7 +258,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
     const wild = feats(['mountains', 'forest', 'hills']).filter((f) => { const [x, y] = ptOf(f); return oldRealm(topAt(x, y)); });
     const n = Math.min(wild.length, Math.max(2, Math.min(5, Math.round(cities.length / 90))));
     const r0 = rng('hunters', 0);
-    const picks = wild.slice().sort(() => r0() - 0.5);
+    const picks = shuffle(wild.slice(), r0);
     for (let k = 0, q = 0; k < n && q < picks.length; q++) {
       const f = picks[q];
       const [x0, y0] = ptOf(f);
@@ -279,7 +280,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
         contracts.push({ title: `${cap(nd.horror!)}`, text: `Something called ${nd.horror} stirs in ${nd.name}, far below; the deep peoples will pay any price to see it gone.`, status: 'open, and refused by every hunter so far', lon: nd.lon, lat: nd.lat });
       }
       const fs = feats(['forest', 'mountains', 'hills', 'marsh']).filter((g) => { const [x, y] = ptOf(g); return distKm(lon, lat, x, y) < 700; });
-      const fsl = fs.slice().sort(() => r() - 0.5), nearl = near.slice().sort(() => r() - 0.5);
+      const fsl = shuffle(fs.slice(), r), nearl = shuffle(near.slice(), r);
       for (let t = 0; t < 4 && fsl.length && nearl.length; t++) {
         const g = fsl[t % fsl.length], town = nearl[t % nearl.length];
         const [gx, gy] = ptOf(g);
@@ -424,7 +425,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
           where = `near ${seatU.seatName}`;
         }
       }
-      for (const pw of L.wars.filter((x) => x.end !== undefined).sort(() => r() - 0.5).slice(0, 2)) {
+      for (const pw of shuffle(L.wars.filter((x) => x.end !== undefined), r).slice(0, 2)) {
         contracts.push({ title: pw.name, text: r() < 0.3 ? `Deserted ${realmName(pw.attackers[0])} for better pay from ${realmName(pw.defenders[0])}.` : `Fought for ${realmName(r() < 0.5 ? pw.attackers[0] : pw.defenders[0])}.`, status: `${pw.start}–${pw.end}` });
       }
       const [lon, lat] = holdSite(r, camp[0], camp[1], 30);
@@ -434,7 +435,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
         name, culture: ci, seat: seatOk ? { kind: 'hold', hold: 'camp', name: `the camp of ${name.en.replace(/^the /, 'the ')}`, lon, lat, where } : { kind: 'city', name: home.name ?? '', lon: home.lon, lat: home.lat, sid: home.id },
         about: 'A free company of soldiers for hire, under its own banner and its own law. It fights for whoever pays, keeps its contracts to the letter, and winters in a camp of its own when there is no war to be had.',
         chapters: [{ sid: home.id, city: home.name ?? '', house: `the recruiting house of ${name.en}` }],
-        members: cast(r, 'mercenaries', ci, 5 + Math.floor(r() * 2), CULTURES.map((_, q) => q).filter((q) => !CULTURES[q].deep).sort(() => r() - 0.5).slice(0, 4), 0.2), contracts,
+        members: cast(r, 'mercenaries', ci, 5 + Math.floor(r() * 2), shuffle(CULTURES.map((_, q) => q).filter((q) => !CULTURES[q].deep), r).slice(0, 4), 0.2), contracts,
       }, r, 0.15));
     }
   }
@@ -489,7 +490,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
   {
     const forests = feats(['forest']).filter((f) => { const [x, y] = ptOf(f); return oldRealm(topAt(x, y)); });
     const r0 = rng('druids', 0);
-    const picks = forests.slice().sort((a, b) => a.properties.rank - b.properties.rank || r0() - 0.5).slice(0, Math.min(3, forests.length));
+    const picks = sortByKey(forests.slice(), (a) => a.properties.rank + r0() * 0.5).slice(0, Math.min(3, forests.length));
     picks.forEach((f, k) => {
       const r = rng('druids', k + 1);
       const [x0, y0] = ptOf(f);
@@ -547,7 +548,7 @@ export function worldOrders(c: Ctx, inp: OrderInputs): Order[] {
       const contracts: OrderContract[] = [];
       const peak = feats(['peak']).sort((a, b) => a.properties.rank - b.properties.rank)[0];
       if (peak) contracts.push({ title: `The summit of ${plain(peak.properties.name)}`, text: `An expedition to climb ${plain(peak.properties.name)}, which no one has stood on.`, status: pick(r, ['planned', 'under way', 'failed, with loss of life']), lon: ptOf(peak)[0], lat: ptOf(peak)[1] });
-      const nw = settlements.filter((x) => x.colony).sort(() => r() - 0.5)[0];
+      const nw = shuffle(settlements.filter((x) => x.colony), r)[0];
       if (nw) contracts.push({ title: `Beyond ${nw.name}`, text: `An expedition inland from the colony at ${nw.name}, into country no map shows.`, status: pick(r, ['planned', 'under way', 'overdue']), lon: nw.lon, lat: nw.lat });
       const ab = (inp.underworld?.nodes ?? []).find((x) => x.kind === 'abyss' || x.kind === 'sea');
       if (ab) contracts.push({ title: ab.name, text: `An expedition into the deep, to ${ab.name}, whose depth no one has sounded.`, status: 'planned', lon: ab.lon, lat: ab.lat });

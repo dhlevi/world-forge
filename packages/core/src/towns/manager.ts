@@ -25,6 +25,8 @@ import { chaptersIn, type Order, worldOrders } from '../lore/orders';
 import { type NaturalShrine, type WorldThemes, worldThemes } from '../lore/themes';
 import { CULTURES } from '../names/cultures';
 import { BUNDLE } from '../names/bundles';
+import { DMath } from '../dmath';
+import { thousands } from '../format';
 
 /** Zoom from which regional villages are generated, and town / village plans. */
 export const VILLAGE_ZOOM = 7.5;
@@ -97,7 +99,7 @@ class PointIndex<T> {
   forEach(lon: number, lat: number, km: number, cb: (v: T, d: number, lon: number, lat: number) => void): void {
     const dLat = km / 111.2;
     const maxLat = Math.min(89, Math.abs(lat) + dLat);
-    const dLon = Math.min(180, km / (111.2 * Math.cos((maxLat * Math.PI) / 180)));
+    const dLon = Math.min(180, km / (111.2 * DMath.cos((maxLat * Math.PI) / 180)));
     const iy0 = Math.floor((lat - dLat + 90) / this.cellDeg), iy1 = Math.floor((lat + dLat + 90) / this.cellDeg);
     const lonW = wrapLon(lon);
     const ix0 = Math.floor((lonW - dLon + 180) / this.cellDeg), ix1 = Math.min(ix0 + this.nX - 1, Math.floor((lonW + dLon + 180) / this.cellDeg));
@@ -202,7 +204,7 @@ function clearRoads(out: PlanOut, frame: LocalFrame): void {
   const segDist = (p: Pt, a: Pt, b: Pt) => {
     const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
     const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
-    return Math.hypot(a[0] + dx * t - p[0], a[1] + dy * t - p[1]);
+    return DMath.hypot2(a[0] + dx * t - p[0], a[1] + dy * t - p[1]);
   };
   const inside = (q: Pt[], x: number, y: number) => {
     let r = false;
@@ -374,7 +376,7 @@ export class TownManager {
     const cLon = (b.west + b.east) / 2, cLat = (b.south + b.north) / 2;
     const want: Settlement[] = [];
     const inView = (s: Settlement) => {
-      const padLat = s.radiusM / 111200, padLon = padLat / Math.max(0.05, Math.cos((s.lat * Math.PI) / 180));
+      const padLat = s.radiusM / 111200, padLon = padLat / Math.max(0.05, DMath.cos((s.lat * Math.PI) / 180));
       const lon = wrapLon(s.lon - cLon) + cLon;
       return lon + padLon > b.west && lon - padLon < b.east && s.lat + padLat > b.south && s.lat - padLat < b.north;
     };
@@ -474,8 +476,8 @@ export class TownManager {
       const key = this.blockKey(bx + 180, by + 90);
       const blk = this.blocks.get(key) ?? this.generateBlock(wrapLon(bx + 0.5) - 0.5, by, key, false);
       for (const v of blk.villages) {
-        const info = v.army ? `${v.population.toLocaleString('en')} soldiers of ${v.army.realm}` : v.shrine ? `holy to ${v.shrine.faith}`
-          : v.abandoned ? `${v.abandoned.cause} · ${v.abandoned.ago}` : `${v.population.toLocaleString('en')} people`;
+        const info = v.army ? `${thousands(v.population)} soldiers of ${v.army.realm}` : v.shrine ? `holy to ${v.shrine.faith}`
+          : v.abandoned ? `${v.abandoned.cause} · ${v.abandoned.ago}` : `${thousands(v.population)} people`;
         entries.push({ id: v.id, name: v.name ?? '', tier: 'village', kind: v.kind ?? 'farming', lon: v.lon, lat: v.lat, info, ...(v.nameEn && v.nameEn !== v.name ? { en: v.nameEn } : {}) });
       }
       for (const l of blk.lairs) entries.push({ id: l.id, name: l.name, tier: 'lair', kind: l.kind, lon: l.lon, lat: l.lat, info: l.tags.join(' · '), ...(l.en && l.en !== l.name ? { en: l.en } : {}) });
@@ -538,7 +540,7 @@ export class TownManager {
     const { W, H } = raster;
     const seed = hash32(hashString(raster.seed) ^ Math.imul(key + 1, 0x9e3779b1));
     const nLat = Math.max(1, Math.round(111.2 / S.villageSpacingKm));
-    const nLon = Math.max(1, Math.round((111.2 * Math.cos(((lat0 + 0.5) * Math.PI) / 180)) / S.villageSpacingKm));
+    const nLon = Math.max(1, Math.round((111.2 * DMath.cos(((lat0 + 0.5) * Math.PI) / 180)) / S.villageSpacingKm));
     const villages: Settlement[] = [];
     const tracks: RoadFeature[] = [];
     // Names given out in this block: neighbours never share one (later ones draw again).
@@ -567,7 +569,7 @@ export class TownManager {
         const c = cellOf(lon, lat);
         if (raster.lakeDepth[c] > 0) continue;
         const dKm = 111.2 * (180 / H);
-        const dLon = 180 / H / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+        const dLon = 180 / H / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
         const gx = (sample(raster.height, lon + dLon, lat) - sample(raster.height, lon - dLon, lat)) / (2 * dKm);
         const gy = (sample(raster.height, lon, lat + 180 / H) - sample(raster.height, lon, lat - 180 / H)) / (2 * dKm);
         const tMean = sample(raster.tempSea, lon, lat) - LAPSE * Math.max(0, h);
@@ -576,7 +578,7 @@ export class TownManager {
         // Few live in ash lands or on lava, none on the glaciers (gen/special.ts); miners go to the volcanoes and canyons.
         const spv = raster.special?.[c] ?? 0;
         if (spv === 3 || spv === 9 || ((spv === 1 || spv === 2) && rr(13) < 0.8)) continue;
-        const base = habitability(tMean, tWarm, sample(raster.precip, lon, lat), h, Math.hypot(gx, gy), biome);
+        const base = habitability(tMean, tWarm, sample(raster.precip, lon, lat), h, DMath.hypot2(gx, gy), biome);
         const road = this.roadPts.nearest(lon, lat, S.villageLinkKm);
         const riverHit = this.sampler.riverBank(lon, lat, 12000);
         const river = riverHit ? { d: Math.max(0, riverHit.bankM) / 1000 } : null;
@@ -584,8 +586,8 @@ export class TownManager {
         const mountain = biome === Biome.IceSheet ? 0 : smoothstep(800, 2000, h) * smoothstep(-2, 6, tWarm);
         // Sea or lake within ~8 km (coarse grid test; the fine shoreline is found later).
         const coastal = [3, 6, 8].some((km) => [0, 1, 2, 3, 4, 5, 6, 7].some((q) => {
-          const kLat = km / 111.2, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
-          const x = lon + Math.cos(q * 0.785) * kLon, y = lat + Math.sin(q * 0.785) * kLat;
+          const kLat = km / 111.2, kLon = kLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
+          const x = lon + DMath.cos(q * 0.785) * kLon, y = lat + DMath.sin(q * 0.785) * kLat;
           return sample(raster.height, x, y) < 20 || raster.lakeDepth[cellOf(x, y)] > 0;
         }));
         let kind: VillageKind;
@@ -602,14 +604,14 @@ export class TownManager {
         }
         if (nwCell && !colonial) {
           if (base <= 0) continue;
-          score = base * (1 + 0.4 * Math.exp(-(river?.d ?? 99) / 4)) * (coastal ? 1.3 : 1);
+          score = base * (1 + 0.4 * DMath.exp(-(river?.d ?? 99) / 4)) * (coastal ? 1.3 : 1);
           if (rr(3) > smoothstep(S.villageMinScore, S.villageMinScore + 0.5, score)) continue;
           kind = 'tribal';
         } else if (((mountain > 0 && rr(5) < 0.35 * mountain) || ((spv === 7 || spv === 5) && rr(14) < 0.3)) && (minePos = this.mineSite(lon, lat))) kind = 'mining';
         else if (FOREST_BIOMES.has(biome) && base > 0.05 && rr(5) < 0.3) kind = 'logging';
         else {
           if (base <= 0) continue;
-          score = base * (1 + 0.5 * Math.exp(-(road?.d ?? 99) / 6)) * (1 + 0.35 * Math.exp(-(river?.d ?? 99) / 4));
+          score = base * (1 + 0.5 * DMath.exp(-(road?.d ?? 99) / 6)) * (1 + 0.35 * DMath.exp(-(river?.d ?? 99) / 4));
           if (coastal) score *= 1.6;
           if (rr(3) > smoothstep(S.villageMinScore, S.villageMinScore + 0.5, score)) continue;
           kind = 'farming';
@@ -660,7 +662,7 @@ export class TownManager {
           const kp = raster.koppen[c];
           const med = kp === 7 || kp === 8;
           const warm = (kp === 13 || kp === 14 || kp === 16 || kp === 17 || kp === 24) && tWarm >= 19;
-          const hill = Math.hypot(gx, gy) > 0.015 ? 1.4 : 0.8;
+          const hill = DMath.hypot2(gx, gy) > 0.015 ? 1.4 : 0.8;
           if ((med || warm) && hash32(v.seed ^ 0x717e) / 4294967296 < (med ? 0.15 : 0.04) * hill) {
             v.kind = 'vineyard';
             const col = ['{0} Red', '{0} White', '{0} Gold', 'the Black of {0}'][hash32(v.seed ^ 0x717f) % 4];
@@ -700,11 +702,11 @@ export class TownManager {
       if (sh.feature === 'peak' || sh.feature === 'mountains') pos = this.bestNear(sh.lon, sh.lat, 3000, (_x, _y, hh, sl) => hh * 0.01 - 30 * Math.max(0, sl - 0.25));
       else if (sh.feature === 'lake') {
         // The label lies out on the water: the nearest shore, then level ground just above it.
-        const kmLon = kLat / Math.max(0.05, Math.cos((sh.lat * Math.PI) / 180));
+        const kmLon = kLat / Math.max(0.05, DMath.cos((sh.lat * Math.PI) / 180));
         let found: [number, number] | null = null;
         for (let d = 0.2; d <= 15 && !found; d += 0.2) {
           for (let q = 0; q < 24; q++) {
-            const x = sh.lon + Math.cos((q / 24) * 2 * Math.PI) * d * kmLon, y = sh.lat + Math.sin((q / 24) * 2 * Math.PI) * d * kLat;
+            const x = sh.lon + DMath.cos((q / 24) * 2 * Math.PI) * d * kmLon, y = sh.lat + DMath.sin((q / 24) * 2 * Math.PI) * d * kLat;
             if (!this.sampler.isWater(x, y)) {
               found = [x, y];
               break;
@@ -848,11 +850,11 @@ export class TownManager {
     for (const h of here) {
       const hk = h.key || h.role;
       const ang = (hashString(hk) % 360) * (Math.PI / 180), d = 60 + (hashString(hk) % 80);
-      const t: Pt = [c0[0] + Math.cos(ang) * d, c0[1] + Math.sin(ang) * d];
+      const t: Pt = [c0[0] + DMath.cos(ang) * d, c0[1] + DMath.sin(ang) * d];
       let best: (typeof cands)[number] | null = null, bd = Infinity;
       for (const x of cands) {
         if (used.has(x.f)) continue;
-        const dd = Math.hypot(x.c[0] - t[0], x.c[1] - t[1]);
+        const dd = DMath.hypot2(x.c[0] - t[0], x.c[1] - t[1]);
         if (dd < bd) {
           bd = dd;
           best = x;
@@ -921,7 +923,7 @@ export class TownManager {
       out[out.length - 1].town = v.id;
     }
     const nLat = Math.max(1, Math.round(111.2 / DUNGEON_SPACING_KM));
-    const nLon = Math.max(1, Math.round((111.2 * Math.cos(((lat0 + 0.5) * Math.PI) / 180)) / DUNGEON_SPACING_KM));
+    const nLon = Math.max(1, Math.round((111.2 * DMath.cos(((lat0 + 0.5) * Math.PI) / 180)) / DUNGEON_SPACING_KM));
     for (let a = 0; a < nLon; a++) {
       for (let b = 0; b < nLat; b++) {
         const h0 = hash32(seed ^ ((a * 71 + b + 9011) * 0x27d4eb2d));
@@ -1006,7 +1008,7 @@ export class TownManager {
     const { raster } = this.world;
     const out: LairSite[] = [];
     const nLat = Math.max(1, Math.round(111.2 / LAIR_SPACING_KM));
-    const nLon = Math.max(1, Math.round((111.2 * Math.cos(((lat0 + 0.5) * Math.PI) / 180)) / LAIR_SPACING_KM));
+    const nLon = Math.max(1, Math.round((111.2 * DMath.cos(((lat0 + 0.5) * Math.PI) / 180)) / LAIR_SPACING_KM));
     for (let a = 0; a < nLon; a++) {
       for (let b = 0; b < nLat; b++) {
         const h0 = hash32(seed ^ ((a * 53 + b + 7001) * 0x85ebca6b));
@@ -1214,7 +1216,7 @@ export class TownManager {
         }
         if (!top || p.h - lo0 < 300 || p.h - lo1 < 300) continue;
         const a = pts[k - 1], b = pts[k + 1];
-        const dir = Math.atan2(-(b.lat - a.lat), (b.lon - a.lon) * Math.cos((p.lat * Math.PI) / 180));
+        const dir = DMath.atan2(-(b.lat - a.lat), (b.lon - a.lon) * DMath.cos((p.lat * Math.PI) / 180));
         all.push({ lon: p.lon, lat: p.lat, h: p.h, dir });
       }
     }
@@ -1262,12 +1264,12 @@ export class TownManager {
     const FOREST = new Set<number>([Biome.BorealForest, Biome.TemperateForest, Biome.TemperateRainforest, Biome.TropicalDryForest, Biome.TropicalRainforest, Biome.MontaneForest]);
     const RAIN = new Set<number>([Biome.TemperateRainforest, Biome.TropicalRainforest]);
     let n = 0, forest = 0, rain = 0;
-    const cosL = Math.max(0.2, Math.cos((s.lat * Math.PI) / 180));
+    const cosL = Math.max(0.2, DMath.cos((s.lat * Math.PI) / 180));
     for (const rr of [0, 0.15, 0.3]) {
       const k = rr === 0 ? 1 : 12;
       for (let i = 0; i < k; i++) {
         const t = (i / k) * Math.PI * 2;
-        const b = biome[this.cell(s.lon + (Math.cos(t) * rr) / cosL, s.lat + Math.sin(t) * rr)];
+        const b = biome[this.cell(s.lon + (DMath.cos(t) * rr) / cosL, s.lat + DMath.sin(t) * rr)];
         n++;
         if (FOREST.has(b)) forest++;
         if (RAIN.has(b)) rain++;
@@ -1281,7 +1283,7 @@ export class TownManager {
     // Deep in the forest: all of it forest out to a wider ring as well.
     for (let i = 0; i < 16; i++) {
       const t = (i / 16) * Math.PI * 2;
-      if (!FOREST.has(biome[this.cell(s.lon + (Math.cos(t) * 0.65) / cosL, s.lat + Math.sin(t) * 0.65)])) return 'grove';
+      if (!FOREST.has(biome[this.cell(s.lon + (DMath.cos(t) * 0.65) / cosL, s.lat + DMath.sin(t) * 0.65)])) return 'grove';
     }
     return 'canopy';
   }
@@ -1322,16 +1324,16 @@ export class TownManager {
         let g: Pt = [0, 0], bd = Infinity;
         const want = 25 + rnd() * 20;
         const r = s.coreM * (0.45 + 0.15 * rnd());
-        const target: Pt | null = u.angle === undefined ? null : [Math.cos(u.angle) * r, Math.sin(u.angle) * r];
+        const target: Pt | null = u.angle === undefined ? null : [DMath.cos(u.angle) * r, DMath.sin(u.angle) * r];
         const clear = 1.4 * 100 * sewerScale(s.tier, s.population);
         for (const pass of [0, 1]) {
           for (const l of streets) {
             for (const p of l) {
               if (water(p)) continue;
               // First pass: away from the other sewers' maps; failing that, as far from them as can be.
-              const apart = mains.length ? Math.min(...mains.map((m) => Math.hypot(p[0] - m[0], p[1] - m[1]))) : Infinity;
+              const apart = mains.length ? Math.min(...mains.map((m) => DMath.hypot2(p[0] - m[0], p[1] - m[1]))) : Infinity;
               if (pass === 0 && apart < clear) continue;
-              const d = pass === 1 ? -apart : target ? Math.hypot(p[0] - target[0], p[1] - target[1]) : Math.abs(Math.hypot(p[0], p[1]) - want);
+              const d = pass === 1 ? -apart : target ? DMath.hypot2(p[0] - target[0], p[1] - target[1]) : Math.abs(DMath.hypot2(p[0], p[1]) - want);
               if (d < bd) {
                 bd = d;
                 g = p;
@@ -1352,7 +1354,7 @@ export class TownManager {
         for (const l of streets) {
           for (let q = 0; q + 1 < l.length; q++) {
             const a = l[q], b = l[q + 1];
-            const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 8));
+            const n = Math.max(1, Math.ceil(DMath.hypot2(b[0] - a[0], b[1] - a[1]) / 8));
             for (let t = 0; t <= n; t++) {
               const p: Pt = [a[0] + ((b[0] - a[0]) * t) / n, a[1] + ((b[1] - a[1]) * t) / n];
               if (Math.abs(p[0] - g[0]) < 42 * sc && Math.abs(p[1] - g[1]) < 30 * sc && !water(p)) cand.push(p);
@@ -1362,7 +1364,7 @@ export class TownManager {
         for (let t = 0; t < nGrates; t++) {
           let best: Pt | null = null, bd = 22 * sc;
           for (const p of cand) {
-            const d = Math.min(Math.hypot(p[0] - g[0], p[1] - g[1]), ...grates.map((q) => Math.hypot(p[0] - q[0], p[1] - q[1])));
+            const d = Math.min(DMath.hypot2(p[0] - g[0], p[1] - g[1]), ...grates.map((q) => DMath.hypot2(p[0] - q[0], p[1] - q[1])));
             if (d > bd) {
               bd = d;
               best = p;
@@ -1377,7 +1379,7 @@ export class TownManager {
           for (let k = 0; k < l.length; k++) {
             // Densify so clipping keeps the parts that cross the box.
             const a = l[k], b = l[k + 1] ?? l[k];
-            const n = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / 4));
+            const n = Math.max(1, Math.ceil(DMath.hypot2(b[0] - a[0], b[1] - a[1]) / 4));
             for (let q = 0; q < (k + 1 < l.length ? n : 1); q++) {
               const p: Pt = [a[0] + ((b[0] - a[0]) * q) / n, a[1] + ((b[1] - a[1]) * q) / n];
               if (box(p)) run.push([p[0] - g[0], p[1] - g[1]]);
@@ -1394,8 +1396,8 @@ export class TownManager {
         for (let r = 10; r <= 150 * sc && !outfall; r += 10) {
           for (let k = 0; k < 16; k++) {
             const a = (k / 16) * Math.PI * 2;
-            if (water([g[0] + Math.cos(a) * r, g[1] + Math.sin(a) * r])) {
-              outfall = `${Math.round(Math.cos(a) * r)},${Math.round(Math.sin(a) * r)}`;
+            if (water([g[0] + DMath.cos(a) * r, g[1] + DMath.sin(a) * r])) {
+              outfall = `${Math.round(DMath.cos(a) * r)},${Math.round(DMath.sin(a) * r)}`;
               break;
             }
           }
@@ -1425,12 +1427,12 @@ export class TownManager {
 
   /** The nearest dry land to a point, searched outward in rings up to `km`. */
   private landNear(lon: number, lat: number, km: number): [number, number] | null {
-    const kLat = 1 / 111.2, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const kLat = 1 / 111.2, kLon = kLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
     const ok = (x: number, y: number) => this.sampler.height(x, y, 0.02) > 0 && !this.sampler.isWater(x, y);
     if (ok(lon, lat)) return [lon, lat];
     for (let d = 0.5; d <= km; d += d < 4 ? 0.5 : 1.5) {
       for (let q = 0; q < 24; q++) {
-        const x = lon + Math.cos((q / 24) * 2 * Math.PI) * d * kLon, y = lat + Math.sin((q / 24) * 2 * Math.PI) * d * kLat;
+        const x = lon + DMath.cos((q / 24) * 2 * Math.PI) * d * kLon, y = lat + DMath.sin((q / 24) * 2 * Math.PI) * d * kLat;
         if (ok(x, y)) return [x, y];
       }
     }
@@ -1511,7 +1513,7 @@ export class TownManager {
     const add = (c: number, n: number, side: number, foe: number) => {
       const i = c % W, j = (c / W) | 0, ni = n % W, nj = (n / W) | 0;
       const lon = lonOf(i), lat = latOf(j);
-      const cosL = Math.max(0.1, Math.cos((lat * Math.PI) / 180));
+      const cosL = Math.max(0.1, DMath.cos((lat * Math.PI) / 180));
       const key = `${side}:${foe}:${Math.floor(lat / 0.36)}:${Math.floor((lon * cosL) / 0.36)}`;
       const b = bins.get(key) ?? bins.set(key, { side, foe, n: 0, lon: 0, lat: 0, dx: 0, dy: 0 }).get(key)!;
       b.n++;
@@ -1541,8 +1543,8 @@ export class TownManager {
       const h = hash32(hashString(`${raster.seed}#camp#${key}`));
       if (b.n < 2 || h / 4294967296 > 0.65) continue;
       // Back from the line, into the side's own land.
-      const lat0 = b.lat / b.n, lon0 = b.lon / b.n, l = Math.hypot(b.dx, b.dy) || 1;
-      const kLat = 8 / 111.2, kLon = kLat / Math.max(0.1, Math.cos((lat0 * Math.PI) / 180));
+      const lat0 = b.lat / b.n, lon0 = b.lon / b.n, l = DMath.hypot2(b.dx, b.dy) || 1;
+      const kLat = 8 / 111.2, kLon = kLat / Math.max(0.1, DMath.cos((lat0 * Math.PI) / 180));
       const lon = wrapLon(lon0 + (b.dx / l) * kLon), lat = lat0 - (b.dy / l) * kLat;
       const u = units[b.side];
       const realmBaronies = L.baronies(b.side).length;
@@ -1580,8 +1582,8 @@ export class TownManager {
 
   /** A point ~80 m back from the nearest sea or lake shore within 8 km, or null. */
   private shoreline(lon: number, lat: number): [number, number] | null {
-    const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
-    const at = (a: number, d: number): [number, number] => [lon + Math.cos(a) * d * kmLon, lat + Math.sin(a) * d * kmLat];
+    const kmLat = 1 / 111.2, kmLon = kmLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
+    const at = (a: number, d: number): [number, number] => [lon + DMath.cos(a) * d * kmLon, lat + DMath.sin(a) * d * kmLat];
     for (let d = 0.5; d <= 8; d += 0.5) {
       for (let q = 0; q < 16; q++) {
         const a = (q / 16) * 2 * Math.PI;
@@ -1597,23 +1599,23 @@ export class TownManager {
 
   /** Ground slope (m/m) over ~60 m, at full terrain detail (including carved river valleys). */
   private slopeAt(lon: number, lat: number, m = 60): number {
-    const d = m / 111200, dx = d / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const d = m / 111200, dx = d / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
     const h = (x: number, y: number) => this.sampler.height(x, y, 0.02);
-    return Math.hypot(h(lon + dx, lat) - h(lon - dx, lat), h(lon, lat + d) - h(lon, lat - d)) / (2 * m);
+    return DMath.hypot2(h(lon + dx, lat) - h(lon - dx, lat), h(lon, lat + d) - h(lon, lat - d)) / (2 * m);
   }
 
   /** The best-scoring dry point on rings out to radiusM (the centre included). */
   private bestNear(
     lon: number, lat: number, radiusM: number, score: (lon: number, lat: number, h: number, slope: number) => number,
   ): [number, number] {
-    const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
     let best: [number, number] = [lon, lat];
     let bestS = -Infinity;
     for (const f of [0, 0.5, 1]) {
       const n = f === 0 ? 1 : 8;
       for (let q = 0; q < n; q++) {
         const a = (q / 8) * 2 * Math.PI + f * 0.6;
-        const x = lon + Math.cos(a) * f * radiusM * kLon, y = lat + Math.sin(a) * f * radiusM * kLat;
+        const x = lon + DMath.cos(a) * f * radiusM * kLon, y = lat + DMath.sin(a) * f * radiusM * kLat;
         const hh = this.sampler.height(x, y, 0.02);
         if (hh <= 0 || this.sampler.isWater(x, y, hh)) continue;
         const sc = score(x, y, hh, this.slopeAt(x, y));
@@ -1631,12 +1633,12 @@ export class TownManager {
    * steepest rise, so the adits can climb the hillside. Null if there is no real relief.
    */
   private mineSite(lon: number, lat: number): [number, number] | null {
-    const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const kLat = 1 / 111200, kLon = kLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
     const rise = (x: number, y: number, hh: number) => {
       let r = 0;
       for (let q = 0; q < 8; q++) {
         const a = (q / 8) * 2 * Math.PI;
-        r = Math.max(r, this.sampler.height(x + Math.cos(a) * 400 * kLon, y + Math.sin(a) * 400 * kLat, 0.02) - hh);
+        r = Math.max(r, this.sampler.height(x + DMath.cos(a) * 400 * kLon, y + DMath.sin(a) * 400 * kLat, 0.02) - hh);
       }
       return r;
     };
@@ -1646,7 +1648,7 @@ export class TownManager {
       const n = f === 0 ? 1 : 8;
       for (let q = 0; q < n; q++) {
         const a = (q / 8) * 2 * Math.PI + f;
-        const x = lon + Math.cos(a) * f * 1500 * kLon, y = lat + Math.sin(a) * f * 1500 * kLat;
+        const x = lon + DMath.cos(a) * f * 1500 * kLon, y = lat + DMath.sin(a) * f * 1500 * kLat;
         const hh = this.sampler.height(x, y, 0.02);
         if (hh <= 0 || this.sampler.isWater(x, y, hh)) continue;
         const sc = rise(x, y, hh) - 400 * Math.max(0, this.slopeAt(x, y) - 0.25);
@@ -1661,25 +1663,25 @@ export class TownManager {
 
   /** Noticeably higher than the ground 3 km around (a hill or spur worth fortifying). */
   private isHighGround(lon: number, lat: number): boolean {
-    const kmLat = 3 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const kmLat = 3 / 111.2, kmLon = kmLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
     const hc = this.sampler.height(lon, lat, 0.05);
     let sum = 0;
     for (let q = 0; q < 8; q++) {
       const a = (q / 8) * 2 * Math.PI;
-      sum += this.sampler.height(lon + Math.cos(a) * kmLon, lat + Math.sin(a) * kmLat, 0.05);
+      sum += this.sampler.height(lon + DMath.cos(a) * kmLon, lat + DMath.sin(a) * kmLat, 0.05);
     }
     return hc - sum / 8 > 12;
   }
 
   /** Hill-climbs to the local summit in 250 m steps. */
   private climb(lon: number, lat: number): [number, number] {
-    const kmLat = 0.25 / 111.2, kmLon = kmLat / Math.max(0.05, Math.cos((lat * Math.PI) / 180));
+    const kmLat = 0.25 / 111.2, kmLon = kmLat / Math.max(0.05, DMath.cos((lat * Math.PI) / 180));
     let best = this.sampler.height(lon, lat, 0.05);
     for (let it = 0; it < 12; it++) {
       let moved = false;
       for (let q = 0; q < 8; q++) {
         const a = (q / 8) * 2 * Math.PI;
-        const x = lon + Math.cos(a) * kmLon, y = lat + Math.sin(a) * kmLat;
+        const x = lon + DMath.cos(a) * kmLon, y = lat + DMath.sin(a) * kmLat;
         const hh = this.sampler.height(x, y, 0.05);
         if (hh > best) {
           best = hh;
@@ -1715,13 +1717,13 @@ export class TownManager {
     const dKm = distKm(v.lon, v.lat, target.lon, target.lat);
     const n = Math.max(2, Math.ceil(dKm / 0.4));
     const a1 = (r - 0.5) * 0.25, a2 = (hash32(Math.floor(r * 4294967296)) / 4294967296 - 0.5) * 0.12;
-    const cosL = Math.max(0.05, Math.cos((v.lat * Math.PI) / 180));
+    const cosL = Math.max(0.05, DMath.cos((v.lat * Math.PI) / 180));
     const ex = (tLon - v.lon) * cosL, ny = target.lat - v.lat;
-    const len = Math.hypot(ex, ny) || 1;
+    const len = DMath.hypot2(ex, ny) || 1;
     const pts: number[][] = [];
     for (let k = 0; k <= n; k++) {
       const t = k / n;
-      const off = len * (a1 * Math.sin(Math.PI * t) + a2 * Math.sin(2 * Math.PI * t));
+      const off = len * (a1 * DMath.sin(Math.PI * t) + a2 * DMath.sin(2 * Math.PI * t));
       const lon = v.lon + (tLon - v.lon) * t + ((-ny / len) * off) / cosL;
       const lat = v.lat + ny * t + (ex / len) * off;
       const fromEnd = Math.min(t, 1 - t) * dKm;

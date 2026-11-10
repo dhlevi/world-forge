@@ -2,6 +2,7 @@ import { hashString, mulberry32, type Rng } from '../gen/rng';
 import { CULTURES } from '../names/cultures';
 import type { Faith } from './faiths';
 import { type Ctx, realmDetails } from './realm';
+import { DMath } from '../dmath';
 
 /**
  * The heads of a faith, by its doctrine: a faith with a high priest lists them from its founding
@@ -65,7 +66,7 @@ function priestLine(f: Faith, r: Rng, title: string, from: number, year: number,
   let guard = 0;
   while (t < year && guard++ < 400) {
     const female = r() < pFemale;
-    const len = 2 + Math.floor(r() ** 1.3 * 26);
+    const len = 2 + Math.floor(DMath.pow(r(), 1.3) * 26);
     const end = t + len;
     const given = pick(r, names[female ? 1 : 0].slice(0, 4 + Math.floor(r() * 20)));
     const n = (used.get(given) ?? 0) + 1;

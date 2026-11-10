@@ -1,5 +1,6 @@
 import { type BuildStyle, buildStyle } from './style';
-import { hash32, hashString, mulberry32 } from '../gen/rng';
+import { hash32, hashString, mulberry32, sortByKey } from '../gen/rng';
+import { DMath } from '../dmath';
 
 /**
  * Building interiors in the manner of Watabou's Dwellings: a building footprint from the
@@ -265,7 +266,7 @@ function partition(g: Grid, n: number, cw: number, ch: number, rnd: () => number
         const cuts: number[] = [];
         for (let k = 2; k <= dim - 2; k++) cuts.push(k);
         // Prefer cuts near the middle, with some variety.
-        cuts.sort((a, b) => Math.abs(a / dim - 0.5) - Math.abs(b / dim - 0.5) + (rnd() - 0.5) * 0.3);
+        sortByKey(cuts, (a) => Math.abs(a / dim - 0.5) + (rnd() - 0.5) * 0.3);
         for (const k of cuts) {
           const A = ax === 'u'
             ? { i0: L.i0, j0: L.j0, i1: L.i0 + k, j1: L.j1 }
@@ -605,7 +606,7 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
   const edges = fp.map((a, k) => {
     const b = fp[(k + 1) % fp.length];
     const m: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-    const len = Math.hypot(b[0] - a[0], b[1] - a[1]);
+    const len = DMath.hypot2(b[0] - a[0], b[1] - a[1]);
     let n: Pt = [(b[1] - a[1]) / (len || 1), -(b[0] - a[0]) / (len || 1)];
     if ((m[0] - cx) * n[0] + (m[1] - cy) * n[1] < 0) n = [-n[0], -n[1]];
     return { len, n };
@@ -615,7 +616,7 @@ export function generateDwelling(inp: DwellingInput): Dwelling {
   if (inp.use === 'temple' || inp.use === 'hall') F = shortest.n;
   else if (inp.front !== undefined) {
     // Snap the street direction to the nearest edge normal so the grid lines up with the walls.
-    const f: Pt = [Math.cos(inp.front), Math.sin(inp.front)];
+    const f: Pt = [DMath.cos(inp.front), DMath.sin(inp.front)];
     F = edges.filter((e) => e.len > 1).reduce((a, b) => (b.n[0] * f[0] + b.n[1] * f[1] > a.n[0] * f[0] + a.n[1] * f[1] ? b : a), longest).n;
   } else F = longest.n;
   const ev: Pt = F, eu: Pt = [-F[1], F[0]];
@@ -914,7 +915,7 @@ export function roofHeight(d: Dwelling, u: number, v: number): number {
     const ax = e[0] * cw, ay = e[1] * ch, bx = e[2] * cw, by = e[3] * ch, px = u * cw, py = v * ch;
     const dx = bx - ax, dy = by - ay, l2 = dx * dx + dy * dy;
     const t = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
-    best = Math.min(best, Math.hypot(px - ax - dx * t, py - ay - dy * t));
+    best = Math.min(best, DMath.hypot2(px - ax - dx * t, py - ay - dy * t));
   }
   if (roof.type === 'mound') {
     // A burrow's mound: a rounded dome of turf rather than straight slopes.
@@ -1149,7 +1150,7 @@ function openings(c: Ctx, d: Dwelling, kind: Kind, f: Floor, stairCells: number[
     const cand = [...pairs.values()].filter((p) => connected.has(p.a) !== connected.has(p.b));
     if (!cand.length) break;
     // Prefer joining from the root or stair room so circulation stays short.
-    cand.sort((x, y) => Number(y.a === root || y.b === root) - Number(x.a === root || x.b === root) + (rnd() - 0.5) * 0.8);
+    sortByKey(cand, (x) => -Number(x.a === root || x.b === root) + (rnd() - 0.5) * 0.8);
     const p = cand[0];
     f.openings.push(pickEdge(p.edges));
     used.add(`${p.a}|${p.b}`);
@@ -1569,7 +1570,7 @@ export function polyAnchor(d: Dwelling, o: { i: number; j: number; side: EdgeSid
     // Keep openings clear of the corners.
     const L = Math.sqrt(l2), m = Math.min(0.45, 0.8 / L);
     const t = Math.max(m, Math.min(1 - m, ((mx - ax) * dx + (my - ay) * dy) / l2));
-    const dist = Math.hypot(ax + dx * t - mx, ay + dy * t - my);
+    const dist = DMath.hypot2(ax + dx * t - mx, ay + dy * t - my);
     if (dist < bd) {
       bd = dist;
       best = { k, t, p: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t] };

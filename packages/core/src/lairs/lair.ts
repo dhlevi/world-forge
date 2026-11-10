@@ -1,8 +1,9 @@
-import { hashString, mulberry32, type Rng } from '../gen/rng';
+import { hashString, mulberry32, type Rng, shuffle } from '../gen/rng';
 import { Simplex3, fbm } from '../gen/noise';
 import { type KeyNote, hookTail, roomNotes, senseDetail } from '../keys/flavour';
 import { buildPass } from './pass';
 import { buildDeep } from './deep';
+import { DMath } from '../dmath';
 
 /**
  * Caves and glades in the manner of Watabou's Cave / Glade Generator: a cave is a set of
@@ -315,7 +316,7 @@ export function smoothLoop(p: Pt[]): Pt[] {
 export function distSeg(p: Pt, a: Pt, b: Pt): number {
   const dx = b[0] - a[0], dy = b[1] - a[1], l2 = dx * dx + dy * dy;
   const t = l2 > 0 ? Math.max(0, Math.min(1, ((p[0] - a[0]) * dx + (p[1] - a[1]) * dy) / l2)) : 0;
-  return Math.hypot(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
+  return DMath.hypot2(p[0] - a[0] - t * dx, p[1] - a[1] - t * dy);
 }
 
 /** A wandering line from a to b (midpoint displacement). */
@@ -326,7 +327,7 @@ export function wander(a: Pt, b: Pt, rnd: Rng, amount: number, levels = 3): Pt[]
     const out: Pt[] = [pts[0]];
     for (let k = 1; k < pts.length; k++) {
       const p = pts[k - 1], q = pts[k];
-      const len = Math.hypot(q[0] - p[0], q[1] - p[1]);
+      const len = DMath.hypot2(q[0] - p[0], q[1] - p[1]);
       const nx = -(q[1] - p[1]) / (len || 1), ny = (q[0] - p[0]) / (len || 1);
       const o = (rnd() - 0.5) * 2 * amp * len;
       out.push([(p[0] + q[0]) / 2 + nx * o, (p[1] + q[1]) / 2 + ny * o], q);
@@ -342,7 +343,7 @@ export function blob(c: Pt, r: number, rnd: Rng, n = 7, rough = 0.35): Pt[] {
   const out: Pt[] = [];
   for (let k = 0; k < n; k++) {
     const a = a0 + (k / n) * Math.PI * 2, rr = r * (1 - rough / 2 + rough * rnd());
-    out.push([c[0] + Math.cos(a) * rr, c[1] + Math.sin(a) * rr]);
+    out.push([c[0] + DMath.cos(a) * rr, c[1] + DMath.sin(a) * rr]);
   }
   return out;
 }
@@ -373,21 +374,21 @@ function buildCave(site: LairSite): LairMap {
     if (L + 1 < n) {
       // Ways down: chambers far from the entrance (or the way in from above), not those already linked.
       const start = map.mouths[0]?.p ?? anchors[0]?.p ?? [map.W / 2, map.H / 2];
-      const taken = (c: Pt) => anchors.some((a) => Math.hypot(a.p[0] - c[0], a.p[1] - c[1]) < 6) ||
-        map.mouths.some((mo) => Math.hypot(mo.p[0] - c[0], mo.p[1] - c[1]) < 16);
-      const nearWater = (c: Pt) => inLoops(map.water, c) || map.water.some((w) => w.some((q) => Math.hypot(q[0] - c[0], q[1] - c[1]) < 2.5));
+      const taken = (c: Pt) => anchors.some((a) => DMath.hypot2(a.p[0] - c[0], a.p[1] - c[1]) < 6) ||
+        map.mouths.some((mo) => DMath.hypot2(mo.p[0] - c[0], mo.p[1] - c[1]) < 16);
+      const nearWater = (c: Pt) => inLoops(map.water, c) || map.water.some((w) => w.some((q) => DMath.hypot2(q[0] - c[0], q[1] - c[1]) < 2.5));
       const cands = chambers.filter((c) => !taken(c.c) && c.c[0] > 4 && c.c[1] > 4 && c.c[0] < map.W - 4 && c.c[1] < map.H - 4 && map.open(c.c) && !nearWater(c.c))
-        .sort((a, b) => Math.hypot(b.c[0] - start[0], b.c[1] - start[1]) - Math.hypot(a.c[0] - start[0], a.c[1] - start[1]));
+        .sort((a, b) => DMath.hypot2(b.c[0] - start[0], b.c[1] - start[1]) - DMath.hypot2(a.c[0] - start[0], a.c[1] - start[1]));
       const nDown = site.tags.includes('large') && rnd() < 0.4 && cands.length > 2 ? 2 : 1;
       const next: { p: Pt; style: LinkStyle }[] = [];
       for (const c of cands.slice(0, nDown)) {
         // Off the chamber's centre a little, so the marker sits on the floor beside its middle.
-        const a = rnd() * Math.PI * 2, p: Pt = [c.c[0] + Math.cos(a) * c.r * 0.3, c.c[1] + Math.sin(a) * c.r * 0.3];
+        const a = rnd() * Math.PI * 2, p: Pt = [c.c[0] + DMath.cos(a) * c.r * 0.3, c.c[1] + DMath.sin(a) * c.r * 0.3];
         const style: LinkStyle = rnd() < 0.45 ? 'stairs' : rnd() < 0.6 ? 'shaft' : 'slope';
         const at: Pt = map.open(p) && !nearWater(p) ? p : c.c;
         // Clear the boulders and stalagmites from around it.
-        map.rocks = map.rocks.filter((r) => Math.hypot(r[0][0] - at[0], r[0][1] - at[1]) > 3);
-        map.dots = map.dots.filter((d) => Math.hypot(d.p[0] - at[0], d.p[1] - at[1]) > 2.5);
+        map.rocks = map.rocks.filter((r) => DMath.hypot2(r[0][0] - at[0], r[0][1] - at[1]) > 3);
+        map.dots = map.dots.filter((d) => DMath.hypot2(d.p[0] - at[0], d.p[1] - at[1]) > 2.5);
         next.push({ p: at, style });
         map.links.push({ p: at, dir: 'down', to: L + 1, style });
       }
@@ -472,12 +473,12 @@ function caveKey(site: LairSite, levels: LairMap[], chambers: { c: Pt; r: number
   levels.forEach((m, L) => {
     const start = m.mouths[0]?.p ?? m.links.find((l) => l.dir === 'up')?.p ?? [m.W / 2, m.H / 2];
     const ch = chambers[L].filter((c) => m.open(c.c) || m.open([c.c[0] + c.r * 0.3, c.c[1]]))
-      .sort((a, b) => Math.hypot(a.c[0] - start[0], a.c[1] - start[1]) - Math.hypot(b.c[0] - start[0], b.c[1] - start[1]));
+      .sort((a, b) => DMath.hypot2(a.c[0] - start[0], a.c[1] - start[1]) - DMath.hypot2(b.c[0] - start[0], b.c[1] - start[1]));
     // Sizes relative to this cave: the largest fifth are great caverns, the smallest third grottoes.
     const rs = ch.map((c) => c.r).sort((a, b) => a - b);
     const big = rs[Math.floor(rs.length * 0.8)] ?? 99, small = rs[Math.floor(rs.length * 0.33)] ?? 0;
     ch.forEach((c, i) => {
-      const near = (p: Pt, d: number) => Math.hypot(p[0] - c.c[0], p[1] - c.c[1]) < d;
+      const near = (p: Pt, d: number) => DMath.hypot2(p[0] - c.c[0], p[1] - c.c[1]) < d;
       const down = m.links.find((l) => l.dir === 'down' && near(l.p, c.r + 1));
       const up = m.links.find((l) => l.dir === 'up' && near(l.p, c.r + 1));
       const spires = m.dots.filter((d) => near(d.p, c.r)).length;
@@ -497,9 +498,9 @@ function caveKey(site: LairSite, levels: LairMap[], chambers: { c: Pt; r: number
       // The number: the chamber's middle, unless a way up or down stands there.
       let p: Pt = c.c;
       const link = down ?? up;
-      if (link && Math.hypot(link.p[0] - p[0], link.p[1] - p[1]) < 3) {
-        const a = Math.atan2(p[1] - link.p[1], p[0] - link.p[0]) || 0;
-        const q: Pt = [link.p[0] + Math.cos(a) * 3.2, link.p[1] + Math.sin(a) * 3.2];
+      if (link && DMath.hypot2(link.p[0] - p[0], link.p[1] - p[1]) < 3) {
+        const a = DMath.atan2(p[1] - link.p[1], p[0] - link.p[0]) || 0;
+        const q: Pt = [link.p[0] + DMath.cos(a) * 3.2, link.p[1] + DMath.sin(a) * 3.2];
         p = m.open(q) ? q : [link.p[0] - 3.2, link.p[1]];
       }
       m.rooms.push({ n: n++, p, name, text, tag: kind } as LairRoom & { tag: string });
@@ -534,9 +535,9 @@ function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng):
   const nCh = Math.round((has('small') ? 5 : has('large') ? 12 : 8) * (level ? 0.75 + 0.3 * rnd() : 0.85 + 0.3 * rnd()));
   const ch: { c: Pt; r: number }[] = anchors.map((c) => ({ c, r: (4 + 2.5 * rnd()) * Math.sqrt(k) }));
   for (let t = 0; t < 400 && ch.length < nCh; t++) {
-    const r = (3.8 + 7 * rnd() ** 1.4) * Math.sqrt(k);
+    const r = (3.8 + 7 * DMath.pow(rnd(), 1.4)) * Math.sqrt(k);
     const c: Pt = [r + 3 + rnd() * (W - 2 * r - 6), r + 3 + rnd() * (H - 2 * r - 6)];
-    if (ch.every((o) => Math.hypot(o.c[0] - c[0], o.c[1] - c[1]) > (o.r + r) * 1.15 + 3)) ch.push({ c, r });
+    if (ch.every((o) => DMath.hypot2(o.c[0] - c[0], o.c[1] - c[1]) > (o.r + r) * 1.15 + 3)) ch.push({ c, r });
   }
   // Passages: a spanning tree over the chambers plus the odd loop.
   const tunnels: { pts: Pt[]; w: number }[] = [];
@@ -546,14 +547,14 @@ function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng):
     const kk = a < b ? `${a}-${b}` : `${b}-${a}`;
     if (linked.has(kk)) return;
     linked.add(kk);
-    tunnels.push({ pts: wander(ch[a].c, ch[b].c, rnd, 0.22), w: 1.0 + 1.8 * rnd() ** 1.5 });
+    tunnels.push({ pts: wander(ch[a].c, ch[b].c, rnd, 0.22), w: 1.0 + 1.8 * DMath.pow(rnd(), 1.5) });
   };
   while (inTree.length < ch.length) {
     let best: [number, number] | null = null, bd = Infinity;
     for (const a of inTree) {
       for (let b = 0; b < ch.length; b++) {
         if (inTree.includes(b)) continue;
-        const d = Math.hypot(ch[a].c[0] - ch[b].c[0], ch[a].c[1] - ch[b].c[1]);
+        const d = DMath.hypot2(ch[a].c[0] - ch[b].c[0], ch[a].c[1] - ch[b].c[1]);
         if (d < bd) {
           bd = d;
           best = [a, b];
@@ -566,14 +567,14 @@ function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng):
   }
   for (let a = 0; a < ch.length; a++) {
     if (rnd() > 0.25) continue;
-    const order = ch.map((_, b) => b).filter((b) => b !== a).sort((p, q) => Math.hypot(ch[p].c[0] - ch[a].c[0], ch[p].c[1] - ch[a].c[1]) - Math.hypot(ch[q].c[0] - ch[a].c[0], ch[q].c[1] - ch[a].c[1]));
+    const order = ch.map((_, b) => b).filter((b) => b !== a).sort((p, q) => DMath.hypot2(ch[p].c[0] - ch[a].c[0], ch[p].c[1] - ch[a].c[1]) - DMath.hypot2(ch[q].c[0] - ch[a].c[0], ch[q].c[1] - ch[a].c[1]));
     if (order[1] !== undefined) link(a, order[1]);
   }
   // Mouths: passages from the chambers nearest the map edge out past it (none if sealed).
   const mouths: { p: Pt; dir: number }[] = [];
   if (!has('sealed') && level === 0) {
     const n = has('large') && rnd() < 0.5 ? 2 : 1;
-    const sides = [0, 1, 2, 3].sort(() => rnd() - 0.5).slice(0, n);
+    const sides = shuffle([0, 1, 2, 3], rnd).slice(0, n);
     for (const side of sides) {
       const edgeD = (c: Pt) => [c[1], W - c[0], H - c[1], c[0]][side];
       const near = ch.reduce((a, b) => (edgeD(b.c) < edgeD(a.c) ? b : a));
@@ -590,10 +591,10 @@ function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng):
     const parts: { c: Pt; r: number }[] = [c];
     for (let q = 0; q < Math.floor(rnd() * 3); q++) {
       const a = rnd() * Math.PI * 2;
-      parts.push({ c: [c.c[0] + Math.cos(a) * c.r * 0.6, c.c[1] + Math.sin(a) * c.r * 0.6], r: c.r * (0.5 + 0.3 * rnd()) });
+      parts.push({ c: [c.c[0] + DMath.cos(a) * c.r * 0.6, c.c[1] + DMath.sin(a) * c.r * 0.6], r: c.r * (0.5 + 0.3 * rnd()) });
     }
     for (const pp of parts) {
-      field.stamp(pp.c[0] - pp.r, pp.c[1] - pp.r, pp.c[0] + pp.r, pp.c[1] + pp.r, (x, y) => 1 - Math.hypot(x - pp.c[0], y - pp.c[1]) / pp.r);
+      field.stamp(pp.c[0] - pp.r, pp.c[1] - pp.r, pp.c[0] + pp.r, pp.c[1] + pp.r, (x, y) => 1 - DMath.hypot2(x - pp.c[0], y - pp.c[1]) / pp.r);
     }
   }
   for (const t of tunnels) {
@@ -626,19 +627,19 @@ function buildCaveLevel(site: LairSite, level: number, anchors: Pt[], rnd: Rng):
   const dry = (p: Pt) => !m.water.length || !inLoops(m.water, p);
   // Boulders near the walls, stalagmites in clusters, rubble (kept clear of the ways between levels).
   const area = W * H;
-  const nearLink = (p: Pt) => anchors.some((a) => Math.hypot(a[0] - p[0], a[1] - p[1]) < 2.5);
+  const nearLink = (p: Pt) => anchors.some((a) => DMath.hypot2(a[0] - p[0], a[1] - p[1]) < 2.5);
   for (let t = 0; t < area / 18; t++) {
     const p: Pt = [rnd() * W, rnd() * H];
     const v = field.at(p);
     if (v <= 0.06 || !dry(p) || nearLink(p)) continue;
-    if (v < 0.35 && rnd() < 0.09) m.rocks.push(blob(p, 0.45 + 1.0 * rnd() ** 2, rnd, 6 + Math.floor(rnd() * 3)));
+    if (v < 0.35 && rnd() < 0.09) m.rocks.push(blob(p, 0.45 + 1.0 * DMath.pow(rnd(), 2), rnd, 6 + Math.floor(rnd() * 3)));
     else if (v < 0.3 && rnd() < 0.12) {
       for (let q = 0; q < 1 + Math.floor(rnd() * 4); q++) m.dots.push({ p: [p[0] + (rnd() - 0.5) * 1.6, p[1] + (rnd() - 0.5) * 1.6], r: 0.12 + 0.22 * rnd() });
     } else if (rnd() < 0.04) m.dots.push({ p, r: 0.06 + 0.06 * rnd() });
   }
   m.dots = m.dots.filter((d) => field.at(d.p) > 0.05 && dry(d.p));
   // The way up must not stand in a pool.
-  if (m.water.length) m.water = m.water.filter((w) => !anchors.some((a) => inLoops([w], a) || w.some((q) => Math.hypot(q[0] - a[0], q[1] - a[1]) < 3)));
+  if (m.water.length) m.water = m.water.filter((w) => !anchors.some((a) => inLoops([w], a) || w.some((q) => DMath.hypot2(q[0] - a[0], q[1] - a[1]) < 3)));
   return { map: m, chambers: ch };
 }
 
@@ -747,7 +748,7 @@ function buildGlade(site: LairSite): LairMap {
   for (let t = 0; t < 600 && cl.length < nCl; t++) {
     const r = base * (cl.length ? 0.65 + 0.5 * rnd() : 1.05 + 0.2 * rnd());
     const c: Pt = [r + 4 + rnd() * (W - 2 * r - 8), r + 4 + rnd() * (H - 2 * r - 8)];
-    if (cl.every((o) => Math.hypot(o.c[0] - c[0], o.c[1] - c[1]) > (o.r + r) * 1.25 + 4)) cl.push({ c, r, asp: 0.75 + 0.45 * rnd(), rot: rnd() * Math.PI });
+    if (cl.every((o) => DMath.hypot2(o.c[0] - c[0], o.c[1] - c[1]) > (o.r + r) * 1.25 + 4)) cl.push({ c, r, asp: 0.75 + 0.45 * rnd(), rot: rnd() * Math.PI });
   }
   // Paths: a spanning tree over the clearings, one loop for larger groves, and a way in from the edge.
   const pathLines: Pt[][] = [];
@@ -757,7 +758,7 @@ function buildGlade(site: LairSite): LairMap {
     for (const a of inTree) {
       for (let b = 0; b < cl.length; b++) {
         if (inTree.includes(b)) continue;
-        const d = Math.hypot(cl[a].c[0] - cl[b].c[0], cl[a].c[1] - cl[b].c[1]);
+        const d = DMath.hypot2(cl[a].c[0] - cl[b].c[0], cl[a].c[1] - cl[b].c[1]);
         if (d < bd) {
           bd = d;
           best = [a, b];
@@ -778,8 +779,8 @@ function buildGlade(site: LairSite): LairMap {
   }
   const ellipse = (q: (typeof cl)[number], x: number, y: number) => {
     const dx = x - q.c[0], dy = y - q.c[1];
-    const u = dx * Math.cos(q.rot) + dy * Math.sin(q.rot), v = (-dx * Math.sin(q.rot) + dy * Math.cos(q.rot)) / q.asp;
-    return 1 - Math.hypot(u, v) / q.r;
+    const u = dx * DMath.cos(q.rot) + dy * DMath.sin(q.rot), v = (-dx * DMath.sin(q.rot) + dy * DMath.cos(q.rot)) / q.asp;
+    return 1 - DMath.hypot2(u, v) / q.r;
   };
   const field = new Field(W, H, (x, y) => Math.max(...cl.map((q) => ellipse(q, x, y))) + 0.3 * fbm(noise, x / 9, y / 9, 0.2, 3));
   for (const l of pathLines) {
@@ -815,8 +816,8 @@ function buildGlade(site: LairSite): LairMap {
 
   if (has('stream')) {
     const a = rnd() * Math.PI;
-    const d: Pt = [Math.cos(a), Math.sin(a)];
-    const L = Math.hypot(W, H) * 0.6;
+    const d: Pt = [DMath.cos(a), DMath.sin(a)];
+    const L = DMath.hypot2(W, H) * 0.6;
     const k = Math.floor(rnd() * cl.length);
     const mid: Pt = [cl[k].c[0] + (rnd() - 0.5) * cl[k].r, cl[k].c[1] + (rnd() - 0.5) * cl[k].r];
     m.stream = { pts: [...wander([mid[0] - d[0] * L, mid[1] - d[1] * L], mid, rnd, 0.18, 4), ...wander(mid, [mid[0] + d[0] * L, mid[1] + d[1] * L], rnd, 0.18, 4).slice(1)], w: 0.7 + 0.6 * rnd() };
@@ -827,14 +828,14 @@ function buildGlade(site: LairSite): LairMap {
     const f = feats[i];
     if (f !== 'pond' && f !== 'spring') return;
     const pc = q.c, pr = f === 'pond' ? q.r * (0.42 + 0.12 * rnd()) : 1.6 + 0.6 * rnd();
-    const pf = new Field(W, H, (x, y) => Math.min(1 - Math.hypot(x - pc[0], y - pc[1]) / pr + 0.3 * fbm(noise, x / 4, y / 4, 4.1 + i, 2), field.at([x, y]) - 0.1));
+    const pf = new Field(W, H, (x, y) => Math.min(1 - DMath.hypot2(x - pc[0], y - pc[1]) / pr + 0.3 * fbm(noise, x / 4, y / 4, 4.1 + i, 2), field.at([x, y]) - 0.1));
     pf.clean(6, 6);
     pools.push(...pf.contours());
     if (f === 'spring') {
       const n = 6 + Math.floor(rnd() * 3);
       for (let k = 0; k < n; k++) {
         const a = (k / n) * Math.PI * 2;
-        m.rocks.push(blob([pc[0] + Math.cos(a) * (pr + 0.5), pc[1] + Math.sin(a) * (pr + 0.5)], 0.35 + 0.2 * rnd(), rnd, 6));
+        m.rocks.push(blob([pc[0] + DMath.cos(a) * (pr + 0.5), pc[1] + DMath.sin(a) * (pr + 0.5)], 0.35 + 0.2 * rnd(), rnd, 6));
       }
     }
   });
@@ -855,7 +856,7 @@ function buildGlade(site: LairSite): LairMap {
         for (let k = 0; k < n; k++) {
           if (rnd() < 0.12) continue;
           const a = (k / n) * Math.PI * 2;
-          const p: Pt = [c[0] + Math.cos(a) * rr, c[1] + Math.sin(a) * rr];
+          const p: Pt = [c[0] + DMath.cos(a) * rr, c[1] + DMath.sin(a) * rr];
           if (!wet(p, 0.5)) m.stones.push({ p, w: 0.8 + 0.5 * rnd(), h: 0.45 + 0.25 * rnd(), a: a + Math.PI / 2 + (rnd() - 0.5) * 0.4 });
         }
         if (rnd() < 0.6 && !wet(c, 1)) m.things.push({ kind: 'altar', p: c, a: rnd() * Math.PI, w: 1.6, h: 0.9 });
@@ -866,7 +867,7 @@ function buildGlade(site: LairSite): LairMap {
         const tents: { p: Pt; a: number }[] = [];
         for (let k = 0; k < 2 + Math.floor(rnd() * 3); k++) {
           const a = rnd() * Math.PI * 2, d = 3.2 + 1.8 * rnd();
-          const p: Pt = [fire[0] + Math.cos(a) * d, fire[1] + Math.sin(a) * d];
+          const p: Pt = [fire[0] + DMath.cos(a) * d, fire[1] + DMath.sin(a) * d];
           if (field.at(p) > 0.1 && !wet(p, 1)) tents.push({ p, a: a + Math.PI });
         }
         m.camp = { fire, tents };
@@ -874,7 +875,7 @@ function buildGlade(site: LairSite): LairMap {
       }
       case 'ruins': {
         const w = Math.min(R, 4 + 4 * rnd()), h = Math.min(R * 0.8, 3.5 + 3 * rnd()), a = rnd() * Math.PI;
-        const corner = (u: number, v: number): Pt => [c[0] + u * Math.cos(a) - v * Math.sin(a), c[1] + u * Math.sin(a) + v * Math.cos(a)];
+        const corner = (u: number, v: number): Pt => [c[0] + u * DMath.cos(a) - v * DMath.sin(a), c[1] + u * DMath.sin(a) + v * DMath.cos(a)];
         const cs = [corner(-w / 2, -h / 2), corner(w / 2, -h / 2), corner(w / 2, h / 2), corner(-w / 2, h / 2)];
         for (let k = 0; k < 4; k++) {
           const p = cs[k], r = cs[(k + 1) % 4];
@@ -885,28 +886,28 @@ function buildGlade(site: LairSite): LairMap {
         break;
       }
       case 'shrine':
-        m.things.push({ kind: 'shrine', p: [c[0] + Math.cos(rot) * R * 0.2, c[1] + Math.sin(rot) * R * 0.2], a: rot, w: 2.2, h: 1.6 });
+        m.things.push({ kind: 'shrine', p: [c[0] + DMath.cos(rot) * R * 0.2, c[1] + DMath.sin(rot) * R * 0.2], a: rot, w: 2.2, h: 1.6 });
         break;
       case 'hut': {
         // On dry ground: the centre, or the first dry spot round it.
         let p: Pt = c;
-        for (let k = 0; k < 9 && wet(p, 3.5); k++) p = [c[0] + Math.cos(k * 0.7) * R * 0.45, c[1] + Math.sin(k * 0.7) * R * 0.45];
+        for (let k = 0; k < 9 && wet(p, 3.5); k++) p = [c[0] + DMath.cos(k * 0.7) * R * 0.45, c[1] + DMath.sin(k * 0.7) * R * 0.45];
         m.things.push({ kind: 'hut', p, a: rot, w: 5 + 1.5 * rnd(), h: 3.8 + rnd() });
         break;
       }
       case 'rocks':
         for (let k = 0; k < 4 + Math.floor(rnd() * 5); k++) {
           const p: Pt = [c[0] + (rnd() - 0.5) * R * 1.2, c[1] + (rnd() - 0.5) * R * 1.2];
-          if (field.at(p) > 0.05 && !wet(p, 0.5)) m.rocks.push(blob(p, 0.5 + 1.3 * rnd() ** 2, rnd, 6));
+          if (field.at(p) > 0.05 && !wet(p, 0.5)) m.rocks.push(blob(p, 0.5 + 1.3 * DMath.pow(rnd(), 2), rnd, 6));
         }
         break;
     }
   });
   const busy = (p: Pt, pad: number) =>
-    (m.bigTree && Math.hypot(p[0] - m.bigTree.p[0], p[1] - m.bigTree.p[1]) < m.bigTree.r + pad) ||
-    m.stones.some((s) => Math.hypot(p[0] - s.p[0], p[1] - s.p[1]) < 1 + pad) ||
-    m.things.some((t) => Math.hypot(p[0] - t.p[0], p[1] - t.p[1]) < Math.max(t.w, t.h) / 2 + 0.6 + pad) ||
-    (m.camp && Math.hypot(p[0] - m.camp.fire[0], p[1] - m.camp.fire[1]) < 6 + pad) || wet(p, pad) ||
+    (m.bigTree && DMath.hypot2(p[0] - m.bigTree.p[0], p[1] - m.bigTree.p[1]) < m.bigTree.r + pad) ||
+    m.stones.some((s) => DMath.hypot2(p[0] - s.p[0], p[1] - s.p[1]) < 1 + pad) ||
+    m.things.some((t) => DMath.hypot2(p[0] - t.p[0], p[1] - t.p[1]) < Math.max(t.w, t.h) / 2 + 0.6 + pad) ||
+    (m.camp && DMath.hypot2(p[0] - m.camp.fire[0], p[1] - m.camp.fire[1]) < 6 + pad) || wet(p, pad) ||
     m.paths.some((l) => l.some((q, k) => k > 0 && distSeg(p, l[k - 1], q) < 0.8 + pad));
 
   // The forest: canopies packed on a jittered grid outside the clearings, a few stragglers inside.
@@ -937,7 +938,7 @@ function buildGlade(site: LairSite): LairMap {
 
   // The key: one entry per clearing, numbered from the way in; the ford if a stream crosses a path.
   const entry = pathLines[pathLines.length - 1][pathLines[pathLines.length - 1].length - 1];
-  const order = cl.map((_, i) => i).sort((a, b) => Math.hypot(cl[a].c[0] - entry[0], cl[a].c[1] - entry[1]) - Math.hypot(cl[b].c[0] - entry[0], cl[b].c[1] - entry[1]));
+  const order = cl.map((_, i) => i).sort((a, b) => DMath.hypot2(cl[a].c[0] - entry[0], cl[a].c[1] - entry[1]) - DMath.hypot2(cl[b].c[0] - entry[0], cl[b].c[1] - entry[1]));
   const fungal = has('fungal') || has('mushrooms'), cursed = has('cursed');
   const keyFor = (f: GroveFeat) => (fungal ? FUNGAL_KEY[f] : cursed ? CURSED_KEY[f] : undefined) ?? GROVE_KEY[f];
   for (const i of order) {
@@ -947,7 +948,7 @@ function buildGlade(site: LairSite): LairMap {
     let lp: Pt = q.c;
     for (let k = 0; k < 12; k++) {
       const a = q.rot + Math.PI / 2 + (k * Math.PI * 2) / 12, d = q.r * (k < 6 ? 0.6 : 0.45);
-      const c: Pt = [q.c[0] + Math.cos(a) * d, q.c[1] + Math.sin(a) * d * q.asp];
+      const c: Pt = [q.c[0] + DMath.cos(a) * d, q.c[1] + DMath.sin(a) * d * q.asp];
       if (field.at(c) > 0.12 && !busy(c, 0.6)) {
         lp = c;
         break;
@@ -966,7 +967,7 @@ function buildGlade(site: LairSite): LairMap {
       }
     }
   }
-  m.mouths = [{ p: [Math.max(0, Math.min(W, entry[0])), Math.max(0, Math.min(H, entry[1]))], dir: Math.atan2(cl[order[0]].c[1] - entry[1], cl[order[0]].c[0] - entry[0]) }];
+  m.mouths = [{ p: [Math.max(0, Math.min(W, entry[0])), Math.max(0, Math.min(H, entry[1]))], dir: DMath.atan2(cl[order[0]].c[1] - entry[1], cl[order[0]].c[0] - entry[0]) }];
   const hooks = fungal ? FUNGAL_HOOKS : cursed ? CURSED_HOOKS : GROVE_HOOKS;
   m.hook = hooks[Math.floor(rnd() * hooks.length)];
 
@@ -995,9 +996,9 @@ function buildHollow(site: LairSite, rnd: Rng, n0: number): LairMap {
   for (let k = 0; k < nL; k++) {
     // Spread round the hollow, each down its own root tunnel.
     const a = a0 + (k / nL) * Math.PI * 2 + (rnd() - 0.5) * 0.8;
-    lobes.push({ c: [c[0] + Math.cos(a) * 9, c[1] + Math.sin(a) * 7], r: 2.4 + 1.1 * rnd() });
+    lobes.push({ c: [c[0] + DMath.cos(a) * 9, c[1] + DMath.sin(a) * 7], r: 2.4 + 1.1 * rnd() });
   }
-  const field = new Field(W, H, (x, y) => Math.max(...lobes.map((l) => 1 - Math.hypot(x - l.c[0], y - l.c[1]) / l.r)) + 0.18 * fbm(noise, x / 3, y / 3, 0.4, 2));
+  const field = new Field(W, H, (x, y) => Math.max(...lobes.map((l) => 1 - DMath.hypot2(x - l.c[0], y - l.c[1]) / l.r)) + 0.18 * fbm(noise, x / 3, y / 3, 0.4, 2));
   for (const l of lobes.slice(1)) {
     field.stamp(Math.min(c[0], l.c[0]) - 1.2, Math.min(c[1], l.c[1]) - 1.2, Math.max(c[0], l.c[0]) + 1.2, Math.max(c[1], l.c[1]) + 1.2, (x, y) => 1 - distSeg([x, y], c, l.c) / 1.2);
   }
@@ -1007,8 +1008,8 @@ function buildHollow(site: LairSite, rnd: Rng, n0: number): LairMap {
   // Roots across the walls and floor.
   for (let k = 0; k < 14; k++) {
     const a = rnd() * Math.PI * 2, r = 2 + rnd() * 6;
-    const p: Pt = [c[0] + Math.cos(a) * r, c[1] + Math.sin(a) * r];
-    if (field.at(p) > 0.05 && Math.hypot(p[0] - c[0], p[1] - c[1]) > 2) m.dots.push({ p, r: 0.12 + 0.18 * rnd() });
+    const p: Pt = [c[0] + DMath.cos(a) * r, c[1] + DMath.sin(a) * r];
+    if (field.at(p) > 0.05 && DMath.hypot2(p[0] - c[0], p[1] - c[1]) > 2) m.dots.push({ p, r: 0.12 + 0.18 * rnd() });
   }
   m.links.push({ p: [c[0] + 0.6, c[1] + 0.6], dir: 'up', to: 0, style: 'shaft' });
   const what = [

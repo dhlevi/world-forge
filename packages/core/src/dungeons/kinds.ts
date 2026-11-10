@@ -1,4 +1,4 @@
-import { mulberry32, type Rng } from '../gen/rng';
+import { mulberry32, type Rng, shuffle } from '../gen/rng';
 import {
   CHANNEL, CELL_M, type DelveDistrict, type DLevel, delveDistricts, type DoorKind, type DRoom, type Dungeon, type DungeonSite, FLOOR, GROUND, type LinkStyle, type Rect, RUBBLE, VOID, WATER,
   at, carveCircle, carveCorridor, carveRect, centre, connectAll, doorsForRooms, newLevel, open, overlaps, pick, pickW, roomOf, scatterRooms, set,
@@ -6,6 +6,7 @@ import {
 import { writeKey } from './key';
 import { prison } from './prison';
 import { stronghold } from './hold';
+import { DMath } from '../dmath';
 
 /** Number of levels from the tags ("3 levels"), else the kind's default. */
 export function dungeonLevels(site: DungeonSite): number {
@@ -73,7 +74,7 @@ function stack(n: number, rnd: Rng, level: (k: number, anchors: [number, number]
     if (k + 1 < n) {
       const from = L.entrances[0] ?? (anchors[0] ? { x: anchors[0][0], y: anchors[0][1] } : { x: L.W / 2, y: L.H / 2 });
       const cands = L.rooms.filter((r) => r.n && r.w >= 3 && r.h >= 3 && r.x >= 3 && r.y >= 3 && r.x + r.w <= L.W - 3 && r.y + r.h <= L.H - 3 && !r.tags.includes('outfall') && !anchors.some(([x, y]) => x >= r.x && x < r.x + r.w && y >= r.y && y < r.y + r.h))
-        .sort((a, b) => Math.hypot(b.lx - from.x, b.ly - from.y) - Math.hypot(a.lx - from.x, a.ly - from.y));
+        .sort((a, b) => DMath.hypot2(b.lx - from.x, b.ly - from.y) - DMath.hypot2(a.lx - from.x, a.ly - from.y));
       const r = cands[0] ?? L.rooms[0];
       // An open, dry cell in the room near a random spot of its middle.
       const want: [number, number] = [r.x + 1 + Math.floor(rnd() * Math.max(1, r.w - 2)), r.y + 1 + Math.floor(rnd() * Math.max(1, r.h - 2))];
@@ -81,7 +82,7 @@ function stack(n: number, rnd: Rng, level: (k: number, anchors: [number, number]
       for (let y = r.y; y < r.y + r.h; y++) {
         for (let x = r.x; x < r.x + r.w; x++) {
           if (at(L, x, y) !== FLOOR) continue;
-          const d = Math.hypot(x - want[0], y - want[1]);
+          const d = DMath.hypot2(x - want[0], y - want[1]);
           if (d < bd) {
             bd = d;
             p = [x, y];
@@ -89,7 +90,7 @@ function stack(n: number, rnd: Rng, level: (k: number, anchors: [number, number]
         }
       }
       // Keep it clear of props.
-      L.props = L.props.filter((q) => Math.hypot(q.x - (p[0] + 0.5), q.y - (p[1] + 0.5)) > 1.2);
+      L.props = L.props.filter((q) => DMath.hypot2(q.x - (p[0] + 0.5), q.y - (p[1] + 0.5)) > 1.2);
       L.links.push({ x: p[0], y: p[1], dir: 'down', to: k + 1, style });
       r.tags.push(`down:${style}`);
       anchors = [p];
@@ -217,7 +218,7 @@ function niches(L: DLevel, rnd: Rng, chance: number): void {
       for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
         if (at(L, x + dx, y + dy) !== VOID || rnd() > chance) continue;
         // Only where the corridor runs past (both cells along the wall are floor or wall alike).
-        L.props.push({ kind: 'niche', x: x + 0.5 + dx * 0.7, y: y + 0.5 + dy * 0.7, a: Math.atan2(dy, dx) });
+        L.props.push({ kind: 'niche', x: x + 0.5 + dx * 0.7, y: y + 0.5 + dy * 0.7, a: DMath.atan2(dy, dx) });
       }
     }
   }
@@ -262,11 +263,11 @@ function catacombLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number,
     // The way down from above always opens into a chamber, joined to the nearest gallery node.
     const r: Rect = { x: Math.max(1, Math.min(W - 4, x - 1)), y: Math.max(1, Math.min(H - 4, y - 1)), w: 3, h: 3 };
     carveRect(L, r.x, r.y, r.w, r.h);
-    const nn = nodes.slice(anchors.length).reduce((a, b) => (Math.hypot(b[0] - x, b[1] - y) < Math.hypot(a[0] - x, a[1] - y) ? b : a));
+    const nn = nodes.slice(anchors.length).reduce((a, b) => (DMath.hypot2(b[0] - x, b[1] - y) < DMath.hypot2(a[0] - x, a[1] - y) ? b : a));
     carveCorridor(L, x, y, nn[0], nn[1], rnd() < 0.5);
     rects.push(r);
   }
-  for (const [x, y] of nodes.slice(anchors.length).sort(() => rnd() - 0.5)) {
+  for (const [x, y] of shuffle(nodes.slice(anchors.length), rnd)) {
     if (rects.length >= nCh + anchors.length) break;
     const big = rnd() < 0.35;
     const r: Rect = { x: x - (big ? 2 : 1), y: y - (big ? 2 : 1), w: big ? 5 : 3, h: big ? 5 : 3 };
@@ -332,13 +333,13 @@ function mineLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number, num
   for (const [x, y] of anchors) {
     carveCircle(L, x + 0.5, y + 0.5, 2.6);
     rects.push({ x: x - 2, y: y - 2, w: 5, h: 5 });
-    const near = drift.reduce((a, b) => (Math.hypot(b[0] - x, b[1] - y) < Math.hypot(a[0] - x, a[1] - y) ? b : a));
+    const near = drift.reduce((a, b) => (DMath.hypot2(b[0] - x, b[1] - y) < DMath.hypot2(a[0] - x, a[1] - y) ? b : a));
     for (const [px, py] of wanderPath([x, y], near, rnd)) set(L, px, py, at(L, px, py) || FLOOR);
   }
   // Timber supports along the drift, ore showing in the stope walls, a cart or two on the rails.
   for (let q = 3; q < drift.length - 1; q += 4) {
     const [x, y] = drift[q], [x2, y2] = drift[q + 1];
-    L.props.push({ kind: 'support', x: x + 1, y: y + 1, a: Math.atan2(y2 - y, x2 - x) + Math.PI / 2, w: 2.2 });
+    L.props.push({ kind: 'support', x: x + 1, y: y + 1, a: DMath.atan2(y2 - y, x2 - x) + Math.PI / 2, w: 2.2 });
   }
   L.props.push({ kind: 'cart', x: drift[Math.floor(drift.length * (0.3 + 0.4 * rnd()))][0] + 1, y: drift[Math.floor(drift.length * 0.5)][1] + 1, a: 0 });
   for (const r of rects) {
@@ -346,7 +347,7 @@ function mineLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number, num
     if (room.tags[0] === 'ore' || room.tags[0] === 'stope') {
       for (let q = 0; q < 6; q++) {
         const a = rnd() * Math.PI * 2, d = Math.min(r.w, r.h) * 0.45;
-        L.props.push({ kind: 'ore', x: r.x + r.w / 2 + Math.cos(a) * d, y: r.y + r.h / 2 + Math.sin(a) * d });
+        L.props.push({ kind: 'ore', x: r.x + r.w / 2 + DMath.cos(a) * d, y: r.y + r.h / 2 + DMath.sin(a) * d });
       }
     } else if (room.tags[0] === 'flooded') {
       for (let y = r.y + 1; y < r.y + r.h - 1; y++) for (let x = r.x + 1; x < r.x + r.w - 1; x++) if (at(L, x, y) === FLOOR && rnd() < 0.7) set(L, x, y, WATER);
@@ -392,7 +393,7 @@ function tower(site: DungeonSite, rnd: Rng, n: number): DLevel[] {
   const names: string[] = [...(cellar ? ['Cellar'] : []), 'Ground floor', ...Array.from({ length: floors - 1 }, (_, k) => (k === floors - 2 ? 'Top floor' : `Floor ${k + 2}`)), 'Roof'];
   // The spiral stair keeps its place through every floor.
   const sa = rnd() * Math.PI * 2;
-  const sx = Math.floor(c + Math.cos(sa) * (r - 1.6)), sy = Math.floor(c + Math.sin(sa) * (r - 1.6));
+  const sx = Math.floor(c + DMath.cos(sa) * (r - 1.6)), sy = Math.floor(c + DMath.sin(sa) * (r - 1.6));
   const uses = ['guard', 'store', 'hall', 'library', 'study', 'bedchamber', 'laboratory', 'armoury', 'chapel'];
   const out: DLevel[] = [];
   names.forEach((name, k) => {
@@ -418,7 +419,7 @@ function tower(site: DungeonSite, rnd: Rng, n: number): DLevel[] {
         if (vertical) L.walls.push([g, c - half, g, c + half]);
         else L.walls.push([c - half, g, c + half, g]);
         let along = Math.floor(c - half + 1 + rnd() * Math.max(1, 2 * half - 3));
-        for (let t = 0; t < 8 && Math.hypot((vertical ? g : along + 0.5) - sx - 0.5, (vertical ? along + 0.5 : g) - sy - 0.5) < 2.2; t++) {
+        for (let t = 0; t < 8 && DMath.hypot2((vertical ? g : along + 0.5) - sx - 0.5, (vertical ? along + 0.5 : g) - sy - 0.5) < 2.2; t++) {
           along = Math.floor(c - half + 1 + rnd() * Math.max(1, 2 * half - 3));
         }
         L.doors.push(vertical ? { x: g, y: along, vertical: true, kind: rnd() < 0.2 ? 'locked' : 'door' } : { x: along, y: g, vertical: false, kind: rnd() < 0.2 ? 'locked' : 'door' });
@@ -433,12 +434,12 @@ function tower(site: DungeonSite, rnd: Rng, n: number): DLevel[] {
         room.lx = vertical ? (a + b) / 2 : c;
         room.ly = vertical ? c : (a + b) / 2;
         L.rooms.push(room);
-        furnish(L, rect, use, rnd, (x, y) => Math.hypot(x - c, y - c) < r - 0.9 && Math.hypot(x - sx - 0.5, y - sy - 0.5) > 1.3);
+        furnish(L, rect, use, rnd, (x, y) => DMath.hypot2(x - c, y - c) < r - 0.9 && DMath.hypot2(x - sx - 0.5, y - sy - 0.5) > 1.3);
       }
       if (name === 'Ground floor') {
         // The door: through the wall on the side away from the stair.
         const a = sa + Math.PI;
-        L.entrances.push({ x: c + Math.cos(a) * r, y: c + Math.sin(a) * r, dir: a + Math.PI });
+        L.entrances.push({ x: c + DMath.cos(a) * r, y: c + DMath.sin(a) * r, dir: a + Math.PI });
       }
     } else {
       const room = roomOf({ x: Math.floor(c - r), y: Math.floor(c - r), w: Math.ceil(2 * r), h: Math.ceil(2 * r) }, 1, ['roof']);
@@ -549,7 +550,7 @@ function delve(site: DungeonSite, rnd: Rng): DLevel[] {
   const r = above.rooms.filter((q) => q.n && q.w >= 3 && q.h >= 3 && q.x >= 3 && q.y >= 3).sort((a, b) => b.lx - a.lx)[0];
   if (r) {
     const p: [number, number] = [Math.floor(r.lx), Math.floor(r.ly)];
-    above.props = above.props.filter((q) => Math.hypot(q.x - (p[0] + 0.5), q.y - (p[1] + 0.5)) > 1.2);
+    above.props = above.props.filter((q) => DMath.hypot2(q.x - (p[0] + 0.5), q.y - (p[1] + 0.5)) > 1.2);
     const deeps = deepsLevel(site, rnd, levels.length, [p]);
     deeps.links.push({ x: p[0], y: p[1], dir: 'up', to: levels.indexOf(above), style: 'stairs' });
     above.links.push({ x: p[0], y: p[1], dir: 'down', to: levels.length, style: 'stairs' });
@@ -720,7 +721,7 @@ function deepsLevel(site: DungeonSite, rnd: Rng, k: number, anchors: [number, nu
   const L = mineLevel(site, rnd, k, anchors, large ? [84, 62] : [68, 50]);
   L.name = 'The deeps';
   // One worked chamber was walled up: something was found down here.
-  const r = L.rooms.filter((x) => x.n && x.w >= 3 && x.h >= 3).sort(() => rnd() - 0.5)[0];
+  const r = shuffle(L.rooms.filter((x) => x.n && x.w >= 3 && x.h >= 3), rnd)[0];
   if (r) {
     r.tags.unshift('delve-sealed');
     for (const d of L.doors) if (d.x >= r.x - 1 && d.x <= r.x + r.w + 1 && d.y >= r.y - 1 && d.y <= r.y + r.h + 1) d.kind = 'locked';
@@ -834,7 +835,7 @@ function simplifyCells(pts: [number, number][], tol: number): [number, number][]
     let best = -1, bd = tol;
     for (let k = a + 1; k < b; k++) {
       const [x, y] = pts[k], [x0, y0] = pts[a], [x1, y1] = pts[b];
-      const dx = x1 - x0, dy = y1 - y0, l = Math.hypot(dx, dy) || 1;
+      const dx = x1 - x0, dy = y1 - y0, l = DMath.hypot2(dx, dy) || 1;
       const d = Math.abs((x - x0) * dy - (y - y0) * dx) / l;
       if (d > bd) {
         bd = d;
@@ -879,8 +880,8 @@ function wellLevel(site: DungeonSite, rnd: Rng): DLevel {
     const steps = 9 + Math.floor(rnd() * 8);
     for (let q = 0; q < steps; q++) {
       a += (rnd() - 0.5) * 0.9;
-      x = Math.max(3, Math.min(W - 4, x + Math.cos(a) * 1.6));
-      y = Math.max(3, Math.min(H - 4, y + Math.sin(a) * 1.6));
+      x = Math.max(3, Math.min(W - 4, x + DMath.cos(a) * 1.6));
+      y = Math.max(3, Math.min(H - 4, y + DMath.sin(a) * 1.6));
       carveCircle(L, x, y, 1 + rnd() * 0.9);
     }
     const r = 2.4 + rnd() * 1.6;
@@ -894,9 +895,9 @@ function wellLevel(site: DungeonSite, rnd: Rng): DLevel {
     }
   }
   // Puddles and seeps on a wet site.
-  if (wet) for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (at(L, x, y) === FLOOR && rnd() < 0.06 && Math.hypot(x - sx, y - sy) > 4) set(L, x, y, WATER);
+  if (wet) for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) if (at(L, x, y) === FLOOR && rnd() < 0.06 && DMath.hypot2(x - sx, y - sy) > 4) set(L, x, y, WATER);
   // The hidden chamber: worked stone off the furthest grotto, behind a secret door.
-  const far = ends.sort((p, q) => Math.hypot(q[0] - sx, q[1] - sy) - Math.hypot(p[0] - sx, p[1] - sy))[0];
+  const far = ends.sort((p, q) => DMath.hypot2(q[0] - sx, q[1] - sy) - DMath.hypot2(p[0] - sx, p[1] - sy))[0];
   if (far) {
     const rw = 5 + Math.floor(rnd() * 2), rh = 4 + Math.floor(rnd() * 2);
     // Solid rock all round it (so the secret door is the only way in), as near the grotto as that allows.
@@ -908,7 +909,7 @@ function wellLevel(site: DungeonSite, rnd: Rng): DLevel {
     for (let y = 2; y + rh <= H - 2; y++) {
       for (let x = 2; x + rw <= W - 2; x++) {
         const r: Rect = { x, y, w: rw, h: rh };
-        const d = Math.hypot(x + rw / 2 - far[0], y + rh / 2 - far[1]);
+        const d = DMath.hypot2(x + rw / 2 - far[0], y + rh / 2 - far[1]);
         if (d < bd && d > 4 && solid(r)) {
           bd = d;
           room = r;
@@ -937,7 +938,7 @@ function wellLevel(site: DungeonSite, rnd: Rng): DLevel {
   // Loose rock and old bones in the caves.
   for (let q = 0; q < 10; q++) {
     const x = 2 + Math.floor(rnd() * (W - 4)), y = 2 + Math.floor(rnd() * (H - 4));
-    if (at(L, x, y) === FLOOR && Math.hypot(x - sx, y - sy) > 3.5) L.props.push({ kind: rnd() < 0.75 ? 'rubble' : 'bones', x: x + 0.5, y: y + 0.5 });
+    if (at(L, x, y) === FLOOR && DMath.hypot2(x - sx, y - sy) > 3.5) L.props.push({ kind: rnd() < 0.75 ? 'rubble' : 'bones', x: x + 0.5, y: y + 0.5 });
   }
   rects.forEach((r, i) => L.rooms.push(roomOf(r, 1, [tags[i]])));
   return L;
@@ -1027,7 +1028,7 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
   let outEnd: [number, number] | null = null;
   if (site.outfall) {
     const o = toCell(site.outfall);
-    const from = channel.reduce((a, b) => (Math.hypot(b[0] - o[0], b[1] - o[1]) < Math.hypot(a[0] - o[0], a[1] - o[1]) ? b : a));
+    const from = channel.reduce((a, b) => (DMath.hypot2(b[0] - o[0], b[1] - o[1]) < DMath.hypot2(a[0] - o[0], a[1] - o[1]) ? b : a));
     const ax = Math.abs(o[0] - from[0]) >= Math.abs(o[1] - from[1]);
     const d: [number, number] = ax ? [Math.sign(o[0] - from[0]) || 1, 0] : [0, Math.sign(o[1] - from[1]) || 1];
     const pts: [number, number][] = [from];
@@ -1080,7 +1081,7 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
   for (const [x, y] of channel) {
     let n = 0;
     for (const [i, j] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) if (at(L, x + i, y + j) === CHANNEL) n++;
-    if (n >= 3 && rects.every((r) => Math.hypot(r.x + 2 - x, r.y + 2 - y) > 8)) {
+    if (n >= 3 && rects.every((r) => DMath.hypot2(r.x + 2 - x, r.y + 2 - y) > 8)) {
       const r = { x: x - 2, y: y - 2, w: 5, h: 5 };
       rects.push(r);
       for (let j = r.y; j < r.y + r.h; j++) for (let i = r.x; i < r.x + r.w; i++) if (at(L, i, j) === VOID) set(L, i, j, FLOOR);
@@ -1129,7 +1130,7 @@ function sewerLevel(site: DungeonSite, rnd: Rng): DLevel {
  * far from the main grate and reached by a short passage that ends at a secret door.
  */
 function thievesDen(L: DLevel, channel: [number, number][], grate: [number, number], rnd: Rng, grand = false): void {
-  const far = channel.filter(([x, y]) => Math.hypot(x - grate[0], y - grate[1]) > 12);
+  const far = channel.filter(([x, y]) => DMath.hypot2(x - grate[0], y - grate[1]) > 12);
   // Under a thieves' city the den is larger, with a fences' market and the guildmaster's rooms.
   type Part = { w: number; h: number; key: string; furn: Parameters<typeof furnish>[2]; lock?: boolean };
   const H = grand ? 6 : 5;

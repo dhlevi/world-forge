@@ -154,5 +154,5 @@ export function floraOf(seed: string, region: Region, localName?: (en: string) =
     out.push({ ...p, found, ...(localName ? { local: localName(p.name) } : {}) });
   }
   const order: PlantKind[] = ['tree', 'shrub', 'vine', 'herb', 'grass', 'water plant', 'fungus'];
-  return out.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || a.name.localeCompare(b.name));
+  return out.sort((a, b) => order.indexOf(a.kind) - order.indexOf(b.kind) || (a.name < b.name ? -1 : a.name > b.name ? 1 : 0));
 }

@@ -7,6 +7,7 @@ import type { Settlement } from './settlements';
 import type { LabelFeature } from './features';
 import { type NameBank, type Named, dungeonName } from '../names/names';
 import { CULTURES, type FeatureKind } from '../names/cultures';
+import { DMath } from '../dmath';
 
 /**
  * Special features of the land, found after the world is made (on random streams of their own,
@@ -150,7 +151,7 @@ export function specialFeatures(
       y += g.cosLat[j] * g.sinLon[i];
       z += g.sinLat[j];
     }
-    const lo = (Math.atan2(y, x) * 180) / Math.PI, la = (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI;
+    const lo = (DMath.atan2(y, x) * 180) / Math.PI, la = (DMath.atan2(z, DMath.hypot2(x, y)) * 180) / Math.PI;
     let best = cells[0], bd = Infinity;
     for (const c of cells) {
       const d = distKm(lo, la, lon(c), lat(c));
@@ -198,7 +199,7 @@ export function specialFeatures(
   const nHot = 2 + Math.floor(rh() * 4);
   for (let k = 0; k < nHot; k++) {
     const z = 2 * rh() - 1, a = rh() * 2 * Math.PI;
-    const la = (Math.asin(z) * 180) / Math.PI * 0.85, lo = (a * 180) / Math.PI - 180;
+    const la = (DMath.asin(z) * 180) / Math.PI * 0.85, lo = (a * 180) / Math.PI - 180;
     let c = cellAt(lo, la);
     if (!land(c)) {
       let found = -1;
@@ -253,17 +254,17 @@ export function specialFeatures(
   for (const v of ashSources) {
     const ra = rng(`ash${v.c}`);
     let u = f.windU[v.c], w = f.windV[v.c];
-    const m = Math.hypot(u, w);
+    const m = DMath.hypot2(u, w);
     if (m < 0.5) {
       const a = ra() * 2 * Math.PI;
-      u = Math.cos(a);
-      w = Math.sin(a);
+      u = DMath.cos(a);
+      w = DMath.sin(a);
     } else {
       u /= m;
       w /= m;
     }
     const L = 260 + 380 * ra(), half = L * (0.28 + 0.12 * ra());
-    const lo0 = lon(v.c), la0 = lat(v.c), cl = Math.max(0.1, Math.cos((la0 * Math.PI) / 180));
+    const lo0 = lon(v.c), la0 = lat(v.c), cl = Math.max(0.1, DMath.cos((la0 * Math.PI) / 180));
     const phase = ra() * 10;
     disc(v.c, L + 40, (c) => {
       if (!land(c) || sp[c] === SP.lava) return;
@@ -273,7 +274,7 @@ export function specialFeatures(
       const along = x * u + y * w, across = -x * w + y * u;
       if (along < -50 || along > L) return;
       const widthHere = half * (0.35 + 0.65 * Math.min(1, Math.max(0, along) / (L * 0.5))) * (along > L * 0.7 ? (L - along) / (L * 0.3) : 1);
-      const wob = 1 + 0.25 * Math.sin(along / 37 + phase) + 0.15 * Math.sin(across / 23 + phase * 1.7);
+      const wob = 1 + 0.25 * DMath.sin(along / 37 + phase) + 0.15 * DMath.sin(across / 23 + phase * 1.7);
       if (Math.abs(across) < widthHere * wob) sp[c] = SP.ash;
     });
   }
@@ -289,9 +290,9 @@ export function specialFeatures(
   const freeSpot = (c0: number, minKm: number, maxKm: number, rr: Rng, ok: (c: number) => boolean) => {
     for (let t = 0; t < 30; t++) {
       const a = rr() * 2 * Math.PI, d = minKm + (maxKm - minKm) * rr();
-      const la = lat(c0) + (Math.sin(a) * d) / 111.2;
+      const la = lat(c0) + (DMath.sin(a) * d) / 111.2;
       if (la > 84 || la < -84) continue;
-      const lo = lon(c0) + (Math.cos(a) * d) / (111.2 * Math.max(0.1, Math.cos((lat(c0) * Math.PI) / 180)));
+      const lo = lon(c0) + (DMath.cos(a) * d) / (111.2 * Math.max(0.1, DMath.cos((lat(c0) * Math.PI) / 180)));
       const c = cellAt(lo, la);
       if (!land(c) || !ok(c)) continue;
       if (pois.some((p) => distKm(lon(p.c), lat(p.c), lon(c), lat(c)) < 90)) continue;

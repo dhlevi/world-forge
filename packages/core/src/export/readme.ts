@@ -4,7 +4,9 @@ export function gameDataReadme(meta: Record<string, unknown>, towns: number): st
   return `# World Forge game data
 
 This archive holds one generated world as plain data for a game engine. The same world can be
-made again in World Forge from the settings in \`world.json\` (or from a saved world file).
+made again in World Forge from the settings in \`world.json\` (or from a saved world file), by the
+same generator version (\`generator\` in \`world.json\`): the generator makes the same world from
+the same settings in every JavaScript engine.
 
 ## Coordinates
 

@@ -1,5 +1,6 @@
 import type { Grid } from './grid';
 import type { Rng } from './rng';
+import { DMath } from '../dmath';
 
 export interface StreamFeature {
   type: 'Feature';
@@ -47,7 +48,7 @@ export function traceStreamlines(g: Grid, u: Float32Array, v: Float32Array, rng:
   const features: StreamFeature[] = [];
   const { spacingDeg: spacing, stepKm, steps, seaOnly, tint } = opts;
   for (let lat0 = -90 + spacing / 2; lat0 < 90; lat0 += spacing) {
-    const lonSpacing = spacing / Math.max(0.15, Math.cos(lat0 * DEG));
+    const lonSpacing = spacing / Math.max(0.15, DMath.cos(lat0 * DEG));
     for (let lon0 = -180; lon0 < 180; lon0 += lonSpacing) {
       let lon = lon0 + (rng() - 0.5) * lonSpacing * 0.8;
       let lat = lat0 + (rng() - 0.5) * spacing * 0.8;
@@ -56,10 +57,10 @@ export function traceStreamlines(g: Grid, u: Float32Array, v: Float32Array, rng:
       let speedSum = 0, tintSum = 0;
       for (let s = 0; s < steps; s++) {
         const su = sample(g, u, lon, lat), sv = sample(g, v, lon, lat);
-        const speed = Math.hypot(su, sv);
+        const speed = DMath.hypot2(su, sv);
         if (speed < 0.05) break;
         const nlat = Math.max(-89, Math.min(89, lat + (sv * stepKm) / KM_PER_DEG));
-        const nlon = lon + (su * stepKm) / (KM_PER_DEG * Math.max(0.05, Math.cos(nlat * DEG)));
+        const nlon = lon + (su * stepKm) / (KM_PER_DEG * Math.max(0.05, DMath.cos(nlat * DEG)));
         if (seaOnly && nearest(g, seaOnly, nlon, nlat) > 0) break;
         speedSum += speed;
         if (tint) tintSum += sample(g, tint, lon, lat);
@@ -73,12 +74,12 @@ export function traceStreamlines(g: Grid, u: Float32Array, v: Float32Array, rng:
       features.push({ type: 'Feature', geometry: { type: 'LineString', coordinates: pts }, properties: { kind: 'line', ...props } });
 
       const [ex, ey] = pts[n], [px, py] = pts[n - 1];
-      const kx = KM_PER_DEG * Math.cos(ey * DEG);
+      const kx = KM_PER_DEG * DMath.cos(ey * DEG);
       const dx = (ex - px) * kx, dy = (ey - py) * KM_PER_DEG;
-      const len = Math.hypot(dx, dy) || 1;
+      const len = DMath.hypot2(dx, dy) || 1;
       const head = 2.5 * stepKm;
       const wing = (rot: number): number[] => {
-        const c = Math.cos(rot), s = Math.sin(rot);
+        const c = DMath.cos(rot), s = DMath.sin(rot);
         const bx = (-dx / len) * c - (-dy / len) * s, by = (-dx / len) * s + (-dy / len) * c;
         return [ex + (bx * head) / Math.max(1e-3, kx), ey + (by * head) / KM_PER_DEG];
       };

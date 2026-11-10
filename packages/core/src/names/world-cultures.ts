@@ -6,6 +6,7 @@ import { cap, join } from '../lang/text';
 import { CULTURES, FAMILIES, type LangFamily, TEMPLATES, type WorldCulture, plainCulture } from './cultures';
 import { type CultureEnv, cultureTraits } from './traits';
 import { BUNDLE, table } from './bundles';
+import { DMath } from '../dmath';
 
 /**
  * The world's cultures, one per culture hearth: each grows from a template, with a language of
@@ -125,8 +126,8 @@ const STOCK_KM = 3600;
 
 function km(lon1: number, lat1: number, lon2: number, lat2: number): number {
   const r = Math.PI / 180;
-  const a = Math.sin(((lat2 - lat1) * r) / 2) ** 2 + Math.cos(lat1 * r) * Math.cos(lat2 * r) * Math.sin(((lon2 - lon1) * r) / 2) ** 2;
-  return 2 * 6371 * Math.asin(Math.min(1, Math.sqrt(a)));
+  const a = DMath.pow(DMath.sin(((lat2 - lat1) * r) / 2), 2) + DMath.cos(lat1 * r) * DMath.cos(lat2 * r) * DMath.pow(DMath.sin(((lon2 - lon1) * r) / 2), 2);
+  return 2 * 6371 * DMath.asin(Math.min(1, Math.sqrt(a)));
 }
 
 /** The world's language families, as lists of culture indices (the largest people first). */

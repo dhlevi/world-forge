@@ -1,5 +1,6 @@
 import { Biome } from '../gen/biomes';
 import { SP } from '../gen/special';
+import { DMath } from '../dmath';
 
 /**
  * The kinds of country the bestiary and the field guide sort their creatures and plants by, and
@@ -66,12 +67,12 @@ export function regionAt(r: RasterLike, lon: number, lat: number, reachDeg = 0.6
   const lx = Math.floor(lon * 2) / 2 + 0.25, ly = Math.floor(lat * 2) / 2 + 0.25;
   const acc: Partial<Record<Habitat, number>> = {};
   let land = 0, sea = 0, nw = 0;
-  const kLon = 1 / Math.max(0.2, Math.cos((ly * Math.PI) / 180));
+  const kLon = 1 / Math.max(0.2, DMath.cos((ly * Math.PI) / 180));
   for (const f of [0, 0.35, 0.7, 1]) {
     const n = f === 0 ? 1 : 12;
     for (let a = 0; a < n; a++) {
       const t = (a / n) * Math.PI * 2;
-      const c = cell(lx + Math.cos(t) * reachDeg * f * kLon, ly + Math.sin(t) * reachDeg * f);
+      const c = cell(lx + DMath.cos(t) * reachDeg * f * kLon, ly + DMath.sin(t) * reachDeg * f);
       if (r.height[c] <= 0) {
         sea++;
         continue;

@@ -1,5 +1,6 @@
 import type { Pt } from './geom';
 import { BUNDLE } from '../names/bundles';
+import { DMath } from '../dmath';
 
 /**
  * Town plan layouts. Every walled town starts as Voronoi wards, but where the ward seeds lie and
@@ -55,7 +56,7 @@ function sunflower(n: number, sc: number, c: Pt, rnd: () => number, jitterR = 0.
   for (let i = 1; i < n; i++) {
     const r = sc * Math.sqrt(i + 0.5) * (1 - jitterR / 2 + jitterR * rnd());
     const a = a0 + i * GOLDEN + (rnd() - 0.5) * jitterA;
-    out.push([c[0] + r * Math.cos(a), c[1] + r * Math.sin(a)]);
+    out.push([c[0] + r * DMath.cos(a), c[1] + r * DMath.sin(a)]);
   }
   return out;
 }
@@ -70,7 +71,7 @@ function thin(pts: Pt[], minD: number, keepFirst: number): Pt[] {
     if (idx >= keepFirst) {
       for (let di = -1; di <= 1; di++) {
         for (let dj = -1; dj <= 1; dj++) {
-          for (const q of cell.get(`${ci + di},${cj + dj}`) ?? []) if (Math.hypot(q[0] - p[0], q[1] - p[1]) < minD) return;
+          for (const q of cell.get(`${ci + di},${cj + dj}`) ?? []) if (DMath.hypot2(q[0] - p[0], q[1] - p[1]) < minD) return;
         }
       }
     }
@@ -85,7 +86,7 @@ function thin(pts: Pt[], minD: number, keepFirst: number): Pt[] {
 export function makeLayout(style: CityLayout, site: LayoutSite): Layout {
   const { rnd, nInner, Rin, R, axis } = site;
   const sc = Rin / Math.sqrt(nInner);
-  const nTotal = Math.ceil(nInner * ((R * 1.2) / Rin) ** 2);
+  const nTotal = Math.ceil(nInner * DMath.pow((R * 1.2) / Rin, 2));
   const [ax, ay] = axis;
   // Axis frame: u along the axis, v across it.
   const uv = (p: Pt): Pt => [p[0] * ax + p[1] * ay, -p[0] * ay + p[1] * ax];
@@ -105,21 +106,21 @@ export function makeLayout(style: CityLayout, site: LayoutSite): Layout {
       for (let i = -n; i <= n; i++) {
         for (let j = -n; j <= n; j++) {
           // Regular in the town, looser out in the fields (old field boundaries drift).
-          const far = Math.min(1, Math.max(0, (Math.hypot(i * Math.sqrt(asp), j / Math.sqrt(asp)) * g - Rin * 1.3) / Rin));
+          const far = Math.min(1, Math.max(0, (DMath.hypot2(i * Math.sqrt(asp), j / Math.sqrt(asp)) * g - Rin * 1.3) / Rin));
           const jit = 0.08 + 0.3 * far;
           const u = (i + (rnd() - 0.5) * jit) * g * Math.sqrt(asp), v = (j + (rnd() - 0.5) * jit) * (g / Math.sqrt(asp));
           const p = xy(u + shear * v, v);
-          if (Math.hypot(p[0], p[1]) <= R * 1.25) pts.push(p);
+          if (DMath.hypot2(p[0], p[1]) <= R * 1.25) pts.push(p);
         }
       }
       // The seed nearest the centre first (the market square).
-      pts.sort((a, b) => Math.hypot(a[0], a[1]) - Math.hypot(b[0], b[1]));
+      pts.sort((a, b) => DMath.hypot2(a[0], a[1]) - DMath.hypot2(b[0], b[1]));
       return {
         ...base, style, pts, lloyd: false, nuclei: [pts[0]], laneW: 3, skew: 0, slopeW: 4,
         metric: (p) => {
           const [u, v] = uv(p);
           const a = Math.abs(u) / Math.sqrt(asp), b = Math.abs(v) * Math.sqrt(asp);
-          return (a ** 6 + b ** 6) ** (1 / 6);
+          return DMath.pow(DMath.pow(a, 6) + DMath.pow(b, 6), 1 / 6);
         },
       };
     }
@@ -140,7 +141,7 @@ export function makeLayout(style: CityLayout, site: LayoutSite): Layout {
         ...base, style, pts, lloyd: false, nuclei: [[0, 0]],
         metric: (p) => {
           const [u, v] = uv(p);
-          return Math.hypot(u / ka, (v - spineV(u)) / kc);
+          return DMath.hypot2(u / ka, (v - spineV(u)) / kc);
         },
       };
     }
@@ -152,10 +153,10 @@ export function makeLayout(style: CityLayout, site: LayoutSite): Layout {
       return {
         ...base, style, pts, lloyd: false, nuclei: [[0, 0]], slopeW: 22, gradeRef: 0.045,
         metric: (p) => {
-          const ang = Math.atan2(p[1], p[0]);
+          const ang = DMath.atan2(p[1], p[0]);
           let f = 1;
-          for (const h of harm) f += h.a * Math.sin(h.k * ang + h.ph);
-          return Math.hypot(p[0], p[1]) / Math.max(0.45, f);
+          for (const h of harm) f += h.a * DMath.sin(h.k * ang + h.ph);
+          return DMath.hypot2(p[0], p[1]) / Math.max(0.45, f);
         },
       };
     }
@@ -167,12 +168,12 @@ export function makeLayout(style: CityLayout, site: LayoutSite): Layout {
       const pts = thin([c1, c2, ...sunflower(Math.ceil(nTotal * 0.62), sc, c1, rnd).slice(1), ...sunflower(Math.ceil(nTotal * 0.62), sc, c2, rnd).slice(1)], sc * 1.2, 2);
       return {
         ...base, style, pts, lloyd: true, nuclei: [c1, c2],
-        metric: (p) => Math.min(Math.hypot(p[0] - c1[0], p[1] - c1[1]), 1.15 * Math.hypot(p[0] - c2[0], p[1] - c2[1])) * 1.25,
+        metric: (p) => Math.min(DMath.hypot2(p[0] - c1[0], p[1] - c1[1]), 1.15 * DMath.hypot2(p[0] - c2[0], p[1] - c2[1])) * 1.25,
       };
     }
     default: {
       const pts = sunflower(nTotal, sc, [0, 0], rnd);
-      return { ...base, style: 'radial', pts, lloyd: true, nuclei: [[0, 0]], metric: (p) => Math.hypot(p[0], p[1]) };
+      return { ...base, style: 'radial', pts, lloyd: true, nuclei: [[0, 0]], metric: (p) => DMath.hypot2(p[0], p[1]) };
     }
   }
 }

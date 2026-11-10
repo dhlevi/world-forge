@@ -1,6 +1,7 @@
 import { type Poly, type Pt, area, centroid, hatch, pointInPoly, strips } from './geom';
 import type { PlanOut } from './plan';
 import { LAND, type LocalTerrain } from './terrain';
+import { DMath } from '../dmath';
 
 /** What a polygon must stand on: ground no steeper than maxSlope (m/m), at least marginM from water. */
 export interface GroundRule {
@@ -92,7 +93,7 @@ export class Ground {
     for (let j = 0; j < n; j++) {
       for (let i = 0; i < n; i++) {
         const p = this.terrain.node(i, j);
-        good[j * n + i] = Math.hypot(...p) <= maxR + spacing && this.ok(p, rule) ? 1 : 0;
+        good[j * n + i] = DMath.hypot(...p) <= maxR + spacing && this.ok(p, rule) ? 1 : 0;
       }
     }
     const out: Pt[] = [];
@@ -103,12 +104,12 @@ export class Ground {
         const k = j * n + i;
         if (good[k] || !(good[k - 1] || good[k + 1] || good[k - n] || good[k + n])) continue;
         const p = this.terrain.node(i, j);
-        if (Math.hypot(...p) > maxR + spacing) continue;
+        if (DMath.hypot(...p) > maxR + spacing) continue;
         let near = false;
         for (let dx = -1; dx <= 1 && !near; dx++) {
           for (let dy = -1; dy <= 1 && !near; dy++) {
             const b = cell.get((Math.floor(p[0] / spacing) + dx) * 100003 + Math.floor(p[1] / spacing) + dy);
-            if (b?.some((q) => Math.hypot(q[0] - p[0], q[1] - p[1]) < spacing)) near = true;
+            if (b?.some((q) => DMath.hypot2(q[0] - p[0], q[1] - p[1]) < spacing)) near = true;
           }
         }
         if (near) continue;
@@ -134,7 +135,7 @@ export class Ground {
     const pts: Pt[] = [];
     for (let k = 0; k < poly.length; k++) {
       const a = poly[k], b = poly[(k + 1) % poly.length];
-      const m = Math.max(1, Math.ceil(Math.hypot(b[0] - a[0], b[1] - a[1]) / step));
+      const m = Math.max(1, Math.ceil(DMath.hypot2(b[0] - a[0], b[1] - a[1]) / step));
       for (let t = 0; t < m; t++) pts.push([a[0] + ((b[0] - a[0]) * t) / m, a[1] + ((b[1] - a[1]) * t) / m]);
     }
     const at = (v: Pt, s: number): Pt => [c[0] + (v[0] - c[0]) * s, c[1] + (v[1] - c[1]) * s];
@@ -144,7 +145,7 @@ export class Ground {
     // Steps stride by the distance to water (sphere tracing), and stay short where slope matters.
     const slopeStep = rule.maxSlope < 1 ? 4.5 : Infinity;
     // Far from any water, only slope can fail: checking the outline is enough.
-    const maxL = pts.reduce((m, v) => Math.max(m, Math.hypot(v[0] - c[0], v[1] - c[1])), 0);
+    const maxL = pts.reduce((m, v) => Math.max(m, DMath.hypot2(v[0] - c[0], v[1] - c[1])), 0);
     const nearWater = this.waterDist(c) <= maxL + rule.marginM + this.terrain.cs;
     const scale = pts.map((v) => {
       if (!nearWater) {
@@ -153,7 +154,7 @@ export class Ground {
         for (let s = 0.9; s >= 0.12; s -= 0.08) if (this.ok(at(v, s), rule)) return s * 0.97;
         return 0.1;
       }
-      const L = Math.hypot(v[0] - c[0], v[1] - c[1]);
+      const L = DMath.hypot2(v[0] - c[0], v[1] - c[1]);
       if (L < 1e-6) return 1;
       let t = 0, last = 0;
       while (t < L) {
@@ -179,7 +180,7 @@ export class Ground {
     }
     if (wobble > 0) {
       for (let k = 0; k < N; k++) {
-        const r = Math.hypot(pts[k][0] - c[0], pts[k][1] - c[1]);
+        const r = DMath.hypot2(pts[k][0] - c[0], pts[k][1] - c[1]);
         if (r > 1) scale[k] *= 1 - (rnd() * wobble) / r;
       }
     }
@@ -188,7 +189,7 @@ export class Ground {
     out = out.filter((v, k) => {
       const a = out[(k + N - 1) % N], b = out[(k + 1) % N];
       const cross = (v[0] - a[0]) * (b[1] - a[1]) - (v[1] - a[1]) * (b[0] - a[0]);
-      return Math.abs(cross) > 0.4 * Math.hypot(b[0] - a[0], b[1] - a[1]) || scale[k] < 1;
+      return Math.abs(cross) > 0.4 * DMath.hypot2(b[0] - a[0], b[1] - a[1]) || scale[k] < 1;
     });
     if (out.length < 3 || area(out) < minKeep * area(poly)) return null;
     return out;
@@ -219,7 +220,7 @@ export function clipLines(lines: Pt[][], poly: Poly): Pt[][] {
         if (!pointInPoly(poly, a[0] + (b[0] - a[0]) * tm, a[1] + (b[1] - a[1]) * tm)) continue;
         const p0: Pt = [a[0] + (b[0] - a[0]) * t0, a[1] + (b[1] - a[1]) * t0];
         const p1: Pt = [a[0] + (b[0] - a[0]) * t1, a[1] + (b[1] - a[1]) * t1];
-        if (Math.hypot(p1[0] - p0[0], p1[1] - p0[1]) > 1.5) res.push([p0, p1]);
+        if (DMath.hypot2(p1[0] - p0[0], p1[1] - p0[1]) > 1.5) res.push([p0, p1]);
       }
     }
   }
@@ -234,7 +235,7 @@ export const TERRACE_SLOPE = 0.06;
  * contour-ploughed fields); on the flat it is returned whole.
  */
 export function contourStrips(q: Poly, terrain: LocalTerrain, rnd: () => number, maxSlope: number): Poly[] {
-  const g = terrain.grad(centroid(q)), sl = Math.hypot(...g);
+  const g = terrain.grad(centroid(q)), sl = DMath.hypot(...g);
   if (sl < TERRACE_SLOPE || sl > maxSlope) return [q];
   const width = 14 + 12 * rnd() - 30 * (sl - TERRACE_SLOPE);
   return strips(q, [g[0] / sl, g[1] / sl], Math.max(9, width), 2).filter((s) => area(s) > 120);

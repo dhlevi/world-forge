@@ -5,6 +5,7 @@ import { worldThemes } from '../lore/themes';
 import { type TownCtx, type TownStats, townStats } from './town';
 import { townMix } from './residents';
 import { type WorldData, worldLore } from '../lore/current';
+import { DMath } from '../dmath';
 
 /**
  * The context a town's life is worked out from (people/town.ts): its people and the peoples
@@ -25,7 +26,7 @@ function nearPeoples(w: WorldData, lon: number, lat: number, reachDeg: number, o
   for (const f of [0.35, 0.7, 1]) {
     for (let a = 0; a < 16; a++) {
       const t = (a / 16) * Math.PI * 2;
-      const x = lon + (Math.cos(t) * reachDeg * f) / Math.max(0.2, Math.cos((lat * Math.PI) / 180)), y = lat + Math.sin(t) * reachDeg * f;
+      const x = lon + (DMath.cos(t) * reachDeg * f) / Math.max(0.2, DMath.cos((lat * Math.PI) / 180)), y = lat + DMath.sin(t) * reachDeg * f;
       const c = cellOf(W, H, x, y);
       if (height[c] <= 0) continue;
       const cu = culture[c];

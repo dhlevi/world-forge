@@ -9,6 +9,7 @@ import type { RoadCollection, Settlement } from './settlements';
 import { CULTURES, type FeatureKind } from '../names/cultures';
 import { chooseLayout } from '../towns/layout';
 import type { NameBank, Named } from '../names/names';
+import { DMath } from '../dmath';
 
 /**
  * Geographic features found on the world grid and given names in the local culture:
@@ -199,7 +200,7 @@ export function nameWorld(
 
   /** A label geometry: a gently curved line along the long axis of an elongated set, else a point. */
   const shape = (cells: number[], at: number, maxLenKm = 2500): LabelFeature['geometry'] => {
-    const lat0 = lat(at), lon0 = lon(at), cl = Math.max(0.05, Math.cos((lat0 * Math.PI) / 180));
+    const lat0 = lat(at), lon0 = lon(at), cl = Math.max(0.05, DMath.cos((lat0 * Math.PI) / 180));
     let sxx = 0, syy = 0, sxy = 0, n = 0;
     const xs: number[] = [], ys: number[] = [];
     const step = Math.max(1, Math.floor(cells.length / 4000));
@@ -216,8 +217,8 @@ export function nameWorld(
     const tr = sxx + syy, det = sxx * syy - sxy * sxy;
     const l1 = tr / 2 + Math.sqrt(Math.max(0, (tr * tr) / 4 - det)), l2 = tr / 2 - Math.sqrt(Math.max(0, (tr * tr) / 4 - det));
     if (l2 > 0 && l1 / l2 < 2.4) return { type: 'Point', coordinates: point(at) };
-    const ang = 0.5 * Math.atan2(2 * sxy, sxx - syy);
-    const ux = Math.cos(ang), uy = Math.sin(ang);
+    const ang = 0.5 * DMath.atan2(2 * sxy, sxx - syy);
+    const ux = DMath.cos(ang), uy = DMath.sin(ang);
     const proj = xs.map((x, k) => x * ux + ys[k] * uy).sort((a, b) => a - b);
     const lo = proj[Math.floor(proj.length * 0.12)], hi = proj[Math.floor(proj.length * 0.88)];
     const half = Math.min(maxLenKm, (hi - lo) * 0.85) / 2;
@@ -267,9 +268,9 @@ export function nameWorld(
       let x = 0, y = 0, z = 0;
       for (const c of all) {
         const la = (lat(c) * Math.PI) / 180, lo = (lon(c) * Math.PI) / 180;
-        x += Math.cos(la) * Math.cos(lo); y += Math.cos(la) * Math.sin(lo); z += Math.sin(la);
+        x += DMath.cos(la) * DMath.cos(lo); y += DMath.cos(la) * DMath.sin(lo); z += DMath.sin(la);
       }
-      const cLon = (Math.atan2(y, x) * 180) / Math.PI, cLat = (Math.atan2(z, Math.hypot(x, y)) * 180) / Math.PI;
+      const cLon = (DMath.atan2(y, x) * 180) / Math.PI, cLat = (DMath.atan2(z, DMath.hypot2(x, y)) * 180) / Math.PI;
       push('isles', bank.featureNamed('isles', f.culture[smallIslands[members[0]].c], `isles${r}`), { type: 'Point', coordinates: [cLon, cLat] }, 1, 4, 9);
     } else if (areaOf(all) > 3000) {
       for (const k of members) {
@@ -377,9 +378,9 @@ export function nameWorld(
     const la0 = lat(c), lo0 = lon(c);
     const stepKm = Math.max(15, g.dyKm * 0.9);
     // Local flat approximation (fine over 700 km away from the poles).
-    const kLon = 1 / (111.2 * Math.max(0.2, Math.cos((la0 * Math.PI) / 180))), fx = W / 360, fy = H / 180;
+    const kLon = 1 / (111.2 * Math.max(0.2, DMath.cos((la0 * Math.PI) / 180))), fx = W / 360, fy = H / 180;
     for (let d = 0; d < DIRS; d++) {
-      const a = (d / DIRS) * 2 * Math.PI, dlo = Math.cos(a) * stepKm * kLon, dla = (Math.sin(a) * stepKm) / 111.2;
+      const a = (d / DIRS) * 2 * Math.PI, dlo = DMath.cos(a) * stepKm * kLon, dla = (DMath.sin(a) * stepKm) / 111.2;
       let lo = lo0, la = la0;
       for (let t = stepKm; t <= R; t += stepKm) {
         lo += dlo;
@@ -415,8 +416,8 @@ export function nameWorld(
       // The label runs along the passage, across the land-to-land direction.
       const along = ((d + DIRS / 4) / DIRS) * 2 * Math.PI;
       const half = Math.min(260, channel ? 260 : 170);
-      const la0 = lat(c), lo0 = lon(c), cl = Math.max(0.05, Math.cos((la0 * Math.PI) / 180));
-      const coords = [-1, -0.5, 0, 0.5, 1].map((t) => [lo0 + (Math.cos(along) * half * t) / (111.2 * cl), la0 + (Math.sin(along) * half * t) / 111.2]);
+      const la0 = lat(c), lo0 = lon(c), cl = Math.max(0.05, DMath.cos((la0 * Math.PI) / 180));
+      const coords = [-1, -0.5, 0, 0.5, 1].map((t) => [lo0 + (DMath.cos(along) * half * t) / (111.2 * cl), la0 + (DMath.sin(along) * half * t) / 111.2]);
       if (coords[0][0] > coords[4][0]) coords.reverse();
       cands.push({
         kind: channel ? 'channel' : 'strait', c, score: 2 + (p === Infinity ? 1 : 0) + (q === Infinity ? 1 : 0) - (a + b) / 460,
@@ -664,8 +665,8 @@ function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], mask
   for (let c = 0; c < N; c++) if (owner[c] >= 0) cellsOf[owner[c]].push(c);
 
   const lonOf = (c: number) => g.lonDeg[c % W], latOf = (c: number) => g.latDeg[(c / W) | 0];
-  const mercY = (lat: number) => 0.5 - Math.log(Math.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, lat)) * Math.PI) / 360)) / (2 * Math.PI);
-  const latOfY = (y: number) => (Math.atan(Math.sinh((0.5 - y) * 2 * Math.PI)) * 180) / Math.PI;
+  const mercY = (lat: number) => 0.5 - DMath.log(DMath.tan(Math.PI / 4 + (Math.max(-85, Math.min(85, lat)) * Math.PI) / 360)) / (2 * Math.PI);
+  const latOfY = (y: number) => (DMath.atan(DMath.sinh((0.5 - y) * 2 * Math.PI)) * 180) / Math.PI;
   const out: LabelFeature[] = [];
   waters.forEach((w, k) => {
     const main = labels[w.label];
@@ -687,11 +688,11 @@ function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], mask
     }
     const pad = (180 / H) * 0.6;
     lo -= pad * 2; hi += pad * 2; la0 -= pad; la1 += pad;
-    const latC = latOf(w.at), cosC = Math.max(0.05, Math.cos((latC * Math.PI) / 180));
+    const latC = latOf(w.at), cosC = Math.max(0.05, DMath.cos((latC * Math.PI) / 180));
     // Zoom at which the body is about 700 px across: below it the main label alone does.
     // Elongated bodies count by their length, not just their area.
     const diam = Math.max(2 * Math.sqrt(areaKm / Math.PI), Math.min((hi - lo) * 111.2 * cosC, (la1 - la0) * 111.2) * 0.5, Math.max((hi - lo) * 111.2 * cosC, (la1 - la0) * 111.2) * 0.7);
-    const zFill = Math.log2((EARTH_KM * cosC * 700) / (512 * Math.max(1, diam)));
+    const zFill = DMath.log2((EARTH_KM * cosC * 700) / (512 * Math.max(1, diam)));
     const zStart = Math.max(Math.ceil(p.minz), Math.round(zFill));
     if (zStart >= cap) {
       p.zlo = 0;
@@ -702,13 +703,13 @@ function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], mask
     p.zhi = zStart;
     let zEnd = zStart;
     for (let z = zStart; z < cap; z++) {
-      const step = LATTICE_PX / (512 * 2 ** z);
+      const step = LATTICE_PX / (512 * DMath.pow(2, z));
       const y0 = mercY(la1), y1 = mercY(la0);
       const x0 = (lon0 + lo + 180) / 360, x1 = (lon0 + hi + 180) / 360;
       const rows = Math.ceil((y1 - y0) / step) + 1, cols = Math.ceil((x1 - x0) / step) + 1;
       if (rows * cols > 400000) break;
       // Skip the work for a band that would clearly be over budget.
-      const sKm = (LATTICE_PX * EARTH_KM * cosC) / (512 * 2 ** z);
+      const sKm = (LATTICE_PX * EARTH_KM * cosC) / (512 * DMath.pow(2, z));
       if (areaKm / (sKm * sKm) > MAX_PER_BAND * 1.6) break;
       const band: LabelFeature[] = [];
       const spare: [number, number, number][] = [];
@@ -716,7 +717,7 @@ function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], mask
         const y = r * step;
         const lat = latOfY(y);
         if (lat < la0 || lat > la1) continue;
-        const kmpp = (EARTH_KM * Math.cos((lat * Math.PI) / 180)) / (512 * 2 ** z);
+        const kmpp = (EARTH_KM * DMath.cos((lat * Math.PI) / 180)) / (512 * DMath.pow(2, z));
         // Label footprint (km): about 75 px either side, 12 px above and below.
         const hw = 75 * kmpp, hh = 12 * kmpp;
         const safe = hw + 22;
@@ -732,7 +733,7 @@ function waterAnchors(g: Grid, labels: LabelFeature[], waters: WaterBody[], mask
           if (dep < safe) {
             // Near the shore: the drawn coastline at this zoom decides.
             if (!sampler || dep < hw * 0.5) continue;
-            const kLon = 1 / (111.2 * Math.max(0.05, Math.cos((lat * Math.PI) / 180)));
+            const kLon = 1 / (111.2 * Math.max(0.05, DMath.cos((lat * Math.PI) / 180)));
             let wet = true;
             for (const [dx, dy] of FOOT) {
               const lo = lonW + dx * hw * kLon, la = lat + (dy * hh) / 111.2;

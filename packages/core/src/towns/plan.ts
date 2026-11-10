@@ -7,6 +7,7 @@ import type { LocalTerrain } from './terrain';
 import type { Ground } from './ground';
 import type { NameBank } from '../names/names';
 import type { RoadClass, Settlement } from '../gen/settlements';
+import { DMath } from '../dmath';
 
 const M_PER_DEG = (Math.PI * 6371000) / 180;
 
@@ -15,7 +16,7 @@ export class LocalFrame {
   readonly mLon: number;
 
   constructor(readonly lon0: number, readonly lat0: number) {
-    this.mLon = M_PER_DEG * Math.max(0.01, Math.cos((lat0 * Math.PI) / 180));
+    this.mLon = M_PER_DEG * Math.max(0.01, DMath.cos((lat0 * Math.PI) / 180));
   }
 
   toLL(p: Pt): number[] {
@@ -61,7 +62,7 @@ export class PlanOut {
         cx += q[0] / p.length;
         cy += q[1] / p.length;
       }
-      const r = Math.max(...p.map((q) => Math.hypot(q[0] - cx, q[1] - cy)));
+      const r = Math.max(...p.map((q) => DMath.hypot2(q[0] - cx, q[1] - cy)));
       const k = (r + 2.5) / Math.max(1, r);
       this.poly('mound', p.map((q) => [cx + (q[0] - cx) * k, cy + (q[1] - cy) * k] as Pt));
       props = { ...props, burrow: 1 };

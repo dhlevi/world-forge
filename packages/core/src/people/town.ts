@@ -2,6 +2,8 @@ import { hashString, mulberry32 } from '../gen/rng';
 import type { Gov } from '../gen/politics';
 import type { CityTheme } from '../lore/themes';
 import { CULTURES } from '../names/cultures';
+import { DMath } from '../dmath';
+import { thousands } from '../format';
 
 /**
  * A settlement's life as a roguelike would need it: who lives there (its people and its
@@ -80,7 +82,7 @@ export function minorityShare(tier: string, population: number, coastal: boolean
 
 export function townStats(t: TownCtx): TownStats {
   const r = mulberry32(hashString(`${t.seed}#town#${t.id}`));
-  const lg = Math.log10(Math.max(50, t.population));
+  const lg = DMath.log10(Math.max(50, t.population));
   const hot = t.koppen <= 6 || (t.koppen >= 10 && t.koppen <= 13);
   const village = t.tier === 'village';
 
@@ -140,10 +142,10 @@ export function townStats(t: TownCtx): TownStats {
   const men = village ? 0 : Math.max(2, Math.round((t.population / (t.theme === 'fortress' ? 180 : 320)) * (crime > 60 ? 1.2 : 1)));
   const watch = village
     ? { men: 0, text: 'No watch: the reeve and the neighbours keep the peace.' }
-    : { men, text: `${men.toLocaleString('en')} ${t.theme === 'fortress' ? 'soldiers of the garrison keep' : t.gov === 'theocracy' ? 'temple wardens keep' : 'watchmen keep'} the peace${crime > 70 ? ', and often look away' : ''}.` };
+    : { men, text: `${thousands(men)} ${t.theme === 'fortress' ? 'soldiers of the garrison keep' : t.gov === 'theocracy' ? 'temple wardens keep' : 'watchmen keep'} the peace${crime > 70 ? ', and often look away' : ''}.` };
   // Means: a bell over the five classes, shifted by prosperity.
   const centre = (prosperity / 100) * 4;
-  const raw = [0, 1, 2, 3, 4].map((k) => Math.exp(-((k - centre) ** 2) / 1.6) * (k === 4 ? 0.35 : 1) * (k === 0 ? 0.8 : 1));
+  const raw = [0, 1, 2, 3, 4].map((k) => DMath.exp(-(DMath.pow(k - centre, 2)) / 1.6) * (k === 4 ? 0.35 : 1) * (k === 0 ? 0.8 : 1));
   const sum = raw.reduce((a, b) => a + b, 0);
   const means = raw.map((x) => x / sum);
   const peoples = [{ culture: t.culture, share: 1 - t.minorities.reduce((a, m) => a + m.share, 0) }, ...t.minorities]

@@ -3,6 +3,7 @@ import { pxPerMeterZ20 } from './grid';
 import type { FlowRouting } from './hydrology';
 import { hash32 } from './rng';
 import { HYDROLOGY } from './config';
+import { DMath } from '../dmath';
 
 export interface RiverFeature {
   type: 'Feature';
@@ -44,7 +45,7 @@ export function riverVertex(g: Grid, c: number, seed: number): number[] {
 }
 
 export function riverWidthM(order: number): number {
-  return HYDROLOGY.riverWidthM * HYDROLOGY.riverWidthGrowth ** order;
+  return HYDROLOGY.riverWidthM * DMath.pow(HYDROLOGY.riverWidthGrowth, order);
 }
 
 /**
@@ -64,7 +65,7 @@ export function extractRivers(g: Grid, h: Float32Array, flow: FlowRouting, acc: 
   for (let c = 0; c < N; c++) if (isRiver[c]) hasDonor[recv[c]] = 1;
 
   const point = (c: number) => riverVertex(g, c, seed);
-  const bucket = (c: number) => Math.max(0, Math.floor(Math.log2(acc[c] / thr)));
+  const bucket = (c: number) => Math.max(0, Math.floor(DMath.log2(acc[c] / thr)));
 
   // River systems: walking down from the biggest discharge, each cell continues the name of
   // its receiver if it is that receiver's main (largest) tributary; otherwise it starts a new river.
@@ -84,7 +85,7 @@ export function extractRivers(g: Grid, h: Float32Array, flow: FlowRouting, acc: 
     if (isRiver[r] && rid[r] >= 0 && mainDonor[r] === c) rid[c] = rid[r];
     else {
       rid[c] = systems.length;
-      systems.push({ rid: rid[c], mouth: c, order: Math.max(0, Math.floor(Math.log2(acc[c] / thr))), cells: 0 });
+      systems.push({ rid: rid[c], mouth: c, order: Math.max(0, Math.floor(DMath.log2(acc[c] / thr))), cells: 0 });
     }
     systems[rid[c]].cells++;
   }
@@ -107,7 +108,7 @@ export function extractRivers(g: Grid, h: Float32Array, flow: FlowRouting, acc: 
       type: 'Feature',
       geometry: { type: 'LineString', coordinates: chaikin(pts, HYDROLOGY.riverSmoothing) },
       properties: {
-        order, flow: thr * 2 ** order, widthM: riverWidthM(order), ppm20: pxPerMeterZ20(pts[pts.length >> 1][1]), rid: rid[cells[0]],
+        order, flow: thr * DMath.pow(2, order), widthM: riverWidthM(order), ppm20: pxPerMeterZ20(pts[pts.length >> 1][1]), rid: rid[cells[0]],
       },
     });
   };

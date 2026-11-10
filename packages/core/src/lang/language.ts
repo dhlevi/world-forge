@@ -4,6 +4,7 @@ import { type FormKey, type GrammarBias, type LangTemplate, type Order } from '.
 import { LEX, type POS, PRONOUNS } from './lexicon';
 import { awkward, cap, join, tidy } from './text';
 import { type SoundChange, pickChanges, segment, syncope } from './sound-change';
+import { DMath } from '../dmath';
 
 const PLACE_ORDER: readonly string[] = PLACES;
 const HEIGHT_ORDER: readonly string[] = HEIGHTS;
@@ -183,7 +184,7 @@ export class Language {
     this.compound = rc() < d * 0.35 ? pick(rc, ['final', 'initial', false] as const) : t.compound;
 
     // Sounds: the template's, with some dropped, some gained and all reweighted by drift.
-    const jig = () => Math.exp((r() - 0.5) * 2 * d);
+    const jig = () => DMath.exp((r() - 0.5) * 2 * d);
     let cons = Object.entries(t.C).filter(([ipa, w]) => w > 0 && CONS.has(ipa)).map(([ipa, w]) => ({ ipa, w: w * jig(), spell: '' }));
     const core = new Set(['t', 'k', 'n', 'm', 's']);
     cons = cons.filter((c) => core.has(c.ipa) || cons.length <= 9 || r() > d * 0.22);

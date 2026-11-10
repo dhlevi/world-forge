@@ -4,6 +4,7 @@ import type { Settlement } from '../gen/settlements';
 import { CULTURES } from '../names/cultures';
 import { templateFolk } from '../names/bundles';
 import type { Ctx } from './realm';
+import { DMath } from '../dmath';
 
 /**
  * City themes and holy places, decided from the world's lore so they fit it: a city may take one
@@ -61,7 +62,7 @@ const PYRAMID = new Set(['jungle', 'highland', 'lizardfolk']);
 
 const distKm = (a: number, b: number, c: number, d: number) => {
   const dl = ((((c - a) % 360) + 540) % 360) - 180;
-  return Math.hypot(dl * 111.32 * Math.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
+  return DMath.hypot2(dl * 111.32 * DMath.cos((((b + d) / 2) * Math.PI) / 180), (d - b) * 110.57);
 };
 
 export function worldThemes(c: Ctx, seed: string): WorldThemes {
@@ -130,7 +131,7 @@ export function worldThemes(c: Ctx, seed: string): WorldThemes {
     const fs = foes.get(top);
     if (!fs) return false;
     const c0 = cellOf(s.lon, s.lat), i0 = c0 % W, j0 = (c0 / W) | 0;
-    const cellKm = (40075 / W) * Math.max(0.2, Math.cos((s.lat * Math.PI) / 180));
+    const cellKm = (40075 / W) * Math.max(0.2, DMath.cos((s.lat * Math.PI) / 180));
     const ri = Math.ceil(120 / cellKm), rj = Math.ceil(120 / (20004 / H));
     for (let dj = -rj; dj <= rj; dj++) {
       const j = j0 + dj;

@@ -1,5 +1,6 @@
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import type { Faith, FaithFamily } from './faiths';
+import { DMath } from '../dmath';
 
 /**
  * A faith's holy emblem, drawn as SVG in the manner of heraldry: a field (a roundel, octagon,
@@ -41,13 +42,13 @@ const FRAME: Record<FaithFamily, string[]> = {
 function poly(n: number, r: number, rot = 0): string {
   return Array.from({ length: n }, (_, k) => {
     const a = rot + (k / n) * Math.PI * 2;
-    return `${f1(50 + Math.cos(a) * r)},${f1(50 + Math.sin(a) * r)}`;
+    return `${f1(50 + DMath.cos(a) * r)},${f1(50 + DMath.sin(a) * r)}`;
   }).join(' ');
 }
 function star(n: number, ro: number, ri: number, cx = 50, cy = 50, rot = -Math.PI / 2): string {
   return Array.from({ length: n * 2 }, (_, k) => {
     const a = rot + (k / (n * 2)) * Math.PI * 2, rr = k % 2 ? ri : ro;
-    return `${f1(cx + Math.cos(a) * rr)},${f1(cy + Math.sin(a) * rr)}`;
+    return `${f1(cx + DMath.cos(a) * rr)},${f1(cy + DMath.sin(a) * rr)}`;
   }).join(' ');
 }
 function fieldShape(shape: string, r: number): string {
@@ -75,11 +76,11 @@ const F = (m: string) => `fill="${m}"`;
 const M: Record<string, Draw> = {
   sun: (m) => `<circle cx="50" cy="50" r="10" ${F(m)}/>${Array.from({ length: 12 }, (_, k) => {
     const a = (k / 12) * Math.PI * 2, l = k % 2 ? 20 : 25;
-    return `<path d="M${f1(50 + Math.cos(a) * 14)},${f1(50 + Math.sin(a) * 14)}L${f1(50 + Math.cos(a) * l)},${f1(50 + Math.sin(a) * l)}" ${S(m, 2.6)}/>`;
+    return `<path d="M${f1(50 + DMath.cos(a) * 14)},${f1(50 + DMath.sin(a) * 14)}L${f1(50 + DMath.cos(a) * l)},${f1(50 + DMath.sin(a) * l)}" ${S(m, 2.6)}/>`;
   }).join('')}`,
   rising: (m) => `<path d="M30,60A20,20 0 0 1 70,60Z" ${F(m)}/><path d="M24,64H76" ${S(m)}/>${Array.from({ length: 7 }, (_, k) => {
     const a = Math.PI + ((k + 1) / 8) * Math.PI;
-    return `<path d="M${f1(50 + Math.cos(a) * 24)},${f1(60 + Math.sin(a) * 24)}L${f1(50 + Math.cos(a) * 32)},${f1(60 + Math.sin(a) * 32)}" ${S(m, 2.4)}/>`;
+    return `<path d="M${f1(50 + DMath.cos(a) * 24)},${f1(60 + DMath.sin(a) * 24)}L${f1(50 + DMath.cos(a) * 32)},${f1(60 + DMath.sin(a) * 32)}" ${S(m, 2.4)}/>`;
   }).join('')}`,
   crescent: (m, bg) => `<circle cx="50" cy="50" r="22" ${F(m)}/><circle cx="58" cy="45" r="18" ${F(bg)}/>`,
   crescentStar: (m, bg) => `<circle cx="46" cy="50" r="22" ${F(m)}/><circle cx="54" cy="47" r="18" ${F(bg)}/><polygon points="${star(5, 8, 3.4, 63, 46)}" ${F(m)}/>`,
@@ -87,8 +88,8 @@ const M: Record<string, Draw> = {
   // A spider's web: spokes and three rings of threads.
   web: (m) => Array.from({ length: 8 }, (_, k) => {
     const a = (k / 8) * Math.PI * 2;
-    return `<path d="M50,50L${f1(50 + Math.cos(a) * 26)},${f1(50 + Math.sin(a) * 26)}" ${S(m, 1.6)}/>`;
-  }).join('') + [9, 17, 25].map((r) => `<polygon points="${Array.from({ length: 8 }, (_, k) => `${f1(50 + Math.cos((k / 8) * Math.PI * 2) * r)},${f1(50 + Math.sin((k / 8) * Math.PI * 2) * r)}`).join(' ')}" fill="none" ${S(m, 1.3)}/>`).join('') + `<circle cx="50" cy="50" r="4" ${F(m)}/>`,
+    return `<path d="M50,50L${f1(50 + DMath.cos(a) * 26)},${f1(50 + DMath.sin(a) * 26)}" ${S(m, 1.6)}/>`;
+  }).join('') + [9, 17, 25].map((r) => `<polygon points="${Array.from({ length: 8 }, (_, k) => `${f1(50 + DMath.cos((k / 8) * Math.PI * 2) * r)},${f1(50 + DMath.sin((k / 8) * Math.PI * 2) * r)}`).join(' ')}" fill="none" ${S(m, 1.3)}/>`).join('') + `<circle cx="50" cy="50" r="4" ${F(m)}/>`,
   // A mushroom: a domed cap on a stalk, with spots.
   mushroom: (m) => `<path d="M26,52Q26,26 50,26Q74,26 74,52Z" ${F(m)}/><path d="M44,52L42,76L58,76L56,52Z" ${F(m)}/>`,
   star8: (m, bg) => `<polygon points="${star(8, 25, 14)}" ${F(m)}/><circle cx="50" cy="50" r="6" ${F(bg)}/>`,
@@ -96,7 +97,7 @@ const M: Record<string, Draw> = {
   stepCross: (m) => `<path d="M44,26H56V32H62V44H74V56H62V68H56V74H44V68H38V56H26V44H38V32H44Z" ${F(m)}/>`,
   wheel: (m) => `<circle cx="50" cy="50" r="22" ${S(m)}/><circle cx="50" cy="50" r="5" ${F(m)}/>${Array.from({ length: 8 }, (_, k) => {
     const a = (k / 8) * Math.PI * 2;
-    return `<path d="M${f1(50 + Math.cos(a) * 5)},${f1(50 + Math.sin(a) * 5)}L${f1(50 + Math.cos(a) * 22)},${f1(50 + Math.sin(a) * 22)}" ${S(m, 2.2)}/>`;
+    return `<path d="M${f1(50 + DMath.cos(a) * 5)},${f1(50 + DMath.sin(a) * 5)}L${f1(50 + DMath.cos(a) * 22)},${f1(50 + DMath.sin(a) * 22)}" ${S(m, 2.2)}/>`;
   }).join('')}`,
   medicine: (m) => `<circle cx="50" cy="50" r="22" ${S(m, 3.4)}/><path d="M50,28V72M28,50H72" ${S(m, 3.4)}/><circle cx="50" cy="50" r="4" ${F(m)}/>${[0, 1, 2, 3].map((k) => `<path d="M${50 + [22, 0, -22, 0][k]},${50 + [0, 22, 0, -22][k]}l${[5, -3, -5, 3][k]},${[4, 5, -4, -5][k]}" ${S(m, 2)}/>`).join('')}`,
   tree: (m) => `<path d="M50,74V44M50,56L38,46M50,52L62,42M50,62L41,58M50,60L60,56" ${S(m, 3)}/><circle cx="50" cy="38" r="15" ${F(m)}/><path d="M42,74Q50,68 58,74M38,76H62" ${S(m, 2.4)}/>`,
@@ -107,7 +108,7 @@ const M: Record<string, Draw> = {
   acorn: (m) => `<path d="M38,46Q38,36 50,34Q62,36 62,46Z" ${F(m)}/><path d="M40,48Q40,70 50,74Q60,70 60,48Z" ${S(m, 3)}/><path d="M50,34V27" ${S(m, 3)}/>`,
   blossom: (m, bg) => `${[0, 1, 2, 3, 4].map((k) => {
     const a = -Math.PI / 2 + (k / 5) * Math.PI * 2;
-    return `<circle cx="${f1(50 + Math.cos(a) * 13)}" cy="${f1(50 + Math.sin(a) * 13)}" r="10" ${F(m)}/>`;
+    return `<circle cx="${f1(50 + DMath.cos(a) * 13)}" cy="${f1(50 + DMath.sin(a) * 13)}" r="10" ${F(m)}/>`;
   }).join('')}<circle cx="50" cy="50" r="6" ${F(bg)}/><circle cx="50" cy="50" r="3" ${F(m)}/>`,
   lotus: (m) => `<path d="M50,30Q60,46 50,66Q40,46 50,30Z" ${F(m)}/><path d="M50,66Q34,62 28,44Q42,46 50,66Z" ${F(m)}/><path d="M50,66Q66,62 72,44Q58,46 50,66Z" ${F(m)}/><path d="M30,70H70" ${S(m, 2.6)}/>`,
   fruit: (m, bg) => `<circle cx="50" cy="54" r="18" ${F(m)}/><path d="M43,36L46,30L50,35L54,30L57,36Z" ${F(m)}/><path d="M44,52l3,4M52,50l3,4M48,60l3,4" ${S(bg, 2)}/>`,
@@ -181,11 +182,11 @@ const M: Record<string, Draw> = {
   rune: (m) => `<path d="M42,24V76M42,32L60,44M42,46L60,58" ${S(m, 4)}/>`,
   callipers: (m) => `<path d="M50,24L36,74M50,24L64,74M42,52H58" ${S(m, 3.4)}/><circle cx="50" cy="24" r="4" ${F(m)}/>`,
   harp: (m) => `<path d="M34,76V26Q56,22 66,42Q68,60 34,76" ${S(m, 3.4)}/><path d="M40,32V72M46,32V68M52,34V64M58,38V58" ${S(m, 1.3)}/>`,
-  pool: (m) => `<ellipse cx="50" cy="62" rx="24" ry="8" ${S(m, 3)}/>${Array.from({ length: 8 }, (_, k) => `<circle cx="${30 + k * 6}" cy="${34 + Math.sin(k) * 6}" r="2.2" ${F(m)}/>`).join('')}`,
+  pool: (m) => `<ellipse cx="50" cy="62" rx="24" ry="8" ${S(m, 3)}/>${Array.from({ length: 8 }, (_, k) => `<circle cx="${30 + k * 6}" cy="${34 + DMath.sin(k) * 6}" r="2.2" ${F(m)}/>`).join('')}`,
   crown: (m) => `<path d="M30,64L28,36L40,48L50,30L60,48L72,36L70,64Z" ${F(m)}/><path d="M28,72H72" ${S(m, 3)}/>`,
   thorns: (m) => `<circle cx="50" cy="50" r="18" ${S(m, 3)}/>${Array.from({ length: 10 }, (_, k) => {
     const a = (k / 10) * Math.PI * 2;
-    return `<path d="M${f1(50 + Math.cos(a) * 18)},${f1(50 + Math.sin(a) * 18)}L${f1(50 + Math.cos(a + 0.2) * 26)},${f1(50 + Math.sin(a + 0.2) * 26)}" ${S(m, 2)}/>`;
+    return `<path d="M${f1(50 + DMath.cos(a) * 18)},${f1(50 + DMath.sin(a) * 18)}L${f1(50 + DMath.cos(a + 0.2) * 26)},${f1(50 + DMath.sin(a + 0.2) * 26)}" ${S(m, 2)}/>`;
   }).join('')}`,
   helmet: (m, bg) => `<path d="M32,62Q30,36 50,34Q70,36 68,62Z" ${F(m)}/><path d="M50,40V62" stroke="${bg}" stroke-width="2.4"/><path d="M34,46Q20,36 24,22M66,46Q80,36 76,22" ${S(m, 4)}/>`,
   hand: (m) => `<path d="M36,74V48Q36,42 40,44V30Q44,26 46,30V44V24Q50,20 52,24V44V28Q56,24 58,28V48Q62,40 66,44L58,64Q56,74 50,74Z" ${F(m)}/>`,
@@ -223,24 +224,24 @@ function frame(kind: string, m: string, n: number, r: Rng, letters: string): str
   switch (kind) {
     case 'rays': return Array.from({ length: 24 }, (_, k) => {
       const a = (k / 24) * Math.PI * 2;
-      return `<path d="M${f1(50 + Math.cos(a) * 37)},${f1(50 + Math.sin(a) * 37)}L${f1(50 + Math.cos(a) * (k % 2 ? 41 : 43))},${f1(50 + Math.sin(a) * (k % 2 ? 41 : 43))}" ${S(m, 1.6)}/>`;
+      return `<path d="M${f1(50 + DMath.cos(a) * 37)},${f1(50 + DMath.sin(a) * 37)}L${f1(50 + DMath.cos(a) * (k % 2 ? 41 : 43))},${f1(50 + DMath.sin(a) * (k % 2 ? 41 : 43))}" ${S(m, 1.6)}/>`;
     }).join('');
     case 'dots': return Array.from({ length: Math.max(3, n) }, (_, k) => {
       const a = -Math.PI / 2 + (k / Math.max(3, n)) * Math.PI * 2;
-      return `<circle cx="${f1(50 + Math.cos(a) * 39)}" cy="${f1(50 + Math.sin(a) * 39)}" r="2.4" ${F(m)}/>`;
+      return `<circle cx="${f1(50 + DMath.cos(a) * 39)}" cy="${f1(50 + DMath.sin(a) * 39)}" r="2.4" ${F(m)}/>`;
     }).join('');
     case 'double': return `<circle cx="50" cy="50" r="38" ${S(m, 1.2)}/><circle cx="50" cy="50" r="41" ${S(m, 1.2)}/>`;
     case 'knot': return `<circle cx="50" cy="50" r="39" ${S(m, 2.4)} stroke-dasharray="7 3"/><circle cx="50" cy="50" r="42" ${S(m, 1)}/>`;
     case 'star8': return `<polygon points="${star(8, 43, 37)}" ${S(m, 1.4)}/>`;
     case 'laurel': return [-1, 1].map((s) => Array.from({ length: 8 }, (_, k) => {
       const a = Math.PI / 2 + s * (0.35 + k * 0.32);
-      const x = 50 + Math.cos(a) * 39, y = 50 + Math.sin(a) * 39;
+      const x = 50 + DMath.cos(a) * 39, y = 50 + DMath.sin(a) * 39;
       return `<ellipse cx="${f1(x)}" cy="${f1(y)}" rx="3.6" ry="1.6" transform="rotate(${f1((a * 180) / Math.PI + s * 60)} ${f1(x)} ${f1(y)})" ${F(m)}/>`;
     }).join('')).join('');
     case 'feathers': return Array.from({ length: 4 }, (_, k) => {
       const a = Math.PI / 4 + (k / 4) * Math.PI * 2;
-      const x = 50 + Math.cos(a) * 40, y = 50 + Math.sin(a) * 40;
-      return `<path d="M${f1(x)},${f1(y)}l${f1(Math.cos(a) * 9)},${f1(Math.sin(a) * 9)}" ${S(m, 3)}/>`;
+      const x = 50 + DMath.cos(a) * 40, y = 50 + DMath.sin(a) * 40;
+      return `<path d="M${f1(x)},${f1(y)}l${f1(DMath.cos(a) * 9)},${f1(DMath.sin(a) * 9)}" ${S(m, 3)}/>`;
     }).join('');
     case 'step': return `<rect x="16" y="16" width="68" height="68" ${S(m, 1.2)}/>`;
     case 'runes': return letters;

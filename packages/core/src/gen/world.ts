@@ -23,6 +23,7 @@ import { newWorldMask, type SpreadTrace } from './oldworld';
 import { chooseColonies } from './colonies';
 import { NameBank } from '../names/names';
 import { CLIMATE, HYDROLOGY } from './config';
+import { DMath } from '../dmath';
 
 export interface WorldParams {
   seed: string;
@@ -147,8 +148,8 @@ function buildTerrain(
   for (let c = 0; c < g.N; c++) {
     const h = height[c];
     height[c] = h > 0
-      ? h + HYDROLOGY.coastStepLandM + HYDROLOGY.coastLiftM * (1 - Math.exp(-h / HYDROLOGY.coastScaleM))
-      : h - HYDROLOGY.coastStepSeaM - HYDROLOGY.coastDropM * (1 - Math.exp(h / HYDROLOGY.coastScaleM));
+      ? h + HYDROLOGY.coastStepLandM + HYDROLOGY.coastLiftM * (1 - DMath.exp(-h / HYDROLOGY.coastScaleM))
+      : h - HYDROLOGY.coastStepSeaM - HYDROLOGY.coastDropM * (1 - DMath.exp(h / HYDROLOGY.coastScaleM));
   }
   return { height, plate, sedimentFill, volcanic };
 }

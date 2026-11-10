@@ -2,6 +2,7 @@ import { hashString, mulberry32, type Rng } from '../gen/rng';
 import { Simplex3, fbm } from '../gen/noise';
 import { hookTail } from '../keys/flavour';
 import { type DeepWay, Field, type LairMap, type LairSite, type Pt, annotate, blob, distSeg, empty, inLoops, lairSize, wander } from './lair';
+import { DMath } from '../dmath';
 
 /**
  * The heart of a cavern of the Underworld, drawn as a cave map on a larger scale: a great hall of
@@ -86,7 +87,7 @@ export function buildDeep(site: LairSite): LairMap {
   for (let t = 0; t < 200 && lobes.length < 5 + Math.floor(rnd() * 3); t++) {
     const r = Math.min(W, H) * (0.12 + 0.1 * rnd());
     const a = rnd() * Math.PI * 2, d = lobes[0].r * (0.7 + 0.5 * rnd());
-    const c: Pt = [C[0] + Math.cos(a) * d * 1.3, C[1] + Math.sin(a) * d];
+    const c: Pt = [C[0] + DMath.cos(a) * d * 1.3, C[1] + DMath.sin(a) * d];
     if (c[0] < r + 3 || c[1] < r + 3 || c[0] > W - r - 3 || c[1] > H - r - 3) continue;
     lobes.push({ c, r });
   }
@@ -97,7 +98,7 @@ export function buildDeep(site: LairSite): LairMap {
   const a0 = rnd() * Math.PI * 2;
   exits.forEach((to, k) => {
     const a = a0 + (k / Math.max(1, exits.length)) * Math.PI * 2 + (rnd() - 0.5) * 0.5;
-    const d: Pt = [Math.cos(a), Math.sin(a)];
+    const d: Pt = [DMath.cos(a), DMath.sin(a)];
     let t = Infinity;
     if (d[0] > 1e-6) t = Math.min(t, (W - C[0]) / d[0]);
     if (d[0] < -1e-6) t = Math.min(t, -C[0] / d[0]);
@@ -110,7 +111,7 @@ export function buildDeep(site: LairSite): LairMap {
   const hall = kind === 'hall';
   const field = new Field(W, H, null);
   field.v.fill(-1);
-  for (const l of lobes) field.stamp(l.c[0] - l.r, l.c[1] - l.r, l.c[0] + l.r, l.c[1] + l.r, (x, y) => 1 - Math.hypot(x - l.c[0], y - l.c[1]) / l.r);
+  for (const l of lobes) field.stamp(l.c[0] - l.r, l.c[1] - l.r, l.c[0] + l.r, l.c[1] + l.r, (x, y) => 1 - DMath.hypot2(x - l.c[0], y - l.c[1]) / l.r);
   for (const t of tunnels) {
     for (let q = 1; q < t.pts.length; q++) {
       const a = t.pts[q - 1], b = t.pts[q];
@@ -136,10 +137,10 @@ export function buildDeep(site: LairSite): LairMap {
     ...empty(site, W, H), outlines: field.contours(), open, onEdge, mouths: mouths.map(({ p, dir }) => ({ p, dir })),
     chasms: [], crystals: [], bridges: [], lava: kind === 'rift', blds: [], gotos: [],
   };
-  for (const mo of mouths) m.gotos!.push({ p: [mo.p[0] + Math.cos(mo.dir) * 3, mo.p[1] + Math.sin(mo.dir) * 3], r: 4, to: mo.to });
+  for (const mo of mouths) m.gotos!.push({ p: [mo.p[0] + DMath.cos(mo.dir) * 3, mo.p[1] + DMath.sin(mo.dir) * 3], r: 4, to: mo.to });
   m.levels = [m];
   const deepIn = (p: Pt, v = 0.15) => field.at(p) > v;
-  const free = (p: Pt, r: number) => deepIn(p, 0.12) && !m.rocks.some((q) => Math.hypot(q[0][0] - p[0], q[0][1] - p[1]) < r + 2)
+  const free = (p: Pt, r: number) => deepIn(p, 0.12) && !m.rocks.some((q) => DMath.hypot2(q[0][0] - p[0], q[0][1] - p[1]) < r + 2)
     && !(m.water.length && inLoops(m.water, p)) && !(m.chasms!.length && inLoops(m.chasms!, p))
     && !m.blds!.some((b) => Math.abs(b.p[0] - p[0]) < b.w / 2 + r + 1 && Math.abs(b.p[1] - p[1]) < b.h / 2 + r + 1);
   const spot = (near: Pt, r: number, tries = 40): Pt => {
@@ -161,11 +162,11 @@ export function buildDeep(site: LairSite): LairMap {
   if (kind === 'lake' || kind === 'sea') {
     // Water: most of the floor for a sea (all but a shore by the first tunnel), a broad lake otherwise.
     const shore = mouths[0]?.p ?? [W / 2, H];
-    const reach = Math.hypot(W, H);
+    const reach = DMath.hypot2(W, H);
     const wf = new Field(W, H, (x, y) => {
       const f = field.at([x, y]);
-      const d = Math.hypot(x - shore[0], y - shore[1]) / reach;
-      return kind === 'sea' ? Math.min(f - 0.08, d - 0.32 + 0.08 * fbm(noise, x / 9, y / 9, 3.3, 2)) : Math.min(f - 0.2, 0.55 - Math.hypot(x - C[0], (y - C[1]) * 1.3) / (lobes[0].r * 1.15) + 0.12 * fbm(noise, x / 8, y / 8, 5.5, 2));
+      const d = DMath.hypot2(x - shore[0], y - shore[1]) / reach;
+      return kind === 'sea' ? Math.min(f - 0.08, d - 0.32 + 0.08 * fbm(noise, x / 9, y / 9, 3.3, 2)) : Math.min(f - 0.2, 0.55 - DMath.hypot2(x - C[0], (y - C[1]) * 1.3) / (lobes[0].r * 1.15) + 0.12 * fbm(noise, x / 8, y / 8, 5.5, 2));
     });
     wf.clean(20, 30);
     m.water = wf.contours();
@@ -179,21 +180,21 @@ export function buildDeep(site: LairSite): LairMap {
   } else if (kind === 'rift') {
     // A river of lava across the cavern, with stone bridges where the ways cross it.
     const a = rnd() * Math.PI;
-    const p0: Pt = [C[0] - Math.cos(a) * W, C[1] - Math.sin(a) * H], p1: Pt = [C[0] + Math.cos(a) * W, C[1] + Math.sin(a) * H];
+    const p0: Pt = [C[0] - DMath.cos(a) * W, C[1] - DMath.sin(a) * H], p1: Pt = [C[0] + DMath.cos(a) * W, C[1] + DMath.sin(a) * H];
     const lava = wander(p0, p1, rnd, 0.1, 4);
     m.stream = { pts: lava, w: 2.6 + 1.2 * rnd() };
     for (const t of tunnels.slice(0, 2)) {
       for (let q = 1; q < t.pts.length; q++) {
         const hit = lava.find((p, k) => k > 0 && distSeg(p, t.pts[q - 1], t.pts[q]) < 1.2);
         if (hit) {
-          const d: Pt = [Math.cos(a + Math.PI / 2), Math.sin(a + Math.PI / 2)], half = m.stream.w + 2.2;
+          const d: Pt = [DMath.cos(a + Math.PI / 2), DMath.sin(a + Math.PI / 2)], half = m.stream.w + 2.2;
           m.bridges!.push({ a: [hit[0] - d[0] * half, hit[1] - d[1] * half], b: [hit[0] + d[0] * half, hit[1] + d[1] * half], rope: false });
           break;
         }
       }
     }
     if (!m.bridges!.length) {
-      const d: Pt = [Math.cos(a + Math.PI / 2), Math.sin(a + Math.PI / 2)], half = m.stream.w + 2.2;
+      const d: Pt = [DMath.cos(a + Math.PI / 2), DMath.sin(a + Math.PI / 2)], half = m.stream.w + 2.2;
       m.bridges!.push({ a: [C[0] - d[0] * half, C[1] - d[1] * half], b: [C[0] + d[0] * half, C[1] + d[1] * half], rope: false });
     }
     const br = m.bridges![0];
@@ -203,19 +204,19 @@ export function buildDeep(site: LairSite): LairMap {
     // Groves of giant fungi through the cavern, thinning toward the middle.
     for (let t = 0; t < (W * H) / 12; t++) {
       const p: Pt = [rnd() * W, rnd() * H];
-      if (!deepIn(p, 0.22) || rnd() < 0.45 + 0.45 * Math.exp(-Math.hypot(p[0] - C[0], p[1] - C[1]) / 14)) continue;
-      const r = 0.9 + 2.2 * rnd() ** 2;
-      if (m.trees.some((q) => Math.hypot(q.p[0] - p[0], q.p[1] - p[1]) < q.r + r + 0.6)) continue;
+      if (!deepIn(p, 0.22) || rnd() < 0.45 + 0.45 * DMath.exp(-DMath.hypot2(p[0] - C[0], p[1] - C[1]) / 14)) continue;
+      const r = 0.9 + 2.2 * DMath.pow(rnd(), 2);
+      if (m.trees.some((q) => DMath.hypot2(q.p[0] - p[0], q.p[1] - p[1]) < q.r + r + 0.6)) continue;
       m.trees.push({ p, r, shade: rnd() });
     }
     const pool: Pt = spot(far[0]?.c ?? C, 6);
     m.water.push(blob(pool, 3 + 1.5 * rnd(), rnd, 10, 0.3));
-    m.trees = m.trees.filter((t) => !inLoops(m.water, t.p) && Math.hypot(t.p[0] - pool[0], t.p[1] - pool[1]) > 5);
+    m.trees = m.trees.filter((t) => !inLoops(m.water, t.p) && DMath.hypot2(t.p[0] - pool[0], t.p[1] - pool[1]) > 5);
     places.push({ ...pick(0), p: spot(far[1]?.c ?? C, 8) }, { ...pick(1), p: spot(C, 5) }, { ...pick(2), p: [pool[0] + 4.5, pool[1]] });
   } else if (kind === 'ruins') {
     // Streets of the fallen city on a grid, roofless houses along them, a temple in the middle.
     const s = 9 + 2 * rnd(), rot = (rnd() - 0.5) * 0.4;
-    const T = (u: number, v: number): Pt => [C[0] + u * Math.cos(rot) - v * Math.sin(rot), C[1] + u * Math.sin(rot) + v * Math.cos(rot)];
+    const T = (u: number, v: number): Pt => [C[0] + u * DMath.cos(rot) - v * DMath.sin(rot), C[1] + u * DMath.sin(rot) + v * DMath.cos(rot)];
     for (let u = -6; u <= 6; u++) {
       for (let v = -5; v <= 5; v++) {
         if (Math.abs(u) <= 1 && Math.abs(v) <= 1) continue;
@@ -254,17 +255,17 @@ export function buildDeep(site: LairSite): LairMap {
     const a = rnd() * Math.PI;
     const cf = new Field(W, H, (x, y) => {
       const dx = x - C[0], dy = y - C[1];
-      const u = dx * Math.cos(a) + dy * Math.sin(a), v = -dx * Math.sin(a) + dy * Math.cos(a);
-      const g = kind === 'chasm' ? 1 - Math.abs(v) / 6 - Math.max(0, Math.abs(u) - W) / 5 : 1 - Math.hypot(u, v) / (lobes[0].r * 0.75);
+      const u = dx * DMath.cos(a) + dy * DMath.sin(a), v = -dx * DMath.sin(a) + dy * DMath.cos(a);
+      const g = kind === 'chasm' ? 1 - Math.abs(v) / 6 - Math.max(0, Math.abs(u) - W) / 5 : 1 - DMath.hypot2(u, v) / (lobes[0].r * 0.75);
       return Math.min(field.at([x, y]) + 0.2, g + 0.25 * fbm(noise, x / 6, y / 6, 7.1, 2));
     });
     cf.clean(20, 20);
     m.chasms = cf.contours();
     const half = kind === 'chasm' ? 8 : lobes[0].r * 0.8;
-    const d: Pt = [Math.cos(a + Math.PI / 2), Math.sin(a + Math.PI / 2)];
+    const d: Pt = [DMath.cos(a + Math.PI / 2), DMath.sin(a + Math.PI / 2)];
     m.bridges!.push({ a: [C[0] - d[0] * half, C[1] - d[1] * half], b: [C[0] + d[0] * half, C[1] + d[1] * half], rope: kind === 'chasm' });
-    const edge: Pt = spot([C[0] + Math.cos(a) * 10 + d[0] * (half + 3), C[1] + Math.sin(a) * 10 + d[1] * (half + 3)], 4);
-    places.push({ ...pick(0), p: edge }, { ...pick(1), p: [C[0] + d[0] * (half + 2.5) - Math.cos(a) * 3, C[1] + d[1] * (half + 2.5) - Math.sin(a) * 3] });
+    const edge: Pt = spot([C[0] + DMath.cos(a) * 10 + d[0] * (half + 3), C[1] + DMath.sin(a) * 10 + d[1] * (half + 3)], 4);
+    places.push({ ...pick(0), p: edge }, { ...pick(1), p: [C[0] + d[0] * (half + 2.5) - DMath.cos(a) * 3, C[1] + d[1] * (half + 2.5) - DMath.sin(a) * 3] });
   } else {
     // A great cavern: columns, crystal and stalagmite forests, and a pool.
     for (const l of far.slice(0, 2)) for (let q = 0; q < 6; q++) m.crystals!.push(crystal(spot(l.c, l.r * 0.6), rnd));
@@ -275,17 +276,17 @@ export function buildDeep(site: LairSite): LairMap {
   for (let t = 0; t < (W * H) / 26; t++) {
     const p: Pt = [rnd() * W, rnd() * H];
     if (!free(p, 1.5) || (hallBox && p[0] > hallBox.x0 && p[0] < hallBox.x1 && p[1] > hallBox.y0 && p[1] < hallBox.y1)) continue;
-    if (m.paths.some((l) => distSeg(p, l[0], l[1]) < 2.5) || m.trees.some((q) => Math.hypot(q.p[0] - p[0], q.p[1] - p[1]) < q.r + 1)) continue;
+    if (m.paths.some((l) => distSeg(p, l[0], l[1]) < 2.5) || m.trees.some((q) => DMath.hypot2(q.p[0] - p[0], q.p[1] - p[1]) < q.r + 1)) continue;
     if (m.stream && m.stream.pts.some((q, k) => k > 0 && distSeg(p, m.stream!.pts[k - 1], q) < m.stream!.w + 2)) continue;
     const v = field.at(p);
-    if (v < 0.35 && rnd() < 0.12) m.rocks.push(blob(p, 1 + 2.2 * rnd() ** 2, rnd, 7, 0.35));
+    if (v < 0.35 && rnd() < 0.12) m.rocks.push(blob(p, 1 + 2.2 * DMath.pow(rnd(), 2), rnd, 7, 0.35));
     else if (rnd() < 0.18) for (let q = 0; q < 2 + Math.floor(rnd() * 5); q++) m.dots.push({ p: [p[0] + (rnd() - 0.5) * 2.4, p[1] + (rnd() - 0.5) * 2.4], r: 0.12 + 0.3 * rnd() });
   }
   // Shafts: up to the surface (or the upper deep) and down to the lower deep.
   const shaftAt = (near: Pt) => {
     for (let t = 0; t < 60; t++) {
       const p: Pt = [near[0] + (rnd() - 0.5) * 30, near[1] + (rnd() - 0.5) * 24];
-      if (free(p, 3) && field.at(p) > 0.3 && !places.some((q) => Math.hypot(q.p[0] - p[0], q.p[1] - p[1]) < 5)) return p;
+      if (free(p, 3) && field.at(p) > 0.3 && !places.some((q) => DMath.hypot2(q.p[0] - p[0], q.p[1] - p[1]) < 5)) return p;
     }
     return null;
   };
@@ -316,7 +317,7 @@ export function buildDeep(site: LairSite): LairMap {
   }
   // The key: the ways out, then what is here.
   const keyPlaces: { name: string; text: string; p: Pt }[] = mouths.map((mo) => {
-    const p: Pt = [mo.p[0] + Math.cos(mo.dir) * 6, mo.p[1] + Math.sin(mo.dir) * 6];
+    const p: Pt = [mo.p[0] + DMath.cos(mo.dir) * 6, mo.p[1] + DMath.sin(mo.dir) * 6];
     return { name: `Tunnel to ${mo.to.name}`, text: MOUTH_TEXT[Math.floor(rnd() * MOUTH_TEXT.length)].replace('{0}', mo.to.name), p: spot(p, 2.5, 20) };
   });
   for (const q of [...places, ...keyPlaces]) m.rooms.push({ n: m.rooms.length + 1, ...q });
@@ -333,7 +334,7 @@ function crystal(c: Pt, rnd: Rng): Pt[] {
   const n = 3 + Math.floor(rnd() * 3), a0 = rnd() * Math.PI * 2;
   for (let k = 0; k < n; k++) {
     const a = a0 + (k / n) * Math.PI * 2, L = 0.8 + 1.4 * rnd();
-    out.push([c[0] + Math.cos(a - 0.18) * 0.3, c[1] + Math.sin(a - 0.18) * 0.3], [c[0] + Math.cos(a) * L, c[1] + Math.sin(a) * L], [c[0] + Math.cos(a + 0.18) * 0.3, c[1] + Math.sin(a + 0.18) * 0.3]);
+    out.push([c[0] + DMath.cos(a - 0.18) * 0.3, c[1] + DMath.sin(a - 0.18) * 0.3], [c[0] + DMath.cos(a) * L, c[1] + DMath.sin(a) * L], [c[0] + DMath.cos(a + 0.18) * 0.3, c[1] + DMath.sin(a + 0.18) * 0.3]);
   }
   return out;
 }
@@ -421,7 +422,7 @@ function buildCity(
   const near = (p: Pt, r: number, f: (q: Pt) => boolean, tries = 60) => {
     for (let k = 0; k < tries; k++) {
       const a = rnd() * Math.PI * 2, d = r * Math.sqrt(rnd());
-      if (f([p[0] + Math.cos(a) * d, p[1] + Math.sin(a) * d])) return true;
+      if (f([p[0] + DMath.cos(a) * d, p[1] + DMath.sin(a) * d])) return true;
     }
     return false;
   };
@@ -436,7 +437,7 @@ function buildCity(
     const k = Math.max(6, Math.round((ring * step * Math.PI * 2) / step));
     for (let q = 0; q < k && blds.length < n; q++) {
       const a = (q / k) * Math.PI * 2 + rnd() * 0.4;
-      const p: Pt = [C[0] + Math.cos(a) * ring * step + (rnd() - 0.5) * 2, C[1] + Math.sin(a) * ring * step * 0.8 + (rnd() - 0.5) * 2];
+      const p: Pt = [C[0] + DMath.cos(a) * ring * step + (rnd() - 0.5) * 2, C[1] + DMath.sin(a) * ring * step * 0.8 + (rnd() - 0.5) * 2];
       const x = rnd();
       if (t === 'shadowelf') {
         if (x < 0.18) put('compound', p, 9 + 3 * rnd(), 7 + 2 * rnd(), rot + (rnd() - 0.5) * 0.4);
@@ -456,11 +457,11 @@ function buildCity(
   }
   // A gate where the first tunnel comes in (gnomes and grey dwarves).
   if ((t === 'deepgnome' || t === 'greydwarf') && mouths[0]) {
-    const mo = mouths[0], p: Pt = [mo.p[0] + Math.cos(mo.dir) * 9, mo.p[1] + Math.sin(mo.dir) * 9];
+    const mo = mouths[0], p: Pt = [mo.p[0] + DMath.cos(mo.dir) * 9, mo.p[1] + DMath.sin(mo.dir) * 9];
     blds.push({ kind: 'gate', p, w: 6, h: 2, a: mo.dir + Math.PI / 2 });
   }
   for (const [name, texts, by] of CITY_KEY[t] ?? []) {
-    const b = blds.find((q) => q.kind === by && !places.some((pl) => Math.hypot(pl.p[0] - q.p[0], pl.p[1] - q.p[1]) < 3)) ?? blds[0];
+    const b = blds.find((q) => q.kind === by && !places.some((pl) => DMath.hypot2(pl.p[0] - q.p[0], pl.p[1] - q.p[1]) < 3)) ?? blds[0];
     if (!b) continue;
     places.push({ name: fill(name, info), text: fill(pick2(rnd, texts), info), p: [b.p[0] + Math.max(b.w, b.h) / 2 + 1.2, b.p[1] - 1] });
   }
