@@ -1,7 +1,7 @@
 {
   "name": "world-forge",
   "version": "1.0.0",
-  "description": "Procedural fantasy world generator: a headless core and the atlas app that maps it",
+  "description": "Procedural fantasy world generator: a headless core, the atlas app that maps it, and a roguelike that walks it",
   "license": "ISC",
   "private": true,
   "type": "module",
@@ -11,10 +11,14 @@
   ],
   "scripts": {
     "dev": "npm run dev -w @worldforge/atlas",
+    "dev:game": "npm run dev -w @worldforge/game",
     "build": "npm run typecheck && npm run build -w @worldforge/atlas",
-    "typecheck": "npm run typecheck -w @worldforge/core && npm run typecheck -w @worldforge/atlas",
+    "build:game": "npm run typecheck -w @worldforge/game && npm run build -w @worldforge/game",
+    "typecheck": "npm run typecheck -w @worldforge/core && npm run typecheck -w @worldforge/atlas && npm run typecheck -w @worldforge/game",
     "serve": "npm run serve -w @worldforge/atlas",
     "test:core": "tsx packages/core/scripts/headless.ts",
+    "test:local": "tsx packages/core/scripts/local.ts",
+    "tileset:doc": "tsx packages/core/scripts/tileset-doc.ts",
     "preview": "tsx packages/core/scripts/preview.ts",
     "earth:fetch": "tsx packages/core/tuning/climate/fetch-data.ts",
     "earth:eval": "tsx packages/core/tuning/climate/evaluate.ts"

@@ -4,7 +4,7 @@ Demo: https://dhlevi.github.io/world-forge/
 
 A browser-based procedural fantasy world generator. You start with a whole planet on a zoomable globe (or flat map) and can zoom in through roads and villages to the streets and buildings of individual towns. Everything runs client-side, with no server.
 
-Stack: TypeScript, Vue 3, Vite, MapLibre GL JS. The project is two npm workspaces: **`@worldforge/core`** (`packages/core`), the generator itself, which runs anywhere (browsers, workers, Node, a game) with no browser, UI or map dependencies, and **`@worldforge/atlas`** (`apps/atlas`), the browser map built on it. Node.js runs the tooling, the headless test and the preview script.
+Stack: TypeScript, Vue 3, Vite, MapLibre GL JS, PixiJS. The project is three npm workspaces: **`@worldforge/core`** (`packages/core`), the generator itself, which runs anywhere (browsers, workers, Node, a game) with no browser, UI or map dependencies; **`@worldforge/atlas`** (`apps/atlas`), the browser map built on it; and **`@worldforge/game`** (`apps/game`), *Wanderer*, a roguelike prototype that walks the generated world tile by tile (see [The game](#the-game-wanderer)). Node.js runs the tooling, the headless test and the preview script.
 
 ## Quick start
 
@@ -12,7 +12,10 @@ Stack: TypeScript, Vue 3, Vite, MapLibre GL JS. The project is two npm workspace
 npm install
 npm run dev        # the atlas, http://localhost:5173
 npm run build      # type-check both packages + production build to apps/atlas/dist/
-npm run typecheck  # the core without DOM or Node types, its determinism check, then the atlas
+npm run typecheck  # the core without DOM or Node types, its determinism check, then the atlas and the game
+npm run dev:game   # the game, http://localhost:5180
+npm run test:local -- --seed=forge --town=<name> --r=2 --png=out/local.png   # local-map chunks in Node: timings, hash, picture
+npm run tileset:doc   # rewrite apps/game/TILESET.md from the tile registry
 npm run test:core -- --seed=forge --res=512   # a whole world made headless in Node, with its fingerprint
 npm run preview -- --seed=forge --layers=fantasy,terrain --at=-57,-33,7   # headless PNGs in out/ (tiles use the first layer)
 ```
@@ -442,6 +445,7 @@ packages/core/        @worldforge/core: the generator (no browser, UI or map dep
     heraldry/     arms.ts (coats of arms: generation, blazon)
     keys/         flavour.ts (creatures, traps, treasure, details and rewards for the keys)
     world/        probe.ts (what lies at a point)
+    local/        tiles.ts (the tile registry: every ground and object tile, how it plays and what its art shows), chunk.ts (the local map: 1.5 m tiles, 64 × 64 chunks)
     export/       worldfile.ts (world files), gamedata.ts (world.json, grids, towns), readme.ts
     diagnostics/  fingerprint.ts (hashes of a world, to tell whether two runs made the same one)
     dmath.ts      deterministic maths: sin, cos, atan2, exp, log, pow and the rest, the same in every engine
@@ -449,7 +453,7 @@ packages/core/        @worldforge/core: the generator (no browser, UI or map dep
     format.ts     number formatting that does not depend on locale data
     settings.ts   the generator settings, checked and snapped, and their query-string form
     env.d.ts      the few globals the core uses (performance, console, URLSearchParams)
-  scripts/        headless.ts (a whole world in Node: npm run test:core), check-determinism.mjs (run by typecheck), preview.ts (headless generation → PNG), png.ts
+  scripts/        headless.ts (a whole world in Node: npm run test:core), local.ts (local-map chunks: npm run test:local), tileset-doc.ts (writes apps/game/TILESET.md), check-determinism.mjs (run by typecheck), preview.ts (headless generation → PNG), png.ts
   tuning/         climate tuning against Earth (see below)
 apps/atlas/           @worldforge/atlas: the browser map
   index.html, vite.config.ts, public/fonts/ (IM Fell English and UnifrakturMaguntia, SIL Open Font License, see OFL.txt)
@@ -464,6 +468,14 @@ apps/atlas/           @worldforge/atlas: the browser map
     export/       zip.ts (the game-data zip), download.ts
     worker/       world.worker.ts, towns.worker.ts, export.worker.ts, protocol.ts
     world/        client.ts (worker pool + map protocol), political.ts (political map, relations and faith map tiles)
+apps/game/            @worldforge/game: Wanderer, the roguelike prototype
+  TILESET.md          every tile the game draws, and the tileset format (generated)
+  public/tileset/     tileset.png and tileset.json, when there is art (placeholders otherwise)
+  src/
+    main.ts, App.vue (make or load a world, choose where to begin), style.css
+    components/   PlayView.vue (the map, side panel, message log and keys)
+    game/         map.ts (chunks, changes over the baseline, what has been seen), game.ts (moves, doors, time, sight), renderer.ts (PixiJS), tileset.ts (placeholders and tileset loading)
+    worker/       game.worker.ts (the world and the local map, off the main thread), protocol.ts
 ```
 
 The core is type-checked with no DOM or Node types (`packages/core/tsconfig.json`), so anything that would tie it to a browser or to Node fails the check. The atlas imports it as a package: `import { generateWorld } from '@worldforge/core/gen/world'` (each file of `packages/core/src` is exported by its path). Town plans use [d3-delaunay](https://github.com/d3/d3-delaunay) for Voronoi diagrams.
@@ -494,6 +506,35 @@ The same settings make exactly the same world in every JavaScript engine and ver
 - **Locale.** `localeCompare` and `toLocaleString` depend on the engine's locale data; the core compares plainly and formats numbers with `thousands` (`format.ts`).
 
 `npm run typecheck` runs `packages/core/scripts/check-determinism.mjs`, which fails on any of these in the core (map tiles, the illustrated town faces and the appearance sketches, which make pictures only, may use the engine's faster `Math`). The fingerprints of two test worlds (`forge` at low detail, `oak-moor-7` at medium) and 300 complete floor plans are identical in Node 22 and Chromium 153. Worlds made this way are **generator version 2** (`version.ts`); world files and game-data exports record the version, and the atlas warns when a world file was saved by another. Version 1 worlds (saved before) come out slightly differently now. The one known exception is d3-delaunay, which nudges points with `Math.sin` only when a whole point set lies on one line, which town plans do not produce.
+
+## The game: Wanderer
+
+`apps/game` is the first step toward a roguelike in the generated world, in the spirit of UnReal World and Dwarf Fortress's adventure mode: tile-based, turn-based (every move or action takes time on the game clock), with pixel-art tiles. The world as generated is the **baseline**; what a player changes is kept apart and laid over it. This prototype (Phase 2 of the plan) runs in the browser; the desktop build (Electron) comes next.
+
+**The local map** (`packages/core/src/local/chunk.ts`). The world at a person's scale, in **1.5 m tiles** (the floor-plan cell), made in **chunks of 64 × 64 tiles** (96 m) in a worker, on demand as the wanderer moves. Each chunk comes from what the generator already holds:
+
+- terrain and rivers at full detail (`gen/detail.ts`), sampled every 4 tiles and interpolated: elevation, slope (bare rock and scree on steep ground), sea and lakes (shallow near the shore), rivers (fordable, or deep in wide channels), beaches and muddy banks;
+- the biome, with a wandering edge between the world's cells, and its cover: woods in clumps (value noise), trees by biome (broadleaf, conifer, birch, palm, jungle, mangrove), undergrowth, reeds by water, cleared land round settlements;
+- roads and tracks (bridged over water by roads, forded by tracks);
+- the town and village plans (`towns/`): streets, squares, greens, fields with crop rows, gardens, yards, graveyards, piers, walls with gates where streets pass, towers, wells, fountains, stalls, graves, trees;
+- every building's **ground floor** (`interiors/dwelling.ts`): walls on the footprint's edge (one wall where two houses meet), the floor plan stretched over the floor inside, rooms, doors (a way in is always made, through the wall nearest a street when the plan's front faces a neighbour), windows, furniture and stairs, with each tile knowing its building and room;
+- caves, crypts, ruins and mines in the wild, marked as ways down.
+
+A chunk depends only on the world and its position (never on which chunks were made first) and uses only the core's deterministic arithmetic, so the same world gives the same tiles everywhere: `npm run test:local` prints a hash of the chunks round a town, and the hashes round the largest city of `forge` and round a town with its countryside are identical in Node 22 and Chromium. Chunks take about 30 ms in open country and 40 to 60 ms in a city (Node); the first chunk of a settlement also lays out its plan (up to 2 s for a large city). `LOCAL_MAP_VERSION` records the local map's own version for saved games.
+
+**Tiles** (`packages/core/src/local/tiles.ts`). The registry is the one list of tiles: name, layer (ground or object), whether it can be walked through and whether it blocks sight, how it joins its neighbours, and notes for the artist. `apps/game/TILESET.md` is generated from it (`npm run tileset:doc`) and is the list of art to draw, with the tileset format: 16 × 16 pixel tiles in `apps/game/public/tileset/tileset.png`, indexed by name in `tileset.json`, with variants and 16-frame joins for walls, fences and water. Every tile the art does not cover yet is drawn as a placeholder from its colour and glyph, so art can be added a few tiles at a time.
+
+**Playing.** `npm run dev:game`, make a world (or load a world file saved from the atlas: the game starts at the town nearest where the atlas was looking), choose a city or town and begin. Moving a tile takes 1.2 s of game time (1.7 s diagonally), opening a door 2 s; sight is worked out after every action (rot.js precise shadowcasting, 30 tiles by day): walls, closed doors and trees block it, and places seen before stay dimmed on the map.
+
+| Key | Action |
+|---|---|
+| Arrows, number pad, h j k l y u b n | Move (walking into a door opens it) |
+| Shift + direction | Run until something is worth stopping for |
+| o / c, then a direction | Open or close a door or gate |
+| . or 5 | Wait |
+| x | Look: move the cursor over the map (the pointer also looks) |
+| + / - | Zoom |
+| ? | Keys |
 
 ## Climate tuning against Earth
 

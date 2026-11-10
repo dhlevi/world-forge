@@ -122,7 +122,7 @@ class PointIndex<T> {
   }
 }
 
-interface Block {
+export interface Block {
   villages: Settlement[];
   tracks: RoadFeature[];
   /** Caves and glades. */
@@ -439,6 +439,15 @@ export class TownManager {
     const bx = Math.floor(s.lon), by = Math.floor(s.lat);
     for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) this.block(bx + dx, by + dy);
     return this.plans.get(s.id) ?? this.plan(s);
+  }
+
+  /**
+   * The villages, tracks, caves and dungeons of the 1° block at (bx, by) (its south-west corner,
+   * degrees), made now if need be: for the local map (local/chunk.ts). Blocks do not depend on
+   * one another, so what this returns does not depend on what was asked for before.
+   */
+  blockAt(bx: number, by: number): Readonly<Block> {
+    return this.block(bx, by);
   }
 
   // ---- Search index -------------------------------------------------------------------------
