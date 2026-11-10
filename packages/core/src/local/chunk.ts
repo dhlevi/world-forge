@@ -172,6 +172,11 @@ interface BuildingRaster {
   areas: string[];
 }
 
+/** Lines that are ways through (half-widths, m; roads by class). */
+const WAY_HW: Record<string, number> = { street: 3, road: 2.5, trodden: 0.8 };
+/** Hedges and fences have a gap of GAP_M metres every GAP_EVERY metres. */
+const GAP_EVERY = 24, GAP_M = 3;
+
 /** Rooms of fewer tiles than this do not give up a row to a wall. */
 const MIN_ROOM = 6;
 
@@ -248,7 +253,8 @@ export class LocalWorld {
         if (q[1] < y0) y0 = q[1];
         if (q[1] > y1) y1 = q[1];
       }
-      const pad = 12 + Number(f.properties.r ?? 0) + Number(f.properties.w ?? 0);
+      // Buildings are turned square to the grid (squared()), which can reach a little past their box.
+      const pad = 12 + Number(f.properties.r ?? 0) + Number(f.properties.w ?? 0) + (kind === 'building' ? 0.25 * Math.max(x1 - x0, y1 - y0) : 0);
       const k = items.length;
       items.push({ i, kind, p: f.properties, type: f.geometry.type, xy, f });
       // Chunks run south as y grows; local metres run north.
@@ -311,7 +317,8 @@ export class LocalWorld {
     if (!fl) return null;
     const self = lp.items.find((it) => it.f === f);
     if (!self) return null;
-    const xy = self.xy;
+    const sq = squared(self);
+    const xy = sq.xy;
     // Box of the footprint in tiles, with a margin.
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     for (let i = 0; i < xy.length; i += 2) {
@@ -328,7 +335,7 @@ export class LocalWorld {
     const cx = (k: number) => (bx0 + (k % w) + 0.5) * TILE_M, cy = (k: number) => -(by0 + Math.floor(k / w) + 0.5) * TILE_M;
 
     // The plan's buildings near this one (older and newer) and its streets.
-    const near: LocalItem[] = [], streets: number[][] = [];
+    const near: LocalItem[] = [], streets: number[][] = [], ways: { xy: number[]; hw: number }[] = [];
     const seenIt = new Set<number>();
     for (let ky = Math.floor((by0 - 8) / CHUNK); ky <= Math.floor((by0 + h + 8) / CHUNK); ky++) {
       for (let kx = Math.floor((bx0 - 8) / CHUNK); kx <= Math.floor((bx0 + w + 8) / CHUNK); kx++) {
@@ -338,7 +345,10 @@ export class LocalWorld {
           const it = lp.items[k];
           if (it === self) continue;
           if (it.kind === 'building' && it.p.tree !== 'top' && it.type === 'Polygon') near.push(it);
-          else if (it.type === 'LineString' && (it.kind === 'street' || it.kind === 'road' || it.kind === 'trodden')) streets.push(it.xy);
+          else if (it.type === 'LineString' && WAY_HW[it.kind]) {
+            streets.push(it.xy);
+            ways.push({ xy: it.xy, hw: it.kind === 'road' ? (ROAD_W[String(it.p.cls ?? '')] ?? 3.5) / 2 : WAY_HW[it.kind] });
+          }
         }
       }
     }
@@ -348,11 +358,17 @@ export class LocalWorld {
       const px = cx(k), py = cy(k);
       let older = false, newer = false;
       for (const o of near) {
-        if (!pointInPoly(o.xy, px, py)) continue;
+        if (!pointInPoly(squared(o).xy, px, py)) continue;
         if (o.i < self.i) older = true;
         else newer = true;
       }
-      who[k] = older ? 2 : pointInPoly(xy, px, py) ? 1 : newer ? 3 : 0;
+      // Turned square, a corner may poke into the street: the street keeps it.
+      const onWay = ways.some((wv) => {
+        const r = Math.max(0.6, wv.hw - 0.3);
+        for (let i = 0; i + 3 < wv.xy.length; i += 2) if (segDist2(px, py, wv.xy[i], wv.xy[i + 1], wv.xy[i + 2], wv.xy[i + 3]) < r * r) return true;
+        return false;
+      });
+      who[k] = older ? 2 : pointInPoly(xy, px, py) && !onWay ? 1 : newer ? 3 : 0;
     }
 
     // The building's own tiles: the edge is wall, except along a newer neighbour, which walls
@@ -373,7 +389,9 @@ export class LocalWorld {
     }
 
     // Floor-plan cell coordinates (u, v) of a point (local metres).
-    const uvOf = (px: number, py: number): [number, number] => {
+    const uvOf = (px0: number, py0: number): [number, number] => {
+      // Back from the squared building to the plan's.
+      const [px, py] = sq.unturn(px0, py0);
       const ll = this.frame.toLL([px, py]);
       const q = bv.frame.fromLL(ll[0], ll[1]);
       const qx = q[0] - d.origin[0], qy = q[1] - d.origin[1];
@@ -772,7 +790,8 @@ export class LocalWorld {
       }
     }
     const isWaterTile = (k: number) => GROUND_TILES[ground[k]].water !== undefined;
-    const paintSeg = (ax: number, ay: number, bx: number, by: number, hw: number, fn: (k: number) => void, minHw = 0.8) => {
+    /** Paints the tiles within `hw` of a segment; `fn` also gets the distance along it (m). */
+    const paintSeg = (ax: number, ay: number, bx: number, by: number, hw: number, fn: (k: number, along: number) => void, minHw = 0.8) => {
       const r = Math.max(hw, minHw);
       const tA = Math.floor((Math.min(ax, bx) - r) / TILE_M) - tx0, tB = Math.floor((Math.max(ax, bx) + r) / TILE_M) - tx0;
       const sA = Math.floor(-(Math.max(ay, by) + r) / TILE_M) - ty0, sB = Math.floor(-(Math.min(ay, by) - r) / TILE_M) - ty0;
@@ -781,7 +800,7 @@ export class LocalWorld {
         const px = (tx0 + x + 0.5) * TILE_M, py = -(ty0 + y + 0.5) * TILE_M;
         const t = l2 > 0 ? Math.max(0, Math.min(1, ((px - ax) * dx + (py - ay) * dy) / l2)) : 0;
         const ex = ax + dx * t - px, ey = ay + dy * t - py;
-        if (ex * ex + ey * ey <= r * r) fn(y * CHUNK + x);
+        if (ex * ex + ey * ey <= r * r) fn(y * CHUNK + x, t * Math.sqrt(l2));
       }
     };
     for (const s of segs) {
@@ -821,8 +840,67 @@ export class LocalWorld {
         if (inPoly(xy, (tx0 + x + 0.5) * TILE_M, -(ty0 + y + 0.5) * TILE_M)) fn(y * CHUNK + x);
       }
     };
-    const line = (xy: number[], hw: number, fn: (k: number) => void, minHw?: number) => {
-      for (let i = 0; i + 3 < xy.length; i += 2) paintSeg(xy[i], xy[i + 1], xy[i + 2], xy[i + 3], hw, fn, minHw);
+    const line = (xy: number[], hw: number, fn: (k: number, along: number) => void, minHw?: number) => {
+      let s0 = 0;
+      for (let i = 0; i + 3 < xy.length; i += 2) {
+        const base = s0;
+        paintSeg(xy[i], xy[i + 1], xy[i + 2], xy[i + 3], hw, (k, a) => fn(k, base + a), minHw);
+        const dx = xy[i + 2] - xy[i], dy = xy[i + 3] - xy[i + 1];
+        s0 += Math.sqrt(dx * dx + dy * dy);
+      }
+    };
+    // Every way through the plans and the country in this chunk (streets, roads, tracks, paths),
+    // in local metres: walls get gates where they cross one, hedges and fences a gap.
+    const ways: { ax: number; ay: number; bx: number; by: number; hw: number }[] = [];
+    for (const s of segs) {
+      const a = this.frame.fromLL(s.ax, s.ay), b = this.frame.fromLL(s.bx, s.by);
+      ways.push({ ax: a[0], ay: a[1], bx: b[0], by: b[1], hw: s.hw });
+    }
+    for (const st of sitesHere) {
+      const lp = this.planOf(st);
+      for (const idx of lp?.byChunk.get(ckey(cx, cy)) ?? []) {
+        const it = lp!.items[idx];
+        if (it.type !== 'LineString' || !WAY_HW[it.kind]) continue;
+        const hw = it.kind === 'road' ? (ROAD_W[String(it.p.cls ?? '')] ?? 3.5) / 2 : WAY_HW[it.kind];
+        for (let i = 0; i + 3 < it.xy.length; i += 2) ways.push({ ax: it.xy[i], ay: it.xy[i + 1], bx: it.xy[i + 2], by: it.xy[i + 3], hw });
+      }
+    }
+    /** Where a line (a wall, a hedge) crosses a way: the points, with the width of the opening. */
+    const crossings = (xy: number[]) => {
+      const out: { x: number; y: number; r: number }[] = [];
+      for (let i = 0; i + 3 < xy.length; i += 2) {
+        for (const wv of ways) {
+          const q = segCross(xy[i], xy[i + 1], xy[i + 2], xy[i + 3], wv.ax, wv.ay, wv.bx, wv.by);
+          if (q) out.push({ x: q[0], y: q[1], r: wv.hw + 1.2 });
+        }
+      }
+      return out;
+    };
+    const atCrossing = (cr: { x: number; y: number; r: number }[], k: number) => {
+      const px = (tx0 + (k % CHUNK) + 0.5) * TILE_M, py = -(ty0 + Math.floor(k / CHUNK) + 0.5) * TILE_M;
+      return cr.some((c) => (c.x - px) * (c.x - px) + (c.y - py) * (c.y - py) <= c.r * c.r);
+    };
+    /** Whether a tile lies on a way (within its half-width less `inset` metres). */
+    const nearWay = (k: number, inset: number) => {
+      const px = (tx0 + (k % CHUNK) + 0.5) * TILE_M, py = -(ty0 + Math.floor(k / CHUNK) + 0.5) * TILE_M;
+      return ways.some((wv) => {
+        const r = Math.max(0.6, wv.hw - inset);
+        return segDist2(px, py, wv.ax, wv.ay, wv.bx, wv.by) < r * r;
+      });
+    };
+    /** A hedge or fence with a gap every so often (a field gate), and where a way crosses it. */
+    const gapped = (xy: number[], name: string, phase: number) => {
+      const id = O(name), cr = crossings(xy);
+      // A short run (one side of a field) gets its gap in the middle.
+      let len = 0;
+      for (let i = 0; i + 3 < xy.length; i += 2) len += Math.sqrt((xy[i + 2] - xy[i]) * (xy[i + 2] - xy[i]) + (xy[i + 3] - xy[i + 1]) * (xy[i + 3] - xy[i + 1]));
+      const mid = len >= 8 && len < 2 * GAP_EVERY ? len / 2 : -1e9;
+      line(xy, 0.4, (k, along) => {
+        if (isWaterTile(k)) return;
+        built[k] = 1;
+        if (atCrossing(cr, k) || Math.abs(along - mid) < GAP_M / 2 || (len >= 2 * GAP_EVERY && (along + phase) % GAP_EVERY < GAP_M)) return;
+        object[k] = id;
+      }, 1.07);
     };
     const disc = (x: number, y: number, r: number, fn: (k: number) => void) => paintSeg(x, y, x, y, r, fn, 0.75);
     const setG = (name: string) => {
@@ -881,6 +959,7 @@ export class LocalWorld {
             case 'green': fillPoly(xy, mark(setG('lawn'))); break;
             case 'graveyard': fillPoly(xy, mark(setG('grave_ground'))); break;
             case 'pier': fillPoly(xy, mark(setG('planks'))); break;
+            case 'bridge': fillPoly(xy, mark(setG('bridge'))); break;
             case 'mound': fillPoly(xy, mark(setG('mound'))); break;
             case 'spoil': fillPoly(xy, mark(setG('spoil'))); break;
             case 'ditch': fillPoly(xy, mark(setG('ditch'))); break;
@@ -910,17 +989,18 @@ export class LocalWorld {
             case 'wall': {
               const w = Number(p.w ?? 2);
               const wallId = O(village && w < 2 ? 'palisade' : 'town_wall'), gate = O('gate_open');
-              const ways = new Set([G('road'), G('cobbles'), G('track'), G('path'), G('bridge')]);
-              // Where a street or road runs through the wall, a gate (open by day).
+              const onWay = new Set([G('road'), G('cobbles'), G('track'), G('path'), G('bridge')]);
+              // Where a street, road or path runs through the wall, a gate (open by day).
+              const cr = crossings(xy);
               line(xy, w / 2, (k) => {
                 if (isWaterTile(k)) return;
-                object[k] = ways.has(ground[k]) ? gate : wallId;
+                object[k] = onWay.has(ground[k]) || atCrossing(cr, k) || nearWay(k, 0.5) ? gate : wallId;
                 built[k] = 1;
               }, 1.07);
               break;
             }
-            case 'hedge': line(xy, 0.5, setO('hedge', true), 1.07); break;
-            case 'picket': line(xy, 0.3, setO('fence', true), 1.07); break;
+            case 'hedge': gapped(xy, 'hedge', (it.i * 7.3) % GAP_EVERY); break;
+            case 'picket': gapped(xy, 'fence', (it.i * 5.1) % GAP_EVERY); break;
             case 'furrow': line(xy, 0.3, setO('crops', true), 0.5); break;
             case 'vinerow': line(xy, 0.3, setO('vines', true), 0.5); break;
             case 'ditch': line(xy, 1, setG('ditch')); break;
@@ -936,7 +1016,16 @@ export class LocalWorld {
             }); break;
             case 'well': disc(x, y, 0, setO('well')); break;
             case 'fountain': disc(x, y, Math.min(r, 4), setO('fountain')); break;
-            case 'tower': disc(x, y, Math.min(r, 6), setO('tower')); break;
+            case 'tower': {
+              // Towers stand either side of a gate: they do not close the way through it.
+              const id = O('tower'), onWay = new Set([G('road'), G('cobbles'), G('track'), G('path')]);
+              disc(x, y, Math.min(r, 6), (k) => {
+                if (isWaterTile(k) || onWay.has(ground[k]) || nearWay(k, 0.3)) return;
+                object[k] = id;
+                built[k] = 1;
+              });
+              break;
+            }
             case 'menhir': disc(x, y, 0, setO('menhir')); break;
             case 'totem': disc(x, y, 0, setO('totem')); break;
             case 'fire': disc(x, y, 0, setO('campfire')); break;
@@ -1093,6 +1182,64 @@ function pointInPoly(xy: number[], px: number, py: number): boolean {
     if (yi > py !== yj > py && px < ((xj - xi) * (py - yi)) / (yj - yi) + xi) c = !c;
   }
   return c;
+}
+
+const squaredCache = new WeakMap<LocalItem, { xy: number[]; unturn: (x: number, y: number) => [number, number] }>();
+
+/**
+ * A building's footprint turned about its centre so that its longest wall runs along the tile
+ * grid: on 1.5 m tiles a slanting wall is a staircase that is hard to walk along and to find the
+ * doors in. The floor plan turns with it (`unturn` maps a point back to the plan).
+ */
+function squared(it: LocalItem): { xy: number[]; unturn: (x: number, y: number) => [number, number] } {
+  const hit = squaredCache.get(it);
+  if (hit) return hit;
+  const xy = it.xy;
+  // The ring repeats its first point at the end.
+  const m = xy.length / 2 - (xy[0] === xy[xy.length - 2] && xy[1] === xy[xy.length - 1] ? 1 : 0);
+  let cx = 0, cy = 0;
+  for (let i = 0; i < m; i++) {
+    cx += xy[2 * i] / m;
+    cy += xy[2 * i + 1] / m;
+  }
+  let ux = 1, uy = 0, best = 0;
+  for (let i = 0; i < m; i++) {
+    const j = (i + 1) % m;
+    const dx = xy[2 * j] - xy[2 * i], dy = xy[2 * j + 1] - xy[2 * i + 1], l2 = dx * dx + dy * dy;
+    if (l2 > best) {
+      best = l2;
+      const l = Math.sqrt(l2);
+      ux = dx / l;
+      uy = dy / l;
+    }
+  }
+  // The turn (c, s) that takes the wall's direction to the nearest axis.
+  let c = 1, s = 0, bd = -2;
+  for (const [ax, ay] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+    const dot = ux * ax + uy * ay;
+    if (dot > bd) {
+      bd = dot;
+      c = dot;
+      s = ux * ay - uy * ax;
+    }
+  }
+  const out: number[] = [];
+  for (let i = 0; i < xy.length; i += 2) {
+    const dx = xy[i] - cx, dy = xy[i + 1] - cy;
+    out.push(cx + c * dx - s * dy, cy + s * dx + c * dy);
+  }
+  const r = { xy: out, unturn: (x: number, y: number): [number, number] => [cx + c * (x - cx) + s * (y - cy), cy - s * (x - cx) + c * (y - cy)] };
+  squaredCache.set(it, r);
+  return r;
+}
+
+/** Where segments ab and cd cross, if they do. */
+function segCross(ax: number, ay: number, bx: number, by: number, cx: number, cy: number, dx: number, dy: number): [number, number] | null {
+  const rx = bx - ax, ry = by - ay, sx = dx - cx, sy = dy - cy;
+  const den = rx * sy - ry * sx;
+  if (den === 0) return null;
+  const t = ((cx - ax) * sy - (cy - ay) * sx) / den, u = ((cx - ax) * ry - (cy - ay) * rx) / den;
+  return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? [ax + rx * t, ay + ry * t] : null;
 }
 
 function polyDist2(xy: number[], px: number, py: number): number {

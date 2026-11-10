@@ -4,7 +4,7 @@ Demo: https://dhlevi.github.io/world-forge/
 
 A browser-based procedural fantasy world generator. You start with a whole planet on a zoomable globe (or flat map) and can zoom in through roads and villages to the streets and buildings of individual towns. Everything runs client-side, with no server.
 
-Stack: TypeScript, Vue 3, Vite, MapLibre GL JS, PixiJS. The project is three npm workspaces: **`@worldforge/core`** (`packages/core`), the generator itself, which runs anywhere (browsers, workers, Node, a game) with no browser, UI or map dependencies; **`@worldforge/atlas`** (`apps/atlas`), the browser map built on it; and **`@worldforge/game`** (`apps/game`), *Wanderer*, a roguelike prototype that walks the generated world tile by tile (see [The game](#the-game-wanderer)). Node.js runs the tooling, the headless test and the preview script.
+Stack: TypeScript, Vue 3, Vite, MapLibre GL JS, PixiJS. The project is three npm workspaces: **`@worldforge/core`** (`packages/core`), the generator itself, which runs anywhere (browsers, workers, Node, a game) with no browser, UI or map dependencies; **`@worldforge/atlas`** (`apps/atlas`), the browser map built on it; **`@worldforge/game`** (`apps/game`), *Wanderer*, a roguelike prototype that walks the generated world tile by tile (see [The game](#the-game-wanderer)); and **`@worldforge/desktop`** (`apps/desktop`), the game as a desktop app (Electron). Node.js runs the tooling, the headless test and the preview script.
 
 ## Quick start
 
@@ -14,6 +14,8 @@ npm run dev        # the atlas, http://localhost:5173
 npm run build      # type-check both packages + production build to apps/atlas/dist/
 npm run typecheck  # the core without DOM or Node types, its determinism check, then the atlas and the game
 npm run dev:game   # the game, http://localhost:5180
+npm run dev:desktop   # the game in its desktop window (Electron), reloading as the game changes
+npm run pack:desktop  # a desktop build you can run, in apps/desktop/release/ (dist:desktop for installers)
 npm run test:local -- --seed=forge --town=<name> --r=2 --png=out/local.png   # local-map chunks in Node: timings, hash, picture
 npm run tileset:doc   # rewrite apps/game/TILESET.md from the tile registry
 npm run test:core -- --seed=forge --res=512   # a whole world made headless in Node, with its fingerprint
@@ -476,6 +478,11 @@ apps/game/            @worldforge/game: Wanderer, the roguelike prototype
     components/   PlayView.vue (the map, side panel, message log and keys)
     game/         map.ts (chunks, changes over the baseline, what has been seen), game.ts (moves, doors, time, sight), renderer.ts (PixiJS), tileset.ts (placeholders and tileset loading)
     worker/       game.worker.ts (the world and the local map, off the main thread), protocol.ts
+    desktop.ts    the desktop app's bridge (absent in a browser)
+apps/desktop/         @worldforge/desktop: the game in an Electron window
+  src/main.ts         the main process: the window, the app:// scheme, the menu, the data folder
+  src/preload.cts     window.worldforge, the page's only way to the computer
+  scripts/            dev.mjs (dev server + Electron), renderer.mjs (builds the game into renderer/)
 ```
 
 The core is type-checked with no DOM or Node types (`packages/core/tsconfig.json`), so anything that would tie it to a browser or to Node fails the check. The atlas imports it as a package: `import { generateWorld } from '@worldforge/core/gen/world'` (each file of `packages/core/src` is exported by its path). Town plans use [d3-delaunay](https://github.com/d3/d3-delaunay) for Voronoi diagrams.
@@ -509,22 +516,22 @@ The same settings make exactly the same world in every JavaScript engine and ver
 
 ## The game: Wanderer
 
-`apps/game` is the first step toward a roguelike in the generated world, in the spirit of UnReal World and Dwarf Fortress's adventure mode: tile-based, turn-based (every move or action takes time on the game clock), with pixel-art tiles. The world as generated is the **baseline**; what a player changes is kept apart and laid over it. This prototype (Phase 2 of the plan) runs in the browser; the desktop build (Electron) comes next.
+`apps/game` is the first step toward a roguelike in the generated world, in the spirit of UnReal World and Dwarf Fortress's adventure mode: tile-based, turn-based (every move or action takes time on the game clock), with pixel-art tiles. The world as generated is the **baseline**; what a player changes is kept apart and laid over it. It runs in a browser and as a desktop app (see [The desktop app](#the-desktop-app)).
 
 **The local map** (`packages/core/src/local/chunk.ts`). The world at a person's scale, in **1.5 m tiles** (the floor-plan cell), made in **chunks of 64 × 64 tiles** (96 m) in a worker, on demand as the wanderer moves. Each chunk comes from what the generator already holds:
 
 - terrain and rivers at full detail (`gen/detail.ts`), sampled every 4 tiles and interpolated: elevation, slope (bare rock and scree on steep ground), sea and lakes (shallow near the shore), rivers (fordable, or deep in wide channels), beaches and muddy banks;
 - the biome, with a wandering edge between the world's cells, and its cover: woods in clumps (value noise), trees by biome (broadleaf, conifer, birch, palm, jungle, mangrove), undergrowth, reeds by water, cleared land round settlements;
 - roads and tracks (bridged over water by roads, forded by tracks);
-- the town and village plans (`towns/`): streets, squares, greens, fields with crop rows, gardens, yards, graveyards, piers, walls with gates where streets pass, towers, wells, fountains, stalls, graves, trees;
-- every building's **ground floor** (`interiors/dwelling.ts`): walls on the footprint's edge (one wall where two houses meet), the floor plan stretched over the floor inside, rooms, doors (a way in is always made, through the wall nearest a street when the plan's front faces a neighbour), windows, furniture and stairs, with each tile knowing its building and room;
+- the town and village plans (`towns/`): streets, squares, greens, fields with crop rows, gardens, yards, graveyards, piers, bridges, walls with a gate wherever a street, road or path crosses them (towers beside a gate never close it), hedges and fences with field gates (one in the middle of each side of a field, and every 24 m along longer runs, and wherever a way crosses), towers, wells, fountains, market stalls (which can be ducked under), graves, trees;
+- every building's **ground floor** (`interiors/dwelling.ts`). On 1.5 m tiles a slanting wall is a staircase, hard to walk along and to find the doors in, so each building is **turned square to the grid** about its centre (its longest wall along the tiles), with its floor plan; where a turned corner would stand in the street, the street keeps it. Walls run on the footprint's edge (one wall where two houses meet), the floor plan is stretched over the floor inside, with rooms, doors (a way in is always made, through the wall nearest a street when the plan's front faces a neighbour), windows, furniture and stairs, and each tile knows its building and room;
 - caves, crypts, ruins and mines in the wild, marked as ways down.
 
-A chunk depends only on the world and its position (never on which chunks were made first) and uses only the core's deterministic arithmetic, so the same world gives the same tiles everywhere: `npm run test:local` prints a hash of the chunks round a town, and the hashes round the largest city of `forge` and round a town with its countryside are identical in Node 22 and Chromium. Chunks take about 30 ms in open country and 40 to 60 ms in a city (Node); the first chunk of a settlement also lays out its plan (up to 2 s for a large city). `LOCAL_MAP_VERSION` records the local map's own version for saved games.
+A chunk depends only on the world and its position (never on which chunks were made first) and uses only the core's deterministic arithmetic, so the same world gives the same tiles everywhere: `npm run test:local` prints a hash of the chunks round a town, and the hashes round the largest city of `forge` and round a town with its countryside are identical in Node 22 and Chromium. `npm run test:local` also walks out from the start and reports how much of the open ground can be reached: 94% of it round the largest city of `forge`, most of the rest being closed courtyards (round its largest town, the far bank of a river with no bridge, which the wanderer can swim). Chunks take about 15 to 35 ms in open country and 70 to 85 ms in a dense city (Node); the first chunk of a settlement also lays out its plan (up to 2 s for a large city). `LOCAL_MAP_VERSION` records the local map's own version for saved games.
 
 **Tiles** (`packages/core/src/local/tiles.ts`). The registry is the one list of tiles: name, layer (ground or object), whether it can be walked through and whether it blocks sight, how it joins its neighbours, and notes for the artist. `apps/game/TILESET.md` is generated from it (`npm run tileset:doc`) and is the list of art to draw, with the tileset format: 16 × 16 pixel tiles in `apps/game/public/tileset/tileset.png`, indexed by name in `tileset.json`, with variants and 16-frame joins for walls, fences and water. Every tile the art does not cover yet is drawn as a placeholder from its colour and glyph, so art can be added a few tiles at a time.
 
-**Playing.** `npm run dev:game`, make a world (or load a world file saved from the atlas: the game starts at the town nearest where the atlas was looking), choose a city or town and begin. Moving a tile takes 1.2 s of game time (1.7 s diagonally), opening a door 2 s; sight is worked out after every action (rot.js precise shadowcasting, 30 tiles by day): walls, closed doors and trees block it, and places seen before stay dimmed on the map.
+**Playing.** `npm run dev:game`, make a world (or load a world file saved from the atlas: the game starts at the town nearest where the atlas was looking), choose a city or town and begin. Moving a tile takes 1.2 s of game time (1.7 s diagonally), swimming a tile of deep water 4 s (running stops at the water's edge), opening a door 2 s; sight is worked out after every action (rot.js precise shadowcasting, 30 tiles by day): walls, closed doors and trees block it, and places seen before stay dimmed on the map.
 
 | Key | Action |
 |---|---|
@@ -535,6 +542,15 @@ A chunk depends only on the world and its position (never on which chunks were m
 | x | Look: move the cursor over the map (the pointer also looks) |
 | + / - | Zoom |
 | ? | Keys |
+
+### The desktop app
+
+`apps/desktop` wraps the game in Electron (version 45), so it can be played as an ordinary program and, later, keep its saves on disk.
+
+- **Running it.** `npm run dev:desktop` starts the game's dev server and opens it in the desktop window (edits reload as in a browser; View › Toggle Developer Tools). `npm run pack:desktop` makes a build you can run in `apps/desktop/release/` (on a Mac, `World Forge Wanderer.app` in `release/mac*`); `npm run dist:desktop` makes the installers for the computer it runs on (a .dmg and .zip on macOS, an installer and .zip on Windows, an AppImage and .tar.gz on Linux). `.github/workflows/desktop.yml` builds all three on GitHub, by hand from the Actions tab or on a tag such as `desktop-v0.1.0`. The builds are not signed yet: macOS asks you to confirm the first opening (right-click › Open).
+- **How it is put together.** The built game is copied into `apps/desktop/renderer/` and served over a private `app://game/` scheme rather than `file://`, where the game's module workers would not load. The page runs sandboxed, without Node, under a content security policy; it can only navigate within the game (other links open in the browser).
+- **What the page can do on the computer**, through `window.worldforge` (`preload.cts`, typed for the game in `apps/game/src/desktop.ts`): open a world file with the system's file dialog (also File › Open World File…, Ctrl/Cmd+O), and read, write, list and remove text files in the game's own **data folder** (`World Forge Wanderer/data` in the system's application data folder; File › Show Data Folder), each written whole or not at all. Names are checked so nothing outside that folder can be reached. The game keeps its last world settings and starting town there, and the saved games of the next phase will live there too.
+- The window remembers its size, position and full screen (F11, or Ctrl+Cmd+F on a Mac), and a second launch brings the open window forward.
 
 ## Climate tuning against Earth
 

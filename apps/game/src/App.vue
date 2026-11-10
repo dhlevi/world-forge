@@ -8,6 +8,7 @@ import { readWorldFile } from '@worldforge/core/export/worldfile';
 import { GENERATOR_VERSION } from '@worldforge/core/version';
 import type { FromWorker, LocalSite, StartSite, ToWorker, ChunkData } from './worker/protocol';
 import PlayView from './components/PlayView.vue';
+import { desktop, readJson, writeJson, type DesktopInfo } from './desktop';
 
 const worker = new Worker(new URL('./worker/game.worker.ts', import.meta.url), { type: 'module' });
 const send = (m: ToWorker) => worker.postMessage(m);
@@ -36,7 +37,10 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
     // A world file saved with a view: start at the town nearest where the atlas was looking.
     const vc = viewCentre.value;
     const near = vc ? [...m.starts].sort((a, b) => Math.hypot(a.lon - vc[0], a.lat - vc[1]) - Math.hypot(b.lon - vc[0], b.lat - vc[1]))[0] : m.starts[0];
-    chosen.value = near?.id ?? '';
+    // Otherwise, on the desktop, where this seed was last begun.
+    const last = remembered.value.start;
+    const again = !vc && last && last.seed === settings.value.seed ? m.starts.find((s) => s.id === last.id) : undefined;
+    chosen.value = (again ?? near)?.id ?? '';
     stage.value = 'choose';
   } else if (m.type === 'started') {
     begun.value = { site: m.site, tile: m.tile, sites: m.sites };
@@ -44,7 +48,29 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
   } else if (m.type === 'chunk') chunkSink.value(m.chunk);
 };
 
+/** What the desktop app remembers between runs (data/settings.json). */
+interface Remembered { settings?: WorldSettings; start?: { seed: string; id: string } }
+const remembered = ref<Remembered>({});
+const info = ref<DesktopInfo | null>(null);
+if (desktop) {
+  void desktop.info().then((i) => (info.value = i));
+  void readJson<Remembered>('settings.json', {}).then((r) => {
+    remembered.value = r;
+    if (r.settings) settings.value = { ...settings.value, ...r.settings };
+  });
+  desktop.onMenu((what) => {
+    if (what !== 'open-world') return;
+    if (stage.value === 'making' || stage.value === 'starting') return;
+    stage.value = 'setup';
+    void openNative();
+  });
+}
+
 function makeWorld(): void {
+  if (desktop) {
+    remembered.value = { ...remembered.value, settings: { ...settings.value } };
+    void writeJson('settings.json', remembered.value);
+  }
   error.value = '';
   progress.value = { stage: 'Starting', pct: 0 };
   stage.value = 'making';
@@ -53,11 +79,24 @@ function makeWorld(): void {
 
 async function loadFile(e: Event): Promise<void> {
   const f = (e.target as HTMLInputElement).files?.[0];
-  if (!f) return;
+  if (f) useWorldText(await f.text());
+}
+
+/** The desktop app's own file dialog. */
+async function openNative(): Promise<void> {
+  try {
+    const f = await desktop!.openWorldFile();
+    if (f) useWorldText(f.text);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  }
+}
+
+function useWorldText(text: string): void {
   error.value = '';
   try {
     const s = { ...settings.value };
-    const r = readWorldFile(await f.text(), s);
+    const r = readWorldFile(text, s);
     settings.value = s;
     viewCentre.value = r.view?.center ?? null;
     note.value = r.generator !== GENERATOR_VERSION ? `This file was saved by generator version ${r.generator}; this game makes version ${GENERATOR_VERSION}, so the world may differ slightly.` : '';
@@ -70,6 +109,10 @@ async function loadFile(e: Event): Promise<void> {
 function begin(): void {
   if (!chosen.value) return;
   stage.value = 'starting';
+  if (desktop) {
+    remembered.value = { ...remembered.value, start: { seed: settings.value.seed, id: chosen.value } };
+    void writeJson('settings.json', remembered.value);
+  }
   progress.value = { stage: 'Laying out the town', pct: 0.5 };
   send({ type: 'start', id: chosen.value });
 }
@@ -101,7 +144,8 @@ function requestChunk(cx: number, cy: number): void {
       </label>
       <div class="row">
         <button class="primary" @click="makeWorld">Make the world</button>
-        <label class="file">Load a world file<input type="file" accept=".world,.json,application/json" @change="loadFile" /></label>
+        <button v-if="desktop" @click="openNative">Load a world file…</button>
+        <label v-else class="file">Load a world file<input type="file" accept=".world,.json,application/json" @change="loadFile" /></label>
       </div>
       <p class="hint">Other settings keep their atlas defaults; a world file saved from the atlas brings its own.</p>
     </section>
@@ -126,6 +170,10 @@ function requestChunk(cx: number, cy: number): void {
     </section>
 
     <p v-if="error" class="error">{{ error }}</p>
+    <p v-if="info" class="hint desk">
+      Desktop {{ info.version }} · Electron {{ info.electron }} ·
+      <a href="#" @click.prevent="desktop!.data.show()">data folder</a>
+    </p>
   </div>
 
   <PlayView

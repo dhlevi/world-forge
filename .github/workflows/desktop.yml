@@ -1,0 +1,42 @@
+# Builds the desktop app (apps/desktop) for macOS, Windows and Linux, by hand from the Actions tab
+# or on a tag such as desktop-v0.1.0. The installers are attached to the run as artifacts. The
+# builds are not signed: macOS asks to confirm the first opening (right-click > Open), and
+# Windows SmartScreen may warn.
+name: Desktop builds
+
+on:
+  workflow_dispatch:
+  push:
+    tags: ['desktop-v*']
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, windows-latest, ubuntu-latest]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm run dist:desktop
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: 'false'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wanderer-${{ matrix.os }}
+          path: |
+            apps/desktop/release/*.dmg
+            apps/desktop/release/*.zip
+            apps/desktop/release/*.exe
+            apps/desktop/release/*.AppImage
+            apps/desktop/release/*.tar.gz
+          if-no-files-found: error

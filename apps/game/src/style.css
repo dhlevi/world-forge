@@ -60,3 +60,4 @@ button:disabled { opacity: 0.5; cursor: default; }
   .panel { grid-row: 2; grid-column: 1; max-height: 30vh; border-left: 0; border-top: 1px solid var(--line); }
   .log { grid-row: 3; grid-column: 1; min-height: 0; }
 }
+.desk { margin-top: 28px; } .desk a { color: var(--accent); }

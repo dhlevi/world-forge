@@ -4,6 +4,8 @@
  * as they are; tiles seen before are dimmed; the rest is dark.
  */
 import { Application, Container, Graphics, Sprite, Texture } from 'pixi.js';
+// Pixi builds its shaders without eval with this; the desktop app's page allows no eval.
+import 'pixi.js/unsafe-eval';
 import { GROUND_TILES, OBJECT_TILES, type TileDef } from '@worldforge/core/local/tiles';
 import { TILE_PX, Tileset, N, E, S, W } from './tileset';
 import type { Game } from './game';

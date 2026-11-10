@@ -171,7 +171,7 @@ const OBJECT: Def[] = [
   o('fountain', 'o', '#7aa0c0', 'a fountain', 'A stone basin with water.'),
   o('grave', '+', '#a8a49a', 'a grave', 'A headstone or wooden cross on a low mound.', { pass: true, variants: 3 }),
   o('tomb', '=', '#a8a49a', 'a tomb', 'A stone chest tomb.'),
-  o('stall', '&', '#c8784a', 'a market stall', 'Trestle under a striped awning.', { variants: 3 }),
+  o('stall', '&', '#c8784a', 'a market stall', 'Trestle under a striped awning, seen from above (one tile of it). You can duck under the awning.', { pass: true, variants: 3 }),
   o('tent', '^', '#c8b48a', 'a tent', 'Canvas tent from above.', { variants: 2 }),
   o('wagon', '&', '#8a6a48', 'a wagon', 'Wooden cart (one tile of it).', { variants: 2 }),
   o('boat', 'u', '#8a6a48', 'a boat', 'A small boat drawn up or moored.', { variants: 2 }),

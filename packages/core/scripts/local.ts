@@ -48,6 +48,43 @@ for (let i = 0; i < all.length; i++) h = Math.imul(h ^ all.charCodeAt(i), 167776
 console.log(`${chunks.length} chunks: median ${times[times.length >> 1].toFixed(1)} ms, max ${times[times.length - 1].toFixed(1)} ms`);
 console.log(`Local hash ${(h >>> 0).toString(16).padStart(8, '0')}`);
 
+// Reachability: walk out from the start (doors open) and see how much of the land, and of the
+// edge of the area, can be reached.
+{
+  const S = 2 * R * CHUNK, o = R * CHUNK;
+  const ok = new Uint8Array(S * S);
+  for (const c of chunks) for (let k = 0; k < CHUNK * CHUNK; k++) {
+    const x = (c.cx + R) * CHUNK + (k % CHUNK), y = (c.cy + R) * CHUNK + Math.floor(k / CHUNK);
+    const ob = OBJECT_TILES[c.object[k]];
+    ok[y * S + x] = GROUND_TILES[c.ground[k]].pass && (ob.pass || !!ob.toggle) ? 1 : 0;
+  }
+  const seen = new Uint8Array(S * S);
+  const stack = [(start[1] + o) * S + start[0] + o];
+  seen[stack[0]] = 1;
+  while (stack.length) {
+    const k = stack.pop()!;
+    const x = k % S, y = Math.floor(k / S);
+    for (const [dx, dy] of [[1, 0], [-1, 0], [0, 1], [0, -1]]) {
+      const xx = x + dx, yy = y + dy, k2 = yy * S + xx;
+      if (xx < 0 || yy < 0 || xx >= S || yy >= S || seen[k2] || !ok[k2]) continue;
+      seen[k2] = 1;
+      stack.push(k2);
+    }
+  }
+  let land = 0, landR = 0, edge = 0, edgeR = 0;
+  for (let k = 0; k < S * S; k++) {
+    if (!ok[k]) continue;
+    land++;
+    if (seen[k]) landR++;
+    const x = k % S, y = Math.floor(k / S);
+    if (x === 0 || y === 0 || x === S - 1 || y === S - 1) {
+      edge++;
+      if (seen[k]) edgeR++;
+    }
+  }
+  console.log(`Reachable from the start: ${((100 * landR) / land).toFixed(1)}% of open tiles, ${edgeR} of ${edge} open tiles on the area's edge`);
+}
+
 const count = new Map<string, number>();
 for (const c of chunks) for (let k = 0; k < c.object.length; k++) if (c.object[k]) count.set(OBJECT_TILES[c.object[k]].name, (count.get(OBJECT_TILES[c.object[k]].name) ?? 0) + 1);
 console.log('Objects:', [...count].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, v]) => `${k} ${v}`).join(', '));

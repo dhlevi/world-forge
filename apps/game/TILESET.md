@@ -179,7 +179,7 @@ Over the ground, transparent background.
 | `fountain` | A stone basin with water. | blocks | 1 | `o` #7aa0c0 |
 | `grave` | A headstone or wooden cross on a low mound. | walk | 3 variants | `+` #a8a49a |
 | `tomb` | A stone chest tomb. | blocks | 1 | `=` #a8a49a |
-| `stall` | Trestle under a striped awning. | blocks | 3 variants | `&` #c8784a |
+| `stall` | Trestle under a striped awning, seen from above (one tile of it). You can duck under the awning. | walk | 3 variants | `&` #c8784a |
 | `tent` | Canvas tent from above. | blocks | 2 variants | `^` #c8b48a |
 | `wagon` | Wooden cart (one tile of it). | blocks | 2 variants | `&` #8a6a48 |
 | `boat` | A small boat drawn up or moored. | blocks | 2 variants | `u` #8a6a48 |

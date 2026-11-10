@@ -26,7 +26,10 @@ jobs:
         with:
           node-version: 22
           cache: npm
+      # The desktop app's Electron is not needed for the site.
       - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
       # Pages serves a project site from /<repository>/, so the atlas is built for that path.
       - run: npm run build
         env:

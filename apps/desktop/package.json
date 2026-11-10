@@ -1,0 +1,58 @@
+{
+  "name": "@worldforge/desktop",
+  "version": "0.1.0",
+  "description": "World Forge Wanderer for the desktop: the game in an Electron window",
+  "license": "ISC",
+  "private": true,
+  "type": "module",
+  "main": "dist/main.js",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "dev": "node scripts/dev.mjs",
+    "start": "npm run build && electron .",
+    "renderer": "node scripts/renderer.mjs",
+    "pack": "npm run build && npm run renderer && electron-builder --dir --publish never",
+    "dist": "npm run build && npm run renderer && electron-builder --publish never"
+  },
+  "devDependencies": {
+    "electron": "45.0.0",
+    "electron-builder": "26.17.0"
+  },
+  "build": {
+    "appId": "com.worldforge.wanderer",
+    "productName": "World Forge Wanderer",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**",
+      "renderer/**",
+      "package.json"
+    ],
+    "npmRebuild": false,
+    "mac": {
+      "category": "public.app-category.role-playing-games",
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "identity": null
+    },
+    "win": {
+      "target": [
+        "nsis",
+        "zip"
+      ],
+      "executableName": "WorldForgeWanderer"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "Game",
+      "executableName": "world-forge-wanderer"
+    }
+  }
+}

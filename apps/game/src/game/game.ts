@@ -13,6 +13,8 @@ export const STEP_S = 1.2;
 export const DIAG_S = 1.7;
 export const DOOR_S = 2;
 export const WAIT_S = 5;
+/** Seconds to swim a tile of deep water. */
+export const SWIM_S = 4;
 /** How far the wanderer sees by day, in tiles. */
 export const SIGHT = 30;
 
@@ -78,8 +80,13 @@ export class Game {
     return `Day ${day}, ${hh}:${mm}`;
   }
 
+  /** Deep water can be swum (nothing on it, such as a boat, in the way). */
+  private swim(x: number, y: number): boolean {
+    return GROUND_TILES[this.map.ground(x, y)].water === 'deep' && this.map.object(x, y) === 0 && this.map.loaded(x, y);
+  }
+
   private pass(x: number, y: number): boolean {
-    return this.map.passable(x, y);
+    return this.map.passable(x, y) || this.swim(x, y);
   }
 
   /** One step (or a bump: opening a door, or being stopped). Returns whether time passed. */
@@ -106,9 +113,14 @@ export class Game {
     const area0 = this.areaAt(this.px, this.py);
     this.px = nx;
     this.py = ny;
-    this.time += dx && dy ? DIAG_S : STEP_S;
     const g = GROUND_TILES[this.map.ground(nx, ny)];
-    if (g.water === 'shallow' && !quiet) this.say('You wade through the water.');
+    const wasWet = GROUND_TILES[this.map.ground(this.px - dx, this.py - dy)].water;
+    this.time += g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S;
+    if (g.water !== wasWet && !quiet) {
+      if (g.water === 'deep') this.say('You swim out into deep water.');
+      else if (g.water === 'shallow') this.say('You wade into the water.');
+      else if (wasWet) this.say('You climb out onto dry ground.');
+    }
     const area1 = this.areaAt(nx, ny);
     if (area1 !== area0 && area1) this.say(`${cap(area1)}.`);
     return true;
@@ -119,6 +131,8 @@ export class Game {
     let n = 0;
     while (n < 60) {
       const area = this.areaAt(this.px, this.py);
+      // Running does not carry on into deep water.
+      if (n > 0 && this.swim(this.px + dx, this.py + dy) && !this.swim(this.px, this.py)) break;
       if (!this.move(dx, dy, n > 0)) break;
       n++;
       this.refreshSight();
