@@ -61,3 +61,10 @@ button:disabled { opacity: 0.5; cursor: default; }
   .log { grid-row: 3; grid-column: 1; min-height: 0; }
 }
 .desk { margin-top: 28px; } .desk a { color: var(--accent); }
+.foot .btns { display: flex; gap: 6px; } .foot .btns button { padding: 4px 8px; }
+.saves { margin-bottom: 16px; }
+.saves h2 { margin: 0; font-weight: 500; font-size: 1.1em; color: var(--accent); }
+.save-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; }
+.save-row .btns { display: flex; gap: 6px; flex: none; }
+.save-row .btns button { padding: 4px 10px; }
+.file.small { font-size: 0.9em; align-self: flex-start; }

@@ -9,8 +9,17 @@ import { Game, type Hud } from '../game/game';
 import { Renderer } from '../game/renderer';
 import { Tileset } from '../game/tileset';
 import type { ChunkData, LocalSite, StartSite } from '../worker/protocol';
+import type { WorldSettings } from '@worldforge/core/settings';
+import { applySave, exportSave, makeSave, writeSave, type SaveFile } from '../game/save';
+import { desktop } from '../desktop';
 
-const props = defineProps<{ site: StartSite; start: [number, number]; sites: LocalSite[]; request: (cx: number, cy: number) => void }>();
+const props = defineProps<{
+  site: StartSite; start: [number, number]; sites: LocalSite[]; request: (cx: number, cy: number) => void;
+  /** The game's id and world, for saving. */
+  gameId: string; settings: WorldSettings;
+  /** A saved game to carry on from. */
+  restore?: SaveFile | null;
+}>();
 const emit = defineEmits<{ sink: [f: (c: ChunkData) => void]; quit: [] }>();
 
 const el = ref<HTMLDivElement>();
@@ -18,10 +27,17 @@ const hud = reactive<Hud>({ place: '', where: '', clock: '', log: [], look: [], 
 const tilesetNote = ref('');
 const showHelp = ref(false);
 
+let renderer_zoom = 2;
 const map = new GameMap((cx, cy) => props.request(cx, cy));
 const game = new Game(map, props.start, props.sites, props.site.name, hud);
+if (props.restore) {
+  applySave(game, props.restore);
+  if (props.restore.zoom) renderer_zoom = props.restore.zoom;
+  game.say('You take up where you left off.');
+}
 const tiles = new Tileset();
 const renderer = new Renderer(tiles);
+renderer.zoom = renderer_zoom;
 let frame = 0;
 const redraw = () => {
   if (frame) return;
@@ -95,10 +111,51 @@ function onKey(e: KeyboardEvent): void {
     renderer.zoom = Math.max(1, renderer.zoom - 1);
   } else if (e.key === '?') {
     showHelp.value = !showHelp.value;
+  } else if (e.code === 'KeyS' && (e.ctrlKey || e.metaKey)) {
+    void save();
   } else return;
   e.preventDefault();
   redraw();
 }
+
+// ---- Saving ------------------------------------------------------------------------------------
+
+const saving = ref(false);
+/** Game time at the last save, to know whether there is anything new to save. */
+let savedAt = props.restore ? game.time : -1;
+
+async function save(quiet = false): Promise<void> {
+  if (saving.value) return;
+  saving.value = true;
+  try {
+    await writeSave(makeSave(game, { id: props.gameId, settings: props.settings, siteId: props.site.id, siteName: props.site.name, zoom: renderer.zoom }));
+    savedAt = game.time;
+    if (!quiet) game.say('Game saved.');
+  } catch (err) {
+    game.say(`Could not save: ${err instanceof Error ? err.message : String(err)}`);
+  } finally {
+    saving.value = false;
+    redraw();
+  }
+}
+
+function exportNow(): void {
+  exportSave(makeSave(game, { id: props.gameId, settings: props.settings, siteId: props.site.id, siteName: props.site.name, zoom: renderer.zoom }));
+  game.say('Saved game exported to a file.');
+}
+
+async function leave(): Promise<void> {
+  if (game.time !== savedAt) await save(true);
+  emit('quit');
+}
+
+// Autosave every few minutes of real time, when something has happened.
+const autosave = setInterval(() => {
+  if (game.time !== savedAt) void save(true);
+}, 3 * 60 * 1000);
+const offMenu = desktop?.onMenu((what) => {
+  if (what === 'save') void save();
+});
 
 renderer.onHover = (tx, ty) => {
   if (hud.mode === 'look') return;
@@ -117,6 +174,8 @@ onMounted(async () => {
 });
 
 onBeforeUnmount(() => {
+  clearInterval(autosave);
+  offMenu?.();
   window.removeEventListener('keydown', onKey);
   ro.disconnect();
   renderer.app.destroy(true);
@@ -141,11 +200,16 @@ onBeforeUnmount(() => {
         <div><b>Wait</b> . or 5</div>
         <div><b>Look</b> x, then move the cursor</div>
         <div><b>Zoom</b> + and -</div>
+        <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>
       <div class="hint" v-else>Press ? for keys.</div>
       <div class="foot">
         <span>{{ tilesetNote }}</span>
-        <button @click="emit('quit')">Leave</button>
+        <span class="btns">
+          <button :disabled="saving" @click="save()">Save</button>
+          <button @click="exportNow">Export</button>
+          <button @click="leave">Leave</button>
+        </span>
       </div>
     </aside>
     <div class="log">

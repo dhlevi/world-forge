@@ -542,6 +542,9 @@ A chunk depends only on the world and its position (never on which chunks were m
 | x | Look: move the cursor over the map (the pointer also looks) |
 | + / - | Zoom |
 | ? | Keys |
+| Ctrl+S (Cmd+S) | Save |
+
+**Saving** (`apps/game/src/game/save.ts`). A save holds only what the player has changed or learnt, never the world itself: the world's settings (the world is made again, the same, from its seed), the settlement the game began in, the wanderer's place, the clock, every object changed over the baseline (doors opened or closed), what has been seen (bit-packed per chunk) and the recent message log, with the generator and local-map versions it was made with. A save is a few kilobytes. The game saves on Ctrl+S or the Save button, every few minutes of play when something has happened, and on leaving; the start screen lists saved games under **Continue**, which makes the world again, returns to the place and restores the state, warning if the save was made with another generator or local-map version. In the desktop app saves are files in the data folder (`saves/<id>.json`, File › Save Game); in a browser they are kept in the page's local storage. **Export** writes a save to a file, and **Import a saved game** on the start screen reads one back (from either kind of game).
 
 ### The desktop app
 

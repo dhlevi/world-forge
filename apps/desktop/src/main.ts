@@ -201,6 +201,7 @@ function buildMenu(): void {
       label: 'File',
       submenu: [
         { label: 'Open World File…', accelerator: 'CmdOrCtrl+O', click: () => send('open-world') },
+        { label: 'Save Game', accelerator: 'CmdOrCtrl+S', click: () => send('save') },
         { label: 'Show Data Folder', click: () => void shell.openPath(dataDir()) },
         { type: 'separator' },
         isMac ? { role: 'close' } : { role: 'quit' },

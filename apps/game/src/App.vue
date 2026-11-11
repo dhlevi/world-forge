@@ -9,6 +9,7 @@ import { GENERATOR_VERSION } from '@worldforge/core/version';
 import type { FromWorker, LocalSite, StartSite, ToWorker, ChunkData } from './worker/protocol';
 import PlayView from './components/PlayView.vue';
 import { desktop, readJson, writeJson, type DesktopInfo } from './desktop';
+import { deleteSave, listSaves, loadSave, newGameId, readSave, versionNote, writeSave, type SaveFile, type SaveSummary } from './game/save';
 
 const worker = new Worker(new URL('./worker/game.worker.ts', import.meta.url), { type: 'module' });
 const send = (m: ToWorker) => worker.postMessage(m);
@@ -22,7 +23,15 @@ const starts = ref<StartSite[]>([]);
 const filter = ref('');
 const chosen = ref('');
 const viewCentre = ref<[number, number] | null>(null);
-const begun = shallowRef<{ site: StartSite; tile: [number, number]; sites: LocalSite[] } | null>(null);
+const begun = shallowRef<{ site: StartSite; tile: [number, number]; sites: LocalSite[]; gameId: string; settings: WorldSettings; restore: SaveFile | null } | null>(null);
+/** The saved games, for Continue. */
+const saves = ref<SaveSummary[]>([]);
+/** A saved game being loaded: the world is made from its settings, then it is started and restored. */
+const loading = shallowRef<SaveFile | null>(null);
+async function refreshSaves(): Promise<void> {
+  saves.value = await listSaves();
+}
+void refreshSaves();
 /** Chunks arriving from the worker go to the game. */
 const chunkSink = shallowRef<(c: ChunkData) => void>(() => {});
 
@@ -31,9 +40,25 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
   if (m.type === 'progress') progress.value = { stage: m.stage, pct: m.pct };
   else if (m.type === 'error') {
     error.value = m.message;
+    loading.value = null;
     if (stage.value !== 'play') stage.value = starts.value.length ? 'choose' : 'setup';
   } else if (m.type === 'world') {
     starts.value = m.starts;
+    const ld = loading.value;
+    if (ld) {
+      // Carrying on a saved game: straight to where it began.
+      if (!m.starts.some((s) => s.id === ld.start.siteId)) {
+        error.value = `The saved game began in ${ld.start.siteName}, which this world no longer has.`;
+        loading.value = null;
+        stage.value = 'choose';
+        return;
+      }
+      chosen.value = ld.start.siteId;
+      stage.value = 'starting';
+      progress.value = { stage: `Returning to ${ld.place}`, pct: 0.5 };
+      send({ type: 'start', id: ld.start.siteId });
+      return;
+    }
     // A world file saved with a view: start at the town nearest where the atlas was looking.
     const vc = viewCentre.value;
     const near = vc ? [...m.starts].sort((a, b) => Math.hypot(a.lon - vc[0], a.lat - vc[1]) - Math.hypot(b.lon - vc[0], b.lat - vc[1]))[0] : m.starts[0];
@@ -43,7 +68,9 @@ worker.onmessage = (e: MessageEvent<FromWorker>) => {
     chosen.value = (again ?? near)?.id ?? '';
     stage.value = 'choose';
   } else if (m.type === 'started') {
-    begun.value = { site: m.site, tile: m.tile, sites: m.sites };
+    const ld = loading.value;
+    begun.value = { site: m.site, tile: m.tile, sites: m.sites, gameId: ld?.id ?? newGameId(), settings: { ...settings.value }, restore: ld };
+    loading.value = null;
     stage.value = 'play';
   } else if (m.type === 'chunk') chunkSink.value(m.chunk);
 };
@@ -59,7 +86,7 @@ if (desktop) {
     if (r.settings) settings.value = { ...settings.value, ...r.settings };
   });
   desktop.onMenu((what) => {
-    if (what !== 'open-world') return;
+    if (what !== 'open-world' || stage.value === 'play') return;
     if (stage.value === 'making' || stage.value === 'starting') return;
     stage.value = 'setup';
     void openNative();
@@ -117,6 +144,54 @@ function begin(): void {
   send({ type: 'start', id: chosen.value });
 }
 
+/** Carries on a saved game. */
+async function continueGame(id: string): Promise<void> {
+  error.value = '';
+  try {
+    const s = await loadSave(id);
+    if (!s) throw new Error('That saved game could not be read.');
+    startFromSave(s);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  }
+}
+
+function startFromSave(s: SaveFile): void {
+  loading.value = s;
+  settings.value = { ...settings.value, ...s.settings };
+  viewCentre.value = null;
+  note.value = versionNote(s);
+  makeWorld();
+}
+
+async function importSaveFile(e: Event): Promise<void> {
+  const f = (e.target as HTMLInputElement).files?.[0];
+  if (!f) return;
+  error.value = '';
+  try {
+    const s = readSave(await f.text());
+    await writeSave(s);
+    await refreshSaves();
+    startFromSave(s);
+  } catch (err) {
+    error.value = err instanceof Error ? err.message : String(err);
+  }
+}
+
+async function removeSave(s: SaveSummary): Promise<void> {
+  if (!window.confirm(`Delete the saved game "${s.title}"? This cannot be undone.`)) return;
+  await deleteSave(s.id);
+  await refreshSaves();
+}
+
+function quitGame(): void {
+  stage.value = 'choose';
+  void refreshSaves();
+}
+
+const when = (iso: string) => new Date(iso).toLocaleString();
+const gameDay = (t: number) => `day ${Math.floor(t / 86400) + 1}`;
+
 const shown = computed(() => {
   const q = filter.value.trim().toLowerCase();
   const list = q ? starts.value.filter((s) => s.name.toLowerCase().includes(q)) : starts.value;
@@ -133,6 +208,21 @@ function requestChunk(cx: number, cy: number): void {
     <h1>World Forge <span>Wanderer</span></h1>
     <p class="sub">Walk a generated world on foot, a pace and a half at a time.</p>
 
+    <section v-if="stage === 'setup' && saves.length" class="card saves">
+      <h2>Continue</h2>
+      <ul class="sites">
+        <li v-for="s in saves.slice(0, 8)" :key="s.id">
+          <div class="save-row">
+            <span><b>{{ s.place }}</b> <span>{{ s.title }}, {{ gameDay(s.time) }}; saved {{ when(s.savedAt) }}</span></span>
+            <span class="btns">
+              <button class="primary" @click="continueGame(s.id)">Continue</button>
+              <button @click="removeSave(s)">Delete</button>
+            </span>
+          </div>
+        </li>
+      </ul>
+    </section>
+
     <section v-if="stage === 'setup'" class="card">
       <label>Seed <input v-model="settings.seed" @keyup.enter="makeWorld" /></label>
       <label>Detail
@@ -148,6 +238,7 @@ function requestChunk(cx: number, cy: number): void {
         <label v-else class="file">Load a world file<input type="file" accept=".world,.json,application/json" @change="loadFile" /></label>
       </div>
       <p class="hint">Other settings keep their atlas defaults; a world file saved from the atlas brings its own.</p>
+      <label class="file small">Import a saved game<input type="file" accept=".json,application/json" @change="importSaveFile" /></label>
     </section>
 
     <section v-else-if="stage === 'making' || stage === 'starting'" class="card">
@@ -182,7 +273,10 @@ function requestChunk(cx: number, cy: number): void {
     :start="begun.tile"
     :sites="begun.sites"
     :request="requestChunk"
+    :game-id="begun.gameId"
+    :settings="begun.settings"
+    :restore="begun.restore"
     @sink="(f: (c: ChunkData) => void) => (chunkSink = f)"
-    @quit="stage = 'choose'"
+    @quit="quitGame"
   />
 </template>

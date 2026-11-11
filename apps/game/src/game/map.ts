@@ -5,6 +5,7 @@
 import { CHUNK } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import type { ChunkData } from '../worker/protocol';
+import { packBits, unpackBits } from './save';
 
 export interface Tile {
   ground: number;
@@ -103,6 +104,18 @@ export class GameMap {
     let s = this.seen.get(k);
     if (!s) this.seen.set(k, (s = new Uint8Array(CHUNK * CHUNK)));
     s[(ty - cy * CHUNK) * CHUNK + (tx - cx * CHUNK)] = 1;
+  }
+
+  /** What has been seen, bit-packed per chunk (for saving). */
+  exportSeen(): Record<string, string> {
+    const out: Record<string, string> = {};
+    for (const [k, v] of this.seen) out[k] = packBits(v);
+    return out;
+  }
+
+  importSeen(data: Record<string, string>): void {
+    this.seen.clear();
+    for (const [k, v] of Object.entries(data)) if (/^-?\d+,-?\d+$/.test(k)) this.seen.set(k, unpackBits(v, CHUNK * CHUNK));
   }
 
   wasSeen(tx: number, ty: number): boolean {
