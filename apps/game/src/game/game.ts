@@ -6,6 +6,7 @@ import { FOV } from 'rot-js';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, objectId } from '@worldforge/core/local/tiles';
 import { GameMap } from './map';
+import { Discovery, FOOT_SIGHT_M } from './discovery';
 import type { LocalSite } from '../worker/protocol';
 
 /** Seconds an action takes. */
@@ -38,6 +39,8 @@ export class Game {
   /** Game time, seconds since the start (day 1, 08:00). */
   time = 8 * 3600;
   readonly visible = new Set<number>();
+  /** What of the world has been discovered (the travel map's clouds lift from it). */
+  readonly discovery = new Discovery();
   /** The look cursor (look mode). */
   cursor: [number, number] | null = null;
   private fov: InstanceType<typeof FOV.PreciseShadowcasting>;
@@ -58,6 +61,7 @@ export class Game {
   refresh(): void {
     const r = SIGHT + CHUNK / 2;
     this.map.want(this.px - r, this.py - r, this.px + r, this.py + r);
+    this.discovery.reveal(this.px, this.py, FOOT_SIGHT_M);
     this.visible.clear();
     this.fov.compute(this.px, this.py, SIGHT, (x: number, y: number) => {
       if (!this.map.loaded(x, y)) return;
@@ -177,6 +181,35 @@ export class Game {
     this.map.setObject(x, y, objectId(o.toggle)!);
     this.time += DOOR_S;
     this.say(`You ${opening ? 'open' : 'close'} the ${o.name.startsWith('gate') ? 'gate' : 'door'}.`);
+    return true;
+  }
+
+  /**
+   * Sets the wanderer on open ground near where they are, if they stand somewhere they could not
+   * (after travelling, the travel map puts them at a chunk's middle). False until the chunks there
+   * have come.
+   */
+  ensureFooting(): boolean {
+    if (!this.map.loaded(this.px, this.py)) return false;
+    if (this.map.passable(this.px, this.py)) return true;
+    for (let r = 1; r <= 48; r++) {
+      let best: [number, number] | null = null, bd = Infinity;
+      for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+        const x = this.px + dx, y = this.py + dy;
+        if (!this.map.passable(x, y)) continue;
+        const d = dx * dx + dy * dy;
+        if (d < bd) {
+          bd = d;
+          best = [x, y];
+        }
+      }
+      if (best) {
+        [this.px, this.py] = best;
+        this.refresh();
+        return true;
+      }
+    }
     return true;
   }
 

@@ -108,3 +108,18 @@ button:disabled { opacity: 0.5; cursor: default; }
   .viewer { grid-template-columns: 1fr; grid-template-rows: 55vh auto; overflow: auto; position: static; }
   .viewer-panel { border-left: 0; border-top: 1px solid var(--line); }
 }
+
+/* The travel map */
+.travelview { position: relative; grid-row: 1 / 3; grid-column: 1; min-width: 0; min-height: 0; }
+.travelview .travel-map { position: absolute; inset: 0; }
+.travel-bar {
+  position: absolute; left: 12px; right: 60px; bottom: 12px; background: rgba(21, 25, 34, 0.92); border: 1px solid var(--line);
+  border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 0.92em;
+}
+.travel-bar .row { flex-wrap: wrap; gap: 6px; }
+.travel-bar button { padding: 4px 10px; }
+.travel-bar button.on { border-color: var(--accent); color: var(--accent); }
+.travel-bar .sep { width: 10px; }
+.travel-bar .check { display: flex; align-items: center; gap: 6px; color: var(--dim); }
+.travel-bar select { padding: 4px 8px; }
+.travel-btn { align-self: flex-start; }

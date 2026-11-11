@@ -18,12 +18,13 @@ import type { Settlement, RoadFeature } from '../gen/settlements';
 import { Biome } from '../gen/biomes';
 import { hash32, hashString } from '../gen/rng';
 import { G, O, OBJECT_TILES, GROUND_TILES } from './tiles';
+import { DMath } from '../dmath';
 
 /**
  * The local map's own version: raised whenever the same world would give different tiles (a game
  * saves its changes over the baseline of one version).
  */
-export const LOCAL_MAP_VERSION = 1;
+export const LOCAL_MAP_VERSION = 2;
 
 export const TILE_M = 1.5;
 export const CHUNK = 64;
@@ -216,6 +217,34 @@ export class LocalWorld {
   tileAt(lon: number, lat: number): [number, number] {
     const p = this.frame.fromLL(lon, lat);
     return [Math.floor(p[0] / TILE_M), Math.floor(-p[1] / TILE_M)];
+  }
+
+  private sitesByBlock: Map<number, Settlement[]> | null = null;
+
+  /** The settlements (towns and cities, and the villages of its block) in a 1° block. */
+  private blockSites(bx: number, by: number): Settlement[] {
+    if (!this.sitesByBlock) {
+      this.sitesByBlock = new Map();
+      for (const s of this.world.settlements) {
+        const k = (Math.floor(s.lon) + 400) * 1000 + Math.floor(s.lat) + 200;
+        let l = this.sitesByBlock.get(k);
+        if (!l) this.sitesByBlock.set(k, (l = []));
+        l.push(s);
+      }
+    }
+    return [...(this.sitesByBlock.get((bx + 400) * 1000 + by + 200) ?? []), ...this.towns.blockAt(bx, by).villages];
+  }
+
+  /** Whether a point (lon/lat) is within a settlement's built-up core. */
+  inSettlement(lon: number, lat: number): boolean {
+    const mLon = 111320 * DMath.cos((lat * Math.PI) / 180);
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      for (const s of this.blockSites(Math.floor(lon) + dx, Math.floor(lat) + dy)) {
+        const ex = (s.lon - lon) * mLon, ey = (s.lat - lat) * 110540, r = Math.max(60, s.coreM);
+        if (ex * ex + ey * ey < r * r) return true;
+      }
+    }
+    return false;
   }
 
   /** The settlements whose plans reach within `marginM` of a box of local metres. */
@@ -716,14 +745,24 @@ export class LocalWorld {
       return PAD + 1;
     };
 
-    // Biome, with a wandering edge between the world's cells.
+    // Biome: the world's cells blend into one another over a whole cell, as the map draws them
+    // (render/tiles.ts blends the four nearest cells' colours); here each tile takes one of the
+    // four, in proportion to its share, in patches (value noise), along a wandering line.
     const { W, H } = raster;
     const biomeAt = (tx: number, ty: number, lon: number, lat: number) => {
-      const jx = (vnoise(seed, tx, ty, 2048, 1) - 0.5) * 0.8 + (vnoise(seed, tx, ty, 96, 2) - 0.5) * 0.12;
-      const jy = (vnoise(seed, tx, ty, 2048, 3) - 0.5) * 0.8 + (vnoise(seed, tx, ty, 96, 4) - 0.5) * 0.12;
-      const fx = ((lon + 180) / 360) * W + jx, fy = ((90 - lat) / 180) * H + jy;
-      const i = ((Math.floor(fx) % W) + W) % W, j = Math.min(H - 1, Math.max(0, Math.floor(fy)));
-      return raster.biome[j * W + i];
+      const jx = (vnoise(seed, tx, ty, 2048, 1) - 0.5) * 0.5, jy = (vnoise(seed, tx, ty, 2048, 3) - 0.5) * 0.5;
+      const fx = ((lon + 180) / 360) * W - 0.5 + jx, fy = Math.min(H - 1.001, Math.max(0, ((90 - lat) / 180) * H - 0.5 + jy));
+      const i0 = Math.floor(fx), j0 = Math.floor(fy), ax = fx - i0, ay = fy - j0;
+      const ia = ((i0 % W) + W) % W, ib = (ia + 1) % W, ja = j0 * W, jb = Math.min(H - 1, j0 + 1) * W;
+      // A patchy, roughly even draw in [0, 1).
+      const v = Math.min(0.9999, Math.max(0, (0.7 * vnoise(seed, tx, ty, 56, 2) + 0.3 * vnoise(seed, tx, ty, 13, 4) - 0.5) * 1.7 + 0.5));
+      let acc = (1 - ax) * (1 - ay);
+      if (v < acc) return raster.biome[ja + ia];
+      acc += ax * (1 - ay);
+      if (v < acc) return raster.biome[ja + ib];
+      acc += (1 - ax) * ay;
+      if (v < acc) return raster.biome[jb + ia];
+      return raster.biome[jb + ib];
     };
 
     const covers: Cover[] = new Array(N);

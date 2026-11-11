@@ -7,7 +7,7 @@ import { computed, ref, shallowRef } from 'vue';
 import { type WorldSettings, settingsQuery } from '@worldforge/core/settings';
 import { readWorldFile } from '@worldforge/core/export/worldfile';
 import { GENERATOR_VERSION } from '@worldforge/core/version';
-import type { FromWorker, LocalSite, StartSite, ToWorker, ChunkData, ViewLayer, WorldSummary } from './worker/protocol';
+import type { FromWorker, LocalSite, StartSite, ToWorker, ChunkData, ViewLayer, WorldSummary, RouteStep, TravelArea } from './worker/protocol';
 import PlayView from './components/PlayView.vue';
 import WorldView from './components/WorldView.vue';
 import { desktop, readJson, writeJson, type DesktopInfo } from './desktop';
@@ -52,9 +52,36 @@ function requestTile(z: number, x: number, y: number, l: ViewLayer): Promise<Ima
   });
 }
 
+// ---- Routes and map overlays for the travel map ----------------------------------------------------
+
+let reqId = 0;
+const routeWaits = new Map<number, (r: { steps: RouteStep[] | null; partial: boolean }) => void>();
+const areaWaits = new Map<number, (a: TravelArea) => void>();
+function requestRoute(from: [number, number], to: [number, number]): Promise<{ steps: RouteStep[] | null; partial: boolean }> {
+  const id = ++reqId;
+  return new Promise((res) => {
+    routeWaits.set(id, res);
+    send({ type: 'route', id, from, to });
+  });
+}
+function requestArea(box: { west: number; south: number; east: number; north: number }, fine: boolean): Promise<TravelArea> {
+  const id = ++reqId;
+  return new Promise((res) => {
+    areaWaits.set(id, res);
+    send({ type: 'area', id, ...box, fine });
+  });
+}
+
 worker.onmessage = (e: MessageEvent<FromWorker>) => {
   const m = e.data;
   if (m.type === 'progress') progress.value = { stage: m.stage, pct: m.pct };
+  else if (m.type === 'route') {
+    routeWaits.get(m.id)?.({ steps: m.steps, partial: m.partial });
+    routeWaits.delete(m.id);
+  } else if (m.type === 'area') {
+    areaWaits.get(m.id)?.(m.area);
+    areaWaits.delete(m.id);
+  }
   else if (m.type === 'tile') {
     tileWaits.get(m.id)?.(m.bitmap);
     tileWaits.delete(m.id);
@@ -406,6 +433,10 @@ const goTitle = () => {
     :game-id="begun.gameId"
     :settings="begun.settings"
     :restore="begun.restore"
+    :starts="starts"
+    :request-tile="requestTile"
+    :request-area="requestArea"
+    :request-route="requestRoute"
     @sink="(f: (c: ChunkData) => void) => (chunkSink = f)"
     @quit="quitGame"
   />

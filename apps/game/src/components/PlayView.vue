@@ -8,7 +8,10 @@ import { GameMap } from '../game/map';
 import { Game, type Hud } from '../game/game';
 import { Renderer } from '../game/renderer';
 import { Tileset } from '../game/tileset';
-import type { ChunkData, LocalSite, StartSite } from '../worker/protocol';
+import type { ChunkData, LocalSite, RouteStep, StartSite, TravelArea, ViewLayer } from '../worker/protocol';
+import TravelView from './TravelView.vue';
+import { Travel, type LL } from '../game/travel';
+import { HOME_KNOWN_M } from '../game/discovery';
 import type { WorldSettings } from '@worldforge/core/settings';
 import { applySave, exportSave, makeSave, writeSave, type SaveFile } from '../game/save';
 import { desktop } from '../desktop';
@@ -19,6 +22,11 @@ const props = defineProps<{
   gameId: string; settings: WorldSettings;
   /** A saved game to carry on from. */
   restore?: SaveFile | null;
+  /** For the travel map. */
+  starts: StartSite[];
+  requestTile: (z: number, x: number, y: number, layer: ViewLayer) => Promise<ImageBitmap | null>;
+  requestArea: (box: { west: number; south: number; east: number; north: number }, fine: boolean) => Promise<TravelArea>;
+  requestRoute: (from: [number, number], to: LL) => Promise<{ steps: RouteStep[] | null; partial: boolean }>;
 }>();
 const emit = defineEmits<{ sink: [f: (c: ChunkData) => void]; quit: [] }>();
 
@@ -30,12 +38,38 @@ const showHelp = ref(false);
 let renderer_zoom = 2;
 const map = new GameMap((cx, cy) => props.request(cx, cy));
 const game = new Game(map, props.start, props.sites, props.site.name, hud);
+if (!props.restore || !props.restore.discovered) {
+  // A new game knows the country about home (older saves: about where they stand).
+  game.discovery.reveal(game.px, game.py, HOME_KNOWN_M);
+}
 if (props.restore) {
   applySave(game, props.restore);
+  if (!props.restore.discovered) game.discovery.reveal(game.px, game.py, HOME_KNOWN_M);
   if (props.restore.zoom) renderer_zoom = props.restore.zoom;
   game.say('You take up where you left off.');
 }
 const tiles = new Tileset();
+/** On foot (the local map) or travelling (the travel map). */
+const mode = ref<'local' | 'travel'>('local');
+const travel = new Travel(game, [props.site.lon, props.site.lat], props.requestRoute);
+/** After travelling, the wanderer is set on open ground once the chunks there have come. */
+let needFooting = false;
+
+function toTravel(): void {
+  hud.mode = 'play';
+  game.cursor = null;
+  mode.value = 'travel';
+  game.say('You take to the road.');
+}
+
+function toLocal(): void {
+  travel.stop();
+  mode.value = 'local';
+  needFooting = true;
+  game.refresh();
+  if (game.ensureFooting()) needFooting = false;
+  redraw();
+}
 const renderer = new Renderer(tiles);
 renderer.zoom = renderer_zoom;
 let frame = 0;
@@ -52,7 +86,8 @@ if (import.meta.env.DEV) Object.assign(window, { __game: game, __renderer: rende
 
 emit('sink', (c: ChunkData) => {
   map.add(c);
-  game.refresh();
+  if (needFooting && game.ensureFooting()) needFooting = false;
+  if (mode.value === 'local') game.refresh();
 });
 
 /** Key to direction: arrows, the number pad (with or without Num Lock) and vi keys. */
@@ -66,6 +101,20 @@ const DIR: Record<string, [number, number]> = {
 
 function onKey(e: KeyboardEvent): void {
   if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
+  if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey && hud.mode === 'play') {
+    if (mode.value === 'local') toTravel();
+    else toLocal();
+    e.preventDefault();
+    return;
+  }
+  // The travel map has keys of its own.
+  if (mode.value === 'travel') {
+    if (e.code === 'KeyS' && (e.ctrlKey || e.metaKey)) {
+      e.preventDefault();
+      void save();
+    }
+    return;
+  }
   const dir = DIR[e.code];
   if (hud.mode === 'look') {
     if (dir && game.cursor) {
@@ -184,7 +233,16 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="play">
-    <div ref="el" class="map" />
+    <div v-show="mode === 'local'" ref="el" class="map" />
+    <TravelView
+      v-if="mode === 'travel'"
+      class="map"
+      :travel="travel"
+      :starts="starts"
+      :request-tile="requestTile"
+      :request-area="requestArea"
+      @zoom-in="toLocal"
+    />
     <aside class="panel">
       <div class="place">{{ hud.place }}</div>
       <div class="where">{{ hud.where }}</div>
@@ -200,9 +258,12 @@ onBeforeUnmount(() => {
         <div><b>Wait</b> . or 5</div>
         <div><b>Look</b> x, then move the cursor</div>
         <div><b>Zoom</b> + and -</div>
+        <div><b>Travel map</b> T (and T or Z to come back)</div>
         <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>
       <div class="hint" v-else>Press ? for keys.</div>
+      <button v-if="mode === 'local'" class="travel-btn" @click="toTravel">Travel map (T)</button>
+      <button v-else class="travel-btn" @click="toLocal">Back on foot (T)</button>
       <div class="foot">
         <span>{{ tilesetNote }}</span>
         <span class="btns">

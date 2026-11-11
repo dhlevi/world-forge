@@ -40,6 +40,8 @@ export interface SaveFile {
   seen: Record<string, string>;
   log: { t: string; text: string }[];
   zoom?: number;
+  /** Discovered cells of the travel map (x0, y0, x1, y1, ...; game/discovery.ts). */
+  discovered?: number[];
 }
 
 /** The short form shown in the list of saves. */
@@ -86,6 +88,7 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     seen: game.map.exportSeen(),
     log: game.hud.log.slice(-40),
     zoom: meta.zoom,
+    discovered: game.discovery.export(),
   };
 }
 
@@ -98,6 +101,7 @@ export function applySave(game: Game, s: SaveFile): void {
   for (const [x, y, v] of s.changes) game.map.changes.set(`${x},${y}`, v);
   game.map.importSeen(s.seen);
   game.hud.log.splice(0, game.hud.log.length, ...s.log);
+  if (s.discovered) game.discovery.import(s.discovered);
 }
 
 /** Checks a save read from a file or storage; throws with a plain message if it is not one. */
