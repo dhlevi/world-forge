@@ -9,6 +9,7 @@ contextBridge.exposeInMainWorld('worldforge', {
   desktop: true,
   info: () => ipcRenderer.invoke('wf:info'),
   openWorldFile: () => ipcRenderer.invoke('wf:openWorldFile'),
+  quit: () => ipcRenderer.invoke('wf:quit'),
   data: {
     read: (name: string) => ipcRenderer.invoke('wf:read', name),
     write: (name: string, text: string) => ipcRenderer.invoke('wf:write', name, text),

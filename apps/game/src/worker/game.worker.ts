@@ -5,14 +5,29 @@
 import { generateWorld, type GeneratedWorld } from '@worldforge/core/gen/world';
 import { LocalWorld } from '@worldforge/core/local/chunk';
 import type { Settlement } from '@worldforge/core/gen/settlements';
+import { TileRenderer } from '@worldforge/core/render/tiles';
+import { baronyAt } from '@worldforge/core/export/gamedata';
+import { CULTURES } from '@worldforge/core/names/cultures';
 import type { FromWorker, StartSite, ToWorker, LocalSite } from './protocol';
 
 let world: GeneratedWorld | null = null;
 let local: LocalWorld | null = null;
+let tiles: TileRenderer | null = null;
+
+/** The realm a place lies in: the top of its barony's chain of lieges. */
+function realmAt(w: GeneratedWorld, lon: number, lat: number): string | undefined {
+  let u = w.politics.units[baronyAt(w, lon, lat)];
+  for (let guard = 0; u && u.parent >= 0 && guard < 12; guard++) u = w.politics.units[u.parent];
+  return u?.name;
+}
 
 const post = (m: FromWorker, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(m, transfer);
 
-const startOf = (s: Settlement): StartSite => ({ id: s.id, name: s.name ?? s.id, tier: s.tier, population: s.population, lon: s.lon, lat: s.lat });
+const startOf = (s: Settlement): StartSite => ({
+  id: s.id, name: s.name ?? s.id, tier: s.tier, population: s.population, lon: s.lon, lat: s.lat,
+  realm: world ? realmAt(world, s.lon, s.lat) : undefined,
+  culture: s.culture !== undefined ? CULTURES[s.culture]?.name : undefined,
+});
 
 self.onmessage = (e: MessageEvent<ToWorker>) => {
   const m = e.data;
@@ -20,9 +35,24 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     if (m.type === 'world') {
       const t0 = performance.now();
       local = null;
+      tiles = null;
       world = generateWorld(m.settings, (stage, pct) => post({ type: 'progress', stage, pct }));
+      tiles = new TileRenderer(world.raster, world.rivers);
       const starts = world.settlements.filter((s) => s.tier !== 'village').sort((a, b) => b.population - a.population).map(startOf);
-      post({ type: 'world', ms: performance.now() - t0, starts });
+      const summary = {
+        cities: starts.filter((s) => s.tier === 'city').length,
+        towns: starts.filter((s) => s.tier === 'town').length,
+        realms: world.politics.units.filter((u) => u.parent < 0).length,
+        ms: performance.now() - t0,
+      };
+      post({ type: 'world', ms: summary.ms, starts, summary });
+    } else if (m.type === 'tile') {
+      if (!tiles) {
+        post({ type: 'tile', id: m.id, bitmap: null });
+        return;
+      }
+      const px = tiles.renderTile(m.z, m.x, m.y, m.layer, 256);
+      void createImageBitmap(new ImageData(new Uint8ClampedArray(px.buffer as ArrayBuffer, px.byteOffset, px.length), 256, 256)).then((bitmap) => post({ type: 'tile', id: m.id, bitmap }, [bitmap]));
     } else if (m.type === 'start') {
       if (!world) throw new Error('No world yet.');
       const s = world.settlements.find((x) => x.id === m.id);

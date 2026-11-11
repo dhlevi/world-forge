@@ -126,6 +126,8 @@ function registerIpc(): void {
   });
 
   ipcMain.handle('wf:showData', () => shell.openPath(dataDir()));
+
+  ipcMain.handle('wf:quit', () => app.quit());
 }
 
 // ---- The window ----------------------------------------------------------------------------------

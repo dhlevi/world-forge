@@ -15,6 +15,8 @@ export interface DesktopBridge {
   info(): Promise<DesktopInfo>;
   /** A native open dialog for a world file: its name and text, or null if cancelled. */
   openWorldFile(): Promise<{ name: string; text: string } | null>;
+  /** Closes the app. */
+  quit(): Promise<void>;
   /** Text files in the game's data folder, by names such as "settings.json" or "saves/a.json". */
   data: {
     read(name: string): Promise<string | null>;
