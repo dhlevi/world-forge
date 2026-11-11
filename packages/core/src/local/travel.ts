@@ -38,6 +38,15 @@ const SPEED: Record<number, number> = {
 };
 const WAY_SPEED = { road: 5, street: 4.5, track: 4.2, '': 0 };
 
+/** How far the land is seen (m) on level ground, by biome. */
+const SIGHT: Record<number, number> = {
+  [Biome.IceSheet]: 5000, [Biome.Tundra]: 4500, [Biome.BorealForest]: 1500, [Biome.ColdDesert]: 5000,
+  [Biome.Grassland]: 4000, [Biome.Shrubland]: 3000, [Biome.TemperateForest]: 1500, [Biome.TemperateRainforest]: 1000,
+  [Biome.HotDesert]: 5000, [Biome.Savanna]: 3500, [Biome.TropicalDryForest]: 1500, [Biome.TropicalRainforest]: 800,
+  [Biome.Alpine]: 5000, [Biome.MontaneForest]: 1500, [Biome.Wetland]: 2500, [Biome.Mangrove]: 800,
+  [Biome.Riparian]: 2500, [Biome.SaltFlat]: 6000,
+};
+
 const DEG = Math.PI / 180;
 
 interface Seg { ax: number; ay: number; bx: number; by: number; cls: 'road' | 'track' }
@@ -142,6 +151,21 @@ export class TravelGrid {
     this.cells.set(k, c);
     if (this.cells.size > 400000) this.cells.clear();
     return c;
+  }
+
+  /**
+   * How far the land can be seen from a cell (m), for discovering it: by what grows there (far
+   * over steppe and snow, little in forest and jungle) and by how far the cell stands above the
+   * country about it (a hill or a ridge sees much further).
+   */
+  sightM(cx: number, cy: number): number {
+    const c = this.cell(cx, cy);
+    const base = SIGHT[c.biome] ?? 3000;
+    // Height above the land about a kilometre round.
+    const R = 10;
+    const around = (this.cell(cx + R, cy).elev + this.cell(cx - R, cy).elev + this.cell(cx, cy + R).elev + this.cell(cx, cy - R).elev) / 4;
+    const rise = Math.max(0, c.elev - around);
+    return Math.round(Math.min(12000, base * (1 + Math.min(2, rise / 80))));
   }
 
   /**

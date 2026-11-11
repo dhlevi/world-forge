@@ -79,7 +79,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       let prev = m.from;
       const steps = r ? r.cells.map(([cx, cy]) => {
         const c = travel!.cell(cx, cy);
-        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, biome: c.biome };
+        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, biome: c.biome, sight: travel!.sightM(cx, cy) };
         prev = [cx, cy];
         return st;
       }) : null;

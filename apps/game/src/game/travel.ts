@@ -56,6 +56,8 @@ export class Travel {
   planning = false;
   speed = 1;
   stopAtDusk = true;
+  /** How far the party sees where it stands now (m). */
+  sightM = TRAVEL_SIGHT_M;
   private timer = 0;
   /** Called whenever something changed (for the view). */
   onChange: () => void = () => {};
@@ -174,7 +176,8 @@ export class Travel {
     g.px = st.cx * CHUNK + CHUNK / 2;
     g.py = st.cy * CHUNK + CHUNK / 2;
     g.time += st.min * 60;
-    g.discovery.reveal(g.px, g.py, TRAVEL_SIGHT_M);
+    g.discovery.reveal(g.px, g.py, st.sight ?? TRAVEL_SIGHT_M);
+    this.sightM = st.sight ?? TRAVEL_SIGHT_M;
     for (const ev of stepEvents(st, before, g.time, this.stopAtDusk, Math.random)) {
       g.say(ev.text);
       if (ev.stop) {

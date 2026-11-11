@@ -54,6 +54,8 @@ export interface RouteStep {
   way: string;
   ford: boolean;
   biome: number;
+  /** How far the land can be seen from it (m). */
+  sight: number;
 }
 
 /** What the travel map draws over the tiles: ways and places in an area. */

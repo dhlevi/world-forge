@@ -6,7 +6,6 @@
 import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
 import WorldView from './WorldView.vue';
 import { SPEEDS, type LL, type Travel } from '../game/travel';
-import { TRAVEL_SIGHT_M } from '../game/discovery';
 import { TILE_M } from '@worldforge/core/local/chunk';
 import type { StartSite, TravelArea, ViewLayer } from '../worker/protocol';
 
@@ -52,7 +51,8 @@ function fog(lon: number, lat: number): number {
   const tx = Math.floor(p[0] / TILE_M), ty = Math.floor(-p[1] / TILE_M);
   if (!g.discovery.known(tx, ty)) return 0;
   const dx = (tx - g.px) * TILE_M, dy = (ty - g.py) * TILE_M;
-  return dx * dx + dy * dy <= TRAVEL_SIGHT_M * TRAVEL_SIGHT_M ? 2 : 1;
+  const r = props.travel.sightM;
+  return dx * dx + dy * dy <= r * r ? 2 : 1;
 }
 const fogVersion = computed(() => (tick.value, props.travel.game.discovery.version * 100000 + props.travel.game.px + props.travel.game.py));
 
