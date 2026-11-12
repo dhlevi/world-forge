@@ -1,5 +1,5 @@
 /**
- * Character creation (docs/design/creation.md): origin, family, the fate cards, traits, the life
+ * Character creation (docs/design/creation.md): origin, the fate cards, family, traits, the life
  * so far in occupation terms, and the finish (name and look), or the quick start that draws all
  * of it at once. The screen keeps the player's choices (actors/creation/resolve.ts `Choices`);
  * the view works the character out from them as they change.
@@ -8,19 +8,17 @@ import { reactive, shallowRef } from 'vue';
 import { Screen } from '../engine/screens';
 import type { GameApp } from '../app/app';
 import type { Catalogue, PersonName } from '../worker/protocol';
-import type { StandingId } from '../actors/components';
 import { newChoices, resolve, buildActor, type Choices, type CreationWorld, type Resolved } from '../actors/creation/resolve';
-import { drawSpread, quickStart, redrawOne, rollStanding, withBirth } from '../actors/creation/random';
+import { drawSpread, quickStart, rollStanding, withBirth } from '../actors/creation/random';
 import { TRACK, type TrackId } from '../actors/data/occupations';
-import type { Position } from '../actors/data/cards';
 import type { TraitId } from '../actors/data/traits';
 import { TRAIT_SPREAD } from '../actors/data/traits';
 import CreationView from './views/CreationView.vue';
 
 export const STEPS = [
   { id: 'origin', name: 'Origin' },
-  { id: 'family', name: 'Family' },
   { id: 'fate', name: 'Fate' },
+  { id: 'family', name: 'Family' },
   { id: 'traits', name: 'Traits' },
   { id: 'life', name: 'Life' },
   { id: 'finish', name: 'Finish' },
@@ -118,10 +116,8 @@ export class CreationScreen extends Screen {
   }
 
   // ---- Family --------------------------------------------------------------------------------
-
-  setStanding(id: StandingId): void {
-    this.set({ standing: id, trades: undefined });
-  }
+  // The standing is the Birth card's (actors/creation/random.ts withBirth); the family itself can
+  // be drawn again and the parents' trades chosen.
 
   rollFamily(): void {
     this.set({ family: this.state.choices!.family + 1, trades: undefined });
@@ -132,24 +128,22 @@ export class CreationScreen extends Screen {
   }
 
   // ---- Fate ----------------------------------------------------------------------------------
+  // The cards are drawn once, from the character's seed, and cannot be changed: fate is fate.
 
   drawCards(): void {
     const ch = this.state.choices!;
-    this.set(withBirth({ ...ch, spread: drawSpread(ch.seed, ch.redraws + (ch.spread ? 1 : 0)), redraws: ch.spread ? ch.redraws + 1 : ch.redraws }));
+    if (ch.spread) return;
+    this.set(withBirth({ ...ch, spread: drawSpread(ch.seed, 0), trades: undefined }));
   }
 
-  redraw(p: Position): void {
-    this.state.choices = redrawOne(this.state.choices!, p);
+  get drawn(): boolean {
+    return !!this.state.choices?.spread;
   }
 
-  chooseCard(p: Position, card: string, reversed: boolean): void {
-    const ch = this.state.choices!;
-    const spread = (ch.spread ?? []).map((d) => (d.position === p ? { position: p, card, reversed } : d));
-    this.state.choices = p === 'birth' ? withBirth({ ...ch, spread }) : { ...ch, spread };
-  }
-
-  clearCards(): void {
-    this.set({ spread: null });
+  /** Whether a step can be visited yet: everything after Fate waits for the cards. */
+  canGo(step: StepId): boolean {
+    const fate = STEPS.findIndex((s) => s.id === 'fate');
+    return this.drawn || STEPS.findIndex((s) => s.id === step) <= fate;
   }
 
   // ---- Traits --------------------------------------------------------------------------------
@@ -216,18 +210,18 @@ export class CreationScreen extends Screen {
   }
 
   go(step: StepId): void {
-    this.state.step = step;
+    if (this.canGo(step)) this.state.step = step;
   }
 
   next(d = 1): void {
     const i = STEPS.findIndex((s) => s.id === this.state.step);
     const j = Math.max(0, Math.min(STEPS.length - 1, i + d));
-    this.state.step = STEPS[j].id;
+    this.go(STEPS[j].id);
   }
 
   begin(): void {
     const res = this.resolved();
-    if (!res) return;
+    if (!res || !this.drawn) return;
     this.app.beginGame(buildActor(res), res.home.id);
   }
 

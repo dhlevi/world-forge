@@ -47,6 +47,12 @@ monastery, a port).
 
 ## The cards
 
+**Decided (after the first build):** the cards are **required and cannot be changed**: they are
+drawn once, from the character's seed, before the family is settled, and the Birth card sets the
+family's standing. The steps run Origin, Fate, Family, Traits, Life, Finish. (This replaces
+"draw or choose" and redrawing, below.) The peoples are listed under the Old World and the New
+World (and the Underworld), as play in each will differ.
+
 **Decided:** a tarot-like selection or randomisation of the player's story, as an alternative
 to setting everything by hand.
 

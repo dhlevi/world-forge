@@ -3,7 +3,7 @@
  * at random but within what the world and the character allow (docs/design/creation.md).
  */
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
-import { DECK, POSITIONS, type Position } from '../data/cards';
+import { DECK, POSITIONS } from '../data/cards';
 import { STANDINGS } from '../data/standing';
 import { CRAFTS, SCHOOLS, TRACK, type TrackId } from '../data/occupations';
 import { TRAITS, TRAIT_SPREAD, type TraitId } from '../data/traits';
@@ -29,16 +29,6 @@ export function drawSpread(seed: string, n: number): CardDraw[] {
     const card = deck.splice(Math.floor(r() * deck.length), 1)[0];
     return { position, card: card.id, reversed: r() < 0.35 };
   });
-}
-
-/** Draws one position again, from the cards not already in the spread. */
-export function redrawOne(ch: Choices, position: Position): Choices {
-  const r = rngOf(ch.seed, `redraw${ch.redraws}:${position}`);
-  const inUse = new Set((ch.spread ?? []).map((d) => d.card));
-  const free = DECK.filter((c) => !inUse.has(c.id));
-  const card = free[Math.floor(r() * free.length)];
-  const spread = (ch.spread ?? []).map((d) => (d.position === position ? { position, card: card.id, reversed: r() < 0.35 } : d));
-  return withBirth({ ...ch, spread, redraws: ch.redraws + 1 });
 }
 
 /** The Birth card sets the family's standing (reversed: the same standing, fallen on hard times). */
@@ -72,11 +62,10 @@ const PARENT_CRAFT: Record<string, string> = {
 /** A whole character at random: one click from the quick start. */
 export function quickStart(seed: string, culture: number, homeId: string, w: CreationWorld): Choices {
   const r = rngOf(seed, 'quick');
-  const home = w.starts.find((s) => s.id === homeId) ?? w.starts[0];
   let ch = newChoices(seed, culture, homeId, r() < 0.5);
   ch.spread = drawSpread(seed, 0);
-  // The Birth card leans the standing; often the place decides instead.
-  ch = r() < 0.6 ? withBirth(ch) : { ...ch, standing: rollStanding(r, home.tier) };
+  // The Birth card decides the standing.
+  ch = withBirth(ch);
 
   // Trait points, mostly toward the life the Path card leans to.
   const first = resolve(ch, w);

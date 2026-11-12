@@ -7,7 +7,7 @@ import { computed } from 'vue';
 import { STEPS, type CreationScreen } from '../creation';
 import { trackOptions } from '../../actors/creation/resolve';
 import { STANDINGS } from '../../actors/data/standing';
-import { DECK, CARD, POSITIONS, POSITION_INFO, type Position } from '../../actors/data/cards';
+import { CARD, POSITION_INFO, type Position } from '../../actors/data/cards';
 import { TRAIT_GROUPS, TRAIT_INFO, SENSES, traitWord, type TraitId } from '../../actors/data/traits';
 import { skillWord, fluencyWord, KNOWLEDGE } from '../../actors/data/skills';
 import { moneyText, hairText, beardText } from '../../actors/components';
@@ -24,7 +24,20 @@ const res = computed(() => {
 });
 const ch = computed(() => ui.choices!);
 const cultures = computed(() => screen.catalogue.value?.cultures ?? []);
-const folks = computed(() => [...new Set(cultures.value.map((c) => c.folk))]);
+/** The peoples by world (Old, New, and the Underworld), then by folk. */
+const worlds = computed(() => {
+  const groups = [
+    { name: 'The Old World', about: 'Kingdoms, cities, roads and trade: a settled, crowded land.', test: (c: { newWorld: boolean; deep: boolean }) => !c.newWorld && !c.deep },
+    { name: 'The New World', about: 'Tribal lands, far-apart towns and a few colonies: wild, open country.', test: (c: { newWorld: boolean; deep: boolean }) => c.newWorld && !c.deep },
+    { name: 'The Underworld', about: 'The peoples of the deep caverns.', test: (c: { newWorld: boolean; deep: boolean }) => c.deep },
+  ];
+  return groups
+    .map((g) => {
+      const list = cultures.value.filter(g.test);
+      return { ...g, folks: [...new Set(list.map((c) => c.folk))].map((f) => ({ folk: f, list: list.filter((c) => c.folk === f) })) };
+    })
+    .filter((g) => g.folks.length);
+});
 const homes = computed(() => app.state.starts.filter((s) => s.cultureIndex === ch.value.culture).slice(0, 80));
 const options = computed(() => (res.value ? trackOptions(res.value) : []));
 const names = computed(() => (ch.value.female ? screen.names.value?.female : screen.names.value?.male)?.slice(0, 8) ?? []);
@@ -50,14 +63,6 @@ function onFather(e: Event): void {
 function onMother(e: Event): void {
   screen.setTrades(res.value!.family.father.trade.name, (e.target as HTMLSelectElement).value);
 }
-function onChooseCard(p: Position, e: Event): void {
-  const d = ch.value.spread?.find((x) => x.position === p);
-  screen.chooseCard(p, (e.target as HTMLSelectElement).value, d?.reversed ?? false);
-}
-function flip(p: Position): void {
-  const d = ch.value.spread?.find((x) => x.position === p);
-  if (d) screen.chooseCard(p, d.card, !d.reversed);
-}
 </script>
 
 <template>
@@ -76,7 +81,7 @@ function flip(p: Position): void {
 
     <template v-else-if="res">
       <nav class="cc-steps">
-        <button v-for="(s, i) in STEPS" :key="s.id" :class="{ on: ui.step === s.id }" @click="screen.go(s.id)">{{ i + 1 }}. {{ s.name }}</button>
+        <button v-for="(s, i) in STEPS" :key="s.id" :class="{ on: ui.step === s.id }" :disabled="!screen.canGo(s.id)" @click="screen.go(s.id)">{{ i + 1 }}. {{ s.name }}</button>
       </nav>
 
       <main class="cc-main">
@@ -88,14 +93,17 @@ function flip(p: Position): void {
             <button :class="{ on: !ch.female }" @click="screen.setSex(false)">Man</button>
             <button :class="{ on: ch.female }" @click="screen.setSex(true)">Woman</button>
           </div>
-          <div v-for="f in folks" :key="f" class="cc-group">
-            <div class="cc-label">{{ f }}</div>
+          <div v-for="w in worlds" :key="w.name" class="cc-world">
+            <h4>{{ w.name }} <span class="dim">{{ w.about }}</span></h4>
+          <div v-for="f in w.folks" :key="f.folk" class="cc-group">
+            <div class="cc-label">{{ f.folk }}</div>
             <div class="cc-cards">
-              <button v-for="c in cultures.filter((x) => x.folk === f)" :key="c.index" class="cc-pick" :class="{ on: c.index === ch.culture }" @click="screen.setCulture(c.index)">
+              <button v-for="c in f.list" :key="c.index" class="cc-pick" :class="{ on: c.index === ch.culture }" @click="screen.setCulture(c.index)">
                 <b>{{ cap(c.people) }}</b>
                 <span>{{ c.ethosName }}; {{ c.traditionNames.join(', ') }}</span>
               </button>
             </div>
+          </div>
           </div>
           <div class="cc-about">
             <p><b>{{ cap(res.culture.people) }}</b>, {{ res.culture.folk.toLowerCase() }} of the {{ res.culture.newWorld ? 'New' : 'Old' }} World. They speak {{ res.culture.name }} and keep {{ res.culture.faith ?? 'their own ways' }}.</p>
@@ -111,13 +119,8 @@ function flip(p: Position): void {
         <!-- Family -->
         <section v-else-if="ui.step === 'family'">
           <h3>Family</h3>
-          <p class="hint">Your family's standing sets your money, whether you were taught to read, the skills of home, and which lives are open to you.</p>
-          <div class="cc-list">
-            <label v-for="s in STANDINGS" :key="s.id" class="cc-radio" :class="{ on: s.id === ch.standing }">
-              <input type="radio" :checked="s.id === ch.standing" @change="screen.setStanding(s.id)" />
-              <span><b>{{ s.name }}</b> <span class="dim">{{ s.about }}</span></span>
-            </label>
-          </div>
+          <p class="hint">Your family's standing, set by the Birth card, decides your money, whether you were taught to read, the skills of home, and which lives are open to you. The parents' trades and the household are yours to choose.</p>
+          <p class="cc-standing"><b>{{ res.family.standing.name }}</b>, as the Birth card decreed. <span class="dim">{{ res.family.standing.about }}</span></p>
           <p v-if="res.family.fallen" class="note">The Birth card is reversed: the family has fallen on hard times (less money, and debts).</p>
           <div class="row">
             <label>Father
@@ -142,34 +145,19 @@ function flip(p: Position): void {
         <!-- Fate -->
         <section v-else-if="ui.step === 'fate'">
           <h3>Fate</h3>
-          <p class="hint">Four cards of fate, each upright or reversed: Birth sets your standing, Hearth your family, Path leans your life, and Omen marks your future. They are a choice, not a duty; you can change anything afterwards.</p>
+          <p class="hint">Four cards of fate, each upright or reversed: Birth sets your family's standing, Hearth your home life, Path leans your life, and Omen marks your future. They are drawn once and cannot be changed.</p>
           <div v-if="!ch.spread" class="row">
             <button class="primary" @click="screen.drawCards()">Draw the cards</button>
+            <span class="dim">The steps after this one open once the cards are drawn.</span>
           </div>
-          <template v-else>
-            <div class="cc-spread">
-              <div v-for="p in POSITIONS" :key="p" class="cc-card" :class="{ rev: ch.spread.find((d) => d.position === p)?.reversed }">
-                <template v-for="d in ch.spread.filter((x) => x.position === p)" :key="d.card">
-                  <div class="cc-pos">{{ POSITION_INFO[p].name }} <span class="dim">{{ POSITION_INFO[p].about }}</span></div>
-                  <div class="cc-cardname">{{ CARD.get(d.card)!.name }}<span v-if="d.reversed"> (reversed)</span></div>
-                  <div class="dim">{{ d.reversed ? CARD.get(d.card)!.reversed : CARD.get(d.card)!.upright }}</div>
-                  <div class="cc-effect">{{ cardEffect(p, d.card, d.reversed) }}</div>
-                  <div class="row small">
-                    <button title="Each redraw costs a little luck" @click="screen.redraw(p)">Redraw</button>
-                    <button @click="flip(p)">Turn over</button>
-                    <select :value="d.card" @change="onChooseCard(p, $event)">
-                      <option v-for="c in DECK" :key="c.id" :value="c.id">{{ c.name }}</option>
-                    </select>
-                  </div>
-                </template>
-              </div>
+          <div v-else class="cc-spread">
+            <div v-for="d in ch.spread" :key="d.position" class="cc-card" :class="{ rev: d.reversed }">
+              <div class="cc-pos">{{ POSITION_INFO[d.position].name }} <span class="dim">{{ POSITION_INFO[d.position].about }}</span></div>
+              <div class="cc-cardname">{{ CARD.get(d.card)!.name }}<span v-if="d.reversed"> (reversed)</span></div>
+              <div class="dim">{{ d.reversed ? CARD.get(d.card)!.reversed : CARD.get(d.card)!.upright }}</div>
+              <div class="cc-effect">{{ cardEffect(d.position, d.card, d.reversed) }}</div>
             </div>
-            <div class="row">
-              <button @click="screen.drawCards()">Draw again</button>
-              <button @click="screen.clearCards()">Put the cards away</button>
-              <span v-if="ch.redraws" class="dim">Redrawn {{ ch.redraws }} time{{ ch.redraws === 1 ? '' : 's' }}: your luck is a little lower.</span>
-            </div>
-          </template>
+          </div>
         </section>
 
         <!-- Traits -->
@@ -191,7 +179,7 @@ function flip(p: Position): void {
             <div>
               <div class="cc-label">Senses</div>
               <div v-for="s in SENSES" :key="s" class="cc-trait" :title="TRAIT_INFO[s].about">
-                <span class="nm">{{ TRAIT_INFO[s].name }}</span><b>{{ res.traits.senses[s] }}</b><span class="dim">{{ traitWord(res.traits.senses[s]) }}</span>
+                <span class="nm">{{ TRAIT_INFO[s].name }}</span><span /><b>{{ res.traits.senses[s] }}</b><span /><span class="dim">{{ traitWord(res.traits.senses[s]) }}</span>
               </div>
             </div>
           </div>
@@ -255,7 +243,7 @@ function flip(p: Position): void {
 
         <div class="row cc-nav">
           <button :disabled="ui.step === 'origin'" @click="screen.next(-1)">Previous</button>
-          <button v-if="ui.step !== 'finish'" class="primary" @click="screen.next(1)">Next</button>
+          <button v-if="ui.step !== 'finish'" class="primary" :disabled="ui.step === 'fate' && !ch.spread" @click="screen.next(1)">Next</button>
         </div>
       </main>
 
@@ -311,8 +299,9 @@ function flip(p: Position): void {
 .cc-cardname { font-size: 1.1em; }
 .cc-effect { font-size: 0.92em; }
 .small button, button.small, .small select { padding: 3px 8px; font-size: 0.9em; }
-.cc-traits { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: 10px; }
-.cc-trait { display: grid; grid-template-columns: 100px 28px 28px 28px 1fr; align-items: center; gap: 4px; padding: 2px 0; }
+.cc-traits { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 10px 24px; }
+.cc-trait { display: grid; grid-template-columns: 7.5em 30px 2.2em 30px 1fr; align-items: center; gap: 6px; padding: 2px 0; white-space: nowrap; }
+.cc-trait .nm, .cc-trait .dim { overflow: hidden; text-overflow: ellipsis; }
 .cc-trait b { text-align: center; }
 .cc-trait button { padding: 1px 0; }
 .cc-terms { margin: 0; padding-left: 20px; display: flex; flex-direction: column; gap: 6px; }
@@ -323,6 +312,22 @@ function flip(p: Position): void {
 .cc-names { display: flex; flex-wrap: wrap; gap: 6px; }
 .cc-bio { margin: 2px 0; }
 .cc-nav { margin-top: 8px; border-top: 1px solid var(--line); padding-top: 10px; }
+.cc-world h4 { margin: 10px 0 0; font-size: 1.05em; color: var(--accent); border-bottom: 1px solid var(--line); padding-bottom: 4px; }
+.cc-world h4 .dim { font-size: 0.82em; font-weight: 400; color: var(--dim); }
+.cc-standing { border-left: 3px solid var(--accent); padding-left: 10px; }
+.cc-steps button:disabled { opacity: 0.4; }
+/* Smaller windows: the steps go across the top and the summary below. */
+@media (max-width: 1100px) {
+  .creation { grid-template-columns: 1fr 260px; grid-template-rows: auto auto 1fr; }
+  .cc-head { grid-column: 1 / 3; }
+  .cc-steps { grid-column: 1 / 3; flex-direction: row; flex-wrap: wrap; border-right: none; border-bottom: 1px solid var(--line); padding: 8px 14px; }
+}
+@media (max-width: 820px) {
+  .creation { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto; position: absolute; inset: 0 0 auto 0; min-height: 100%; }
+  .cc-main { overflow: visible; }
+  .cc-head, .cc-steps { grid-column: 1; }
+  .cc-side { border-left: none; border-top: 1px solid var(--line); }
+}
 .cc-side { border-left: 1px solid var(--line); background: var(--panel); padding: 14px; overflow: auto; display: flex; flex-direction: column; gap: 4px; }
 .cc-name { font-size: 1.2em; color: var(--accent); }
 .cc-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; font-size: 0.92em; }

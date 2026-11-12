@@ -37,7 +37,7 @@ export const STANDINGS: StandingDef[] = [
   {
     id: 'peasant', name: 'Peasant', about: 'A family that works a lord\'s land or a little of its own.',
     money: [10, 40], literacy: 0.03, skills: { agriculture: 10, animals: 5, athletics: 5 }, history: 0, law: 0, budget: 1,
-    trades: [T('farmer', 'agriculture'), T('herder', 'animals'), T('woodcutter', 'survival'), T('fisher', 'fishing'), T('charcoal burner', 'survival'), T('midwife', 'herbalism', 'f'), T('miller', 'stewardship'), T('beekeeper', 'agriculture')],
+    trades: [T('farmer', 'agriculture'), T('herder', 'animals'), T('woodcutter', 'survival'), T('fisher', 'fishing'), T('charcoal burner', 'survival'), T('midwife', 'herbalism', 'f'), T('miller', 'stewardship'), T('beekeeper', 'agriculture'), T('hunter', 'tracking'), T('trapper', 'trapping')],
     weight: { city: 0.5, town: 3 },
   },
   {
