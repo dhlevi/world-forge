@@ -401,40 +401,6 @@ export class Mood extends Component {
 
 // ---- Belongings ----------------------------------------------------------------------------------
 
-export interface Item {
-  name: string;
-  /** Each, kg. */
-  weight: number;
-  /** Each, litres. */
-  bulk: number;
-  qty: number;
-  worn?: boolean;
-  /** An animal (a horse, a hound): led, not carried. */
-  animal?: boolean;
-}
-
-export interface InventoryData {
-  /** Money, in copper (10 copper to a silver, 10 silver to a gold, 10 gold to a platinum). */
-  copper: number;
-  items: Item[];
-}
-
-export class Inventory extends Component {
-  static readonly key = 'inventory';
-  constructor(public d: InventoryData) {
-    super();
-  }
-  get weight(): number {
-    return this.d.items.filter((i) => !i.animal).reduce((s, i) => s + i.weight * i.qty, 0);
-  }
-  toJSON(): InventoryData {
-    return { copper: this.d.copper, items: this.d.items.map((i) => ({ ...i })) };
-  }
-  static fromJSON(d: InventoryData): Inventory {
-    return new Inventory(d);
-  }
-}
-
 /** Money in words: "3 gold, 4 silver and 7 copper". */
 export function moneyText(copper: number): string {
   const p = Math.floor(copper / 1000), g = Math.floor((copper % 1000) / 100), s = Math.floor((copper % 100) / 10), c = Math.floor(copper % 10);

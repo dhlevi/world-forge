@@ -13,6 +13,7 @@ import { LOCAL_MAP_VERSION } from '@worldforge/core/local/chunk';
 import { desktop } from '../desktop';
 import type { Game } from './game';
 import type { ActorData } from '../actors/actor';
+import type { Item } from '../actors/items/item';
 
 export const SAVE_FORMAT = 'world-forge.save';
 export const SAVE_VERSION = 1;
@@ -43,6 +44,8 @@ export interface SaveFile {
   zoom?: number;
   /** Discovered cells of the travel map (x0, y0, x1, y1, ...; game/discovery.ts). */
   discovered?: number[];
+  /** Things left on the local map: [tx, ty, items] (game/ground.ts). */
+  ground?: [number, number, Item[]][];
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
 }
@@ -92,6 +95,7 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     log: game.hud.log.slice(-40),
     zoom: meta.zoom,
     discovered: game.discovery.export(),
+    ground: game.ground.export(),
     ...(meta.character ? { character: meta.character } : {}),
   };
 }
@@ -106,6 +110,7 @@ export function applySave(game: Game, s: SaveFile): void {
   game.map.importSeen(s.seen);
   game.hud.log.splice(0, game.hud.log.length, ...s.log);
   if (s.discovered) game.discovery.import(s.discovered);
+  if (s.ground) game.ground.import(s.ground);
 }
 
 /** Checks a save read from a file or storage; throws with a plain message if it is not one. */

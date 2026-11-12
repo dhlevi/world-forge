@@ -9,8 +9,10 @@ import { Screen } from '../engine/screens';
 import { LocalFrame } from '@worldforge/core/towns/plan';
 import type { PlanImage, SiteInfo, SitePlace } from '../worker/protocol';
 import type { PlayScreen } from './play';
-import { Inventory, moneyText, type Moodlet } from '../actors/components';
+import { moneyText, type Moodlet } from '../actors/components';
+import { Inventory } from '../actors/items/inventory';
 import CityView from './views/CityView.vue';
+import { ShopScreen } from './shop';
 
 /** Walking pace in a town (m/s), and how much longer the streets make a straight line. */
 const PACE = 1.25, WINDING = 1.3;
@@ -147,7 +149,7 @@ export class CityScreen extends Screen {
     } else if (p.kind === 'temple') {
       out.push({ id: 'pray', label: 'Pray a while' });
     } else if (p.kind === 'market' || p.kind === 'shop') {
-      out.push({ id: 'trade', label: 'Look over the goods' });
+      out.push({ id: 'trade', label: 'Look over the goods (buy)' });
     } else if (p.kind === 'gate') {
       out.push({ id: 'leave', label: 'Leave the town by this way' });
     }
@@ -198,8 +200,8 @@ export class CityScreen extends Screen {
         say('You kneel a while in the quiet.');
         break;
       case 'trade':
-        this.play.advance(20 * 60);
-        say('You look over what is for sale. (Buying and selling are still to come.)');
+        this.play.advance(5 * 60);
+        this.manager?.push(new ShopScreen(this.play, p, this.site.culture));
         break;
       case 'look':
         this.play.advance(5 * 60);

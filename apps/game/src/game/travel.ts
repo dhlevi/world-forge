@@ -215,7 +215,7 @@ export class Travel {
     const before = g.time;
     g.px = st.cx * CHUNK + CHUNK / 2;
     g.py = st.cy * CHUNK + CHUNK / 2;
-    g.time += st.min * 60;
+    g.time += st.min * 60 * g.loadSlow();
     g.discovery.reveal(g.px, g.py, st.sight ?? TRAVEL_SIGHT_M);
     this.sightM = st.sight ?? TRAVEL_SIGHT_M;
     for (const ev of stepEvents(st, before, g.time, this.stopAtDusk, Math.random)) {

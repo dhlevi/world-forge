@@ -6,6 +6,8 @@ import { FOV } from 'rot-js';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, objectId } from '@worldforge/core/local/tiles';
 import { GameMap } from './map';
+import { Ground } from './ground';
+import { itemName } from '../actors/items/item';
 import { Discovery, FOOT_SIGHT_M } from './discovery';
 import type { LocalSite } from '../worker/protocol';
 
@@ -48,6 +50,10 @@ export class Game {
   private fov: InstanceType<typeof FOV.PreciseShadowcasting>;
   /** Called when something on screen changed. */
   onChange: () => void = () => {};
+  /** Things left on the map (game/ground.ts). */
+  readonly ground = new Ground();
+  /** How much slower the wanderer's load makes moving (actors/items/inventory.ts). */
+  loadSlow: () => number = () => 1;
   /** Called whenever the clock may have moved (after every action and travel step). */
   onTime: (time: number) => void = () => {};
 
@@ -123,7 +129,7 @@ export class Game {
     this.py = ny;
     const g = GROUND_TILES[this.map.ground(nx, ny)];
     const wasWet = GROUND_TILES[this.map.ground(this.px - dx, this.py - dy)].water;
-    this.time += g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S;
+    this.time += (g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) * this.loadSlow();
     if (g.water !== wasWet && !quiet) {
       if (g.water === 'deep') this.say('You swim out into deep water.');
       else if (g.water === 'shallow') this.say('You wade into the water.');
@@ -275,6 +281,8 @@ export class Game {
     if (t.object) out.push(cap(o.look) + '.');
     out.push(`${cap(GROUND_TILES[t.ground].look)}.`);
     if (t.area) out.push(cap(t.area) + '.');
+    const things = this.ground.at(x, y);
+    if (things.length && seen) out.push(`${t.object ? 'In it' : 'Lying here'}: ${things.slice(0, 4).map((i) => itemName(i, true)).join(', ')}${things.length > 4 ? ', and more' : ''}.`);
     const d = Math.hypot(x - this.px, y - this.py) * TILE_M;
     out.push(seen ? `${d < 1 ? 'Here' : `${Math.round(d)} m away`}.` : 'As you remember it.');
     return out;

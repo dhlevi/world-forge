@@ -14,6 +14,8 @@ import { Identity } from '../actors/components';
 import PlayView from '../components/PlayView.vue';
 import SheetView from './views/SheetView.vue';
 import { CityScreen } from './city';
+import { InventoryScreen } from './inventory';
+import type { Game } from '../game/game';
 
 /** What the play view lets other screens do with the game (set by components/PlayView.vue). */
 export interface PlayHooks {
@@ -26,6 +28,10 @@ export interface PlayHooks {
   /** Onto the local map at a place, or the travel map. */
   toLocalAt(lon: number, lat: number): void;
   toTravelAt(lon: number, lat: number): void;
+  /** The game itself (the map, the ground, where the wanderer stands). */
+  game(): Game;
+  /** Redraws the map. */
+  redraw(): void;
 }
 
 export interface PlayOptions {
@@ -90,6 +96,10 @@ export class PlayScreen extends Screen {
       this.showSheet();
       return true;
     }
+    if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player && this.hooks) {
+      this.showInventory();
+      return true;
+    }
     return this.onKey(e);
   }
 
@@ -121,6 +131,10 @@ export class PlayScreen extends Screen {
       return;
     }
     if (this.active) this.manager?.push(new CityScreen(this, r.site, where ?? { lon: r.site.lon, lat: r.site.lat }));
+  }
+
+  showInventory(): void {
+    if (this.player && this.hooks) this.manager?.push(new InventoryScreen(this, this.player));
   }
 
   showSheet(): void {

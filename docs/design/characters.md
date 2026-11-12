@@ -276,6 +276,43 @@ travelling at scale.
 **Decided (after the first build): inventory management is to be built** next among the
 character's systems: packs and bags, equipping and unequipping, and wear and uses.
 
+**Decided:**
+
+- A character carries only what they realistically can, and a backpack is needed to carry more
+  and keep the hands free.
+- **Bags:** small, low weight, held in a hand or put in a pack (good for sorting).
+- **Satchels:** very small, held, in a bag or looped on a belt, for small consumables (potions,
+  ingredients).
+- **Packs:** carried or on the back, small, medium or large, for more things and weight.
+- **Size matters:** a statue does not go in a pack, even if it could be lifted.
+- **Worn places:** head, face, body (shirt), arms, hands, belt, legs (pants), feet, and jewellery
+  (earrings, necklace, rings, bracelets, anklets and others), in layers (socks and shoes;
+  undershirt, shirt, leather armour, jacket), with a clean way to move things between bags and
+  the body.
+
+*Built (first pass, `apps/game/src/actors/items/`):* about 110 kinds of item; containers (pouch,
+satchel, herb satchel, cloth bag, sack, basket, small pack, pack, large pack, chests) with room in
+litres, the weight they bear and the biggest size that fits (tiny, small, middling, large, huge);
+two hands (a few things need both), one thing on the back, a belt with three or four loops; worn
+clothing and armour by region in six layers (under, main, padding, armour, outer, cloak), put on
+inside out and taken off outside in; jewellery in its own places (earrings, brow, two at the neck,
+a brooch, two wrists, four rings, two ankles); stacks that join; quality (poor, common, fine,
+masterwork), the people who made it, condition and uses or portions. **Decided (after testing): carrying on the outside.** Shields on the back or a
+pack, swords, polearms and bows on the belt or back, and staves and polearms strapped to a pack:
+some packs take things strapped outside as well as what is stored in them. *Built:* the back
+holds a pack and one thing slung across it besides (a shield, bow, sword, spear, staff, lute or
+quiver); the small pack has one strap outside, the pack two and the large pack three, bearing 6,
+10 and 15 kg (shields, bows, staves, spears, axes, a hoe, a rolled blanket, rope, a lute, a
+quiver); a short bow hangs from the belt in its case, and a sword or axe from the belt or the back;
+a quiver holds only arrows. Things strapped to a pack go with it when it is put down. The load counts worn things
+at 60%; light up to about a quarter of body weight (more with Strength), then burdened, heavy and
+overloaded (moving 15%, 40% and 100% slower, on foot and on the travel map), and nothing more can
+be taken up past about 2.6 times the light load. A new character is dressed and packed from their
+life's gear. The inventory screen (I) shows the person and every container side by side; things
+are dragged between them, or chosen and given an action (also by keys). Things can be dropped,
+picked up (G) and put in chests, barrels, crates, wardrobes and shelves, and stay there, saved
+with the game. Markets and shops in the city view sell the everyday things of their trade.
+
 **Proposed: how it works.**
 
 - **Containers hold items, and can be nested:** a pouch on a belt, a satchel over a shoulder, a

@@ -2,7 +2,9 @@
 /** The character sheet, over the map: who they are, their life, skills and belongings. */
 import { computed } from 'vue';
 import type { SheetScreen } from '../play';
-import { Body, History, Identity, Inventory, Mood, Pools, Skills, Traits, moneyText, hairText, beardText } from '../../actors/components';
+import { Body, History, Identity, Mood, Pools, Skills, Traits, moneyText, hairText, beardText } from '../../actors/components';
+import { Inventory } from '../../actors/items/inventory';
+import { itemName } from '../../actors/items/item';
 import { TRAIT_GROUPS, TRAIT_INFO, SENSES, traitWord } from '../../actors/data/traits';
 import { SKILLS, SKILL_GROUPS, KNOWLEDGE, skillWord, fluencyWord } from '../../actors/data/skills';
 
@@ -76,10 +78,12 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
     </div>
 
     <div v-else class="sheet-body">
-      <p>{{ moneyText(inv?.d.copper ?? 0) }}; carrying {{ inv?.weight.toFixed(1) }} kg.</p>
+      <p>{{ moneyText(inv?.d.copper ?? 0) }}; carrying {{ inv?.loadInfo().kg.toFixed(1) }} kg ({{ inv?.loadInfo().load }}).</p>
       <ul>
-        <li v-for="(i, k) in inv?.d.items ?? []" :key="k">{{ i.name }}<span v-if="i.qty > 1"> ({{ i.qty }})</span><span class="dim">{{ i.animal ? ', an animal' : i.worn ? ', worn' : `, ${(i.weight * i.qty).toFixed(1)} kg` }}</span></li>
+        <li v-for="i in inv?.d.items ?? []" :key="i.uid">{{ itemName(i) }} <span class="dim">{{ inv?.where(i.loc) }}</span></li>
+        <li v-for="a in inv?.d.animals ?? []" :key="a">{{ a }} <span class="dim">(an animal)</span></li>
       </ul>
+      <p class="dim">Press I for the inventory, to wear, hold, pack and drop things.</p>
     </div>
   </div>
 </template>

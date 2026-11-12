@@ -4,7 +4,8 @@
  * loading saved actors.
  */
 import { Actor, registerComponent, type ActorData } from './actor';
-import { Body, History, Identity, Inventory, Knowledge, Mood, Pools, Skills, Traits } from './components';
+import { Body, History, Identity, Knowledge, Mood, Pools, Skills, Traits } from './components';
+import { Inventory } from './items/inventory';
 import type { MessageDispatcher } from '../engine/messages';
 
 registerComponent(Identity);

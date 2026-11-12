@@ -169,6 +169,8 @@ export interface SiteInfo {
   coreM: number;
   radiusM: number;
   walls: boolean;
+  /** Its people's name ("Varskish"): who makes what is sold there. */
+  culture?: string;
   quarters: { name: string; lon: number; lat: number }[];
   places: SitePlace[];
 }

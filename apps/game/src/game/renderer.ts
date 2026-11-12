@@ -33,12 +33,32 @@ export class Renderer {
     el.appendChild(this.app.canvas);
     this.app.stage.addChild(this.ground, this.objects, this.player, this.cursor);
     this.player.texture = this.playerTexture();
+    this.itemTex = this.glyphTexture('*', '#f3d27a');
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = this.app.screen;
     this.app.stage.on('pointermove', (e) => {
       const s = TILE_PX * this.zoom;
       this.onHover(Math.floor(e.global.x / s) - this.ox, Math.floor(e.global.y / s) - this.oy);
     });
+  }
+
+  private itemTex: Texture = Texture.EMPTY;
+
+  /** A glyph as a texture (things lying on the ground). */
+  private glyphTexture(ch: string, colour: string): Texture {
+    const c = document.createElement('canvas');
+    c.width = c.height = TILE_PX;
+    const g = c.getContext('2d')!;
+    g.font = `bold ${TILE_PX - 3}px monospace`;
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    g.fillStyle = 'rgba(0,0,0,0.7)';
+    g.fillText(ch, TILE_PX / 2 + 1, TILE_PX / 2 + 2);
+    g.fillStyle = colour;
+    g.fillText(ch, TILE_PX / 2, TILE_PX / 2 + 1);
+    const t = Texture.from(c);
+    t.source.scaleMode = 'nearest';
+    return t;
   }
 
   private playerTexture(): Texture {
@@ -117,6 +137,11 @@ export class Renderer {
       if (oid) {
         const od = OBJECT_TILES[oid];
         o.texture = this.tiles.get(od, tx, ty, this.mask(od, tx, ty, game, 'object')) ?? Texture.EMPTY;
+        o.tint = vis ? 0xffffff : REMEMBERED;
+        o.visible = true;
+      } else if (game.ground.has(tx, ty)) {
+        // Things lying on the ground (not those put away in furniture, which stands over them).
+        o.texture = this.itemTex;
         o.tint = vis ? 0xffffff : REMEMBERED;
         o.visible = true;
       } else o.visible = false;

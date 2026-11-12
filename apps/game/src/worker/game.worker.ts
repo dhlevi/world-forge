@@ -140,7 +140,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         return;
       }
       const feats = planOf(local.towns, s);
-      post({ type: 'site', id: m.id, site: siteInfo(s, feats), gates: gatesOf(s, feats) });
+      const ci = cultureOf(world!, s);
+      post({ type: 'site', id: m.id, site: { ...siteInfo(s, feats), culture: ci !== undefined ? CULTURES[ci]?.name : undefined }, gates: gatesOf(s, feats) });
     } else if (m.type === 'plan') {
       if (!local) throw new Error('No game started.');
       const s = findSite(local.towns, m.siteId, m.lon, m.lat);

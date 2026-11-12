@@ -11,6 +11,7 @@ import { CARD, POSITION_INFO, type Position } from '../../actors/data/cards';
 import { TRAIT_GROUPS, TRAIT_INFO, SENSES, traitWord, type TraitId } from '../../actors/data/traits';
 import { skillWord, fluencyWord, KNOWLEDGE } from '../../actors/data/skills';
 import { moneyText, hairText, beardText } from '../../actors/components';
+import { itemName } from '../../actors/items/item';
 
 const props = defineProps<{ screen: CreationScreen }>();
 const screen = props.screen;
@@ -261,7 +262,9 @@ function onMother(e: Event): void {
         <div v-for="k in Object.values(res.skills.d.knowledge).filter((x) => x.level >= 10)" :key="k.kind + k.of" class="cc-skill"><span>{{ KNOWLEDGE[k.kind].name }}</span><span class="dim">{{ k.of }}, {{ Math.round(k.level) }}</span></div>
         <div class="cc-label">Belongings</div>
         <div class="dim">{{ moneyText(res.copper) }}</div>
-        <div class="dim">{{ res.items.map((i) => (i.qty > 1 ? `${i.name} (${i.qty})` : i.name)).join(', ') }}</div>
+        <div class="dim">Wearing {{ res.inventory.items.filter((i) => i.loc?.at === 'worn').map((i) => itemName(i)).join(', ') }}.</div>
+        <div class="dim">Carrying {{ res.inventory.items.filter((i) => i.loc?.at !== 'worn').map((i) => itemName(i)).join(', ') }}<span v-if="res.inventory.animals.length">; with {{ res.inventory.animals.map((x) => `a ${x}`).join(' and ') }}</span>.</div>
+        <div v-if="res.leftBehind.length" class="dim">No room for {{ res.leftBehind.map((i) => itemName(i, true)).join(', ') }}: left at home.</div>
       </aside>
     </template>
   </div>

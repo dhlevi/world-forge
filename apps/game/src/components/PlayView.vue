@@ -16,6 +16,7 @@ import { applySave, exportSave, makeSave, writeSave } from '../game/save';
 import { desktop } from '../desktop';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { Knowledge, type Moodlet } from '../actors/components';
+import { Inventory } from '../actors/items/inventory';
 import type { PlayScreen } from '../screens/play';
 
 const props = defineProps<{ screen: PlayScreen }>();
@@ -76,7 +77,11 @@ screen.hooks = {
     travel.placeAt(lon, lat);
     if (mode.value !== 'travel') toTravel();
   },
+  game: () => game,
+  redraw: () => redraw(),
 };
+// The load carried slows the wanderer (actors/items/inventory.ts).
+game.loadSlow = () => screen.player?.get(Inventory)?.loadInfo().slow ?? 1;
 
 /**
  * What the character knew of the world before setting out (their occupations and standing,
@@ -335,11 +340,13 @@ onBeforeUnmount(() => {
         <div><b>Zoom</b> + and -</div>
         <div><b>Travel map</b> T (and T or Z to come back)</div>
         <div><b>Character</b> @</div>
+        <div><b>Inventory</b> I (G to pick up)</div>
         <div><b>Town view</b> V, in a town or city</div>
         <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>
       <div class="hint" v-else>Press ? for keys.</div>
       <button v-if="mode === 'local'" class="travel-btn" @click="toTravel">Travel map (T)</button>
+      <button v-if="screen.player" class="travel-btn" @click="screen.showInventory()">Inventory (I)</button>
       <button v-if="mode === 'local' && hud.town" class="travel-btn" @click="screen.openCity(hud.town.id)">View {{ hud.town.name }} (V)</button>
       <button v-else class="travel-btn" @click="toLocal">Back on foot (T)</button>
       <div class="foot">

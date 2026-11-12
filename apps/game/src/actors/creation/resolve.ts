@@ -11,13 +11,16 @@
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import { Actor } from '../actor';
 import {
-  Body, History, Identity, Inventory, Knowledge, Mood, Pools, Skills, Traits,
-  type Item, type KnowledgeData, type StandingId, type Tie, type TraitsData, type Wound,
+  Body, History, Identity, Knowledge, Mood, Pools, Skills, Traits,
+  type KnowledgeData, type StandingId, type Tie, type TraitsData, type Wound,
 } from '../components';
 import { SENSES, TRAITS, TRAIT_BUDGET, TRAIT_MAX, TRAIT_MIN, TRAIT_SPREAD, PHYSICAL, type SenseId, type TraitId } from '../data/traits';
 import { folkOf, LETTERED, TRADITION_SKILLS, type FolkDef } from '../data/folk';
 import { STANDING, type ParentTrade, type StandingDef } from '../data/standing';
-import { GEAR, GEAR_QTY, TRACK, TRACKS, type TrackCtx, type TrackDef, type TrackId } from '../data/occupations';
+import { Inventory, startingInventory, type InventoryData } from '../items/inventory';
+import type { Item } from '../items/item';
+import type { Quality } from '../items/defs';
+import { TRACK, TRACKS, type TrackCtx, type TrackDef, type TrackId } from '../data/occupations';
 import { CARD, type FateCard, type Position } from '../data/cards';
 import { pickEvent, SCAR_PARTS, WOUND_ANY, WOUND_HOW, type TermEventKind } from './events';
 import type { Catalogue, CultureInfo, PersonName, RealmInfo, StartSite, WarInfo } from '../../worker/protocol';
@@ -110,7 +113,10 @@ export interface Resolved {
   age: number;
   name: PersonName;
   copper: number;
-  items: Item[];
+  /** The gear of the life led (names), the belongings made from it, and what there was no room for. */
+  gear: string[];
+  inventory: InventoryData;
+  leftBehind: Item[];
   ties: Tie[];
   wounds: Wound[];
   knowledge: KnowledgeData;
@@ -484,21 +490,15 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
   });
 
   // ---- Belongings ---------------------------------------------------------------------------
-  const items: Item[] = [];
-  const give = (name: string, worn = false) => {
-    const g = GEAR[name] ?? [1, 1];
-    const animal = g[0] === 0 && g[1] === 0;
-    const have = items.find((x) => x.name === name);
-    if (have) return;
-    items.push({ name, weight: g[0], bulk: g[1], qty: GEAR_QTY[name] ?? 1, ...(worn ? { worn } : {}), ...(animal ? { animal } : {}) });
-  };
-  for (const n of ['clothes', 'boots', 'cloak']) give(n, true);
-  for (const n of ['knife', 'flint and steel', 'waterskin', 'bread']) give(n);
-  for (const [tid, rk] of Object.entries(ranks)) for (const n of TRACK.get(tid as TrackId)!.gear[rk] ?? []) give(n);
-  if (standing.id === 'minor' || standing.id === 'noble') {
-    give('good clothes');
-    give('horse');
-  }
+  // The gear of the life led (by the highest rank in each track), dressed and packed
+  // (actors/items/inventory.ts); what there is no room for is left behind at the start.
+  const gear: string[] = [];
+  for (const [tid, rk] of Object.entries(ranks)) for (const n of TRACK.get(tid as TrackId)!.gear[rk] ?? []) if (!gear.includes(n)) gear.push(n);
+  for (const n of ['flint and steel', 'waterskin', 'bread']) gear.push(n);
+  if (standing.id === 'minor' || standing.id === 'noble') gear.push('good clothes', 'horse');
+  const QUALITY: Record<StandingId, Quality> = { peasant: 'poor', townsfolk: 'common', craftsman: 'common', merchant: 'common', clergy: 'common', minor: 'common', noble: 'fine' };
+  const leftBehind: Item[] = [];
+  const inventory = startingInventory(gear, Math.max(0, Math.round(copper)), { female: ch.female, make: culture.name, quality: QUALITY[standing.id], leftBehind }).toJSON();
 
   // ---- What they know of the world ----------------------------------------------------------
   const knowledge = startingKnowledge(home, w.starts, ranks, standing.id);
@@ -549,7 +549,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
   return {
     choices: ch, culture, folk, home, realm, year, family, cards,
     base, budget, spent, start: startTraits, traits: T.toJSON(), skills, terms, ranks, age,
-    name: own, copper: Math.max(0, Math.round(copper)), items, ties, wounds, knowledge,
+    name: own, copper: Math.max(0, Math.round(copper)), gear, inventory, leftBehind, ties, wounds, knowledge,
     look: { skin, hair, hairStyle: hairStyles[ch.look.hairStyle % Math.max(1, hairStyles.length)] ?? 'short', beard: beards[ch.look.beard % beards.length], heightCm, weightKg, build, hairStyles, beards },
     biography: bio,
     omen: omen ? (omen.draw.reversed ? omen.card.omenDown : omen.card.omenUp) : undefined,
@@ -637,7 +637,7 @@ export function buildActor(r: Resolved): Actor {
   actor.add(new Skills(r.skills.toJSON()));
   actor.add(new Pools(Pools.fromTraits(traits, body)));
   actor.add(new Mood([]));
-  actor.add(new Inventory({ copper: r.copper, items: r.items.map((i) => ({ ...i })) }));
+  actor.add(Inventory.fromJSON(JSON.parse(JSON.stringify(r.inventory))));
   actor.add(new History({
     lines: r.biography.map((b) => ({ ...b })),
     spread: r.cards.map((c) => ({ position: c.draw.position, card: c.card.name, reversed: c.draw.reversed })),
