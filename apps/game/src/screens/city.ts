@@ -13,6 +13,7 @@ import { moneyText, type Moodlet } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
 import CityView from './views/CityView.vue';
 import { ShopScreen } from './shop';
+import { Needs } from '../actors/needs';
 
 /** Walking pace in a town (m/s), and how much longer the streets make a straight line. */
 const PACE = 1.25, WINDING = 1.3;
@@ -169,23 +170,24 @@ export class CityScreen extends Screen {
     switch (id) {
       case 'meal':
         if (!this.pay(4)) return;
+        this.play.player?.get(Needs)?.eat(800, 0.4);
         this.play.advance(45 * 60);
         this.mood({ id: 'hot-meal', text: 'Had a hot meal', value: 2, until: now + 6 * 3600 });
         say('A bowl of stew, bread and small beer, eaten by the fire.');
         break;
       case 'room': {
         if (!this.pay(10)) return;
-        // Sleep until seven in the morning (at least six hours).
+        // Sleep in a bed until seven in the morning (at least six hours).
         const day = 86400, seven = 7 * 3600;
         let wake = Math.floor(now / day) * day + seven;
         while (wake < now + 6 * 3600) wake += day;
-        this.play.advance(wake - now);
-        this.mood({ id: 'slept-bed', text: 'Slept in a bed', value: 3, until: wake + 12 * 3600 });
-        say('You sleep in a narrow bed under the eaves, and wake rested.');
+        this.play.hooks?.sleep(Math.round((wake - now) / 3600), 1);
+        say('You sleep in a narrow bed under the eaves.');
         break;
       }
       case 'drink':
         if (!this.pay(2)) return;
+        this.play.player?.get(Needs)?.drink(0.4);
         this.play.advance(30 * 60);
         this.mood({ id: 'drink', text: 'A drink in good company', value: 1, until: now + 3 * 3600 });
         say('The ale is thin but welcome.');

@@ -12,6 +12,7 @@ import { Inventory, type Dest } from '../actors/items/inventory';
 import { defOf, itemName, fitsSize, ownBulk, type Item } from '../actors/items/item';
 import { storageAt } from '../game/ground';
 import InventoryView from './views/InventoryView.vue';
+import { Needs, NOURISH } from '../actors/needs';
 
 /** An item, carried or lying nearby. */
 export type Ref = { from: 'inv'; uid: string } | { from: 'ground'; x: number; y: number; uid: string };
@@ -30,7 +31,7 @@ export type Target = Dest | { at: 'ground'; x: number; y: number };
 
 export interface ItemAction {
   label: string;
-  target: Target | 'split';
+  target: Target | 'split' | 'consume';
   why?: string | null;
 }
 
@@ -179,6 +180,49 @@ export class InventoryScreen extends Screen {
     this.state.version++;
   }
 
+  /** Eats a portion, or drinks one's fill, from a carried thing. */
+  consume(r: Ref): void {
+    const it = this.item(r);
+    const n = this.actor.get(Needs);
+    const food = it && NOURISH[it.def];
+    if (!it || !n || !food || r.from !== 'inv') return;
+    const d = defOf(it);
+    let msg = '';
+    if (food.kcal === 0) {
+      // Drinking: sip after sip, until slaked or the skin is empty.
+      let sips = 0;
+      while ((it.uses ?? 0) > 0 && n.room().litres >= (food.water ?? 0.1) * 0.5) {
+        n.drink(food.water ?? 0.1);
+        it.uses = (it.uses ?? 1) - 1;
+        sips++;
+      }
+      msg = sips ? `You ${food.verb}${(it.uses ?? 0) <= 0 ? ', and empty it' : ''}.` : 'You could not drink any more.';
+      this.play.advance(10 + sips * 4);
+    } else {
+      const took = n.eat(food.kcal, food.water ?? 0);
+      if (took < 50) {
+        this.state.message = 'You are too full to eat.';
+        return;
+      }
+      msg = `You ${food.verb}.`;
+      // A portion gone: the last portion of the last one takes the thing with it.
+      if (d.uses) {
+        it.uses = (it.uses ?? d.uses) - 1;
+        if (it.uses <= 0) {
+          if (it.qty > 1) {
+            it.qty -= 1;
+            it.uses = d.uses;
+          } else this.inv.drop(it.uid);
+        }
+      } else if (it.qty > 1) it.qty -= 1;
+      else this.inv.drop(it.uid);
+      this.play.advance(5 * 60);
+    }
+    this.state.message = msg;
+    this.play.say(msg);
+    this.state.version++;
+  }
+
   /** Picks up a thing nearby into wherever it best goes. */
   take(r: Ref): boolean {
     const it = this.item(r);
@@ -232,6 +276,15 @@ export class InventoryScreen extends Screen {
       add(s.litres ? `Put in the ${s.label.toLowerCase()}` : 'Drop', { at: 'ground', x: s.x, y: s.y });
     }
     if (it.qty > 1 && r.from === 'inv') out.push({ label: 'Take out one', target: 'split', why: null });
+    const food = NOURISH[it.def];
+    if (food && r.from === 'inv') {
+      const n = this.actor.get(Needs);
+      const drink = food.kcal === 0;
+      const empty = d.uses !== undefined && (it.uses ?? 0) <= 0;
+      const room = n?.room();
+      const why = empty ? 'It is empty.' : room && (drink ? room.litres < 0.05 : room.kcal < 50) ? (drink ? 'You could not drink any more.' : 'You are too full to eat.') : null;
+      out.unshift({ label: drink ? 'Drink' : 'Eat', target: 'consume', why });
+    }
     return out;
   }
 
@@ -239,6 +292,7 @@ export class InventoryScreen extends Screen {
     const r = this.state.selected;
     if (!r) return;
     if (a.target === 'split') this.splitOne(r);
+    else if (a.target === 'consume') this.consume(r);
     else this.move(r, a.target);
   }
 
@@ -291,6 +345,7 @@ export class InventoryScreen extends Screen {
     else if (e.code === 'KeyD') a = find(/^Drop/);
     else if (e.code === 'KeyT' || e.code === 'KeyG' || e.code === 'Enter') a = find(/^Take$/) ?? (e.code === 'Enter' ? acts.find((x) => !x.why) : undefined);
     else if (e.code === 'KeyP') a = find(/^Put in your/);
+    else if (e.code === 'KeyE') a = find(/^Eat$|^Drink$/);
     else return false;
     if (a) this.act(a);
     else if (cur) this.state.message = acts.find((x) => /^(Wear|Take|Hold|Carry|Hang|Drop|Put)/.test(x.label))?.why ?? 'That cannot be done with it.';

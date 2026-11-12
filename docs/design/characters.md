@@ -184,6 +184,12 @@ burst pool refills from the day pool. Traits set the pools' sizes.
 - Encumbrance, wounds, illness, cold and heat make physical effort cost more; stress, pain and
   addiction do the same for mental effort.
 
+*Built (first pass):* the physical burst pool is spent by swimming and by hard going under a heavy
+load and comes back from the day pool at rest or walking gently; the day pool is spent by the
+day's walking, travel (more laden), swimming and work, refilled by sleep (slower on poor bedding)
+and a little by rest; an empty day pool is "spent" and slows every step. The mental pools drain
+slowly while awake and refill in sleep.
+
 ## Hunger, thirst and sleep
 
 **Decided.** These work in reverse: one meal does not cure starvation. A person can be full
@@ -203,6 +209,29 @@ recover.
 Sleep works the same way: a **sleep debt** builds when sleep is short and is only paid back over
 several good nights. Food can later have qualities beyond energy (variety, spoilage, cooked or
 raw) for morale and health.
+
+*Built (first pass, `apps/game/src/actors/needs.ts`):* hunger and thirst in the three layers
+(stomach, the day's reserve, long-term nourishment and hydration), burned and sweated faster by
+walking, travelling laden, swimming and work, by cold (food) and heat (water); fatigue that
+builds while awake (tired after about 16 hours, exhausted after about 24) and a sleep debt past
+exhaustion, paid back by good sleep; the stamina pools spent and refilled as described below;
+basic body heat from worn clothing against the air (the place's climate through the year and the
+day, milder indoors) and effort. Each need has a state in words with a bar, slows the person and
+brings moodlets as it worsens, stops travel when it gets worse, and at the end brings collapse:
+some hours senseless, then coming round weak (no death until health and wounds exist). Food is
+eaten and the waterskin drunk from the inventory (E); Q drinks at a river, lake, well or fountain
+and fills waterskins; Shift+Z sleeps or rests, in a bed, rolled in a blanket or on the ground; an
+inn's meal, drink and room feed the same needs.
+
+**Decided (to design and build later): sleep quality.** Poor sleep (on the ground) should bring
+moodlets and modifiers. **Proposed:** a night's quality from the bedding (a bed, a bedroll or
+blanket, straw, the bare ground), shelter (a roof, a tent, a lean-to, the open sky), warmth
+through the night (cold ground, a fire kept in), wetness, noise and safety (a watch kept, a
+locked door), and the sleeper (pain, hunger, a full stomach, drink). Quality sets how fast fatigue
+and the day pool recover, the morning's moodlet (well rested, stiff, cold and aching, a bad
+night), and, below some level, a chance of waking in the night. *Built so far:* bed, blanket or
+ground set the speed of recovery and a moodlet (slept in a bed, slept rough, slept on the cold
+ground).
 
 ## Conditions: addiction and disease
 

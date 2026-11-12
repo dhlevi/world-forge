@@ -201,6 +201,8 @@ export type ToWorker =
   | { type: 'names'; id: number; culture: number; seed: string; count: number }
   /** A settlement's places of note and its gates (lon/lat help find a village). */
   | { type: 'site'; id: number; siteId: string; lon?: number; lat?: number }
+  /** The climate at a place: its warmest and coldest months (°C). */
+  | { type: 'climate'; id: number; lon: number; lat: number }
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
   | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean };
 
@@ -216,4 +218,5 @@ export type FromWorker =
   | { type: 'names'; id: number; male: PersonName[]; female: PersonName[] }
   | { type: 'site'; id: number; site: SiteInfo | null; gates: Gate[] }
   | { type: 'plan'; id: number; image: PlanImage | null }
+  | { type: 'climate'; id: number; warm: number; cold: number }
   | { type: 'error'; message: string };

@@ -142,6 +142,11 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       const feats = planOf(local.towns, s);
       const ci = cultureOf(world!, s);
       post({ type: 'site', id: m.id, site: { ...siteInfo(s, feats), culture: ci !== undefined ? CULTURES[ci]?.name : undefined }, gates: gatesOf(s, feats) });
+    } else if (m.type === 'climate') {
+      if (!world) throw new Error('No world yet.');
+      const r = world.raster;
+      const i = ((Math.floor(((m.lon + 180) / 360) * r.W) % r.W) + r.W) % r.W, j = Math.min(r.H - 1, Math.max(0, Math.floor(((90 - m.lat) / 180) * r.H)));
+      post({ type: 'climate', id: m.id, warm: r.tempWarm[j * r.W + i], cold: r.tempCold[j * r.W + i] });
     } else if (m.type === 'plan') {
       if (!local) throw new Error('No game started.');
       const s = findSite(local.towns, m.siteId, m.lon, m.lat);

@@ -17,6 +17,10 @@ import { desktop } from '../desktop';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { Knowledge, type Moodlet } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
+import { defOf } from '../actors/items/item';
+import { Needs } from '../actors/needs';
+import { airTemp, type Climate } from '../game/calendar';
+import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import type { PlayScreen } from '../screens/play';
 
 const props = defineProps<{ screen: PlayScreen }>();
@@ -43,10 +47,127 @@ if (o.restore) {
   if (o.restore.zoom) renderer_zoom = o.restore.zoom;
   game.say('You take up where you left off.');
 }
+// ---- Needs, fatigue and the air (actors/needs.ts, game/calendar.ts) ------------------------------
+
+/** The climate where the party is (asked of the worker as it moves). */
+let climate: Climate = { warm: 18, cold: 2, lat: o.site.lat };
+let climateAt: [number, number] | null = null;
+function updateClimate(): void {
+  const [lon, lat] = travel.party();
+  if (climateAt && Math.abs(climateAt[0] - lon) < 0.05 && Math.abs(climateAt[1] - lat) < 0.05) return;
+  climateAt = [lon, lat];
+  void app.worker.climate(lon, lat).then((c) => (climate = { ...c, lat }));
+}
+const indoors = () => GROUND_TILES[game.map.ground(game.px, game.py)]?.name.startsWith('floor_') ?? false;
+const needs = () => screen.player?.get(Needs);
+const invSlow = () => screen.player?.get(Inventory)?.loadInfo().slow ?? 1;
+
 game.onTime = (t) => {
-  screen.cast.clock(t);
+  updateClimate();
+  screen.cast.clock(t, { activity: game.activity, ambientC: airTemp(climate, t, indoors()), loadSlow: invSlow(), sleepQuality: game.sleepQuality });
+  game.activity = 'rest';
   screen.describe(t);
+  const n = needs();
+  if (!n) return;
+  for (const note of n.takeNotes()) {
+    game.say(note.text);
+    // A need growing worse stops a journey, as dusk does.
+    if (note.worse && travel.running && note.word !== 'Winded') {
+      travel.stop();
+      game.say('You stop.');
+    }
+  }
+  if (n.collapse && !collapsing) {
+    collapsing = true;
+    setTimeout(() => collapse(), 0);
+  }
 };
+
+let collapsing = false;
+/** The body gives out: hours pass senseless, then the wanderer comes round, worse for it. */
+function collapse(): void {
+  const n = needs();
+  if (!n?.collapse) {
+    collapsing = false;
+    return;
+  }
+  const why = { thirst: 'Your legs give way: you have had nothing to drink for too long.', hunger: 'You faint from hunger.', sleep: 'You can stay awake no longer and drop where you stand.', heat: n.d.heat < 0 ? 'The cold takes you, and the world goes dark.' : 'The heat overcomes you, and you fall.', stamina: 'You collapse.' }[n.collapse];
+  travel.stop();
+  game.say(why);
+  game.sleepQuality = 0.3;
+  for (let h = 0; h < 6; h++) {
+    game.time += 3600;
+    game.activity = 'sleep';
+    game.updateHud();
+  }
+  game.sleepQuality = 0.6;
+  n.recover();
+  const p = screen.player;
+  if (p) app.bus.send('actor.moodlet', { id: 'collapsed', text: 'Collapsed', value: -8, until: game.time + 86400 } satisfies Moodlet, { to: p.id });
+  game.say('You come round hours later, weak and shaken.');
+  collapsing = false;
+  redraw();
+}
+
+/** Sleeps or rests in hours, waking early when rested (or something needs seeing to). */
+function sleep(hours: number, quality: number, o: { untilRested?: boolean; awake?: boolean } = {}): number {
+  const n = needs();
+  travel.stop();
+  game.sleepQuality = quality;
+  game.say(o.awake ? 'You sit and rest.' : 'You lie down to sleep.');
+  let slept = 0;
+  for (let h = 0; h < hours; h++) {
+    game.time += 3600;
+    game.activity = o.awake ? 'rest' : 'sleep';
+    game.updateHud();
+    slept++;
+    if (o.untilRested && n && n.d.fatigue <= 2 && n.d.debt < 0.5) break;
+    if (n?.collapse) break;
+  }
+  game.sleepQuality = 0.6;
+  if (!o.awake && slept > 0) {
+    const p = screen.player;
+    const cold = (n?.d.airC ?? 15) < 8;
+    const mood: Moodlet = quality >= 1 ? { id: 'slept', text: 'Slept in a bed', value: 3, until: game.time + 12 * 3600 }
+      : quality >= 0.8 ? { id: 'slept', text: 'Slept rough', value: 0, until: game.time + 12 * 3600 }
+      : { id: 'slept', text: cold ? 'Slept on the cold ground' : 'Slept on the ground', value: cold ? -4 : -2, until: game.time + 12 * 3600 };
+    if (p && mood.value) app.bus.send('actor.moodlet', mood, { to: p.id });
+    game.say(`You wake after ${slept} hour${slept === 1 ? '' : 's'}${quality < 0.8 ? ', stiff from the ground' : ''}.`);
+  } else if (o.awake) game.say(`You rest ${slept} hour${slept === 1 ? '' : 's'}.`);
+  game.refresh();
+  return slept;
+}
+
+/** Drinking from water beside (a river, a lake, a well, a fountain), and filling waterskins. */
+function drinkHere(): void {
+  const n = needs();
+  const inv = screen.player?.get(Inventory);
+  if (!n) return;
+  let found = '';
+  for (let dy = -1; dy <= 1 && !found; dy++) for (let dx = -1; dx <= 1 && !found; dx++) {
+    const x = game.px + dx, y = game.py + dy;
+    const gd = GROUND_TILES[game.map.ground(x, y)];
+    const od = OBJECT_TILES[game.map.object(x, y)];
+    if (od?.name === 'well' || od?.name === 'fountain') found = od.look;
+    else if (gd?.water) found = 'the water';
+  }
+  if (!found) {
+    game.say('There is no water here to drink.');
+    return;
+  }
+  const took = n.drink(n.room().litres);
+  let filled = 0;
+  for (const it of inv?.d.items ?? []) {
+    const d = defOf(it);
+    if (d.id === 'waterskin' && d.uses && (it.uses ?? 0) < d.uses) {
+      it.uses = d.uses;
+      filled++;
+    }
+  }
+  game.time += 30 + took * 60 + filled * 60;
+  game.say(`${took > 0.05 ? `You drink from ${found}` : `You are not thirsty, but you wet your lips at ${found}`}${filled ? `, and fill ${filled === 1 ? 'your waterskin' : `${filled} waterskins`}` : ''}.`);
+  game.updateHud();
+}
 screen.describe(game.time);
 const tiles = new Tileset();
 /** On foot (the local map) or travelling (the travel map). */
@@ -79,9 +200,10 @@ screen.hooks = {
   },
   game: () => game,
   redraw: () => redraw(),
+  sleep: (h, q, opts) => sleep(h, q, opts),
 };
-// The load carried slows the wanderer (actors/items/inventory.ts).
-game.loadSlow = () => screen.player?.get(Inventory)?.loadInfo().slow ?? 1;
+// The load carried, and hunger, thirst, fatigue and cold, slow the wanderer.
+game.loadSlow = () => invSlow() * (needs()?.slow() ?? 1);
 
 /**
  * What the character knew of the world before setting out (their occupations and standing,
@@ -214,6 +336,8 @@ function onKey(e: KeyboardEvent): void {
   } else if (e.code === 'KeyC') {
     hud.mode = 'close';
     game.say('Close in which direction?');
+  } else if (e.code === 'KeyQ') {
+    drinkHere();
   } else if (e.code === 'KeyV' && hud.town) {
     void screen.openCity(hud.town.id);
   } else if (e.code === 'KeyX') {
@@ -324,6 +448,14 @@ onBeforeUnmount(() => {
         <a href="#" @click.prevent="screen.showSheet()">{{ screen.state.name }}</a>
         <span class="dim">{{ screen.state.line }}</span>
       </div>
+      <div v-if="screen.state.needs.length" class="needs">
+        <div v-for="n in screen.state.needs" :key="n.id" class="need" :class="{ bad: n.bar < 0.35, warn: n.bar < 0.6 }">
+          <span class="nl">{{ n.label }}</span>
+          <span class="nb"><span :style="{ width: `${Math.round(n.bar * 100)}%` }" /></span>
+          <span class="nw">{{ n.word }}</span>
+        </div>
+        <div class="dim air">{{ screen.state.air }}</div>
+      </div>
       <div class="place">{{ hud.place }}</div>
       <div class="where">{{ hud.where }}</div>
       <div class="clock">{{ hud.clock }}<span v-if="hud.loading"> · making {{ hud.loading }} chunk{{ hud.loading === 1 ? '' : 's' }}</span></div>
@@ -340,7 +472,9 @@ onBeforeUnmount(() => {
         <div><b>Zoom</b> + and -</div>
         <div><b>Travel map</b> T (and T or Z to come back)</div>
         <div><b>Character</b> @</div>
-        <div><b>Inventory</b> I (G to pick up)</div>
+        <div><b>Inventory</b> I (G to pick up; eat and drink from it)</div>
+        <div><b>Drink</b> Q at water or a well (fills waterskins too)</div>
+        <div><b>Sleep or rest</b> Shift+Z</div>
         <div><b>Town view</b> V, in a town or city</div>
         <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>

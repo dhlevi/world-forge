@@ -14,6 +14,9 @@ import { Identity } from '../actors/components';
 import PlayView from '../components/PlayView.vue';
 import SheetView from './views/SheetView.vue';
 import { CityScreen } from './city';
+import { SleepScreen } from './sleep';
+import { Needs, type NeedId } from '../actors/needs';
+import { airWord, seasonOf } from '../game/calendar';
 import { InventoryScreen } from './inventory';
 import type { Game } from '../game/game';
 
@@ -32,6 +35,8 @@ export interface PlayHooks {
   game(): Game;
   /** Redraws the map. */
   redraw(): void;
+  /** Sleeps (or rests awake) for up to some hours; returns the hours slept. */
+  sleep(hours: number, quality: number, o?: { untilRested?: boolean; awake?: boolean }): number;
 }
 
 export interface PlayOptions {
@@ -50,7 +55,13 @@ export class PlayScreen extends Screen {
   readonly view = PlayView;
   readonly cast: Cast;
   /** What the panel shows of the character (reactive). */
-  readonly state = reactive({ name: '', line: '' });
+  readonly state = reactive({
+    name: '',
+    line: '',
+    /** The needs as bars and words (actors/needs.ts), and the air. */
+    needs: [] as { id: NeedId; label: string; word: string; bar: number }[],
+    air: '',
+  });
   /** Set by the view: its key handler and its sink for chunks. */
   onKey: (e: KeyboardEvent) => boolean = () => false;
   onChunk: (c: ChunkData) => void = () => {};
@@ -63,6 +74,8 @@ export class PlayScreen extends Screen {
     this.cast = new Cast(app.bus);
     const data = o.restore?.character;
     const who = o.character ?? (data ? Actor.fromJSON(data) : null);
+    // Characters from before needs were kept begin fed and rested.
+    if (who && !who.has(Needs)) who.add(new Needs(Needs.fresh()));
     if (who) this.cast.setPlayer(who);
     this.cast.setClock(o.restore?.time ?? 8 * 3600);
   }
@@ -76,6 +89,13 @@ export class PlayScreen extends Screen {
     const id = this.player?.get(Identity);
     this.state.name = id ? id.name : '';
     this.state.line = id ? `${id.d.people.replace(/^the /, '')} ${id.d.female ? 'woman' : 'man'}, ${id.ageAt(time)}` : '';
+    const n = this.player?.get(Needs);
+    if (n) {
+      const w = n.words(), b = n.bars();
+      const LABEL: Record<NeedId, string> = { hunger: 'Food', thirst: 'Water', sleep: 'Rest', stamina: 'Stamina', heat: 'Warmth' };
+      this.state.needs = (Object.keys(LABEL) as NeedId[]).map((k) => ({ id: k, label: LABEL[k], word: w[k], bar: b[k] }));
+      this.state.air = `${Math.round(n.d.airC)}°C, ${airWord(n.d.airC)}; ${seasonOf(time, this.o.site.lat)}`;
+    }
   }
 
   enter(): void {
@@ -94,6 +114,10 @@ export class PlayScreen extends Screen {
   key(e: KeyboardEvent): boolean {
     if (e.key === '@' && this.player) {
       this.showSheet();
+      return true;
+    }
+    if (e.code === 'KeyZ' && e.shiftKey && this.player && this.hooks) {
+      this.showSleep();
       return true;
     }
     if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player && this.hooks) {
@@ -131,6 +155,10 @@ export class PlayScreen extends Screen {
       return;
     }
     if (this.active) this.manager?.push(new CityScreen(this, r.site, where ?? { lon: r.site.lon, lat: r.site.lat }));
+  }
+
+  showSleep(): void {
+    if (this.player && this.hooks) this.manager?.push(new SleepScreen(this, this.player));
   }
 
   showInventory(): void {

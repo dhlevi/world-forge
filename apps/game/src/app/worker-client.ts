@@ -100,6 +100,10 @@ export class WorkerClient {
     return p;
   };
 
+  /** The climate at a place: its warmest and coldest months (°C). */
+  climate = (lon: number, lat: number): Promise<{ warm: number; cold: number }> =>
+    this.ask((id) => ({ type: 'climate', id, lon, lat }), (m) => (m.type === 'climate' ? { warm: m.warm, cold: m.cold } : { warm: 20, cold: 0 }));
+
   /** Forgets kept plan images (a new world). */
   clearPlans(): void {
     this.plans.clear();

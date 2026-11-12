@@ -4,6 +4,7 @@ import { computed } from 'vue';
 import type { SheetScreen } from '../play';
 import { Body, History, Identity, Mood, Pools, Skills, Traits, moneyText, hairText, beardText } from '../../actors/components';
 import { Inventory } from '../../actors/items/inventory';
+import { Needs } from '../../actors/needs';
 import { itemName } from '../../actors/items/item';
 import { TRAIT_GROUPS, TRAIT_INFO, SENSES, traitWord } from '../../actors/data/traits';
 import { SKILLS, SKILL_GROUPS, KNOWLEDGE, skillWord, fluencyWord } from '../../actors/data/skills';
@@ -18,6 +19,7 @@ const skills = a.get(Skills);
 const hist = a.get(History)?.d;
 const inv = a.get(Inventory);
 const pools = a.get(Pools)?.d;
+const needs = a.get(Needs);
 const mood = a.get(Mood);
 const ui = screen.state;
 const age = computed(() => a.need(Identity).ageAt(screen.now()));
@@ -63,6 +65,14 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
         <div v-for="s in SENSES" :key="s" class="kv"><span>{{ TRAIT_INFO[s].name }}</span><span>{{ traits?.get(s) }}</span></div>
         <div v-if="pools" class="cc-label">Stamina</div>
         <div v-if="pools" class="kv"><span>Physical</span><span>{{ Math.round(pools.physBurst.value) }}/{{ pools.physBurst.max }} burst, {{ Math.round(pools.physDay.value) }}/{{ pools.physDay.max }} day</span></div>
+        <template v-if="needs">
+          <div class="cc-label">Needs</div>
+          <div class="kv"><span>Food</span><span>{{ Math.round(needs.d.stomachKcal) }} kcal eaten, {{ Math.round(needs.d.reserveKcal) }} in reserve; nourishment {{ Math.round(needs.d.nourish) }}</span></div>
+          <div class="kv"><span>Water</span><span>{{ needs.d.stomachL.toFixed(2) }} L drunk, {{ needs.d.hydrationL.toFixed(2) }} L in the body; hydration {{ Math.round(needs.d.hydrated) }}</span></div>
+          <div class="kv"><span>Fatigue</span><span>{{ Math.round(needs.d.fatigue) }}<span v-if="needs.d.debt >= 0.5">, {{ needs.d.debt.toFixed(1) }} h of sleep owed</span></span></div>
+          <div class="kv"><span>Warmth</span><span>{{ Math.round(needs.d.heat) }} (dressed for {{ Math.round(needs.comfort().low) }} to {{ Math.round(needs.comfort().high) }}°C); air {{ Math.round(needs.d.airC) }}°C</span></div>
+          <div class="kv"><span>Slowed</span><span>{{ needs.slow() > 1.001 ? `by ${Math.round((needs.slow() - 1) * 100)}%` : 'not at all' }}</span></div>
+        </template>
         <div v-if="pools" class="kv"><span>Mental</span><span>{{ Math.round(pools.mentBurst.value) }}/{{ pools.mentBurst.max }} burst, {{ Math.round(pools.mentDay.value) }}/{{ pools.mentDay.max }} day</span></div>
       </div>
       <div>

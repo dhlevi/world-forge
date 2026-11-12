@@ -6,6 +6,8 @@
 import { Actor, registerComponent, type ActorData } from './actor';
 import { Body, History, Identity, Knowledge, Mood, Pools, Skills, Traits } from './components';
 import { Inventory } from './items/inventory';
+import { Needs } from './needs';
+import type { TimeCtx } from './components';
 import type { MessageDispatcher } from '../engine/messages';
 
 registerComponent(Identity);
@@ -17,6 +19,7 @@ registerComponent(Mood);
 registerComponent(Inventory);
 registerComponent(History);
 registerComponent(Knowledge);
+registerComponent(Needs);
 
 export class Cast {
   private actors = new Map<number, Actor>();
@@ -53,11 +56,11 @@ export class Cast {
     return [...this.actors.values()];
   }
 
-  /** Tells the cast the game clock now reads `now` (seconds). Called after every action. */
-  clock(now: number): void {
+  /** Tells the cast the game clock now reads `now` (seconds), and what the player was doing. Called after every action. */
+  clock(now: number, ctx: TimeCtx = {}): void {
     const dt = this.lastTime === null ? 0 : now - this.lastTime;
     this.lastTime = now;
-    if (dt > 0) this.bus.send('time.passed', { now, dt });
+    if (dt > 0) this.bus.send('time.passed', { now, dt, ctx });
     this.bus.update(now);
   }
 

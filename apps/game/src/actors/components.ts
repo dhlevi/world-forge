@@ -9,8 +9,8 @@ import { KNOWLEDGE, SKILL, SKILLS, type KnowledgeKind } from './data/skills';
 
 declare module '../engine/messages' {
   interface MessageTypes {
-    /** Game time has passed (broadcast to every actor by the cast). */
-    'time.passed': { now: number; dt: number };
+    /** Game time has passed (broadcast to every actor by the cast), and what the player was doing. */
+    'time.passed': { now: number; dt: number; ctx?: TimeCtx };
     /** A moodlet for one actor (sent to it). */
     'actor.moodlet': Moodlet;
     /** Something changed in an actor that views may show (broadcast). */
@@ -19,6 +19,19 @@ declare module '../engine/messages' {
 }
 
 const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
+
+/** What a person was doing while time passed (for needs and fatigue, actors/needs.ts). */
+export type Activity = 'rest' | 'walk' | 'swim' | 'travel' | 'sleep' | 'work';
+
+export interface TimeCtx {
+  activity?: Activity;
+  /** The air about them (°C). */
+  ambientC?: number;
+  /** How much the load slows them (1 unladen). */
+  loadSlow?: number;
+  /** How well they sleep (1 a bed, less rough). */
+  sleepQuality?: number;
+}
 
 // ---- Identity ------------------------------------------------------------------------------------
 
@@ -316,7 +329,10 @@ export interface PoolsData {
   mentDay: Pool;
 }
 
-/** Physical and mental stamina, each a day pool and a burst pool (sizes from traits and body). */
+/**
+ * Physical and mental stamina, each a day pool and a burst pool (sizes from traits and body).
+ * Spent and refilled by the needs (actors/needs.ts) as time passes.
+ */
 export class Pools extends Component {
   static readonly key = 'pools';
   constructor(public d: PoolsData) {
@@ -333,18 +349,6 @@ export class Pools extends Component {
       mentBurst: full(30 + 2 * (g('intelligence') + g('willpower'))),
       mentDay: full(60 + 2 * g('willpower') + g('wisdom')),
     };
-  }
-  onMessage(m: Message): boolean {
-    if (m.type !== 'time.passed') return false;
-    // A first, simple recovery: burst refills from the day pool at rest (the full rules come with
-    // effort, sleep and food).
-    const dt = (m as Message<'time.passed'>).payload.dt;
-    for (const [burst, day] of [[this.d.physBurst, this.d.physDay], [this.d.mentBurst, this.d.mentDay]] as const) {
-      const want = Math.min(burst.max - burst.value, (dt / 60) * 2, day.value);
-      burst.value += want;
-      day.value -= want * 0.25;
-    }
-    return true;
   }
   toJSON(): PoolsData {
     return JSON.parse(JSON.stringify(this.d));

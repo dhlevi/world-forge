@@ -66,6 +66,14 @@ north, little change near the equator.
 
 ## Body heat
 
+*Built (basic, `apps/game/src/actors/needs.ts`, `game/calendar.ts`):* the air's temperature from
+the place's warmest and coldest months through the year (a game begins on the 110th day: late
+spring in the north) and through the day, milder indoors; the warmth of what is worn sets the
+range a person is comfortable in, effort warms; outside it the body drifts toward chilly,
+shivering and hypothermic, or warm, hot and overheating, with slowing, moodlets, more food burned
+in the cold, more water lost in the heat, and collapse at the extremes. Weather, wetness, wind and
+shelter are still to come.
+
 **Decided:** overheating and hypothermia, as moodlets and health effects.
 
 **Proposed.** The body keeps a **core temperature** that moves toward balance between:

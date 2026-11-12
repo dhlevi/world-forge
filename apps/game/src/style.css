@@ -129,3 +129,15 @@ button:disabled { opacity: 0.5; cursor: default; }
 .who a { color: var(--text); font-weight: 600; text-decoration: none; }
 .who a:hover { color: var(--accent); }
 .who .dim { font-size: 0.88em; }
+
+/* Needs in the play panel. */
+.needs { display: flex; flex-direction: column; gap: 3px; border-bottom: 1px solid var(--line); padding-bottom: 8px; font-size: 0.88em; }
+.need { display: grid; grid-template-columns: 4.6em 1fr 7.5em; gap: 6px; align-items: center; }
+.need .nl { color: var(--dim); }
+.need .nb { height: 6px; background: #222836; border-radius: 3px; overflow: hidden; }
+.need .nb span { display: block; height: 100%; background: #7fae6a; }
+.need.warn .nb span { background: #d9a441; }
+.need.bad .nb span { background: #c84a3a; }
+.need.bad .nw { color: #ff8a7a; }
+.need .nw { font-size: 0.92em; }
+.needs .air { font-size: 0.9em; margin-top: 2px; }

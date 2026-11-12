@@ -7,6 +7,7 @@ import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, objectId } from '@worldforge/core/local/tiles';
 import { GameMap } from './map';
 import { Ground } from './ground';
+import type { Activity } from '../actors/components';
 import { itemName } from '../actors/items/item';
 import { Discovery, FOOT_SIGHT_M } from './discovery';
 import type { LocalSite } from '../worker/protocol';
@@ -52,8 +53,12 @@ export class Game {
   onChange: () => void = () => {};
   /** Things left on the map (game/ground.ts). */
   readonly ground = new Ground();
-  /** How much slower the wanderer's load makes moving (actors/items/inventory.ts). */
+  /** How much slower the wanderer's load (and state) makes moving (actors/items/inventory.ts, actors/needs.ts). */
   loadSlow: () => number = () => 1;
+  /** What the wanderer has been doing since the clock was last told (for needs and fatigue). */
+  activity: Activity = 'rest';
+  /** How well they sleep, while sleeping. */
+  sleepQuality = 0.6;
   /** Called whenever the clock may have moved (after every action and travel step). */
   onTime: (time: number) => void = () => {};
 
@@ -130,6 +135,7 @@ export class Game {
     const g = GROUND_TILES[this.map.ground(nx, ny)];
     const wasWet = GROUND_TILES[this.map.ground(this.px - dx, this.py - dy)].water;
     this.time += (g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) * this.loadSlow();
+    this.activity = g.water === 'deep' ? 'swim' : 'walk';
     if (g.water !== wasWet && !quiet) {
       if (g.water === 'deep') this.say('You swim out into deep water.');
       else if (g.water === 'shallow') this.say('You wade into the water.');
