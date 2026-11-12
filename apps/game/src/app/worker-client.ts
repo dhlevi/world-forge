@@ -5,7 +5,7 @@
  */
 import type { MessageDispatcher } from '../engine/messages';
 import type { WorldSettings } from '@worldforge/core/settings';
-import type { Catalogue, ChunkData, FromWorker, LocalSite, PersonName, RouteStep, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
+import type { Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
 
 declare module '../engine/messages' {
   interface MessageTypes {
@@ -81,6 +81,28 @@ export class WorkerClient {
       if (m.type !== 'catalogue') throw new Error('The world could not describe its peoples.');
       return m.catalogue;
     });
+  }
+
+  /** A settlement's places of note and gates (lon/lat help find a village). */
+  site = (siteId: string, at?: { lon: number; lat: number }): Promise<{ site: SiteInfo | null; gates: Gate[] }> =>
+    this.ask((id) => ({ type: 'site', id, siteId, lon: at?.lon, lat: at?.lat }), (m) => (m.type === 'site' ? { site: m.site, gates: m.gates } : { site: null, gates: [] }));
+
+  private plans = new Map<string, Promise<PlanImage | null>>();
+
+  /** A settlement's plan as an image (kept once drawn). */
+  plan = (siteId: string, o: { mpp: number; radius: number; illustrated: boolean; lon?: number; lat?: number }): Promise<PlanImage | null> => {
+    const key = `${siteId}|${o.mpp}|${Math.round(o.radius)}|${o.illustrated}`;
+    let p = this.plans.get(key);
+    if (!p) {
+      p = this.ask((id) => ({ type: 'plan', id, siteId, lon: o.lon, lat: o.lat, mpp: o.mpp, radius: o.radius, illustrated: o.illustrated }), (m) => (m.type === 'plan' ? m.image : null));
+      this.plans.set(key, p);
+    }
+    return p;
+  };
+
+  /** Forgets kept plan images (a new world). */
+  clearPlans(): void {
+    this.plans.clear();
   }
 
   names(culture: number, seed: string, count = 24): Promise<{ male: PersonName[]; female: PersonName[] }> {

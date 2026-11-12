@@ -7,13 +7,14 @@ import { computed, onBeforeUnmount, ref, shallowRef } from 'vue';
 import WorldView from './WorldView.vue';
 import { SPEEDS, type LL, type Travel } from '../game/travel';
 import { TILE_M } from '@worldforge/core/local/chunk';
-import type { StartSite, TravelArea, ViewLayer } from '../worker/protocol';
+import type { PlanImage, StartSite, TravelArea, ViewLayer } from '../worker/protocol';
 
 const props = defineProps<{
   travel: Travel;
   starts: StartSite[];
   requestTile: (z: number, x: number, y: number, layer: ViewLayer) => Promise<ImageBitmap | null>;
   requestArea: (box: { west: number; south: number; east: number; north: number }, fine: boolean) => Promise<TravelArea>;
+  requestPlan: (id: string, o: { mpp: number; radius: number; illustrated: boolean; lon?: number; lat?: number }) => Promise<PlanImage | null>;
 }>();
 const emit = defineEmits<{ zoomIn: [] }>();
 
@@ -24,6 +25,19 @@ const level = ref(0);
 const mapRef = ref<InstanceType<typeof WorldView> | null>(null);
 const layer = ref<ViewLayer>('fantasy');
 const area = shallowRef<TravelArea | null>(null);
+/** Settlements' plans drawn close in (Country scale), once discovered. */
+const plans = shallowRef<PlanImage[]>([]);
+const asked = new Set<string>();
+
+function loadPlans(a: TravelArea): void {
+  for (const p of a.places) {
+    if (!p.radiusM || p.tier === 'lair' || asked.has(p.id) || fog(p.lon, p.lat) === 0) continue;
+    asked.add(p.id);
+    void props.requestPlan(p.id, { mpp: p.tier === 'village' ? 2 : 4, radius: p.radiusM * 1.05, illustrated: false, lon: p.lon, lat: p.lat }).then((img) => {
+      if (img) plans.value = [...plans.value, img];
+    });
+  }
+}
 /** Bumped whenever the journey changes, so the view recomputes. */
 const tick = ref(0);
 props.travel.onChange = () => tick.value++;
@@ -67,12 +81,15 @@ async function onView(box: { west: number; south: number; east: number; north: n
   if (key === areaKey || box.km > 2000) return;
   areaKey = key;
   area.value = await props.requestArea(q, fine);
+  if (fine) loadPlans(area.value);
 }
 
 function pick(ll: LL): void {
   const s = props.starts.find((x) => Math.abs(x.lon - ll[0]) < 1e-9 && Math.abs(x.lat - ll[1]) < 1e-9);
   const p = area.value?.places.find((x) => Math.abs(x.lon - ll[0]) < 1e-9 && Math.abs(x.lat - ll[1]) < 1e-9);
-  void props.travel.setDest(ll, s?.name ?? p?.name ?? '');
+  // A settlement is entered by a gate; a lair or a point on the map is gone to directly.
+  const site = s ? { id: s.id, name: s.name, tier: s.tier, lon: s.lon, lat: s.lat } : p && p.tier !== 'lair' ? { id: p.id, name: p.name, tier: p.tier, lon: p.lon, lat: p.lat } : undefined;
+  void props.travel.setDest(ll, s?.name ?? p?.name ?? '', site);
 }
 
 function go(): void {
@@ -119,6 +136,7 @@ onBeforeUnmount(() => props.travel.stop());
       :follow="running"
       :fog="fog"
       :fog-version="fogVersion"
+      :plans="plans"
       @pick="pick"
       @view="onView"
       @level="(i: number) => (level = i)"

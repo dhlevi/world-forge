@@ -127,7 +127,60 @@ export interface RouteStep {
 /** What the travel map draws over the tiles: ways and places in an area. */
 export interface TravelArea {
   roads: { cls: string; pts: [number, number][] }[];
-  places: { id: string; name: string; tier: string; lon: number; lat: number; kind?: string }[];
+  /** Settlements (with their extent, for their plans) and lairs. */
+  places: { id: string; name: string; tier: string; lon: number; lat: number; kind?: string; radiusM?: number }[];
+}
+
+/** A way into a settlement: a gate in its walls, or where a road reaches its edge (local m from its centre too). */
+export interface Gate {
+  name: string;
+  /** The road that comes in there ("South Road"), if any. */
+  road: string;
+  lon: number;
+  lat: number;
+  x: number;
+  y: number;
+  walled: boolean;
+}
+
+export type PlaceKind = 'gate' | 'market' | 'inn' | 'tavern' | 'temple' | 'keep' | 'civic' | 'guild' | 'shop' | 'dock' | 'district';
+
+/** A place of note in a settlement (the city view). */
+export interface SitePlace {
+  id: string;
+  kind: PlaceKind;
+  name: string;
+  lon: number;
+  lat: number;
+  /** The quarter it is in. */
+  quarter: string;
+  about: string;
+  /** The building's part in the town (inn, smithy, guild:mages...). */
+  role?: string;
+}
+
+export interface SiteInfo {
+  id: string;
+  name: string;
+  tier: string;
+  population: number;
+  lon: number;
+  lat: number;
+  coreM: number;
+  radiusM: number;
+  walls: boolean;
+  quarters: { name: string; lon: number; lat: number }[];
+  places: SitePlace[];
+}
+
+/** A settlement's plan drawn as an image, and the box (lon/lat) it covers. */
+export interface PlanImage {
+  id: string;
+  bitmap: ImageBitmap;
+  west: number;
+  south: number;
+  east: number;
+  north: number;
 }
 
 export type ToWorker =
@@ -143,7 +196,11 @@ export type ToWorker =
   /** What character creation needs of the world. */
   | { type: 'catalogue'; id: number }
   /** Personal names of a culture, from a seed. */
-  | { type: 'names'; id: number; culture: number; seed: string; count: number };
+  | { type: 'names'; id: number; culture: number; seed: string; count: number }
+  /** A settlement's places of note and its gates (lon/lat help find a village). */
+  | { type: 'site'; id: number; siteId: string; lon?: number; lat?: number }
+  /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
+  | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean };
 
 export type FromWorker =
   | { type: 'progress'; stage: string; pct: number }
@@ -155,4 +212,6 @@ export type FromWorker =
   | { type: 'area'; id: number; area: TravelArea }
   | { type: 'catalogue'; id: number; catalogue: Catalogue }
   | { type: 'names'; id: number; male: PersonName[]; female: PersonName[] }
+  | { type: 'site'; id: number; site: SiteInfo | null; gates: Gate[] }
+  | { type: 'plan'; id: number; image: PlanImage | null }
   | { type: 'error'; message: string };

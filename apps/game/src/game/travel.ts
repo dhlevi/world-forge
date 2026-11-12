@@ -7,10 +7,20 @@ import { LocalFrame } from '@worldforge/core/towns/plan';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { BIOME_NAMES } from '@worldforge/core/gen/biomes';
 import type { Game } from './game';
-import type { RouteStep } from '../worker/protocol';
+import type { Gate, RouteStep, SiteInfo } from '../worker/protocol';
 import { TRAVEL_SIGHT_M } from './discovery';
 
 export type LL = [number, number];
+
+/** A settlement travelled to: the party makes for one of its gates, not its middle. */
+export interface DestSite {
+  id: string;
+  name: string;
+  tier: string;
+  lon: number;
+  lat: number;
+  gate?: Gate;
+}
 
 /** Real milliseconds per step at each speed. */
 export const SPEEDS = [{ label: 'Slow', ms: 260 }, { label: 'Steady', ms: 90 }, { label: 'Fast', ms: 25 }];
@@ -58,6 +68,14 @@ export class Travel {
   stopAtDusk = true;
   /** How far the party sees where it stands now (m). */
   sightM = TRAVEL_SIGHT_M;
+  /** The settlement being travelled to, if the destination is one. */
+  destSite: DestSite | null = null;
+  /** Where the route actually leads (a gate), if not the destination itself. */
+  private goal: LL | null = null;
+  /** Asks the worker for a settlement's gates (set by the play view). */
+  requestSite: ((id: string, at: { lon: number; lat: number }) => Promise<{ site: SiteInfo | null; gates: Gate[] }>) | null = null;
+  /** Called on arriving: at a settlement (its gate), or at a point. */
+  onArrive: (site: DestSite | null) => void = () => {};
   private timer = 0;
   /** Called whenever something changed (for the view). */
   onChange: () => void = () => {};
@@ -102,10 +120,30 @@ export class Travel {
     return [way, land].filter(Boolean).join(', ');
   }
 
-  async setDest(ll: LL, name = ''): Promise<void> {
+  async setDest(ll: LL, name = '', site?: DestSite): Promise<void> {
     this.stop();
     this.dest = ll;
     this.destName = name;
+    this.destSite = site ? { ...site } : null;
+    this.goal = null;
+    if (site && this.requestSite) {
+      // Make for the way in nearest the party.
+      const r = await this.requestSite(site.id, site);
+      const [plon, plat] = this.party();
+      const k = Math.cos((plat * Math.PI) / 180);
+      let best: Gate | undefined, bd = Infinity;
+      for (const g of r.gates) {
+        const d = Math.hypot((g.lon - plon) * k, g.lat - plat);
+        if (d < bd) {
+          bd = d;
+          best = g;
+        }
+      }
+      if (best && this.destSite) {
+        this.destSite.gate = best;
+        this.goal = [best.lon, best.lat];
+      }
+    }
     await this.plan();
   }
 
@@ -114,7 +152,7 @@ export class Travel {
     this.planning = true;
     this.onChange();
     const from: [number, number] = [Math.floor(this.game.px / CHUNK), Math.floor(this.game.py / CHUNK)];
-    const r = await this.requestRoute(from, this.dest);
+    const r = await this.requestRoute(from, this.goal ?? this.dest);
     this.planning = false;
     if (!r.steps) {
       this.steps = [];
@@ -147,6 +185,8 @@ export class Travel {
     this.i = 0;
     this.dest = null;
     this.destName = '';
+    this.destSite = null;
+    this.goal = null;
     this.onChange();
   }
 
@@ -192,10 +232,31 @@ export class Travel {
 
   private arrive(): void {
     this.running = false;
-    this.game.say(this.destName ? `You arrive at ${this.destName}.` : 'You reach the place you were making for.');
+    const site = this.destSite;
+    if (site?.gate) {
+      // Stand at the gate itself, not the middle of its chunk.
+      const p = this.frame.fromLL(site.gate.lon, site.gate.lat);
+      this.game.px = Math.floor(p[0] / TILE_M);
+      this.game.py = Math.floor(-p[1] / TILE_M);
+      const g = site.gate;
+      this.game.say(g.walled ? `You arrive at ${site.name}, at ${g.name}.` : g.road ? `You come into ${site.name} by the ${g.road}.` : `You come to ${site.name}.`);
+    } else this.game.say(this.destName ? `You arrive at ${this.destName}.` : 'You reach the place you were making for.');
     this.steps = [];
     this.i = 0;
     this.dest = null;
+    this.destSite = null;
+    this.goal = null;
+    this.game.updateHud();
+    this.onChange();
+    this.onArrive(site);
+  }
+
+  /** Puts the party at a place (lon/lat), as when leaving a town by one of its gates. */
+  placeAt(lon: number, lat: number): void {
+    const p = this.frame.fromLL(lon, lat);
+    this.game.px = Math.floor(p[0] / TILE_M);
+    this.game.py = Math.floor(-p[1] / TILE_M);
+    this.game.updateHud();
     this.onChange();
   }
 }

@@ -210,6 +210,23 @@ a city of 50,000 contained, with an artistic city map.
 
 **Decided (to refine in play): a city view first, the streets always there to walk.**
 
+*Built (a first pass):*
+
+- **Settlements on the travel map:** at the Country scale, every discovered town, city and
+  village is drawn as its own plan (walls, streets, buildings, fields).
+- **Arriving:** travelling to a settlement makes for its way in nearest the party (a gate in its
+  walls, or where a road reaches its edge) and stops there, never in a building. Zooming in
+  anywhere puts the party on open ground out of doors.
+- **Towns and cities open the city view; villages open straight onto the local map.** On the
+  local map, V opens the city view of the town the party is in.
+- **The city view:** the illustrated plan, panned and zoomed, with the places of note marked:
+  gates and ways in, markets, inns, taverns, temples, the keep, guilds and orders, halls,
+  workshops and shops, the docks, and districts (from the generator's labels). Going to a place
+  takes the time it takes to walk. Each place has a short menu scene: a meal, a room for the night
+  or news at an inn, a drink at a tavern, prayer at a temple, a look at the goods in a market or
+  shop (trade to come), looking around, walking in on the local map at that place, or leaving by
+  a gate onto the travel map.
+
 - **The city view:** entering a city or large town opens its illustrated plan (the atlas's
   illustrated style), with its quarters and its places of note: gates, market, taverns and inns,
   temples, guildhalls, the keep, the docks, workshops, the homes of people you know. Places are

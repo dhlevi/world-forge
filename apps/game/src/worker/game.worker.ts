@@ -11,8 +11,9 @@ import { baronyAt } from '@worldforge/core/export/gamedata';
 import { CULTURES } from '@worldforge/core/names/cultures';
 import { personName } from '@worldforge/core/lore/names';
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
-import type { FromWorker, StartSite, ToWorker, LocalSite } from './protocol';
+import type { FromWorker, StartSite, ToWorker, LocalSite, TravelArea } from './protocol';
 import { catalogue, cultureOf, regionAt, resetCatalogue } from './catalogue';
+import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo } from './sites';
 
 let world: GeneratedWorld | null = null;
 let local: LocalWorld | null = null;
@@ -47,8 +48,10 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       local = null;
       tiles = null;
       resetCatalogue();
+      forgetSites();
       world = generateWorld(m.settings, (stage, pct) => post({ type: 'progress', stage, pct }));
       tiles = new TileRenderer(world.raster, world.rivers);
+      rememberSites(world.settlements);
       const starts = world.settlements.filter((s) => s.tier !== 'village').sort((a, b) => b.population - a.population).map(startOf);
       const summary = {
         cities: starts.filter((s) => s.tier === 'city').length,
@@ -102,8 +105,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         if (!c.some((p) => inBox(p[0], p[1]))) continue;
         roads.push({ cls: f.properties.cls, pts: c.map((p) => [p[0], p[1]] as [number, number]) });
       }
-      const places: { id: string; name: string; tier: string; lon: number; lat: number; kind?: string }[] = [];
-      for (const s of world.settlements) if (inBox(s.lon, s.lat)) places.push({ id: s.id, name: s.name ?? s.id, tier: s.tier, lon: s.lon, lat: s.lat });
+      const places: TravelArea['places'] = [];
+      for (const s of world.settlements) if (inBox(s.lon, s.lat)) places.push({ id: s.id, name: s.name ?? s.id, tier: s.tier, lon: s.lon, lat: s.lat, radiusM: s.radiusM });
       if (m.fine) {
         for (let by = Math.floor(m.south); by <= Math.floor(m.north); by++) for (let bx = Math.floor(m.west); bx <= Math.floor(m.east); bx++) {
           const blk = local.towns.blockAt(bx, by);
@@ -111,7 +114,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
             const c = t.geometry.coordinates;
             if (c.some((p) => inBox(p[0], p[1]))) roads.push({ cls: 'track', pts: c.map((p) => [p[0], p[1]] as [number, number]) });
           }
-          for (const v of blk.villages) if (inBox(v.lon, v.lat)) places.push({ id: v.id, name: v.name ?? '', tier: 'village', lon: v.lon, lat: v.lat, kind: v.kind });
+          rememberSites(blk.villages);
+          for (const v of blk.villages) if (inBox(v.lon, v.lat)) places.push({ id: v.id, name: v.name ?? '', tier: 'village', lon: v.lon, lat: v.lat, kind: v.kind, radiusM: v.radiusM });
           for (const l of blk.lairs) if (inBox(l.lon, l.lat) && (l.kind === 'cave' || l.kind === 'deep')) places.push({ id: l.id, name: l.en ?? l.name, tier: 'lair', lon: l.lon, lat: l.lat, kind: l.kind });
           for (const d of blk.dungeons) if (!d.town && inBox(d.lon, d.lat)) places.push({ id: d.id, name: d.en ?? d.name, tier: 'lair', lon: d.lon, lat: d.lat, kind: d.kind });
         }
@@ -128,6 +132,24 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         female.push(personName(m.culture, true, r));
       }
       post({ type: 'names', id: m.id, male, female });
+    } else if (m.type === 'site') {
+      if (!local) throw new Error('No game started.');
+      const s = findSite(local.towns, m.siteId, m.lon, m.lat);
+      if (!s) {
+        post({ type: 'site', id: m.id, site: null, gates: [] });
+        return;
+      }
+      const feats = planOf(local.towns, s);
+      post({ type: 'site', id: m.id, site: siteInfo(s, feats), gates: gatesOf(s, feats) });
+    } else if (m.type === 'plan') {
+      if (!local) throw new Error('No game started.');
+      const s = findSite(local.towns, m.siteId, m.lon, m.lat);
+      if (!s) {
+        post({ type: 'plan', id: m.id, image: null });
+        return;
+      }
+      const image = planImage(s, local.towns, { mpp: m.mpp, radius: m.radius, illustrated: m.illustrated });
+      post({ type: 'plan', id: m.id, image }, [image.bitmap]);
     } else if (m.type === 'chunk') {
       if (!local) throw new Error('No game started.');
       const c = local.chunk(m.cx, m.cy);

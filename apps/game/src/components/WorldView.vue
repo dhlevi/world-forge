@@ -5,7 +5,7 @@
  * marked. Clicking a place chooses where to begin.
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import type { StartSite, ViewLayer, TravelArea } from '../worker/protocol';
+import type { StartSite, ViewLayer, TravelArea, PlanImage } from '../worker/protocol';
 
 type LL = [number, number];
 
@@ -32,7 +32,9 @@ const props = withDefaults(defineProps<{
   fog?: ((lon: number, lat: number) => number) | null;
   /** Changes whenever the fog does, to redraw. */
   fogVersion?: number;
-}>(), { chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, fogVersion: 0 });
+  /** Settlements' plans, drawn over the land (travel map, close in). */
+  plans?: PlanImage[];
+}>(), { chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, fogVersion: 0, plans: () => [] });
 const emit = defineEmits<{ choose: [id: string]; pick: [ll: LL]; view: [box: { west: number; south: number; east: number; north: number; km: number }]; level: [i: number] }>();
 
 const box = ref<HTMLDivElement>();
@@ -187,7 +189,8 @@ const c0w = () => Math.round(W * dpr), c0h = () => Math.round(H * dpr);
 
 function draw(): void {
   const c = cv.value;
-  if (!c) return;
+  // Hidden (another screen over it): nothing to draw into.
+  if (!c || W < 1 || H < 1) return;
   const g = c.getContext('2d')!;
   g.setTransform(dpr, 0, 0, dpr, 0, 0);
   g.fillStyle = '#b6ccd0';
@@ -227,6 +230,14 @@ function draw(): void {
     }
   }
   pump();
+  // Settlements' own plans: walls, streets, buildings, fields.
+  if (zoom >= 11) {
+    for (const p of props.plans) {
+      const [x0, y0] = toScreen(...merc(p.west, p.north)), [x1, y1] = toScreen(...merc(p.east, p.south));
+      if (x1 < 0 || y1 < 0 || x0 > W || y0 > H) continue;
+      g.drawImage(p.bitmap, x0, y0, x1 - x0, y1 - y0);
+    }
+  }
   drawFog(g);
   // Roads and tracks (travel map), where they have been discovered.
   if (props.area) {
@@ -494,7 +505,7 @@ watch(() => props.chosen, (id) => {
 });
 watch(() => props.layer, () => redraw());
 watch(() => props.level, (i) => setLevel(i));
-watch(() => [props.route, props.dest, props.area, props.fogVersion], () => redraw());
+watch(() => [props.route, props.dest, props.area, props.fogVersion, props.plans], () => redraw());
 // While travelling, the view follows the party when it walks near the edge; otherwise the view
 // stays where the player has panned it.
 watch(() => props.party, (p, old) => {

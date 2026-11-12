@@ -100,6 +100,23 @@ few that do are the memorable ones.
   wrong. Knowledge skills and senses decide how much a clue tells.
 - **Deadlines are known only if someone said so;** the world's clocks (below) run regardless.
 
+### The task log
+
+**Decided (design notes for now):** what character creation leaves owing (a debt, a favour owed
+or owing, a feud, a rival, a promise) should appear as tasks in a task log, alongside the quests.
+
+**Proposed.**
+
+- **Every obligation is a task:** "You owe Sigurd 60 copper" is a task with the creditor (a
+  person record, see characters.md, People in your life), the amount and, if one was set, a date
+  after which the creditor comes looking (with interest, threats or the law).
+- **Ties make tasks and premises:** a contact who owes a favour is a resource to call on; a rival
+  or a feud is a threat the storyteller can bring into play; a lost love or a dead parent can
+  become a quest premise, as can the Omen card.
+- **One log for all:** tasks (small, personal obligations), jobs and the larger quest structures
+  share the journal, written in the character's own words as above, with what is known, who is
+  involved and where they were last heard of.
+
 ## Rewards
 
 **Decided:** a reward has a type and tiers, perhaps by performance.

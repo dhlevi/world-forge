@@ -27,6 +27,8 @@ export interface Hud {
   look: string[];
   mode: 'play' | 'look' | 'open' | 'close';
   loading: number;
+  /** The town or city the wanderer is in (for its city view), if any. */
+  town?: { id: string; name: string; tier: string } | null;
 }
 
 const vkey = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);
@@ -191,15 +193,24 @@ export class Game {
    * (after travelling, the travel map puts them at a chunk's middle). False until the chunks there
    * have come.
    */
+  /** Open ground: walkable and out of doors (not a building's floor). */
+  private outdoors(x: number, y: number): boolean {
+    return this.map.passable(x, y) && !GROUND_TILES[this.map.ground(x, y)].name.startsWith('floor_');
+  }
+
+  /**
+   * Puts the wanderer on open ground out of doors near where they are (after travelling, or
+   * arriving at a place in a town): never inside a building or a wall.
+   */
   ensureFooting(): boolean {
     if (!this.map.loaded(this.px, this.py)) return false;
-    if (this.map.passable(this.px, this.py)) return true;
-    for (let r = 1; r <= 48; r++) {
+    if (this.outdoors(this.px, this.py)) return true;
+    for (let r = 1; r <= 64; r++) {
       let best: [number, number] | null = null, bd = Infinity;
       for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
         const x = this.px + dx, y = this.py + dy;
-        if (!this.map.passable(x, y)) continue;
+        if (!this.map.loaded(x, y) || !this.outdoors(x, y)) continue;
         const d = dx * dx + dy * dy;
         if (d < bd) {
           bd = d;
@@ -238,6 +249,7 @@ export class Game {
       }
     }
     this.hud.place = t?.area ? cap(t.area) : inside ? `${inside.name}` : 'The wilds';
+    this.hud.town = inside && inside.tier !== 'village' ? { id: inside.id, name: inside.name, tier: inside.tier } : null;
     if (inside) this.hud.where = `${inside.name}, a ${inside.tier}`;
     else if (nearest) {
       const dx = nearest.x - mx, dy = nearest.y - my;

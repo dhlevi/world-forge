@@ -52,6 +52,31 @@ const tiles = new Tileset();
 const mode = ref<'local' | 'travel'>('local');
 const travel = new Travel(game, [o.site.lon, o.site.lat], app.worker.requestRoute);
 const travelRef = ref<InstanceType<typeof TravelView> | null>(null);
+travel.requestSite = app.worker.site;
+// Arriving at a town or city opens its city view; a village opens straight onto the local map.
+travel.onArrive = (site) => {
+  if (!site) return;
+  const at = site.gate ? { lon: site.gate.lon, lat: site.gate.lat } : { lon: site.lon, lat: site.lat };
+  if (site.tier === 'town' || site.tier === 'city') void screen.openCity(site.id, at);
+  else toLocal();
+};
+screen.hooks = {
+  now: () => game.time,
+  advance: (sec) => {
+    game.time += Math.max(0, Math.round(sec));
+    game.updateHud();
+  },
+  say: (t) => game.say(t),
+  party: () => travel.party(),
+  toLocalAt: (lon, lat) => {
+    travel.placeAt(lon, lat);
+    toLocal();
+  },
+  toTravelAt: (lon, lat) => {
+    travel.placeAt(lon, lat);
+    if (mode.value !== 'travel') toTravel();
+  },
+};
 
 /**
  * What the character knew of the world before setting out (their occupations and standing,
@@ -117,7 +142,7 @@ const redraw = () => {
 };
 game.onChange = redraw;
 // For poking at in the browser console while developing.
-if (import.meta.env.DEV) Object.assign(window, { __game: game, __renderer: renderer });
+if (import.meta.env.DEV) Object.assign(window, { __game: game, __renderer: renderer, __travel: travel, __play: screen });
 
 screen.onChunk = (c: ChunkData) => {
   map.add(c);
@@ -184,6 +209,8 @@ function onKey(e: KeyboardEvent): void {
   } else if (e.code === 'KeyC') {
     hud.mode = 'close';
     game.say('Close in which direction?');
+  } else if (e.code === 'KeyV' && hud.town) {
+    void screen.openCity(hud.town.id);
   } else if (e.code === 'KeyX') {
     hud.mode = 'look';
     game.cursor = [game.px, game.py];
@@ -284,6 +311,7 @@ onBeforeUnmount(() => {
       :starts="app.state.starts"
       :request-tile="app.worker.requestTile"
       :request-area="app.worker.requestArea"
+      :request-plan="app.worker.plan"
       @zoom-in="toLocal"
     />
     <aside class="panel">
@@ -307,10 +335,12 @@ onBeforeUnmount(() => {
         <div><b>Zoom</b> + and -</div>
         <div><b>Travel map</b> T (and T or Z to come back)</div>
         <div><b>Character</b> @</div>
+        <div><b>Town view</b> V, in a town or city</div>
         <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>
       <div class="hint" v-else>Press ? for keys.</div>
       <button v-if="mode === 'local'" class="travel-btn" @click="toTravel">Travel map (T)</button>
+      <button v-if="mode === 'local' && hud.town" class="travel-btn" @click="screen.openCity(hud.town.id)">View {{ hud.town.name }} (V)</button>
       <button v-else class="travel-btn" @click="toLocal">Back on foot (T)</button>
       <div class="foot">
         <span>{{ tilesetNote }}</span>

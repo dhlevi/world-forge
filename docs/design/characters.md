@@ -273,6 +273,53 @@ travelling at scale.
 - **Mounts, pack animals and carts** carry far more; carts and wagons need roads (the
   generator's roads and tracks), and animals need food, water and care.
 
+**Decided (after the first build): inventory management is to be built** next among the
+character's systems: packs and bags, equipping and unequipping, and wear and uses.
+
+**Proposed: how it works.**
+
+- **Containers hold items, and can be nested:** a pouch on a belt, a satchel over a shoulder, a
+  pack on the back, saddlebags on a horse. Each container has its own weight and bulk limits, and
+  where it is worn (belt, shoulder, back, hand). What can be reached quickly (belt, hands) differs
+  from what must be dug out of a pack (taking time, out of reach in a fight).
+- **Equipping** puts an item in a slot: a hand (or both, for a two-handed weapon), or a worn
+  layer on the body parts it covers (underclothes, clothes, padding, mail, outer garment, cloak,
+  headgear, footwear, gloves). Layers stack in order and cannot be doubled (two mail shirts), and
+  armour must fit the body (height and build).
+- **Wear and uses:** every item has a condition (from new to ruined) and, where it fits, uses
+  (arrows, bandages, torches, food portions, a waterskin's water). Use wears it: a blade dulls and
+  nicks, boots wear through with walking, clothes tear and soak, mail rusts in the wet. Condition
+  sets how well it works and what it is worth; repair takes the matching craft (Smithing,
+  Tailoring, Hideworking, Carpentry) and materials.
+- **Quality and make:** items carry a quality (poor, common, fine, masterwork) and their maker's
+  culture, which sets look, price and how long they last.
+- **On the ground:** items can be dropped, picked up, stored in chests and left in a camp, and
+  stay where they were left (saved with the game's changes).
+- **The view:** an inventory screen as a popup over the map, with the body and its slots, the
+  containers and what each holds, total weight and bulk against the limits, and the encumbrance
+  that results.
+
+## People in your life
+
+**Decided (design notes for now; built with the NPCs):** the people character creation names
+(parents, siblings, friends, lovers, masters, contacts, rivals, creditors) should be real people
+of the world, linked from the character: their information can be seen, and they can be found
+and met in play.
+
+**Proposed.**
+
+- **Each tie becomes a person record** when the character is made: name, sex, age, trade, where
+  they live (the home town, a household in it, or wherever their life took them), alive or dead,
+  and how they feel about the character. They are made in full (as actors) only when met, like
+  every other person in a city (see navigation.md, Cities and towns).
+- **The character sheet links to them:** a list of people known, each with what the character
+  knows of them, when last seen and where they were.
+- **Finding them:** family live in the home town's household, which is marked on its city view;
+  others are known by town or by rumour, and finding them uses the rumours and marks of
+  navigation.md (asking around, a mark with a ring of doubt).
+- **They live on:** in the world's summary ticks they can move, prosper, fall ill or die, and send
+  word (letters, messengers) that becomes news or a quest.
+
 ## Mood
 
 **Decided:** there is a mood meter, made of **moodlets**: timed positive and negative effects,

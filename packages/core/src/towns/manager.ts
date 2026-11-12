@@ -345,6 +345,12 @@ export class TownManager {
     return { type: 'FeatureCollection', features };
   }
 
+  /** A settlement's illustrated faces (towns/illustrate.ts), for drawing its plan in that style. */
+  illustratedPlan(s: Settlement, plan?: PlanFeature[]): PlanFeature[] {
+    this.planSite.set(s.id, s);
+    return this.illustration(s.id, plan ?? this.planOf(s));
+  }
+
   /** A plan's illustrated faces (see towns/illustrate.ts), drawn from the finished plan. */
   private illustration(id: string, f: PlanFeature[]): PlanFeature[] {
     let ill = this.illus.get(id);

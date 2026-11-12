@@ -13,6 +13,20 @@ import { Cast } from '../actors/cast';
 import { Identity } from '../actors/components';
 import PlayView from '../components/PlayView.vue';
 import SheetView from './views/SheetView.vue';
+import { CityScreen } from './city';
+
+/** What the play view lets other screens do with the game (set by components/PlayView.vue). */
+export interface PlayHooks {
+  /** Game time (s), and letting it pass. */
+  now(): number;
+  advance(seconds: number): void;
+  say(text: string): void;
+  /** The party's place (lon/lat). */
+  party(): [number, number];
+  /** Onto the local map at a place, or the travel map. */
+  toLocalAt(lon: number, lat: number): void;
+  toTravelAt(lon: number, lat: number): void;
+}
 
 export interface PlayOptions {
   site: StartSite;
@@ -35,6 +49,7 @@ export class PlayScreen extends Screen {
   onKey: (e: KeyboardEvent) => boolean = () => false;
   onChunk: (c: ChunkData) => void = () => {};
   onResume: () => void = () => {};
+  hooks: PlayHooks | null = null;
   private offChunk: () => void = () => {};
 
   constructor(readonly app: GameApp, readonly o: PlayOptions) {
@@ -76,6 +91,36 @@ export class PlayScreen extends Screen {
       return true;
     }
     return this.onKey(e);
+  }
+
+  now(): number {
+    return this.hooks?.now() ?? 0;
+  }
+  advance(seconds: number): void {
+    this.hooks?.advance(seconds);
+  }
+  say(text: string): void {
+    this.hooks?.say(text);
+  }
+  toLocalAt(lon: number, lat: number): void {
+    this.hooks?.toLocalAt(lon, lat);
+  }
+  toTravelAt(lon: number, lat: number): void {
+    this.hooks?.toTravelAt(lon, lat);
+  }
+
+  /** Opens a town's or city's city view, with the party at the place nearest `at` (or where it stands). */
+  async openCity(siteId: string, at?: { lon: number; lat: number }): Promise<void> {
+    const where = at ?? (() => {
+      const p = this.hooks?.party();
+      return p ? { lon: p[0], lat: p[1] } : undefined;
+    })();
+    const r = await this.app.worker.site(siteId, where);
+    if (!r.site || !r.site.places.length) {
+      this.say('There is nothing here to see from afar; walk in instead.');
+      return;
+    }
+    if (this.active) this.manager?.push(new CityScreen(this, r.site, where ?? { lon: r.site.lon, lat: r.site.lat }));
   }
 
   showSheet(): void {
