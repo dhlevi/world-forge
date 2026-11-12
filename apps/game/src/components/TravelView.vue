@@ -3,7 +3,7 @@
  * The travel map: the world around the party at three fixed scales, with roads, places and the
  * route; choose a destination, travel with the clock running, stop, or zoom in to the local map.
  */
-import { computed, onBeforeUnmount, onMounted, ref, shallowRef } from 'vue';
+import { computed, onBeforeUnmount, ref, shallowRef } from 'vue';
 import WorldView from './WorldView.vue';
 import { SPEEDS, type LL, type Travel } from '../game/travel';
 import { TILE_M } from '@worldforge/core/local/chunk';
@@ -97,11 +97,9 @@ function onKey(e: KeyboardEvent): void {
   e.preventDefault();
 }
 
-onMounted(() => window.addEventListener('keydown', onKey));
-onBeforeUnmount(() => {
-  window.removeEventListener('keydown', onKey);
-  props.travel.stop();
-});
+// Keys come from the play screen (engine/screens.ts sends them to the top screen only).
+defineExpose({ key: onKey });
+onBeforeUnmount(() => props.travel.stop());
 </script>
 
 <template>

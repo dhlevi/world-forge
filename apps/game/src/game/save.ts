@@ -12,6 +12,7 @@ import { GENERATOR_VERSION } from '@worldforge/core/version';
 import { LOCAL_MAP_VERSION } from '@worldforge/core/local/chunk';
 import { desktop } from '../desktop';
 import type { Game } from './game';
+import type { ActorData } from '../actors/actor';
 
 export const SAVE_FORMAT = 'world-forge.save';
 export const SAVE_VERSION = 1;
@@ -42,6 +43,8 @@ export interface SaveFile {
   zoom?: number;
   /** Discovered cells of the travel map (x0, y0, x1, y1, ...; game/discovery.ts). */
   discovered?: number[];
+  /** The player's character (actors/actor.ts); none in games saved before characters. */
+  character?: ActorData;
 }
 
 /** The short form shown in the list of saves. */
@@ -67,14 +70,14 @@ export function unpackBits(b64: string, n: number): Uint8Array {
 }
 
 /** A save of the game as it stands. */
-export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number }): SaveFile {
+export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number; character?: ActorData }): SaveFile {
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
     generator: GENERATOR_VERSION,
     localMap: LOCAL_MAP_VERSION,
     id: meta.id,
-    title: `${meta.siteName}, world "${meta.settings.seed}"`,
+    title: meta.character ? `${(meta.character.components.identity as { full?: string })?.full ?? 'The wanderer'} of ${meta.siteName}, world "${meta.settings.seed}"` : `${meta.siteName}, world "${meta.settings.seed}"`,
     savedAt: new Date().toISOString(),
     settings: { ...meta.settings },
     start: { siteId: meta.siteId, siteName: meta.siteName },
@@ -89,6 +92,7 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     log: game.hud.log.slice(-40),
     zoom: meta.zoom,
     discovered: game.discovery.export(),
+    ...(meta.character ? { character: meta.character } : {}),
   };
 }
 

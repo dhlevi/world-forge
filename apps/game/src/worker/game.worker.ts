@@ -9,7 +9,10 @@ import { TileRenderer } from '@worldforge/core/render/tiles';
 import { TravelGrid } from '@worldforge/core/local/travel';
 import { baronyAt } from '@worldforge/core/export/gamedata';
 import { CULTURES } from '@worldforge/core/names/cultures';
+import { personName } from '@worldforge/core/lore/names';
+import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { FromWorker, StartSite, ToWorker, LocalSite } from './protocol';
+import { catalogue, cultureOf, regionAt, resetCatalogue } from './catalogue';
 
 let world: GeneratedWorld | null = null;
 let local: LocalWorld | null = null;
@@ -17,19 +20,24 @@ let tiles: TileRenderer | null = null;
 let travel: TravelGrid | null = null;
 
 /** The realm a place lies in: the top of its barony's chain of lieges. */
-function realmAt(w: GeneratedWorld, lon: number, lat: number): string | undefined {
+function realmAt(w: GeneratedWorld, lon: number, lat: number): { name: string; id: number } | undefined {
   let u = w.politics.units[baronyAt(w, lon, lat)];
   for (let guard = 0; u && u.parent >= 0 && guard < 12; guard++) u = w.politics.units[u.parent];
-  return u?.name;
+  return u ? { name: u.name, id: u.id } : undefined;
 }
 
 const post = (m: FromWorker, transfer: Transferable[] = []) => (self as unknown as Worker).postMessage(m, transfer);
 
-const startOf = (s: Settlement): StartSite => ({
-  id: s.id, name: s.name ?? s.id, tier: s.tier, population: s.population, lon: s.lon, lat: s.lat,
-  realm: world ? realmAt(world, s.lon, s.lat) : undefined,
-  culture: s.culture !== undefined ? CULTURES[s.culture]?.name : undefined,
-});
+const startOf = (s: Settlement): StartSite => {
+  const realm = world ? realmAt(world, s.lon, s.lat) : undefined;
+  const ci = world ? cultureOf(world, s) : s.culture;
+  return {
+    id: s.id, name: s.name ?? s.id, tier: s.tier, population: s.population, lon: s.lon, lat: s.lat,
+    realm: realm?.name, realmId: realm?.id,
+    culture: ci !== undefined ? CULTURES[ci]?.name : undefined, cultureIndex: ci,
+    coastal: !!s.coastal, university: !!s.university, region: world ? regionAt(world, s.lon, s.lat) : undefined,
+  };
+};
 
 self.onmessage = (e: MessageEvent<ToWorker>) => {
   const m = e.data;
@@ -38,6 +46,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       const t0 = performance.now();
       local = null;
       tiles = null;
+      resetCatalogue();
       world = generateWorld(m.settings, (stage, pct) => post({ type: 'progress', stage, pct }));
       tiles = new TileRenderer(world.raster, world.rivers);
       const starts = world.settlements.filter((s) => s.tier !== 'village').sort((a, b) => b.population - a.population).map(startOf);
@@ -108,6 +117,17 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         }
       }
       post({ type: 'area', id: m.id, area: { roads, places } });
+    } else if (m.type === 'catalogue') {
+      if (!world) throw new Error('No world yet.');
+      post({ type: 'catalogue', id: m.id, catalogue: catalogue(world) });
+    } else if (m.type === 'names') {
+      const r = mulberry32(hashString(`${m.seed}#names#${m.culture}`));
+      const male = [], female = [];
+      for (let i = 0; i < m.count; i++) {
+        male.push(personName(m.culture, false, r));
+        female.push(personName(m.culture, true, r));
+      }
+      post({ type: 'names', id: m.id, male, female });
     } else if (m.type === 'chunk') {
       if (!local) throw new Error('No game started.');
       const c = local.chunk(m.cx, m.cy);

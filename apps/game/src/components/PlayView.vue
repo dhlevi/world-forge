@@ -8,27 +8,20 @@ import { GameMap } from '../game/map';
 import { Game, type Hud } from '../game/game';
 import { Renderer } from '../game/renderer';
 import { Tileset } from '../game/tileset';
-import type { ChunkData, LocalSite, RouteStep, StartSite, TravelArea, ViewLayer } from '../worker/protocol';
+import type { ChunkData } from '../worker/protocol';
 import TravelView from './TravelView.vue';
-import { Travel, type LL } from '../game/travel';
+import { Travel } from '../game/travel';
 import { HOME_KNOWN_M } from '../game/discovery';
-import type { WorldSettings } from '@worldforge/core/settings';
-import { applySave, exportSave, makeSave, writeSave, type SaveFile } from '../game/save';
+import { applySave, exportSave, makeSave, writeSave } from '../game/save';
 import { desktop } from '../desktop';
+import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
+import { Knowledge, type Moodlet } from '../actors/components';
+import type { PlayScreen } from '../screens/play';
 
-const props = defineProps<{
-  site: StartSite; start: [number, number]; sites: LocalSite[]; request: (cx: number, cy: number) => void;
-  /** The game's id and world, for saving. */
-  gameId: string; settings: WorldSettings;
-  /** A saved game to carry on from. */
-  restore?: SaveFile | null;
-  /** For the travel map. */
-  starts: StartSite[];
-  requestTile: (z: number, x: number, y: number, layer: ViewLayer) => Promise<ImageBitmap | null>;
-  requestArea: (box: { west: number; south: number; east: number; north: number }, fine: boolean) => Promise<TravelArea>;
-  requestRoute: (from: [number, number], to: LL) => Promise<{ steps: RouteStep[] | null; partial: boolean }>;
-}>();
-const emit = defineEmits<{ sink: [f: (c: ChunkData) => void]; quit: [] }>();
+const props = defineProps<{ screen: PlayScreen }>();
+const screen = props.screen;
+const app = screen.app;
+const o = screen.o;
 
 const el = ref<HTMLDivElement>();
 const hud = reactive<Hud>({ place: '', where: '', clock: '', log: [], look: [], mode: 'play', loading: 0 });
@@ -36,22 +29,63 @@ const tilesetNote = ref('');
 const showHelp = ref(false);
 
 let renderer_zoom = 2;
-const map = new GameMap((cx, cy) => props.request(cx, cy));
-const game = new Game(map, props.start, props.sites, props.site.name, hud);
-if (!props.restore || !props.restore.discovered) {
+const map = new GameMap((cx, cy) => app.worker.requestChunk(cx, cy));
+const game = new Game(map, o.tile, o.sites, o.site.name, hud);
+const knowledge = screen.player?.get(Knowledge);
+if (!o.restore || !o.restore.discovered) {
   // A new game knows the country about home (older saves: about where they stand).
-  game.discovery.reveal(game.px, game.py, HOME_KNOWN_M);
+  game.discovery.reveal(game.px, game.py, knowledge?.d.homeRadiusM ?? HOME_KNOWN_M);
 }
-if (props.restore) {
-  applySave(game, props.restore);
-  if (!props.restore.discovered) game.discovery.reveal(game.px, game.py, HOME_KNOWN_M);
-  if (props.restore.zoom) renderer_zoom = props.restore.zoom;
+if (o.restore) {
+  applySave(game, o.restore);
+  if (!o.restore.discovered) game.discovery.reveal(game.px, game.py, HOME_KNOWN_M);
+  if (o.restore.zoom) renderer_zoom = o.restore.zoom;
   game.say('You take up where you left off.');
 }
+game.onTime = (t) => {
+  screen.cast.clock(t);
+  screen.describe(t);
+};
+screen.describe(game.time);
 const tiles = new Tileset();
 /** On foot (the local map) or travelling (the travel map). */
 const mode = ref<'local' | 'travel'>('local');
-const travel = new Travel(game, [props.site.lon, props.site.lat], props.requestRoute);
+const travel = new Travel(game, [o.site.lon, o.site.lat], app.worker.requestRoute);
+const travelRef = ref<InstanceType<typeof TravelView> | null>(null);
+
+/**
+ * What the character knew of the world before setting out (their occupations and standing,
+ * actors/creation/resolve.ts): the roads walked and the places seen, laid on the travel map once,
+ * at the start of a new game.
+ */
+async function applyKnowledge(): Promise<void> {
+  const k = knowledge;
+  if (!k || k.d.applied) return;
+  k.d.applied = true;
+  const from: [number, number] = [Math.floor(game.px / CHUNK), Math.floor(game.py / CHUNK)];
+  const byId = new Map(app.state.starts.map((s) => [s.id, s]));
+  for (const p of k.d.places) {
+    const s = byId.get(p.id);
+    if (!s) continue;
+    const q = travel.frame.fromLL(s.lon, s.lat);
+    game.discovery.reveal(Math.floor(q[0] / TILE_M), Math.floor(-q[1] / TILE_M), p.radiusM);
+  }
+  for (const id of k.d.roads) {
+    const s = byId.get(id);
+    if (!s) continue;
+    const r = await app.worker.requestRoute(from, [s.lon, s.lat]);
+    for (const st of r.steps ?? []) game.discovery.reveal(st.cx * CHUNK + CHUNK / 2, st.cy * CHUNK + CHUNK / 2, 1200);
+    const q = travel.frame.fromLL(s.lon, s.lat);
+    game.discovery.reveal(Math.floor(q[0] / TILE_M), Math.floor(-q[1] / TILE_M), 2000);
+  }
+  if (k.d.roads.length || k.d.places.length) game.say('You know something of the country beyond: see the travel map (T).');
+}
+if (!o.restore) {
+  void applyKnowledge();
+  // Setting out: a moodlet for the first day, sent through the messaging service.
+  const p = screen.player;
+  if (p) app.bus.send('actor.moodlet', { id: 'setting-out', text: 'Setting out on the road', value: 3, until: game.time + 86400 } satisfies Moodlet, { to: p.id });
+}
 /** After travelling, the wanderer is set on open ground once the chunks there have come. */
 let needFooting = false;
 
@@ -73,8 +107,9 @@ function toLocal(): void {
 const renderer = new Renderer(tiles);
 renderer.zoom = renderer_zoom;
 let frame = 0;
+let gone = false;
 const redraw = () => {
-  if (frame) return;
+  if (frame || gone) return;
   frame = requestAnimationFrame(() => {
     frame = 0;
     renderer.draw(game);
@@ -84,11 +119,11 @@ game.onChange = redraw;
 // For poking at in the browser console while developing.
 if (import.meta.env.DEV) Object.assign(window, { __game: game, __renderer: renderer });
 
-emit('sink', (c: ChunkData) => {
+screen.onChunk = (c: ChunkData) => {
   map.add(c);
   if (needFooting && game.ensureFooting()) needFooting = false;
   if (mode.value === 'local') game.refresh();
-});
+};
 
 /** Key to direction: arrows, the number pad (with or without Num Lock) and vi keys. */
 const DIR: Record<string, [number, number]> = {
@@ -100,7 +135,6 @@ const DIR: Record<string, [number, number]> = {
 };
 
 function onKey(e: KeyboardEvent): void {
-  if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
   if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey && hud.mode === 'play') {
     if (mode.value === 'local') toTravel();
     else toLocal();
@@ -112,7 +146,7 @@ function onKey(e: KeyboardEvent): void {
     if (e.code === 'KeyS' && (e.ctrlKey || e.metaKey)) {
       e.preventDefault();
       void save();
-    }
+    } else travelRef.value?.key(e);
     return;
   }
   const dir = DIR[e.code];
@@ -171,13 +205,15 @@ function onKey(e: KeyboardEvent): void {
 
 const saving = ref(false);
 /** Game time at the last save, to know whether there is anything new to save. */
-let savedAt = props.restore ? game.time : -1;
+let savedAt = o.restore ? game.time : -1;
+
+const saveMeta = () => ({ id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: renderer.zoom, character: screen.player?.toJSON() });
 
 async function save(quiet = false): Promise<void> {
   if (saving.value) return;
   saving.value = true;
   try {
-    await writeSave(makeSave(game, { id: props.gameId, settings: props.settings, siteId: props.site.id, siteName: props.site.name, zoom: renderer.zoom }));
+    await writeSave(makeSave(game, saveMeta()));
     savedAt = game.time;
     if (!quiet) game.say('Game saved.');
   } catch (err) {
@@ -189,13 +225,13 @@ async function save(quiet = false): Promise<void> {
 }
 
 function exportNow(): void {
-  exportSave(makeSave(game, { id: props.gameId, settings: props.settings, siteId: props.site.id, siteName: props.site.name, zoom: renderer.zoom }));
+  exportSave(makeSave(game, saveMeta()));
   game.say('Saved game exported to a file.');
 }
 
 async function leave(): Promise<void> {
   if (game.time !== savedAt) await save(true);
-  emit('quit');
+  app.toTitle();
 }
 
 // Autosave every few minutes of real time, when something has happened.
@@ -217,15 +253,21 @@ onMounted(async () => {
   await renderer.init(el.value!);
   const n = await tiles.load(import.meta.env.BASE_URL);
   tilesetNote.value = n ? `Tileset: ${tiles.drawn.size} tiles drawn, the rest placeholders.` : 'Placeholder tiles (no tileset in public/tileset).';
-  window.addEventListener('keydown', onKey);
+  screen.onKey = (e) => {
+    onKey(e);
+    return false;
+  };
+  screen.onResume = () => redraw();
   ro.observe(el.value!);
   game.refresh();
 });
 
 onBeforeUnmount(() => {
+  gone = true;
+  if (frame) cancelAnimationFrame(frame);
   clearInterval(autosave);
   offMenu?.();
-  window.removeEventListener('keydown', onKey);
+  screen.onKey = () => false;
   ro.disconnect();
   renderer.app.destroy(true);
 });
@@ -237,13 +279,18 @@ onBeforeUnmount(() => {
     <TravelView
       v-if="mode === 'travel'"
       class="map"
+      ref="travelRef"
       :travel="travel"
-      :starts="starts"
-      :request-tile="requestTile"
-      :request-area="requestArea"
+      :starts="app.state.starts"
+      :request-tile="app.worker.requestTile"
+      :request-area="app.worker.requestArea"
       @zoom-in="toLocal"
     />
     <aside class="panel">
+      <div v-if="screen.state.name" class="who">
+        <a href="#" @click.prevent="screen.showSheet()">{{ screen.state.name }}</a>
+        <span class="dim">{{ screen.state.line }}</span>
+      </div>
       <div class="place">{{ hud.place }}</div>
       <div class="where">{{ hud.where }}</div>
       <div class="clock">{{ hud.clock }}<span v-if="hud.loading"> · making {{ hud.loading }} chunk{{ hud.loading === 1 ? '' : 's' }}</span></div>
@@ -259,6 +306,7 @@ onBeforeUnmount(() => {
         <div><b>Look</b> x, then move the cursor</div>
         <div><b>Zoom</b> + and -</div>
         <div><b>Travel map</b> T (and T or Z to come back)</div>
+        <div><b>Character</b> @</div>
         <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>
       <div class="hint" v-else>Press ? for keys.</div>

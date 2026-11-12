@@ -123,3 +123,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 .travel-bar .check { display: flex; align-items: center; gap: 6px; color: var(--dim); }
 .travel-bar select { padding: 4px 8px; }
 .travel-btn { align-self: flex-start; }
+
+/* The character in the play panel. */
+.who { display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.who a { color: var(--text); font-weight: 600; text-decoration: none; }
+.who a:hover { color: var(--accent); }
+.who .dim { font-size: 0.88em; }

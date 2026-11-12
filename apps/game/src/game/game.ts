@@ -46,6 +46,8 @@ export class Game {
   private fov: InstanceType<typeof FOV.PreciseShadowcasting>;
   /** Called when something on screen changed. */
   onChange: () => void = () => {};
+  /** Called whenever the clock may have moved (after every action and travel step). */
+  onTime: (time: number) => void = () => {};
 
   constructor(readonly map: GameMap, start: [number, number], readonly sites: LocalSite[], readonly startName: string, readonly hud: Hud) {
     [this.px, this.py] = start;
@@ -246,6 +248,7 @@ export class Game {
     if (t) this.hud.where += ` · ${GROUND_TILES[t.ground].look}, ${t.elev} m`;
     this.hud.clock = this.clockText();
     this.hud.loading = this.map.waiting;
+    this.onTime(this.time);
   }
 
   /** What can be told of a tile. */
