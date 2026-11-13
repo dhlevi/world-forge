@@ -31,7 +31,7 @@ export interface SpreadTrace {
  * spread went (see `SpreadTrace`); that changes nothing in the result.
  */
 export function newWorldMask(g: Grid, f: OldWorldFields, settled: number, seed: string, trace?: SpreadTrace): Uint8Array {
-  const { W, H, N } = g;
+  const { W, N } = g;
   const out = new Uint8Array(N);
   if (settled >= 0.999) return out;
   const land = (c: number) => f.height[c] > 0;

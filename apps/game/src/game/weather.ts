@@ -8,6 +8,7 @@ import { hashString } from '@worldforge/core/gen/rng';
 import { dayOfYear, groundAt, lightAt, moonAt, seasonAt, sunAt, sunTimes, weatherAt, type ClimatePoint, type Moon, type Sun, type Weather } from '@worldforge/core/weather/weather';
 import { START_DAY_OF_YEAR, type PlaceClimate } from './calendar';
 import type { Grade } from '../actors/checks';
+import { compassWord } from '../util';
 
 export interface Sky {
   /** Game time (s). */
@@ -23,8 +24,6 @@ export interface Sky {
   doy: number;
 }
 
-const COMPASS = ['north', 'north-east', 'east', 'south-east', 'south', 'south-west', 'west', 'north-west'];
-const compass = (deg: number) => COMPASS[Math.round((((deg % 360) + 360) % 360) / 45) % 8];
 
 /** The wind in words (after Beaufort). */
 export function windWord(ms: number): string {
@@ -124,7 +123,7 @@ export class WeatherService {
 
   static windWords(w: Weather): string {
     const word = windWord(w.windMs);
-    return w.windMs < 0.5 ? 'no wind' : `${word} from the ${compass(w.windFrom)}`;
+    return w.windMs < 0.5 ? 'no wind' : `${word} from the ${compassWord(w.windFrom)}`;
   }
 
   /** What has changed between two skies, for the log. */

@@ -25,6 +25,8 @@ export abstract class Screen {
   /** A key for the view. */
   readonly uid = ++uid;
   manager: ScreenManager | null = null;
+  /** What to stop when the screen is removed (watches it keeps while open). */
+  private stops: (() => void)[] = [];
 
   constructor() {
     // The screen itself is never made reactive (it holds the game's machinery); views read `state`.
@@ -45,6 +47,16 @@ export abstract class Screen {
   /** Whether this screen is on top (reactive, for views). */
   get active(): boolean {
     return this.manager?.top === this;
+  }
+
+  /** Keeps `stop` to be called when this screen is removed (ending a watch it began). */
+  protected whileOpen(stop: () => void): void {
+    this.stops.push(stop);
+  }
+
+  /** Called by the manager after `leave`: ends what the screen kept while open. */
+  ended(): void {
+    for (const stop of this.stops.splice(0)) stop();
   }
 
   /** Removes this screen from the stack. */
@@ -88,6 +100,7 @@ export class ScreenManager {
     const s = this.stack.pop();
     if (!s) return undefined;
     s.leave();
+    s.ended();
     s.manager = null;
     this.top?.resume();
     return s;
@@ -103,6 +116,7 @@ export class ScreenManager {
     if (i < 0) return;
     this.stack.splice(i, 1);
     s.leave();
+    s.ended();
     s.manager = null;
   }
 

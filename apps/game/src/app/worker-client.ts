@@ -8,6 +8,9 @@ import type { MessageDispatcher } from '../engine/messages';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
 
+/** How long a request may take before it is given up (ms): long enough for a city's illustrated plan. */
+export const ASK_TIMEOUT_MS = 120_000;
+
 declare module '../engine/messages' {
   interface MessageTypes {
     'world.progress': { stage: string; pct: number };
@@ -34,10 +37,27 @@ export class WorkerClient {
     this.worker.postMessage(m);
   }
 
-  private ask<T>(make: (id: number) => ToWorker, take: (m: FromWorker) => T): Promise<T> {
+  /**
+   * A request and its answer. It fails (rejects) if the worker reports an error for it, or does
+   * not answer within ASK_TIMEOUT_MS, so that no caller waits for ever.
+   */
+  private ask<T>(make: (id: number) => ToWorker, take: (m: FromWorker) => T, timeoutMs = ASK_TIMEOUT_MS): Promise<T> {
     const id = ++this.nextId;
-    return new Promise((res) => {
-      this.waits.set(id, (m) => res(take(m)));
+    return new Promise((res, rej) => {
+      const timer = setTimeout(() => {
+        if (this.waits.delete(id)) rej(new Error('The world did not answer in time.'));
+      }, timeoutMs);
+      this.waits.set(id, (m) => {
+        clearTimeout(timer);
+        if (m.type === 'error') rej(new Error(m.message));
+        else {
+          try {
+            res(take(m));
+          } catch (err) {
+            rej(err);
+          }
+        }
+      });
       this.send(make(id));
     });
   }
@@ -47,6 +67,11 @@ export class WorkerClient {
       const w = this.waits.get(m.id)!;
       this.waits.delete(m.id);
       w(m);
+      return;
+    }
+    // An error for a request no longer waited for (timed out) is not news for the game.
+    if (m.type === 'error' && m.id !== undefined) {
+      console.warn(`[worker] late error: ${m.message}`);
       return;
     }
     if (m.type === 'progress') this.bus.send('world.progress', { stage: m.stage, pct: m.pct });
@@ -97,6 +122,8 @@ export class WorkerClient {
     if (!p) {
       p = this.ask((id) => ({ type: 'plan', id, siteId, lon: o.lon, lat: o.lat, mpp: o.mpp, radius: o.radius, illustrated: o.illustrated }), (m) => (m.type === 'plan' ? m.image : null));
       this.plans.set(key, p);
+      // A failure is not kept: the next asking tries again.
+      p.catch(() => this.plans.delete(key));
     }
     return p;
   };

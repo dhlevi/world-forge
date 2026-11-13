@@ -673,7 +673,7 @@ const A: Record<FaithFamily, Archetype> = {
       'The soul does not perish, but passes at death into another body',
       'Sacrifices drowned in bogs or hanged in groves appease the land',
       'Mist and oak moss hold the original magic of the earth',
-      'Swearing an oath by the three elements—wind, fire, and water—binds until death',
+      'Swearing an oath by the three elements; wind, fire, and water, binds until death',
       'To cut a sacred oak without blood offering brings a blight upon the tribe'
     ],
     sect: [

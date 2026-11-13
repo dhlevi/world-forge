@@ -295,7 +295,7 @@ export function labelCity(n: CityNaming): void {
     return k === 'ward' || k === 'rich' || k === 'counting' || k === 'slum' || k === 'forge' || !wards[b.ward].inside;
   };
   const inKind = (k: WardKind) => (b: BuildingRef) => wards[b.ward].kind === k;
-  const centresOf = (k: WardKind) => wards.map((w, i) => (w.kind === k ? w.c : null)).filter((c): c is Pt => !!c);
+  const centresOf = (k: WardKind) => wards.map((w) => (w.kind === k ? w.c : null)).filter((c): c is Pt => !!c);
   const onStreet = (d: number) => (b: BuildingRef) => ordinary(b) && n.streets.some((s) => distToLine(s.pts, b.c[0], b.c[1]) < d);
   const plaza = wards.findIndex((w) => w.kind === 'plaza');
   const plazaC = plaza >= 0 ? wards[plaza].c : [0, 0] as Pt;

@@ -334,7 +334,7 @@ export const TENET_VERSES: Record<string, string[]> = {
     'To embrace with love and joy is to taste the nectar of the immortals on earth.',
     'Pour the sweet wine and hold your lover close; the gods smile upon mortal joy.',
     'The union of bodies mirrors the sacred creation through which all life flows.',
-    'Rejoice in the senses—sight, touch, taste, and sound—for they are divine gifts.',
+    'Rejoice in the senses, sight, touch, taste, and sound, for they are divine gifts.',
     'Banish shame and guilt from the bedchamber; passion is a fire lit by {G}.',
     'Life is brief; harvest its pleasures eagerly before cold age claims the flesh.'
   ],
@@ -858,7 +858,7 @@ export const GENERAL: Record<FaithFamily, string[]> = {
     'Smoke carries the smoke-offering to the spirits of the four directions.',
     'A man who breaks his promise to the river shall find no fish in his nets.',
     'Honor the white buffalo, and the herds will return with the spring.',
-    'The wheel of life turns for all—beast, tree, and man alike.',
+    'The wheel of life turns for all; beast, tree, and man alike.',
     'The drumbeat is the heartbeat of the earth mother.',
     'When you hunt the deer, offer tobacco and ask its spirit for pardon.',
     'Beware the raven when he speaks with the voice of your brother.',

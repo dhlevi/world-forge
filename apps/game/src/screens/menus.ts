@@ -2,6 +2,7 @@
  * The screens of the way in: the title, loading a game, a new world's settings, the progress of
  * making one, and choosing where to begin.
  */
+import { background } from '../app/errors';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { GameApp } from '../app/app';
@@ -19,7 +20,7 @@ export class TitleScreen extends Screen {
   }
   key(e: KeyboardEvent): boolean {
     if (e.code === 'KeyN') this.app.newGame();
-    else if (e.code === 'KeyC' && this.app.state.saves.length) void this.app.continueGame(this.app.state.saves[0].id);
+    else if (e.code === 'KeyC' && this.app.state.saves.length) background(this.app.continueGame(this.app.state.saves[0].id), 'the menus');
     else return false;
     return true;
   }

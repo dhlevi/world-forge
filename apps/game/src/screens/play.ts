@@ -1,129 +1,63 @@
 /**
- * Playing: the local and travel maps with the wanderer (components/PlayView.vue), and the
- * character sheet laid over it.
+ * Playing: the game itself (game/session.ts), drawn by components/PlayView.vue, with the screens
+ * laid over it (the character sheet, the inventory, sleep, camp, a town's view).
  */
 import type { Grade } from '../actors/checks';
-import type { Sky } from '../game/weather';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { GameApp } from '../app/app';
-import type { WorldSettings } from '@worldforge/core/settings';
-import type { ChunkData, LocalSite, StartSite } from '../worker/protocol';
-import type { SaveFile } from '../game/save';
 import { Actor } from '../actors/actor';
-import { Cast } from '../actors/cast';
-import { Identity } from '../actors/components';
 import PlayView from '../components/PlayView.vue';
 import SheetView from './views/SheetView.vue';
 import { CityScreen } from './city';
 import { SleepScreen } from './sleep';
 import { CampScreen } from './camp';
-import { Needs, type NeedId } from '../actors/needs';
-import { airWord, seasonOf } from '../game/calendar';
 import { InventoryScreen } from './inventory';
-import type { Game } from '../game/game';
+import { PlaySession, type PlayOptions } from '../game/session';
 
-/** What the play view lets other screens do with the game (set by components/PlayView.vue). */
-export interface PlayHooks {
-  /** Game time (s), and letting it pass. */
-  now(): number;
-  advance(seconds: number): void;
-  say(text: string): void;
-  /** The party's place (lon/lat). */
-  party(): [number, number];
-  /** Onto the local map at a place, or the travel map. */
-  toLocalAt(lon: number, lat: number): void;
-  toTravelAt(lon: number, lat: number): void;
-  /** The game itself (the map, the ground, where the wanderer stands). */
-  game(): Game;
-  /** Redraws the map. */
-  redraw(): void;
-  /** Sleeps (or rests awake) for up to some hours; returns the hours slept. `onHour` runs after each hour. */
-  sleep(hours: number, quality: number, o?: { untilRested?: boolean; awake?: boolean; onHour?: (h: number) => void }): number;
-  /** On foot (the local map) or travelling (the travel map). */
-  mode(): 'local' | 'travel';
-  /** Makes sure the local map is made for some tiles about the wanderer (for choosing a camp from the travel map). */
-  loadAround(tiles: number): Promise<boolean>;
-  /** The sky where the wanderer is now (game/weather.ts). */
-  sky(): Sky;
-  /** Reads the sky for what weather is coming (Survival). */
-  readSky(): void;
-}
-
-export interface PlayOptions {
-  site: StartSite;
-  tile: [number, number];
-  sites: LocalSite[];
-  gameId: string;
-  settings: WorldSettings;
-  /** A saved game to carry on from. */
-  restore: SaveFile | null;
-  /** The new character (for a new game). */
-  character: Actor | null;
-}
+export type { PlayOptions };
 
 export class PlayScreen extends Screen {
   readonly view = PlayView;
-  readonly cast: Cast;
-  /** What the panel shows of the character (reactive). */
-  readonly state = reactive({
-    name: '',
-    line: '',
-    /** The needs as bars and words (actors/needs.ts), and the air. */
-    needs: [] as { id: NeedId; label: string; word: string; bar: number }[],
-    air: '',
-    /** The weather and the hour in words (game/weather.ts). */
-    weather: null as { when: string; wind: string; air: string; sun: string } | null,
-  });
-  /** Set by the view: its key handler and its sink for chunks. */
+  /** The game being played. */
+  readonly session: PlaySession;
+  /** Set by the view: its key handler. */
   onKey: (e: KeyboardEvent) => boolean = () => false;
-  onChunk: (c: ChunkData) => void = () => {};
-  onResume: () => void = () => {};
-  hooks: PlayHooks | null = null;
   /** Checks that hold for a while (haggling at a place, for the day), by "place|day|what". */
   readonly dealings = new Map<string, Grade>();
   private offChunk: () => void = () => {};
 
   constructor(readonly app: GameApp, readonly o: PlayOptions) {
     super();
-    this.cast = new Cast(app.bus);
-    const data = o.restore?.character;
-    const who = o.character ?? (data ? Actor.fromJSON(data) : null);
-    // Characters from before needs were kept begin fed and rested.
-    if (who && !who.has(Needs)) who.add(new Needs(Needs.fresh()));
-    if (who) this.cast.setPlayer(who);
-    this.cast.setClock(o.restore?.time ?? 8 * 3600);
+    const w = app.worker;
+    this.session = new PlaySession(
+      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, site: w.site, starts: () => app.state.starts },
+      { openCity: (id, at) => this.openCity(id, at), toTitle: () => app.toTitle() },
+      o,
+    );
   }
 
   get player(): Actor | null {
-    return this.cast.player;
-  }
-
-  /** Name and age for the panel, at a game time. */
-  describe(time: number): void {
-    const id = this.player?.get(Identity);
-    this.state.name = id ? id.name : '';
-    this.state.line = id ? `${id.d.people.replace(/^the /, '')} ${id.d.female ? 'woman' : 'man'}, ${id.ageAt(time)}` : '';
-    const n = this.player?.get(Needs);
-    if (n) {
-      const w = n.words(), b = n.bars();
-      const LABEL: Record<NeedId, string> = { hunger: 'Food', thirst: 'Water', sleep: 'Rest', stamina: 'Stamina', heat: 'Warmth', wet: 'Dry' };
-      this.state.needs = (Object.keys(LABEL) as NeedId[]).map((k) => ({ id: k, label: LABEL[k], word: w[k], bar: b[k] }));
-      this.state.air = `${Math.round(n.d.airC)}°C, ${airWord(n.d.airC)}; ${seasonOf(time, this.o.site.lat)}`;
-    }
+    return this.session.player;
   }
 
   enter(): void {
-    this.offChunk = this.app.bus.on('world.chunk', (c) => this.onChunk(c));
+    this.offChunk = this.app.bus.on('world.chunk', (c) => this.session.onChunk(c));
+    this.session.start();
+    // For poking at in the browser console while developing.
+    if (import.meta.env.DEV) {
+      const s = this.session;
+      Object.assign(window, { __play: this, __session: s, __game: s.game, __travel: s.travel, __practice: s.practice });
+    }
   }
 
   leave(): void {
     this.offChunk();
-    this.cast.dispose();
+    this.session.dispose();
   }
 
   resume(): void {
-    this.onResume();
+    this.session.redraw();
   }
 
   key(e: KeyboardEvent): boolean {
@@ -131,19 +65,19 @@ export class PlayScreen extends Screen {
       this.showSheet();
       return true;
     }
-    if (e.code === 'KeyZ' && e.shiftKey && this.player && this.hooks) {
+    if (e.code === 'KeyZ' && e.shiftKey && this.player) {
       this.showSleep();
       return true;
     }
-    if (e.code === 'KeyW' && e.shiftKey && this.player && this.hooks) {
-      this.hooks.readSky();
+    if (e.code === 'KeyW' && e.shiftKey && this.player) {
+      this.session.readSky();
       return true;
     }
-    if (e.code === 'KeyC' && e.shiftKey && this.player && this.hooks) {
+    if (e.code === 'KeyC' && e.shiftKey && this.player) {
       this.showCamp();
       return true;
     }
-    if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player && this.hooks) {
+    if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player) {
       this.showInventory();
       return true;
     }
@@ -151,26 +85,26 @@ export class PlayScreen extends Screen {
   }
 
   now(): number {
-    return this.hooks?.now() ?? 0;
+    return this.session.now();
   }
   advance(seconds: number): void {
-    this.hooks?.advance(seconds);
+    this.session.advance(seconds);
   }
   say(text: string): void {
-    this.hooks?.say(text);
+    this.session.say(text);
   }
   toLocalAt(lon: number, lat: number): void {
-    this.hooks?.toLocalAt(lon, lat);
+    this.session.toLocalAt(lon, lat);
   }
   toTravelAt(lon: number, lat: number): void {
-    this.hooks?.toTravelAt(lon, lat);
+    this.session.toTravelAt(lon, lat);
   }
 
   /** Opens a town's or city's city view, with the party at the place nearest `at` (or where it stands). */
   async openCity(siteId: string, at?: { lon: number; lat: number }): Promise<void> {
     const where = at ?? (() => {
-      const p = this.hooks?.party();
-      return p ? { lon: p[0], lat: p[1] } : undefined;
+      const p = this.session.party();
+      return { lon: p[0], lat: p[1] };
     })();
     const r = await this.app.worker.site(siteId, where);
     if (!r.site || !r.site.places.length) {
@@ -181,15 +115,15 @@ export class PlayScreen extends Screen {
   }
 
   showSleep(): void {
-    if (this.player && this.hooks) this.manager?.push(new SleepScreen(this, this.player));
+    if (this.player) this.manager?.push(new SleepScreen(this, this.player));
   }
 
   showCamp(): void {
-    if (this.player && this.hooks) this.manager?.push(new CampScreen(this, this.player));
+    if (this.player) this.manager?.push(new CampScreen(this, this.player));
   }
 
   showInventory(): void {
-    if (this.player && this.hooks) this.manager?.push(new InventoryScreen(this, this.player));
+    if (this.player) this.manager?.push(new InventoryScreen(this, this.player));
   }
 
   showSheet(): void {

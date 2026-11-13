@@ -13,7 +13,7 @@
  *   the tent and lean-to keep off the rain.
  *
  * Everything here works on the camp as data and on the map; what the wanderer does at a camp is
- * game/camping.ts. Proposed numbers, to tune in play.
+ * game/camping/. Proposed numbers, to tune in play.
  */
 import { FOV } from 'rot-js';
 import { GROUND_TILES, OBJECT_TILES, objectId } from '@worldforge/core/local/tiles';

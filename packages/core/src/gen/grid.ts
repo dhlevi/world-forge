@@ -126,7 +126,7 @@ export function areaQuantile(g: Grid, field: Float32Array, fraction: number): nu
 /** Separable box blur with a physical radius; repeated passes approximate a gaussian. */
 export function blurKm(g: Grid, src: Float32Array, radiusKm: number, passes = 2): Float32Array {
   const { W, H } = g;
-  let a = Float32Array.from(src);
+  const a = Float32Array.from(src);
   const b = new Float32Array(g.N);
   const rv = Math.round(radiusKm / g.dyKm);
   const wrap = (k: number) => ((k % W) + W) % W;

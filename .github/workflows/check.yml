@@ -1,0 +1,34 @@
+# Checks every pull request and every push to main: the typecheck of all packages (with the core's
+# determinism check), the lint (eslint.config.js), the game's rule tests, and the core's headless world against its recorded
+# fingerprint (packages/core/scripts/fingerprint.txt).
+name: Check
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: check-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      # The desktop app's Electron binary is not needed to typecheck it.
+      - run: npm ci
+        env:
+          ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+      - run: npm run typecheck
+      - run: npm run lint
+      - run: npm test

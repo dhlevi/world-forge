@@ -561,4 +561,3 @@ export function buildWorldLore(seed: string, p: Politics, settlements: Settlemen
   };
 }
 
-const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);

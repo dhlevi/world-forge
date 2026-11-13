@@ -22,6 +22,11 @@ export abstract class Component {
   }
   /** Called when added to an actor. */
   attached(): void {}
+  /** Tells the actor's watchers of a change (if the component is on an actor yet). */
+  protected touched(): void {
+    // Unset until the component is added to an actor.
+    (this.actor as Actor | undefined)?.changed();
+  }
   /** A message sent to the actor; return true if dealt with. */
   onMessage?(m: Message): boolean | void;
   /** Plain data for saving. */
@@ -54,6 +59,7 @@ let nextId = 1;
 export class Actor implements Receiver {
   readonly id: number;
   private parts = new Map<string, Component>();
+  private watchers = new Set<() => void>();
 
   constructor(readonly kind: ActorKind, id?: number) {
     this.id = id ?? nextId++;
@@ -88,6 +94,21 @@ export class Actor implements Receiver {
 
   get components(): Component[] {
     return [...this.parts.values()];
+  }
+
+  /** Calls `fn` after each change to this actor (see `changed`). Returns a function that stops it. */
+  watch(fn: () => void): () => void {
+    this.watchers.add(fn);
+    return () => this.watchers.delete(fn);
+  }
+
+  /**
+   * Tells whoever watches this actor that something about it has changed (the views of a popup,
+   * say). Component methods that change state call it; code that edits a component's data
+   * directly calls it when done.
+   */
+  changed(): void {
+    for (const fn of [...this.watchers]) fn();
   }
 
   receive(m: Message): boolean {

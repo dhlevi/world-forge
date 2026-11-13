@@ -5,6 +5,7 @@
  * marked. Clicking a place chooses where to begin.
  */
 import { onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { background } from '../app/errors';
 import type { StartSite, ViewLayer, TravelArea, PlanImage } from '../worker/protocol';
 
 type LL = [number, number];
@@ -70,13 +71,21 @@ function pump(): void {
     const t = queue.shift()!;
     if (cache.get(t.key) !== 'pending') continue;
     inFlight++;
-    props.requestTile(t.z, t.x, t.y, t.layer).then((bm) => {
-      inFlight--;
-      if (bm) cache.set(t.key, bm);
-      else cache.delete(t.key);
-      redraw();
-      pump();
-    });
+    // A tile that fails is forgotten (and asked for again when next in sight).
+    const done = props.requestTile(t.z, t.x, t.y, t.layer)
+      .then(
+        (bm) => {
+          if (bm) cache.set(t.key, bm);
+          else cache.delete(t.key);
+        },
+        () => cache.delete(t.key),
+      )
+      .finally(() => {
+        inFlight--;
+        redraw();
+        pump();
+      });
+    background(done, 'the world map');
   }
 }
 

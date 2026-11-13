@@ -10,7 +10,7 @@ import { armsImage } from '../heraldry/draw';
 import { LAYOUT_LABEL } from '@worldforge/core/towns/layout';
 import { CULTURES } from '@worldforge/core/names/cultures';
 import { BUNDLE } from '@worldforge/core/names/bundles/index';
-import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
+import { mulberry32 } from '@worldforge/core/gen/rng';
 import { THEME_LABEL, worldThemes } from '@worldforge/core/lore/themes';
 import { currentLore } from './realm-lore';
 

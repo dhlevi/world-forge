@@ -12,7 +12,7 @@
  *   worst rolls).
  * - **Learning:** every check teaches a little (unless told not to). Harder tasks teach more,
  *   whether they succeed or narrowly fail; easy ones almost nothing; a fumble little. The pace,
- *   the daily limit and rust are the Skills component's (actors/components.ts).
+ *   the daily limit and rust are the Skills component's (actors/components/skills.ts).
  *
  * Proposed numbers, to tune in play.
  */
@@ -20,6 +20,7 @@ import type { Actor } from './actor';
 import { Mood, Skills, Traits } from './components';
 import { SKILL } from './data/skills';
 import { Needs } from './needs';
+import { clamp } from '../util';
 
 /** Difficulties, as the skill level that gives an even chance. */
 export const DC = { trivial: 0, easy: 20, routine: 35, hard: 50, veryHard: 65, heroic: 80 } as const;
@@ -63,7 +64,6 @@ export interface CheckResult {
 export const BASE_LEARN = 0.35;
 const GRADE_LEARN: Record<Grade, number> = { fumble: 0.3, fail: 0.5, near: 1.1, success: 1, fine: 1.2 };
 
-const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 /** The chance of success (%) for a score against a difficulty. */
 export function chanceOf(score: number, difficulty: number): number {

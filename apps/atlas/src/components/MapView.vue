@@ -32,7 +32,7 @@ import { KIND_LABEL, lairFromFeature, lairMap, lairOverlay, lairTags, lairThumb,
 import type { DungeonSite } from '@worldforge/core/dungeons/core';
 import { KIND_NAME, dungeon, dungeonFromFeature, dungeonTags, dungeonThumb } from '../dungeons/view';
 import { ITALIC, PLAN_LABEL_LAYERS, POLITICAL_LABEL_LAYERS, SETTLEMENT_LABEL_LAYERS, SPECIAL_LINE_LAYERS, WORLD_LABEL_LAYERS, fontFaces, textField } from './label-style';
-import { type GroupKey, prepareFaithMap, prepareGroupMap, preparePolitical, registerPoliticalProtocol, setRelations } from '../world/political';
+import { type GroupKey, prepareFaithMap, prepareGroupMap, preparePolitical, setRelations } from '../world/political';
 import { CULTURES } from '@worldforge/core/names/cultures';
 import { templateFolk } from '@worldforge/core/names/bundles/index';
 import { relationsForMap } from '@worldforge/core/lore/realm';

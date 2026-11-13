@@ -1,7 +1,7 @@
 import { type Rng, shuffle } from '../gen/rng';
 import {
   type DLevel, type DRoom, type DungeonSite, FLOOR, PIT, type PropKind, type Rect, RUBBLE, VOID,
-  at, carveCorridor, carveRect, centre, connectAll, doorsForRooms, newLevel, overlaps, pick, reach, roomOf, set,
+  at, carveCorridor, carveRect, centre, connectAll, doorsForRooms, newLevel, overlaps, reach, roomOf, set,
 } from './core';
 import { DMath } from '../dmath';
 

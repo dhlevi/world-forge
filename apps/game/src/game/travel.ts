@@ -3,6 +3,7 @@
  * after another with the clock running, until the party arrives, the player stops, or something
  * happens on the way. Long journeys come in legs, each planned when the last is walked.
  */
+import { background } from '../app/errors';
 import { LocalFrame } from '@worldforge/core/towns/plan';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { BIOME_NAMES } from '@worldforge/core/gen/biomes';
@@ -156,7 +157,19 @@ export class Travel {
     this.planning = true;
     this.onChange();
     const from: [number, number] = [Math.floor(this.game.px / CHUNK), Math.floor(this.game.py / CHUNK)];
-    const r = await this.requestRoute(from, this.goal ?? this.dest);
+    let r: Awaited<ReturnType<typeof this.requestRoute>>;
+    try {
+      r = await this.requestRoute(from, this.goal ?? this.dest);
+    } catch (err) {
+      // No route came back: say so, and leave the journey where it was.
+      this.planning = false;
+      this.running = false;
+      this.steps = [];
+      this.i = 0;
+      this.game.say('The way there could not be worked out.');
+      this.onChange();
+      throw err;
+    }
     this.planning = false;
     if (!r.steps) {
       this.steps = [];
@@ -198,7 +211,7 @@ export class Travel {
     if (!this.running) return;
     this.timer = window.setTimeout(() => {
       this.timer = 0;
-      void this.step();
+      background(this.step(), 'travel');
     }, SPEEDS[this.speed].ms);
   }
 
@@ -225,7 +238,7 @@ export class Travel {
     g.time += this.onStep(st);
     this.sightM = (st.sight ?? TRAVEL_SIGHT_M) * this.sightFactor();
     g.discovery.reveal(g.px, g.py, this.sightM);
-    for (const ev of stepEvents(st, before, g.time, this.stopAtDusk, Math.random)) {
+    for (const ev of stepEvents(st, before, g.time, this.stopAtDusk, () => g.dice.random())) {
       g.say(ev.text);
       if (ev.stop) {
         this.running = false;

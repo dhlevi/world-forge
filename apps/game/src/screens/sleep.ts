@@ -5,7 +5,6 @@
  */
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
-import { OBJECT_TILES } from '@worldforge/core/local/tiles';
 import type { PlayScreen } from './play';
 import type { Actor } from '../actors/actor';
 import { Needs } from '../actors/needs';
@@ -20,10 +19,8 @@ export interface Bedding {
 
 /** How well one sleeps where the wanderer stands: a bed beside, a blanket carried, or the ground. */
 export function beddingAt(play: PlayScreen, actor: Actor): Bedding {
-  const g = play.hooks!.game();
-  for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-    if (OBJECT_TILES[g.map.object(g.px + dx, g.py + dy)]?.name === 'bed') return { quality: 1, where: 'in the bed' };
-  }
+  const g = play.session.game;
+  if (g.besideObject(['bed'])) return { quality: 1, where: 'in the bed' };
   const inv = actor.get(Inventory);
   const base: Bedding = inv?.d.items.some((i) => i.def === 'blanket') ? { quality: 0.8, where: 'rolled in your blanket' } : { quality: 0.6, where: 'on the bare ground' };
   // At a camp, its shelter and fire help (game/camp.ts).
@@ -60,12 +57,12 @@ export class SleepScreen extends Screen {
 
   sleep(hours: number, untilRested = false): void {
     this.close();
-    this.play.hooks?.sleep(hours, this.bedding.quality, { untilRested });
+    this.play.session.sleep(hours, this.bedding.quality, { untilRested });
   }
 
   rest(hours: number): void {
     this.close();
-    this.play.hooks?.sleep(hours, this.bedding.quality, { awake: true });
+    this.play.session.sleep(hours, this.bedding.quality, { awake: true });
   }
 
   key(e: KeyboardEvent): boolean {

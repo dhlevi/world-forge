@@ -19,7 +19,7 @@ const RESOLUTIONS = [
 
 function randomize(): void {
   store.params.seed = randomSeed();
-  regenerate();
+  void regenerate();
 }
 
 // ---- Save, load and export (export/worldfile.ts, export/zip.ts) ----

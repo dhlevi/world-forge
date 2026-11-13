@@ -202,7 +202,7 @@ Pathfinder games, so resting does not require zooming in.
 - **A camp can be kept** for several days as a base for hunting or work, and can grow into a
   homestead.
 
-*Built (a first pass; `game/camp.ts`, `game/camping.ts`, `screens/camp.ts`; numbers proposed, to
+*Built (a first pass; `game/camp.ts`, `game/camping/`, `screens/camp.ts`; numbers proposed, to
 tune in play):*
 
 - **One camp, from either map.** Shift+C (or Camp on the travel map) looks about for a site: on

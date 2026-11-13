@@ -221,4 +221,5 @@ export type FromWorker =
   | { type: 'site'; id: number; site: SiteInfo | null; gates: Gate[] }
   | { type: 'plan'; id: number; image: PlanImage | null }
   | { type: 'climate'; id: number; warm: number; cold: number; precipSummer: number; precipWinter: number; windU: number; windV: number }
-  | { type: 'error'; message: string };
+  /** Something went wrong: with the id of the request it answers, or none (making the world, starting, a chunk). */
+  | { type: 'error'; message: string; id?: number };

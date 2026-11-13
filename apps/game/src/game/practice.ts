@@ -12,7 +12,8 @@
  *
  * Messages are kept few: successes pass quietly, and like failures are told at most once an hour.
  */
-import type { PlayScreen } from '../screens/play';
+import type { Actor } from '../actors/actor';
+import type { MessageDispatcher } from '../engine/messages';
 import type { Game } from './game';
 import type { RouteStep } from '../worker/protocol';
 import { check, DC, type Mod } from '../actors/checks';
@@ -23,6 +24,7 @@ import { conditionWord, defOf, itemName, type Item } from '../actors/items/item'
 import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import { TILE_M } from '@worldforge/core/local/chunk';
 import { STEP_M } from '@worldforge/core/local/travel';
+import { bearing, compassWord } from '../util';
 
 /** Seconds of swimming between checks, and of hard going. */
 const SWIM_EVERY = 120, HARD_EVERY = 3600;
@@ -31,7 +33,6 @@ const BOOT_LIFE_M = 1_500_000;
 const QUALITY_WEAR: Record<string, number> = { poor: 1.5, common: 1, fine: 0.7, masterwork: 0.5 };
 /** Steps at least this steep (rise over run) call for climbing. */
 export const STEEP = 0.2;
-const COMPASS = ['east', 'north-east', 'north', 'north-west', 'west', 'south-west', 'south', 'south-east'];
 
 export class Practice {
   private swimS = 0;
@@ -39,10 +40,10 @@ export class Practice {
   /** When each kind of message was last told (game seconds). */
   private told = new Map<string, number>();
 
-  constructor(private play: PlayScreen, private game: Game) {}
+  constructor(private who: () => Actor | null, private bus: MessageDispatcher, private game: Game) {}
 
   private get actor() {
-    return this.play.player;
+    return this.who();
   }
   private say(t: string): void {
     this.game.say(t);
@@ -56,7 +57,7 @@ export class Practice {
   }
   private mood(m: Moodlet): void {
     const a = this.actor;
-    if (a) this.play.app.bus.send('actor.moodlet', m, { to: a.id });
+    if (a) this.bus.send('actor.moodlet', m, { to: a.id });
   }
   private loadMods(load: number): Mod[] {
     return load > 1.02 ? [{ why: 'your load', value: -Math.round((load - 1) * 40) }] : [];
@@ -202,7 +203,8 @@ export class Practice {
     if (at) {
       const dx = at[0] - g.px, dy = at[1] - g.py;
       const m = Math.round((Math.hypot(dx, dy) * TILE_M) / 10) * 10;
-      const dir = COMPASS[Math.round(((Math.atan2(-dy, dx) / (Math.PI * 2)) * 8 + 8)) % 8];
+      // Map rows run south: north is -y.
+      const dir = compassWord(bearing(dx, -dy));
       g.say(`You look for signs of water, and find ${at[2]} about ${m} m to the ${dir}.`);
     } else g.say(r.ok ? 'You search the land about, but there is no water within reach.' : 'You search about, but find no sign of water.');
     g.updateHud();

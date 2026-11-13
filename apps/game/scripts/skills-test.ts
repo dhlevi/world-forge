@@ -134,11 +134,7 @@ console.log('\n== Lessons and books');
 {
   const { a, s } = person({ levels: { smithing: 5 } });
   const t = teacherLevel('town', 'x/p1', 'smithing');
-  let hours = 0;
-  for (let day = 0; day < 20; day++) for (let h = 0; h < 6; h++) {
-    lesson(a, 'smithing', t, day * 86400 + (9 + h) * 3600);
-    hours++;
-  }
+  for (let day = 0; day < 20; day++) for (let h = 0; h < 6; h++) lesson(a, 'smithing', t, day * 86400 + (9 + h) * 3600);
   console.log(`  A town smith (level ${t}) teaching 6 hours a day for 20 days: 5 to ${s.level('smithing').toFixed(1)}.`);
   ok(s.level('smithing') <= Math.min(t - 10, 50) + 0.01, 'lessons go no further than the teacher can take you (their level less 10, and 50 at most)');
 }

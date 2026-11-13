@@ -1,5 +1,5 @@
 import { ROOF_COLOURS } from '@worldforge/core/interiors/style';
-import { type Dwelling, type Floor, type Item, type Opening, type Pt, type WallSide, outline, polyAnchor, roofHeight } from '@worldforge/core/interiors/dwelling';
+import { type Dwelling, type Floor, type Item, type Opening, type WallSide, outline, polyAnchor, roofHeight } from '@worldforge/core/interiors/dwelling';
 
 /** Any 2D canvas context (DOM, OffscreenCanvas, or a Node canvas in scripts). */
 export type Ctx2D = CanvasRenderingContext2D | OffscreenCanvasRenderingContext2D;

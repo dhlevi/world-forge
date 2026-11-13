@@ -164,7 +164,6 @@ const NOTES: Record<OrderKind, string[]> = {
 };
 
 const BEASTS_OF: string[] = ['a wyvern', 'a pack of werewolves', 'a basilisk', 'ghouls', 'a troll', 'a cockatrice', 'a wight', 'a giant spider', 'a bog hag', 'a griffin', 'a ghost', 'an ogre'];
-const BEASTS_PLAIN: string[] = ['a man-eating wolf', 'a great bear', 'a pack of wild dogs', 'a rabid boar', 'a mad hermit', 'a lion'];
 
 // ---- The world ----------------------------------------------------------------------------------
 

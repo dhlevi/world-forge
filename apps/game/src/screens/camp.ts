@@ -1,9 +1,10 @@
 /**
  * The camp screen (Shift+C, or Camp on the travel map): choosing a site and making camp, then
  * everything done at it (wood, fire, shelter, food from the land, snares), the plan for the night,
- * and striking camp (game/camping.ts). From the travel map, the local map about the party is made
+ * and striking camp (game/camping/). From the travel map, the local map about the party is made
  * first, so that the camp is laid out on it as on foot.
  */
+import { background } from '../app/errors';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
@@ -42,9 +43,9 @@ export class CampScreen extends Screen {
 
   constructor(readonly play: PlayScreen, readonly actor: Actor) {
     super();
-    const h = play.hooks!;
+    const h = play.session;
     this.ctx = {
-      game: h.game(),
+      game: h.game,
       actor,
       say: (t) => {
         h.say(t);
@@ -52,7 +53,7 @@ export class CampScreen extends Screen {
       },
       mood: (m: Moodlet, hours: number) => play.app.bus.send('actor.moodlet', { ...m, until: h.now() + hours * 3600 }, { to: actor.id }),
       // The season as the land shows it: deep snow is winter whatever the calendar says.
-      season: () => (h.sky().snowCm >= 10 ? 'winter' : h.sky().season),
+      season: () => (h.sky.snowCm >= 10 ? 'winter' : h.sky.season),
       sleep: (hours, quality, onHour) => h.sleep(hours, quality, { onHour }),
     };
   }
@@ -77,13 +78,15 @@ export class CampScreen extends Screen {
   }
 
   enter(): void {
-    if (!this.camp) void this.survey();
+    // The view follows the wanderer too: what is carried, and their needs.
+    this.whileOpen(this.actor.watch(() => this.state.version++));
+    if (!this.camp) background(this.survey(), 'the camp');
   }
 
   /** Looks about for sites (making the local map there first, from the travel map). */
   async survey(): Promise<void> {
-    const h = this.play.hooks!;
-    const travel = h.mode() === 'travel';
+    const h = this.play.session;
+    const travel = h.state.mode === 'travel';
     const r = travel ? SEARCH_TRAVEL : SEARCH_FOOT;
     this.state.loading = true;
     const ok = await h.loadAround(r + 16);
@@ -99,7 +102,7 @@ export class CampScreen extends Screen {
 
   private bump(): void {
     this.state.version++;
-    this.play.hooks?.redraw();
+    this.play.session.redraw();
   }
 
   choose(s: SiteChoice): void {
@@ -169,7 +172,7 @@ export class CampScreen extends Screen {
       const hours = Math.ceil((at - g.time) / 3600);
       // Sitting about the camp, one keeps the fire fed.
       c.fire.tend = c.fire.lit;
-      if (hours > 0) this.play.hooks?.sleep(hours, 0.6, { awake: true });
+      if (hours > 0) this.play.session.sleep(hours, 0.6, { awake: true });
       c.fire.tend = false;
     }
     else if (id === 'strike') {
@@ -212,7 +215,7 @@ export class CampScreen extends Screen {
     const bed = beddingAt(this.play, this.actor).quality;
     this.close();
     C.spendNight(this.ctx, c, plan, Math.min(0.85, bed));
-    this.play.hooks?.redraw();
+    this.play.session.redraw();
   }
 
   key(e: KeyboardEvent): boolean {

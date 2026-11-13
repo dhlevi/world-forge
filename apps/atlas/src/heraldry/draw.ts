@@ -145,37 +145,10 @@ function band(g: Ctx, pts: [number, number][], w: (t: number) => number): void {
   poly(g, [...left, ...right.reverse()]);
 }
 
-/** A closed outline drawn smoothly through the midpoints of `pts` (each point pulls the curve toward it). */
-function smooth(g: Ctx, pts: [number, number][]): void {
-  let area = 0;
-  for (let k = 0; k < pts.length; k++) {
-    const [x0, y0] = pts[k], [x1, y1] = pts[(k + 1) % pts.length];
-    area += x0 * y1 - x1 * y0;
-  }
-  const p = area > 0 ? pts : [...pts].reverse();
-  const mid = (k: number): [number, number] => {
-    const [ax, ay] = p[k % p.length], [bx, by] = p[(k + 1) % p.length];
-    return [(ax + bx) / 2, (ay + by) / 2];
-  };
-  g.moveTo(...mid(0));
-  for (let k = 1; k <= p.length; k++) g.quadraticCurveTo(p[k % p.length][0], p[k % p.length][1], ...mid(k));
-  g.closePath();
-}
-
 /** A circle, filled or (as a hole) wound the other way. */
 function disc(g: Ctx, x: number, y: number, r: number, hole = false): void {
   g.moveTo(x + r, y);
   g.arc(x, y, r, 0, Math.PI * 2, hole);
-}
-
-/** A finger or thumb: a bar with a rounded tip, from y0 up to y1. */
-function finger(g: Ctx, x: number, y0: number, y1: number, w: number): void {
-  const r = w / 2;
-  g.moveTo(x, y0);
-  g.lineTo(x, y1 + r);
-  g.arc(x + r, y1 + r, r, Math.PI, 0);
-  g.lineTo(x + w, y0);
-  g.closePath();
 }
 
 function chargePath(g: Ctx, kind: Charge, x: number, y: number, s: number): void {

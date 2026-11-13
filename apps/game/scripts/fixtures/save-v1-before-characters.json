@@ -1,0 +1,43 @@
+{
+ "format": "world-forge.save",
+ "generator": 2,
+ "localMap": 2,
+ "id": "fixture",
+ "title": "Onson, world \"forge\"",
+ "savedAt": "2026-11-01T10:00:00.000Z",
+ "settings": {
+  "seed": "forge",
+  "landFraction": 0.3,
+  "plates": 14,
+  "erosion": 0.5,
+  "settled": 0.6,
+  "drift": 0.3,
+  "races": true,
+  "resolution": 512
+ },
+ "start": {
+  "siteId": "s12",
+  "siteName": "Onson"
+ },
+ "place": "Onson",
+ "player": {
+  "x": 1200,
+  "y": -340
+ },
+ "time": 108000,
+ "changes": [
+  [
+   1201,
+   -340,
+   5
+  ]
+ ],
+ "seen": {},
+ "log": [
+  {
+   "t": "Day 2, 06:00",
+   "text": "You take up where you left off."
+  }
+ ],
+ "version": 1
+}

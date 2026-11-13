@@ -12,7 +12,6 @@ import { graves } from './kit';
 import { type BuildingRef, type WardInfo, type WardKind, labelCity } from './naming';
 import { BUILD_GROUND, contourStrips, plantField } from './ground';
 import { type CityLayout, makeLayout } from './layout';
-import { CULTURES } from '../names/cultures';
 import { DMath } from '../dmath';
 
 const GATE_HALF = 6;

@@ -37,6 +37,12 @@ export class LessonsScreen extends Screen {
     });
   }
 
+  /** The view follows the wanderer: it is drawn again after each change to them. */
+  enter(): void {
+    const a = this.play.player;
+    if (a) this.whileOpen(a.watch(() => this.state.version++));
+  }
+
   get skills(): Skills | undefined {
     return this.play.player?.get(Skills);
   }
@@ -72,7 +78,7 @@ export class LessonsScreen extends Screen {
         stop = why;
         break;
       }
-      inv.d.copper -= c.price;
+      inv.pay(c.price);
       this.play.advance(3600);
       lesson(a, c.skill, c.teacher, this.play.now());
       done++;
@@ -83,8 +89,8 @@ export class LessonsScreen extends Screen {
       this.play.say(`You spend ${done === 1 ? 'an hour' : `${done} hours`} at ${c.name.toLowerCase()} with a teacher, ${how}.`);
       for (const n of s.takeNotes()) this.play.say(n.text);
     }
+    a.changed();
     this.state.message = stop || (done ? `${done === 1 ? 'An hour' : `${done} hours`} of ${c.name.toLowerCase()}: ${s.level(c.skill).toFixed(1)} (${skillWord(s.level(c.skill))}).` : '');
-    this.state.version++;
   }
 
   key(e: KeyboardEvent): boolean {

@@ -66,7 +66,9 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         return;
       }
       const px = tiles.renderTile(m.z, m.x, m.y, m.layer, 256);
-      void createImageBitmap(new ImageData(new Uint8ClampedArray(px.buffer as ArrayBuffer, px.byteOffset, px.length), 256, 256)).then((bitmap) => post({ type: 'tile', id: m.id, bitmap }, [bitmap]));
+      createImageBitmap(new ImageData(new Uint8ClampedArray(px.buffer as ArrayBuffer, px.byteOffset, px.length), 256, 256))
+        .then((bitmap) => post({ type: 'tile', id: m.id, bitmap }, [bitmap]))
+        .catch((err: unknown) => post({ type: 'error', id: m.id, message: err instanceof Error ? err.message : String(err) }));
     } else if (m.type === 'start') {
       if (!world) throw new Error('No world yet.');
       const s = world.settlements.find((x) => x.id === m.id);
@@ -168,6 +170,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       post({ type: 'chunk', chunk }, [chunk.ground.buffer, chunk.object.buffer, chunk.area.buffer, chunk.elev.buffer]);
     }
   } catch (err) {
-    post({ type: 'error', message: err instanceof Error ? err.message : String(err) });
+    // A request's failure answers that request; anything else is news for the game.
+    const id = 'id' in m && typeof m.id === 'number' && m.type !== 'start' ? m.id : undefined;
+    post({ type: 'error', message: err instanceof Error ? err.message : String(err), ...(id !== undefined ? { id } : {}) });
   }
 };

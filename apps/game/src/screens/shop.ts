@@ -68,6 +68,12 @@ export class ShopScreen extends Screen {
     this.wares = this.stock();
   }
 
+  /** The view follows the wanderer: it is drawn again after each change to them. */
+  enter(): void {
+    const a = this.play.player;
+    if (a) this.whileOpen(a.watch(() => this.state.version++));
+  }
+
   /** Trading, once a day at a place: the grade holds for the day. */
   private haggle(): Grade {
     const day = Math.floor(this.play.now() / 86400);
@@ -114,12 +120,11 @@ export class ShopScreen extends Screen {
     if (!inv || !inv.get(o.item.uid)) return;
     const price = this.offerFor(o.item);
     inv.drop(o.item.uid);
-    inv.d.copper += price;
+    inv.earn(price);
     this.play.advance(60);
     const msg = `You sell ${itemName(o.item, true)} for ${moneyText(price)}.`;
     this.state.message = msg;
     this.play.say(msg);
-    this.state.version++;
   }
 
   get inv(): Inventory | undefined {
@@ -159,14 +164,13 @@ export class ShopScreen extends Screen {
       this.state.message = why;
       return;
     }
-    inv.d.copper -= w.price;
     w.left--;
+    inv.pay(w.price);
     this.play.advance(60);
     const placed = inv.get(it.uid);
     const msg = `You buy ${itemName(it, true)} for ${moneyText(w.price)}; it goes ${placed ? inv.where(placed.loc) : 'in with the others like it'}.`;
     this.state.message = msg;
     this.play.say(msg);
-    this.state.version++;
   }
 
   key(e: KeyboardEvent): boolean {

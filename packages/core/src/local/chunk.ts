@@ -808,7 +808,6 @@ export class LocalWorld {
     }
 
     // ---- Roads and tracks.
-    const span = CHUNK * TILE_M;
     const mx0 = tx0 * TILE_M, mx1 = (tx0 + CHUNK) * TILE_M, my1 = -ty0 * TILE_M, my0 = -(ty0 + CHUNK) * TILE_M;
     const segs: Seg[] = [];
     const llA = this.frame.toLL([mx0 - 20, my0 - 20]), llB = this.frame.toLL([mx1 + 20, my1 + 20]);
@@ -1279,12 +1278,6 @@ function segCross(ax: number, ay: number, bx: number, by: number, cx: number, cy
   if (den === 0) return null;
   const t = ((cx - ax) * sy - (cy - ay) * sx) / den, u = ((cx - ax) * ry - (cy - ay) * rx) / den;
   return t >= 0 && t <= 1 && u >= 0 && u <= 1 ? [ax + rx * t, ay + ry * t] : null;
-}
-
-function polyDist2(xy: number[], px: number, py: number): number {
-  let best = Infinity;
-  for (let i = 0; i + 3 < xy.length; i += 2) best = Math.min(best, segDist2(px, py, xy[i], xy[i + 1], xy[i + 2], xy[i + 3]));
-  return best;
 }
 
 function segDist2(px: number, py: number, ax: number, ay: number, bx: number, by: number): number {

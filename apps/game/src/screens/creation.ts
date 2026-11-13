@@ -4,6 +4,7 @@
  * of it at once. The screen keeps the player's choices (actors/creation/resolve.ts `Choices`);
  * the view works the character out from them as they change.
  */
+import { background } from '../app/errors';
 import { reactive, shallowRef } from 'vue';
 import { Screen } from '../engine/screens';
 import type { GameApp } from '../app/app';
@@ -14,16 +15,9 @@ import { TRACK, type TrackId } from '../actors/data/occupations';
 import type { TraitId } from '../actors/data/traits';
 import { TRAIT_SPREAD } from '../actors/data/traits';
 import CreationView from './views/CreationView.vue';
+import { STEPS, type StepId } from './creation-steps';
 
-export const STEPS = [
-  { id: 'origin', name: 'Origin' },
-  { id: 'fate', name: 'Fate' },
-  { id: 'family', name: 'Family' },
-  { id: 'traits', name: 'Traits' },
-  { id: 'life', name: 'Life' },
-  { id: 'finish', name: 'Finish' },
-] as const;
-export type StepId = (typeof STEPS)[number]['id'];
+export type { StepId };
 
 const newSeed = () => Math.floor(Math.random() * 2 ** 31).toString(36);
 
@@ -47,7 +41,7 @@ export class CreationScreen extends Screen {
   }
 
   enter(): void {
-    void this.load();
+    background(this.load(), 'character creation');
   }
 
   private async load(): Promise<void> {
@@ -84,7 +78,14 @@ export class CreationScreen extends Screen {
     const key = `${ch.culture}|${ch.seed}`;
     if (key === this.namesKey) return;
     this.namesKey = key;
-    const n = await this.app.worker.names(ch.culture, `${this.app.state.worldSettings?.seed ?? ''}|${ch.seed}`, 48);
+    let n: Awaited<ReturnType<typeof this.app.worker.names>>;
+    try {
+      n = await this.app.worker.names(ch.culture, `${this.app.state.worldSettings?.seed ?? ''}|${ch.seed}`, 48);
+    } catch (err) {
+      // Let the next change ask again.
+      if (key === this.namesKey) this.namesKey = '';
+      throw err;
+    }
     if (key === this.namesKey) this.names.value = n;
   }
 
@@ -104,7 +105,7 @@ export class CreationScreen extends Screen {
     const theirs = starts.filter((s) => s.cultureIndex === ci);
     const near = theirs.sort((a, b) => Math.hypot(a.lon - cur.lon, a.lat - cur.lat) - Math.hypot(b.lon - cur.lon, b.lat - cur.lat))[0];
     this.set({ culture: ci, homeId: near?.id ?? ch.homeId, name: 0, customName: undefined });
-    void this.ensureNames();
+    background(this.ensureNames(), 'character creation');
   }
 
   setHome(id: string): void {
@@ -202,11 +203,11 @@ export class CreationScreen extends Screen {
     const seed = newSeed();
     // Names first, so the character is named from the start.
     this.state.choices = { ...ch, seed };
-    void this.ensureNames().then(() => {
+    background(this.ensureNames().then(() => {
       const w2 = this.world()!;
       this.state.choices = quickStart(seed, ch.culture, ch.homeId, w2);
       this.state.step = 'finish';
-    });
+    }), 'character creation');
   }
 
   go(step: StepId): void {

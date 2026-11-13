@@ -319,6 +319,7 @@ export class Inventory extends Component {
     }
     it.loc = place;
     if (!this.get(it.uid)) this.d.items.push(it, ...tree);
+    this.touched();
     return null;
   }
 
@@ -329,6 +330,7 @@ export class Inventory extends Component {
     const inside = this.descendants(uid);
     const gone = new Set([uid, ...inside.map((x) => x.uid)]);
     this.d.items = this.d.items.filter((x) => !gone.has(x.uid));
+    this.touched();
     return [it, ...inside];
   }
 
@@ -337,7 +339,34 @@ export class Inventory extends Component {
     const it = this.get(uid);
     if (!it || n <= 0 || n >= it.qty) return null;
     it.qty -= n;
+    this.touched();
     return cloneItem(it, n);
+  }
+
+  // ---- Money ---------------------------------------------------------------------------------------
+
+  /** Pays `c` copper if there is enough; returns whether it was paid. */
+  pay(c: number): boolean {
+    if (c < 0 || this.d.copper < c) return false;
+    this.d.copper -= c;
+    this.touched();
+    return true;
+  }
+
+  /** Takes in `c` copper (a sale, a wage, coins in a hat). */
+  earn(c: number): void {
+    if (c <= 0) return;
+    this.d.copper += c;
+    this.touched();
+  }
+
+  /** Loses up to `c` copper (theft, a fine); returns how much went. */
+  lose(c: number): number {
+    const gone = Math.max(0, Math.min(this.d.copper, Math.round(c)));
+    if (!gone) return 0;
+    this.d.copper -= gone;
+    this.touched();
+    return gone;
   }
 
   /** Where a new thing would best go: a container, the belt, the back, or a hand. Null if nowhere. */
@@ -375,13 +404,9 @@ export class Inventory extends Component {
     return { copper: this.d.copper, items: this.d.items.map((i) => ({ ...i, loc: i.loc ? { ...i.loc } : undefined })), animals: [...this.d.animals] };
   }
 
-  static fromJSON(d: InventoryData | { copper: number; items: { name: string }[] }): Inventory {
-    // Older saves kept a list of names: dress and pack the character again from it.
-    const items = (d as InventoryData).items ?? [];
-    if (items.length && !(items[0] as Item).uid) {
-      return startingInventory((d.items as { name: string; qty?: number }[]).map((x) => x.name), d.copper, {});
-    }
-    return new Inventory({ copper: d.copper, items: items as Item[], animals: (d as InventoryData).animals ?? [] });
+  /** From a save (older saves are brought up to date first: game/migrate.ts). */
+  static fromJSON(d: InventoryData): Inventory {
+    return new Inventory({ copper: d.copper, items: d.items, animals: d.animals ?? [] });
   }
 }
 

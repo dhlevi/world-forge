@@ -4,7 +4,8 @@
  * stands on the right. Everything shown is worked out from the screen's choices.
  */
 import { computed } from 'vue';
-import { STEPS, type CreationScreen } from '../creation';
+import type { CreationScreen } from '../creation';
+import { STEPS } from '../creation-steps';
 import { trackOptions } from '../../actors/creation/resolve';
 import { STANDINGS } from '../../actors/data/standing';
 import { CARD, POSITION_INFO, type Position } from '../../actors/data/cards';

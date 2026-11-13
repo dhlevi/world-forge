@@ -4,6 +4,7 @@
  * the distance walked), does what each place offers in a short menu scene, walks in on the local
  * map anywhere, or leaves by a gate.
  */
+import { background } from '../app/errors';
 import { reactive, shallowRef } from 'vue';
 import { Screen } from '../engine/screens';
 import { LocalFrame } from '@worldforge/core/towns/plan';
@@ -30,12 +31,6 @@ export interface SceneAction {
   label: string;
   disabled?: string;
 }
-
-export const KIND_NAMES: Record<SitePlace['kind'], string> = {
-  gate: 'Gates and ways in', market: 'Markets', inn: 'Inns', tavern: 'Taverns', temple: 'Temples and shrines', keep: 'The keep',
-  civic: 'Halls and buildings of the town', guild: 'Guilds and orders', shop: 'Workshops and shops', dock: 'The waterfront', district: 'Districts',
-};
-export const KIND_ORDER: SitePlace['kind'][] = ['gate', 'market', 'inn', 'tavern', 'temple', 'keep', 'guild', 'civic', 'shop', 'dock', 'district'];
 
 export class CityScreen extends Screen {
   readonly view = CityView;
@@ -64,10 +59,18 @@ export class CityScreen extends Screen {
     const far = Math.max(0, ...s.places.map((p) => this.metres(s.lon, s.lat, p.lon, p.lat)));
     const radius = Math.min(s.radiusM * 1.02, Math.max(300, s.coreM * 1.5 + 250, far + 300));
     const mpp = Math.max(0.8, Math.min(2.5, (radius * 2) / 2600));
-    void this.play.app.worker.plan(s.id, { mpp, radius, illustrated: true, lon: s.lon, lat: s.lat }).then((img) => {
-      this.image.value = img;
-      this.state.loading = false;
-    });
+    background(
+      this.play.app.worker
+        .plan(s.id, { mpp, radius, illustrated: true, lon: s.lon, lat: s.lat })
+        .then((img) => {
+          this.image.value = img;
+        })
+        // Whatever happens, stop waiting: the places can be used without the picture.
+        .finally(() => {
+          this.state.loading = false;
+        }),
+      'the city view',
+    );
     const here = this.place(this.state.at);
     this.state.scene = here ? this.describe(here) : [];
   }
@@ -131,10 +134,7 @@ export class CityScreen extends Screen {
   }
 
   private pay(c: number): boolean {
-    const inv = this.play.player?.get(Inventory);
-    if (!inv || inv.d.copper < c) return false;
-    inv.d.copper -= c;
-    return true;
+    return this.play.player?.get(Inventory)?.pay(c) ?? false;
   }
 
   private mood(m: Moodlet): void {
@@ -213,7 +213,7 @@ export class CityScreen extends Screen {
         const day = 86400, seven = 7 * 3600;
         let wake = Math.floor(now / day) * day + seven;
         while (wake < now + 6 * 3600) wake += day;
-        this.play.hooks?.sleep(Math.round((wake - now) / 3600), 1);
+        this.play.session.sleep(Math.round((wake - now) / 3600), 1);
         say('You sleep in a narrow bed under the eaves.');
         break;
       }
@@ -245,7 +245,7 @@ export class CityScreen extends Screen {
         if (g === 'fine') {
           this.play.player?.get(Needs)?.drink(0.4);
           const inv = this.play.player?.get(Inventory);
-          if (inv) inv.d.copper += 3;
+          inv?.earn(3);
           this.mood({ id: 'tale', text: 'Held the room with a tale', value: 3, until: now + 8 * 3600 });
           say('The room hangs on your every word. Someone buys you a drink, and a few coins come your way.');
         } else if (g === 'success') {
@@ -269,7 +269,7 @@ export class CityScreen extends Screen {
         const s = a.need(Skills);
         const coin = Math.round(crowd * { fine: 6, success: 3, near: 1, fail: 0, fumble: 0 }[g] * (0.7 + 0.6 * s.random()));
         const inv = a.get(Inventory);
-        if (inv) inv.d.copper += coin;
+        inv?.earn(coin);
         if (g === 'fine') this.mood({ id: 'busk', text: 'Played to a crowd', value: 2, until: now + 6 * 3600 });
         if (g === 'fumble') this.mood({ id: 'busk', text: 'Played badly in public', value: -1, until: now + 6 * 3600 });
         const how = { fine: 'A crowd gathers to hear you play', success: 'You play an hour, and people stop to listen', near: 'You play an hour; a few stop', fail: 'You play an hour, but few pay any heed', fumble: 'Your fingers will not do as they are told, and people hurry past' }[g];

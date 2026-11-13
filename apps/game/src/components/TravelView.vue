@@ -3,6 +3,7 @@
  * The travel map: the world around the party at three fixed scales, with roads, places and the
  * route; choose a destination, travel with the clock running, stop, or zoom in to the local map.
  */
+import { background } from '../app/errors';
 import { computed, onBeforeUnmount, ref, shallowRef } from 'vue';
 import WorldView from './WorldView.vue';
 import { SPEEDS, type LL, type Travel } from '../game/travel';
@@ -18,6 +19,8 @@ const props = defineProps<{
   requestArea: (box: { west: number; south: number; east: number; north: number }, fine: boolean) => Promise<TravelArea>;
   requestPlan: (id: string, o: { mpp: number; radius: number; illustrated: boolean; lon?: number; lat?: number }) => Promise<PlanImage | null>;
 }>();
+/** The journey (game/travel.ts): the game's own object, driven from here, not data a parent view owns. */
+const journey = props.travel;
 const emit = defineEmits<{ zoomIn: []; camp: [] }>();
 
 /** The three scales: country, realm, world (km across the view). */
@@ -35,21 +38,21 @@ function loadPlans(a: TravelArea): void {
   for (const p of a.places) {
     if (!p.radiusM || p.tier === 'lair' || asked.has(p.id) || fog(p.lon, p.lat) === 0) continue;
     asked.add(p.id);
-    void props.requestPlan(p.id, { mpp: p.tier === 'village' ? 2 : 4, radius: p.radiusM * 1.05, illustrated: false, lon: p.lon, lat: p.lat }).then((img) => {
+    background(props.requestPlan(p.id, { mpp: p.tier === 'village' ? 2 : 4, radius: p.radiusM * 1.05, illustrated: false, lon: p.lon, lat: p.lat }).then((img) => {
       if (img) plans.value = [...plans.value, img];
-    });
+    }), 'the travel map');
   }
 }
 /** Bumped whenever the journey changes, so the view recomputes. */
 const tick = ref(0);
-props.travel.onChange = () => tick.value++;
+journey.onChange = () => tick.value++;
 
-const party = computed<LL>(() => (tick.value, props.travel.party()));
-const route = computed<LL[]>(() => (tick.value, props.travel.ahead()));
-const dest = computed<LL | null>(() => (tick.value, props.travel.dest));
+const party = computed<LL>(() => (tick.value, journey.party()));
+const route = computed<LL[]>(() => (tick.value, journey.ahead()));
+const dest = computed<LL | null>(() => (tick.value, journey.dest));
 const status = computed(() => {
   void tick.value;
-  const t = props.travel;
+  const t = journey;
   if (t.planning) return 'Finding the way…';
   if (!t.dest) return 'Click the map (or a place) to choose where to go.';
   if (!t.steps.length) return 'No way found.';
@@ -58,19 +61,19 @@ const status = computed(() => {
   const eta = left < 1 ? `${Math.round(left * 60)} min` : `${left.toFixed(1)} h`;
   return `${t.destName || 'Destination'}: ${km.toFixed(1)} km, about ${eta}${t.partial ? ' this leg' : ''}`;
 });
-const running = computed(() => (tick.value, props.travel.running));
+const running = computed(() => (tick.value, journey.running));
 
 /** Clouds over what has not been discovered; dimmed what is out of sight. */
 function fog(lon: number, lat: number): number {
-  const g = props.travel.game;
-  const p = props.travel.frame.fromLL(lon, lat);
+  const g = journey.game;
+  const p = journey.frame.fromLL(lon, lat);
   const tx = Math.floor(p[0] / TILE_M), ty = Math.floor(-p[1] / TILE_M);
   if (!g.discovery.known(tx, ty)) return 0;
   const dx = (tx - g.px) * TILE_M, dy = (ty - g.py) * TILE_M;
-  const r = props.travel.sightM;
+  const r = journey.sightM;
   return dx * dx + dy * dy <= r * r ? 2 : 1;
 }
-const fogVersion = computed(() => (tick.value, props.travel.game.discovery.version * 100000 + props.travel.game.px + props.travel.game.py));
+const fogVersion = computed(() => (tick.value, journey.game.discovery.version * 100000 + journey.game.px + journey.game.py));
 
 let areaKey = '';
 async function onView(box: { west: number; south: number; east: number; north: number; km: number }): Promise<void> {
@@ -91,24 +94,24 @@ function pick(ll: LL): void {
   const p = area.value?.places.find((x) => Math.abs(x.lon - ll[0]) < 1e-9 && Math.abs(x.lat - ll[1]) < 1e-9);
   // A settlement is entered by a gate; a lair or a point on the map is gone to directly.
   const site = s ? { id: s.id, name: s.name, tier: s.tier, lon: s.lon, lat: s.lat } : p && p.tier !== 'lair' ? { id: p.id, name: p.name, tier: p.tier, lon: p.lon, lat: p.lat } : undefined;
-  void props.travel.setDest(ll, s?.name ?? p?.name ?? '', site);
+  background(journey.setDest(ll, s?.name ?? p?.name ?? '', site), 'the travel map');
 }
 
 function go(): void {
-  if (props.travel.running) props.travel.stop();
+  if (journey.running) journey.stop();
   else {
     mapRef.value?.centreOnParty();
-    props.travel.start();
+    journey.start();
   }
 }
 
 function onKey(e: KeyboardEvent): void {
   if ((e.target as HTMLElement)?.tagName === 'INPUT') return;
   if (e.code === 'Space' || e.code === 'Enter') go();
-  else if (e.code === 'Escape') props.travel.stop();
+  else if (e.code === 'Escape') journey.stop();
   else if (e.code === 'KeyF') mapRef.value?.centreOnParty();
   else if (e.code === 'KeyZ') {
-    props.travel.stop();
+    journey.stop();
     emit('zoomIn');
   } else if (e.key === '+' || e.key === '=') level.value = Math.max(0, level.value - 1);
   else if (e.key === '-') level.value = Math.min(LEVELS.length - 1, level.value + 1);
@@ -118,7 +121,7 @@ function onKey(e: KeyboardEvent): void {
 
 // Keys come from the play screen (engine/screens.ts sends them to the top screen only).
 defineExpose({ key: onKey });
-onBeforeUnmount(() => props.travel.stop());
+onBeforeUnmount(() => journey.stop());
 </script>
 
 <template>
@@ -152,16 +155,16 @@ onBeforeUnmount(() => props.travel.stop());
       </div>
       <div class="status">{{ status }}</div>
       <div class="row">
-        <button class="primary" :disabled="!travel.steps.length || travel.planning" @click="go">{{ running ? 'Stop' : 'Travel' }}</button>
-        <select v-model.number="travel.speed" @change="tick++">
+        <button class="primary" :disabled="!journey.steps.length || journey.planning" @click="go">{{ running ? 'Stop' : 'Travel' }}</button>
+        <select v-model.number="journey.speed" @change="tick++">
           <option v-for="(s, i) in SPEEDS" :key="s.label" :value="i">{{ s.label }}</option>
         </select>
-        <label class="check"><input v-model="travel.stopAtDusk" type="checkbox" /> Stop at dusk</label>
-        <button v-if="travel.dest" @click="travel.clear()">Clear</button>
+        <label class="check"><input v-model="journey.stopAtDusk" type="checkbox" /> Stop at dusk</label>
+        <button v-if="journey.dest" @click="journey.clear()">Clear</button>
         <span class="sep" />
         <button @click="mapRef?.centreOnParty()">Find party (F)</button>
         <button @click="emit('zoomIn')">Zoom in (Z)</button>
-        <button @click="props.travel.stop(); emit('camp')">Camp (Shift+C)</button>
+        <button @click="journey.stop(); emit('camp')">Camp (Shift+C)</button>
       </div>
     </div>
   </div>

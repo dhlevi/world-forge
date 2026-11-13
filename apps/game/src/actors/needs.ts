@@ -28,6 +28,7 @@ import type { Message } from '../engine/messages';
 import { Body, Mood, Pools, Skills, type Activity, type TimeCtx } from './components';
 import { Inventory } from './items/inventory';
 import { defOf } from './items/item';
+import { clamp } from '../util';
 
 export type NeedId = 'hunger' | 'thirst' | 'sleep' | 'stamina' | 'heat' | 'wet';
 
@@ -66,7 +67,6 @@ export interface NeedNote {
 }
 
 const H = 3600;
-const clamp = (v: number, a: number, b: number) => Math.max(a, Math.min(b, v));
 
 /** How many times the resting rate each activity burns energy, loses water and tires. */
 const BURN: Record<Activity, number> = { rest: 1, sleep: 0.85, walk: 2.2, travel: 2.6, swim: 5, work: 3 };

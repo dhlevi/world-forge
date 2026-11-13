@@ -1,7 +1,7 @@
 import { hashString, mulberry32, type Rng } from '../gen/rng';
 import { Simplex3, fbm } from '../gen/noise';
 import { hookTail } from '../keys/flavour';
-import { Field, type LairMap, type LairSite, type Pt, annotate, blob, distSeg, empty, lairSize, wander } from './lair';
+import { Field, type LairMap, type LairSite, type Pt, annotate, blob, distSeg, empty, lairSize, wander } from './base';
 import { DMath } from '../dmath';
 
 /**

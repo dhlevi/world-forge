@@ -122,16 +122,6 @@ function roomsAndCorridors(
   return rects;
 }
 
-/** An entrance: a corridor from the nearest room out to the map edge on the given side. */
-function entrance(L: DLevel, rects: Rect[], side: number, w = 1): void {
-  const edgeD = (r: Rect) => [r.y, L.W - (r.x + r.w), L.H - (r.y + r.h), r.x][side];
-  const r = rects.reduce((a, b) => (edgeD(b) < edgeD(a) ? b : a));
-  const [cx, cy] = centre(r);
-  const out: [number, number] = side === 0 ? [cx, 0] : side === 1 ? [L.W - 1, cy] : side === 2 ? [cx, L.H - 1] : [0, cy];
-  carveCorridor(L, cx, cy, out[0], out[1], side % 2 === 1, w);
-  L.entrances.push({ x: out[0], y: out[1], dir: [Math.PI / 2, Math.PI, -Math.PI / 2, 0][side] });
-}
-
 const doorPick = (rnd: Rng, w: [DoorKind, number][]) => () => pickW(rnd, w);
 
 // ---- Crypts -------------------------------------------------------------------------------------
@@ -695,12 +685,20 @@ function delveLevel(site: DungeonSite, rnd: Rng, which: string, name: string, ga
     const c = centre(r);
     const put = (kind: Parameters<typeof L.props.push>[0]['kind'], x: number, y: number, extra: object = {}) => L.props.push({ kind, x, y, ...extra });
     switch (use) {
-      case 'throne': put('throne', r.x + r.w / 2, r.y + 1.2); put('table', r.x + r.w / 2, r.y + r.h / 2 + 0.5, { w: Math.max(2, r.w - 4), h: 1 }); for (let y = r.y + 1.5; y < r.y + r.h - 1; y += 3) put('pillar', r.x + 1, y), put('pillar', r.x + r.w - 1, y); break;
+      case 'throne': put('throne', r.x + r.w / 2, r.y + 1.2); put('table', r.x + r.w / 2, r.y + r.h / 2 + 0.5, { w: Math.max(2, r.w - 4), h: 1 }); for (let y = r.y + 1.5; y < r.y + r.h - 1; y += 3) {
+          put('pillar', r.x + 1, y);
+          put('pillar', r.x + r.w - 1, y);
+        }
+        break;
       case 'barracks': for (let x = r.x + 0.7; x < r.x + r.w - 0.5; x += 1.2) put('bed', x, r.y + 1.1, { w: 0.9, h: 1.8 }); put('chest', c[0], r.y + r.h - 0.8); break;
       case 'brewery': for (let q = 0; q < 6; q++) put('barrel', r.x + 0.8 + (q % 3) * 1.3, r.y + 0.8 + Math.floor(q / 3) * 1.3); put('brazier', r.x + r.w - 1, r.y + r.h - 1); break;
       case 'stable': for (let x = r.x + 0.5; x < r.x + r.w - 0.5; x += 1.5) put('crate', x + 0.5, r.y + 0.6); put('cart', c[0], r.y + r.h - 1.2, { a: 0 }); break;
       case 'market': for (let y = r.y + 1.5; y < r.y + r.h - 1; y += 2.5) for (let x = r.x + 1.5; x < r.x + r.w - 1; x += 2.5) put(rnd() < 0.5 ? 'table' : rnd() < 0.5 ? 'crate' : 'barrel', x, y, { w: 1.4, h: 0.8 }); break;
-      case 'temple': put('altar', c[0], r.y + 1, { w: 1.8, h: 0.8 }); put('brazier', c[0] - 1.6, r.y + 1); put('brazier', c[0] + 1.6, r.y + 1); for (let y = r.y + 2.5; y < r.y + r.h - 0.5; y += 2) put('statue', r.x + 0.7, y), put('statue', r.x + r.w - 0.7, y); break;
+      case 'temple': put('altar', c[0], r.y + 1, { w: 1.8, h: 0.8 }); put('brazier', c[0] - 1.6, r.y + 1); put('brazier', c[0] + 1.6, r.y + 1); for (let y = r.y + 2.5; y < r.y + r.h - 0.5; y += 2) {
+          put('statue', r.x + 0.7, y);
+          put('statue', r.x + r.w - 0.7, y);
+        }
+        break;
       case 'tavern': put('table', c[0] - 1, c[1], { w: 1.6, h: 0.9 }); put('table', c[0] + 1.4, c[1] + 1, { w: 1.6, h: 0.9 }); put('barrel', r.x + 0.7, r.y + 0.7); put('barrel', r.x + 1.6, r.y + 0.7); break;
       case 'home': put('bed', r.x + 0.8, r.y + 1.2, { w: 1, h: 1.9 }); put('table', c[0] + 0.5, c[1] + 0.3, { w: 1.2, h: 0.8 }); put('chest', r.x + r.w - 0.7, r.y + r.h - 0.7); break;
       case 'forge': put('brazier', r.x + 1, r.y + 1); put('brazier', r.x + r.w - 1, r.y + 1); put('table', c[0], c[1], { w: 1.4, h: 0.8 }); put('barrel', r.x + 0.8, r.y + r.h - 0.8); put('crate', r.x + r.w - 0.8, r.y + r.h - 0.8); break;

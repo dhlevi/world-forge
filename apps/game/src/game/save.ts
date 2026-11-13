@@ -12,12 +12,14 @@ import type { WorldSettings } from '@worldforge/core/settings';
 import { GENERATOR_VERSION } from '@worldforge/core/version';
 import { LOCAL_MAP_VERSION } from '@worldforge/core/local/chunk';
 import { desktop } from '../desktop';
+import { checkSave, migrateSave, pruneUnknown, SAVE_VERSION } from './migrate';
+import { ITEM } from '../actors/items/defs';
 import type { Game } from './game';
 import type { ActorData } from '../actors/actor';
 import type { Item } from '../actors/items/item';
 
 export const SAVE_FORMAT = 'world-forge.save';
-export const SAVE_VERSION = 1;
+export { SAVE_VERSION };
 
 export interface SaveFile {
   format: typeof SAVE_FORMAT;
@@ -46,11 +48,15 @@ export interface SaveFile {
   /** Discovered cells of the travel map (x0, y0, x1, y1, ...; game/discovery.ts). */
   discovered?: number[];
   /** Things left on the local map: [tx, ty, items] (game/ground.ts). */
-  ground?: [number, number, Item[]][];
+  ground: [number, number, Item[]][];
   /** Camps made and kept (game/camp.ts). */
-  camps?: CampData[];
+  camps: CampData[];
+  /** The state of the game's own stream of chance (game/game.ts); a game saved without it seeds it from its id. */
+  dice?: number;
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
+  /** Not saved: what reading it had to say (things left out); shown when the game is loaded. */
+  loadNotes?: string[];
 }
 
 /** The short form shown in the list of saves. */
@@ -100,6 +106,7 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     discovered: game.discovery.export(),
     ground: game.ground.export(),
     camps: game.camps.export(),
+    dice: game.dice.state,
     ...(meta.character ? { character: meta.character } : {}),
   };
 }
@@ -114,21 +121,33 @@ export function applySave(game: Game, s: SaveFile): void {
   game.map.importSeen(s.seen);
   game.hud.log.splice(0, game.hud.log.length, ...s.log);
   if (s.discovered) game.discovery.import(s.discovered);
-  if (s.ground) game.ground.import(s.ground);
+  game.ground.import(s.ground);
   game.camps.import(s.camps);
+  if (typeof s.dice === 'number') game.dice.state = s.dice;
 }
 
-/** Checks a save read from a file or storage; throws with a plain message if it is not one. */
+/**
+ * Reads a save from a file or storage: brings it up to date (game/migrate.ts), checks its shape,
+ * and leaves out things of kinds this game does not know. Throws with a plain message if it is not
+ * a save, is from a newer game, or is damaged.
+ */
 export function readSave(text: string): SaveFile {
-  let s: Partial<SaveFile>;
+  let raw: unknown;
   try {
-    s = JSON.parse(text);
+    raw = JSON.parse(text);
   } catch {
     throw new Error('This file is not a saved game (it is not JSON).');
   }
-  if (!s || s.format !== SAVE_FORMAT || typeof s.id !== 'string' || !s.settings || !s.start || !s.player) throw new Error('This file is not a saved game.');
-  if ((s.version ?? 0) > SAVE_VERSION) throw new Error('This game was saved by a newer version of the game.');
-  return s as SaveFile;
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) || (raw as { format?: unknown }).format !== SAVE_FORMAT) throw new Error('This file is not a saved game.');
+  const s = raw as Record<string, unknown>;
+  if (typeof s.version === 'number' && s.version > SAVE_VERSION) throw new Error('This game was saved by a newer version of the game.');
+  migrateSave(s);
+  const bad = checkSave(s);
+  if (bad.length) throw new Error(`This saved game is damaged: ${bad.join('; ')}.`);
+  const notes = pruneUnknown(s, (id) => ITEM.has(id));
+  const save = s as unknown as SaveFile;
+  if (notes.length) save.loadNotes = notes;
+  return save;
 }
 
 /** A warning when the save was made with another generator or local-map version, else ''. */
@@ -136,7 +155,8 @@ export function versionNote(s: SaveFile): string {
   const notes: string[] = [];
   if (s.generator !== GENERATOR_VERSION) notes.push(`its world was made by generator version ${s.generator} (this game makes ${GENERATOR_VERSION})`);
   if (s.localMap !== LOCAL_MAP_VERSION) notes.push(`its map tiles by local-map version ${s.localMap} (this game makes ${LOCAL_MAP_VERSION})`);
-  return notes.length ? `This game was saved when ${notes.join(' and ')}, so places may have changed a little.` : '';
+  const out = notes.length ? [`This game was saved when ${notes.join(' and ')}, so places may have changed a little.`] : [];
+  return [...out, ...(s.loadNotes ?? [])].join(' ');
 }
 
 const summary = (s: SaveFile): SaveSummary => ({ id: s.id, title: s.title, savedAt: s.savedAt, place: s.place, time: s.time, settings: s.settings, generator: s.generator, localMap: s.localMap });
@@ -147,7 +167,8 @@ const LS = 'wf-save:';
 const fileOf = (id: string) => `saves/${id.replace(/[^a-z0-9-]/gi, '')}.json`;
 
 export async function writeSave(s: SaveFile): Promise<void> {
-  const text = JSON.stringify(s);
+  const { loadNotes: _notes, ...kept } = s;
+  const text = JSON.stringify(kept);
   if (desktop) {
     await desktop.data.write(fileOf(s.id), text);
     return;

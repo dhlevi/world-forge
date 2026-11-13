@@ -266,7 +266,7 @@ function advectMoisture(
   g: Grid, h: Float32Array, tempSea: Float32Array, temp: Float32Array,
   windU: Float32Array, windV: Float32Array, anomaly: Float32Array,
 ): Float32Array {
-  const { W, H, N } = g;
+  const { N } = g;
   const step = Math.max(C.advectStepKm, g.dyKm);
   const up = buildUpstream(g, windU, windV, step);
 

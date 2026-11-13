@@ -234,15 +234,21 @@ else {
       w.focus();
     }
   });
-  app.whenReady().then(async () => {
-    serveRenderer();
-    registerIpc();
-    buildMenu();
-    await createWindow();
-    app.on('activate', () => {
-      if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+  app
+    .whenReady()
+    .then(async () => {
+      serveRenderer();
+      registerIpc();
+      buildMenu();
+      await createWindow();
+      app.on('activate', () => {
+        if (BrowserWindow.getAllWindows().length === 0) void createWindow();
+      });
+    })
+    .catch((e: unknown) => {
+      dialog.showErrorBox('World Forge Wanderer could not start', e instanceof Error ? e.message : String(e));
+      app.quit();
     });
-  });
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
   });

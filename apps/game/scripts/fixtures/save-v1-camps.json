@@ -1,0 +1,375 @@
+{
+ "format": "world-forge.save",
+ "generator": 2,
+ "localMap": 2,
+ "id": "fixture",
+ "title": "Asta Ormsdottir of Onson, world \"forge\"",
+ "savedAt": "2026-11-01T10:00:00.000Z",
+ "settings": {
+  "seed": "forge",
+  "landFraction": 0.3,
+  "plates": 14,
+  "erosion": 0.5,
+  "settled": 0.6,
+  "drift": 0.3,
+  "races": true,
+  "resolution": 512
+ },
+ "start": {
+  "siteId": "s12",
+  "siteName": "Onson"
+ },
+ "place": "Onson",
+ "player": {
+  "x": 1200,
+  "y": -340
+ },
+ "time": 108000,
+ "changes": [
+  [
+   1201,
+   -340,
+   5
+  ]
+ ],
+ "seen": {},
+ "log": [
+  {
+   "t": "Day 2, 06:00",
+   "text": "You take up where you left off."
+  }
+ ],
+ "version": 1,
+ "discovered": [
+  0,
+  0,
+  4,
+  4
+ ],
+ "ground": [
+  [
+   1203,
+   -338,
+   [
+    {
+     "uid": "imwf4dml9d5f",
+     "def": "bread",
+     "qty": 2,
+     "quality": "common",
+     "condition": 100,
+     "uses": 4
+    }
+   ]
+  ]
+ ],
+ "camps": [
+  {
+   "id": "c1",
+   "x": 1205,
+   "y": -340,
+   "made": 72000,
+   "site": {
+    "shelter": 0.6,
+    "wood": 0.7,
+    "waterM": 40,
+    "hidden": 0.5,
+    "score": 2.5
+   },
+   "fire": {
+    "lit": false,
+    "fuelH": 0,
+    "tend": false
+   },
+   "wood": 6,
+   "woodAt": [
+    1206,
+    -340
+   ],
+   "bedAt": [
+    1203,
+    -340
+   ],
+   "snares": [],
+   "placed": [
+    [
+     1205,
+     -340,
+     0
+    ],
+    [
+     1206,
+     -340,
+     0
+    ]
+   ]
+  }
+ ],
+ "character": {
+  "id": 7,
+  "kind": "person",
+  "components": {
+   "identity": {
+    "given": "Asta",
+    "family": "Ormsdottir",
+    "full": "Asta Ormsdottir",
+    "female": true,
+    "age": 24,
+    "year": 1203,
+    "folk": "Human",
+    "culture": 3,
+    "cultureName": "Futsabsk",
+    "people": "the Futsabsk",
+    "realm": "Grand Duchy of Lelstad",
+    "homeId": "s12",
+    "homeName": "Onson",
+    "faith": "the Path of the Raven Banner",
+    "standing": "peasant"
+   },
+   "traits": {
+    "traits": {
+     "intelligence": 10,
+     "wisdom": 10,
+     "willpower": 10,
+     "strength": 10,
+     "constitution": 10,
+     "agility": 10,
+     "charm": 10,
+     "gravitas": 10,
+     "aura": 10
+    },
+    "senses": {
+     "eyesight": 10,
+     "hearing": 10,
+     "smell": 10,
+     "taste": 10,
+     "touch": 10
+    },
+    "luck": 50,
+    "luckRest": 50
+   },
+   "body": {
+    "heightCm": 168,
+    "weightKg": 62,
+    "build": "lean",
+    "skin": "fair",
+    "skinHex": "#e8c8a8",
+    "hair": "red",
+    "hairHex": "#a04020",
+    "hairStyle": "braided",
+    "beard": "none",
+    "wounds": []
+   },
+   "skills": {
+    "levels": {
+     "survival": 22,
+     "trapping": 15,
+     "swimming": 10
+    },
+    "rust": {},
+    "languages": {
+     "3": {
+      "name": "Futsabsk",
+      "speak": 95,
+      "read": 0
+     }
+    },
+    "knowledge": {},
+    "dice": 12345,
+    "used": {
+     "survival": 72000
+    }
+   },
+   "pools": {
+    "physBurst": {
+     "value": 70,
+     "max": 70
+    },
+    "physDay": {
+     "value": 88,
+     "max": 88
+    },
+    "mentBurst": {
+     "value": 70,
+     "max": 70
+    },
+    "mentDay": {
+     "value": 90,
+     "max": 90
+    }
+   },
+   "mood": [],
+   "history": {
+    "lines": [
+     {
+      "age": 16,
+      "text": "You set your first snares."
+     }
+    ],
+    "spread": [],
+    "ranks": {},
+    "ties": []
+   },
+   "knowledge": {
+    "homeRadiusM": 8000,
+    "roads": [],
+    "places": [],
+    "applied": true,
+    "notes": []
+   },
+   "inventory": {
+    "copper": 160,
+    "items": [
+     {
+      "uid": "imwf4dml60os",
+      "def": "undershirt",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "worn"
+      }
+     },
+     {
+      "uid": "imwf4dml712m",
+      "def": "braies",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "worn"
+      }
+     },
+     {
+      "uid": "imwf4dml72zo",
+      "def": "dress",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "worn"
+      }
+     },
+     {
+      "uid": "imwf4dml73yx",
+      "def": "socks",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "worn"
+      }
+     },
+     {
+      "uid": "imwf4dml74h6",
+      "def": "boots",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "worn"
+      }
+     },
+     {
+      "uid": "imwf4dml75ok",
+      "def": "belt",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "worn"
+      }
+     },
+     {
+      "uid": "imwf4dml76kh",
+      "def": "cloak",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "worn"
+      }
+     },
+     {
+      "uid": "imwf4dml774t",
+      "def": "pouch",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "belt"
+      }
+     },
+     {
+      "uid": "imwf4dml7890",
+      "def": "knife",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "belt"
+      }
+     },
+     {
+      "uid": "imwf4dml89t3",
+      "def": "pack_small",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "back"
+      }
+     },
+     {
+      "uid": "imwf4dml8acg",
+      "def": "sewing_kit",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "uses": 10,
+      "loc": {
+       "at": "in",
+       "parent": "imwf4dml774t"
+      }
+     },
+     {
+      "uid": "imwf4dml8byf",
+      "def": "snares",
+      "qty": 5,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "in",
+       "parent": "imwf4dml89t3"
+      }
+     },
+     {
+      "uid": "imwf4dml8cyo",
+      "def": "blanket",
+      "qty": 1,
+      "quality": "common",
+      "condition": 100,
+      "loc": {
+       "at": "in",
+       "parent": "imwf4dml89t3"
+      }
+     }
+    ],
+    "animals": []
+   },
+   "needs": {
+    "stomachKcal": 400,
+    "reserveKcal": 1400,
+    "nourish": 100,
+    "stomachL": 0.3,
+    "hydrationL": 1.8,
+    "hydrated": 100,
+    "fatigue": 10,
+    "debt": 0,
+    "heat": 0,
+    "airC": 15,
+    "said": {},
+    "wet": 35
+   }
+  }
+ }
+}

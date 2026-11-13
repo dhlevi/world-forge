@@ -1302,7 +1302,7 @@ export const REWARDS: string[] = [
   'The village mill master offers free grain flour for a year if you drive out the creature nesting under the waterwheel vault.',
   'A fugitive scholar offers a bottle of rare moonshine and a map showing a hidden mountain pass if you save his captive research notes.',
   'A local tanner promises a custom-tailored studded leather jack if you bring him the thick hide of an adult cave-beast.',
-  'A group of striking miners will pool their life savings—40 silver coins—if you dispatch the overseer\'s undead corpse.',
+  'A group of striking miners will pool their life savings, 40 silver coins, if you dispatch the overseer\'s undead corpse.',
   'A disgraced judge offers a forged letter of noble pardon if you retrieve incriminating court records from a burnt wagon.',
   'An old sea captain offers a brass spyglass and a vial of whale-oil lamp fuel if you clear his family tomb of scavengers.',
   'A local hedge-wizard promises to brew a draught that grants night-sight in exchange for a cup of venom taken from the creature.',

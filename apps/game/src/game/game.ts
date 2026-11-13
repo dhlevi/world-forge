@@ -4,7 +4,7 @@
  */
 import { FOV } from 'rot-js';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
-import { GROUND_TILES, OBJECT_TILES, objectId } from '@worldforge/core/local/tiles';
+import { GROUND_TILES, OBJECT_TILES, objectId, type TileDef } from '@worldforge/core/local/tiles';
 import { GameMap } from './map';
 import { Ground } from './ground';
 import { Camps } from './camp';
@@ -12,6 +12,7 @@ import type { Activity } from '../actors/components';
 import { itemName } from '../actors/items/item';
 import { Discovery, FOOT_SIGHT_M } from './discovery';
 import type { LocalSite } from '../worker/protocol';
+import { bearing, compassWord, Dice } from '../util';
 
 /** Seconds an action takes. */
 export const STEP_S = 1.2;
@@ -39,7 +40,6 @@ export interface Hud {
 
 const vkey = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);
 const DIRS8: [number, number][] = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
-const COMPASS = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 
 export class Game {
   px: number;
@@ -58,6 +58,8 @@ export class Game {
   readonly ground = new Ground();
   /** Camps made and kept (game/camp.ts). */
   readonly camps = new Camps();
+  /** The game's own saved stream of chance (events on the road), seeded from the game's id by the session. */
+  readonly dice = new Dice(0);
   /** How much slower the wanderer's load (and state) makes moving (actors/items/inventory.ts, actors/needs.ts). */
   loadSlow: () => number = () => 1;
   /** What the wanderer has been doing since the clock was last told (for needs and fatigue). */
@@ -79,6 +81,29 @@ export class Game {
   carriedLight: () => number = () => 0;
   /** Light on each visible tile (negative: firelight). */
   private lit = new Map<number, number>();
+
+  /**
+   * The first thing found about the wanderer, underfoot then ring by ring out to `r` tiles: `f`
+   * is asked of each tile and the first answer that is not empty is returned (or null).
+   */
+  nearby<T>(r: number, f: (x: number, y: number) => T | null | undefined | false): T | null {
+    for (let ring = 0; ring <= r; ring++) {
+      for (let dy = -ring; dy <= ring; dy++) for (let dx = -ring; dx <= ring; dx++) {
+        if (Math.max(Math.abs(dx), Math.abs(dy)) !== ring) continue;
+        const v = f(this.px + dx, this.py + dy);
+        if (v) return v;
+      }
+    }
+    return null;
+  }
+
+  /** A thing on the map of one of these names, underfoot or within `r` tiles (1: beside): its tile. */
+  besideObject(names: string[], r = 1): TileDef | null {
+    return this.nearby(r, (x, y) => {
+      const o = OBJECT_TILES[this.map.object(x, y)];
+      return o && names.includes(o.name) ? o : null;
+    });
+  }
 
   isVisible(x: number, y: number): boolean {
     return this.visible.has(vkey(x, y));
@@ -308,7 +333,7 @@ export class Game {
     if (inside) this.hud.where = `${inside.name}, a ${inside.tier}`;
     else if (nearest) {
       const dx = nearest.x - mx, dy = nearest.y - my;
-      const dir = COMPASS[Math.round(((Math.atan2(dx, dy) * 180) / Math.PI + 360) / 45) % 8];
+      const dir = compassWord(bearing(dx, dy), true);
       const km = Math.max(0, Math.hypot(dx, dy) / 1000);
       this.hud.where = `${km < 1 ? `${Math.round(km * 1000)} m` : `${km.toFixed(1)} km`} ${dir} of ${nearest.name}`;
     } else this.hud.where = '';

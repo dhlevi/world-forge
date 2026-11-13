@@ -146,6 +146,19 @@
       "sold": ["market"]
     },
     {
+      "id": "long_bow",
+      "name": "long bow",
+      "kind": "weapon",
+      "weight": 1.5,
+      "bulk": 5,
+      "size": "large",
+      "value": 60,
+      "back": true,
+      "strap": true,
+      "mend": { "skill": "carpentry", "kit": "tool_roll" },
+      "sold": ["market"]
+    },
+    {
       "id": "arrows",
       "name": "arrow",
       "plural": "arrows",

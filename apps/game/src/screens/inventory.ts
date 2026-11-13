@@ -17,8 +17,7 @@ import { defOf, itemName, fitsSize, ownBulk, type Item } from '../actors/items/i
 import { storageAt } from '../game/ground';
 import InventoryView from './views/InventoryView.vue';
 import { Needs } from '../actors/needs';
-import { OBJECT_TILES } from '@worldforge/core/local/tiles';
-import { cookPortion, eatPortion, mendNeeds, mendThing, usePortion } from '../game/tasks';
+import { cookPortion, eatPortion, mendNeeds, mendThing } from '../game/tasks';
 import { Skills, type Moodlet } from '../actors/components';
 import { readBook } from '../actors/learning';
 import { SKILL } from '../actors/data/skills';
@@ -55,7 +54,7 @@ export class InventoryScreen extends Screen {
   readonly state = reactive({
     selected: null as Ref | null,
     message: '',
-    /** Bumped after every change (the items themselves are not reactive). */
+    /** Bumped after every change to the wanderer (the items themselves are not reactive). */
     version: 0,
   });
 
@@ -63,12 +62,18 @@ export class InventoryScreen extends Screen {
     super();
   }
 
+  /** The view follows the wanderer: it is drawn again after each change to them. */
+  enter(): void {
+    const a = this.actor;
+    if (a) this.whileOpen(a.watch(() => this.state.version++));
+  }
+
   get inv(): Inventory {
     return this.actor.need(Inventory);
   }
 
   private get game() {
-    return this.play.hooks!.game();
+    return this.play.session.game;
   }
 
   /** The ground underfoot, and furniture to put things in on this tile and beside it. */
@@ -170,8 +175,7 @@ export class InventoryScreen extends Screen {
     this.play.advance(secs);
     this.state.message = said;
     this.play.say(said);
-    this.state.version++;
-    this.play.hooks?.redraw();
+    this.play.session.redraw();
     if (r.from === 'ground' && t.at !== 'ground') this.state.selected = { from: 'inv', uid: it.uid };
     else if (r.from === 'inv' && t.at === 'ground') this.state.selected = { from: 'ground', x: t.x, y: t.y, uid: it.uid };
     return true;
@@ -189,7 +193,6 @@ export class InventoryScreen extends Screen {
       return;
     }
     this.state.message = `You take out one ${defOf(one).name}.`;
-    this.state.version++;
   }
 
   /** Eats a portion, or drinks one's fill, from a carried thing. */
@@ -198,7 +201,6 @@ export class InventoryScreen extends Screen {
     const n = this.actor.get(Needs);
     const food = it && defOf(it).food;
     if (!it || !n || !food || r.from !== 'inv') return;
-    const d = defOf(it);
     let msg = '';
     if (food.kcal === 0) {
       // Drinking: sip after sip, until slaked or the skin is empty.
@@ -222,21 +224,12 @@ export class InventoryScreen extends Screen {
     }
     this.state.message = msg;
     this.play.say(msg);
-    this.state.version++;
-  }
-
-  private usePortion(it: Item): void {
-    usePortion(this.inv, it);
+    this.actor.changed();
   }
 
   /** Something on the map beside the wanderer (or underfoot) by name, if any. */
   private beside(names: string[]): string | null {
-    const g = this.game;
-    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
-      const o = OBJECT_TILES[g.map.object(g.px + dx, g.py + dy)];
-      if (o && names.includes(o.name)) return o.look;
-    }
-    return null;
+    return this.game.besideObject(names)?.look ?? null;
   }
 
   private mood(m: Moodlet, hours: number): void {
@@ -251,7 +244,7 @@ export class InventoryScreen extends Screen {
     this.state.message = msg;
     this.play.say(msg);
     this.skillNotes();
-    this.state.version++;
+    this.actor.changed();
   }
 
   /** Cooks a portion at a fire beside, and eats it (Cooking). */

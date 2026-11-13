@@ -5,7 +5,8 @@
  * stands.
  */
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
-import { KIND_NAMES, KIND_ORDER, type CityScreen } from '../city';
+import type { CityScreen } from '../city';
+import { KIND_NAMES, KIND_ORDER } from '../places';
 import type { SitePlace } from '../../worker/protocol';
 
 const props = defineProps<{ screen: CityScreen }>();

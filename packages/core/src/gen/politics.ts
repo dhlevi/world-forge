@@ -219,7 +219,6 @@ export function buildPolitics(g: Grid, f: PoliticsFields, settlements: Settlemen
     if (rf.properties.order < 5) continue;
     for (const p of rf.geometry.coordinates) bigRiver[cellOf(p[0], p[1])] = 1;
   }
-  const cul = (c: number) => CULTURES[f.culture[c]]?.id ?? 'anglo';
 
   /**
    * Multi-source Dijkstra: each source claims the cells it reaches first. `seaKm` > 0 lets a

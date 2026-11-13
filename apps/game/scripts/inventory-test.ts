@@ -75,8 +75,24 @@ console.log('Sack in hand:', why ?? 'ok', '| right hand:', inv.held('right') ? i
 // Save and load.
 const back = Inventory.fromJSON(JSON.parse(JSON.stringify(inv.toJSON())));
 check('saves and loads the same', JSON.stringify(back.toJSON()), JSON.stringify(inv.toJSON()));
-// An old save's list of names.
-const old = Inventory.fromJSON({ copper: 12, items: [{ name: 'clothes' }, { name: 'knife' }, { name: 'hunting bow' }] } as never);
-console.log('Old save:', old.d.items.map((i) => itemName(i)).join(', '));
+
+// Money, and the actor's watchers told of each change.
+let told = 0;
+const stop = a.watch(() => told++);
+const purse = inv.d.copper;
+check('paying more than is carried is refused', inv.pay(purse + 1), false);
+check('and takes nothing', inv.d.copper, purse);
+check('paying what is carried works', inv.pay(5), true);
+inv.earn(3);
+check('earning adds to the purse', inv.d.copper, purse - 2);
+check('losing more than is carried loses only what there is', inv.lose(purse * 10), purse - 2);
+inv.earn(purse);
+check('watchers hear of each change to the money', told, 4);
+inv.drop(potion.uid);
+check('and of things taken out', told, 5);
+stop();
+inv.earn(1);
+check('and stop hearing once they stop watching', told, 5);
+// Older saves' belongings (a list of names) are brought up to date with the save: scripts/save-test.ts.
 console.log(fails ? `${fails} failed` : 'All passed');
 process.exit(fails ? 1 : 0);

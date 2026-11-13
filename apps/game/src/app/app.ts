@@ -3,6 +3,7 @@
  * and the desktop app's remembered settings, and the way from one screen to the next (the title,
  * making a world, choosing where to begin, making a character, playing).
  */
+import { background, onError } from './errors';
 import { reactive, shallowRef } from 'vue';
 import { type WorldSettings } from '@worldforge/core/settings';
 import { readWorldFile } from '@worldforge/core/export/worldfile';
@@ -18,9 +19,6 @@ import type { Actor } from '../actors/actor';
 import { TitleScreen, LoadScreen, SetupScreen, ProgressScreen, StartScreen } from '../screens/menus';
 import { CreationScreen } from '../screens/creation';
 import { PlayScreen } from '../screens/play';
-
-/** The published atlas, to open the same world in for a closer look. */
-export const ATLAS_URL = 'https://dhlevi.github.io/world-forge/';
 
 interface Remembered {
   settings?: WorldSettings;
@@ -55,6 +53,10 @@ export class GameApp {
   private loading = shallowRef<SaveFile | null>(null);
 
   constructor() {
+    // Errors that escape show on the menus (the game's log shows them while playing).
+    onError((msg) => {
+      if (!this.screens.stack.some((s) => s instanceof PlayScreen)) this.state.error = `Something went wrong: ${msg}`;
+    });
     this.bus.on('world.error', ({ message }) => {
       this.state.error = message;
       this.loading.value = null;
@@ -65,30 +67,30 @@ export class GameApp {
     });
     this.bus.on('world.ready', (w) => this.worldReady(w.starts, w.summary));
     if (desktop) {
-      void desktop.info().then((i) => (this.state.info = i));
-      void readJson<Remembered>('settings.json', {}).then((r) => {
+      background(desktop.info().then((i) => (this.state.info = i)), 'the menus');
+      background(readJson<Remembered>('settings.json', {}).then((r) => {
         this.state.remembered = r;
         if (r.settings) this.state.settings = { ...this.state.settings, ...r.settings };
-      });
+      }), 'the menus');
       desktop.onMenu((what) => {
         const top = this.screens.top;
         if (what !== 'open-world' || top instanceof PlayScreen || top instanceof ProgressScreen) return;
         this.newGame();
-        void this.openWorldFile();
+        background(this.openWorldFile(), 'the menus');
       });
     }
   }
 
   start(): void {
-    void this.refreshSaves();
+    background(this.refreshSaves(), 'the menus');
     this.screens.start();
     // Mods first (they are local files, and quick): saves and characters may use their items.
-    void loadMods()
+    background(loadMods()
       .catch((e: Error): ModReport => ({ loaded: [], errors: [`The mods could not be read: ${e.message}`] }))
       .then((r) => {
         this.state.mods = r;
         this.screens.switchTo(new TitleScreen(this));
-      });
+      }), 'the menus');
   }
 
   async refreshSaves(): Promise<void> {
@@ -99,7 +101,7 @@ export class GameApp {
 
   toTitle(): void {
     this.state.error = '';
-    void this.refreshSaves();
+    background(this.refreshSaves(), 'the menus');
     this.screens.switchTo(new TitleScreen(this));
   }
 
@@ -115,7 +117,7 @@ export class GameApp {
   }
 
   quit(): void {
-    void desktop?.quit();
+    if (desktop) background(desktop.quit(), 'the menus');
   }
 
   // ---- Making a world ------------------------------------------------------------------------
@@ -124,7 +126,7 @@ export class GameApp {
     const s = this.state;
     if (desktop) {
       s.remembered = { ...s.remembered, settings: { ...s.settings } };
-      void writeJson('settings.json', s.remembered);
+      background(writeJson('settings.json', s.remembered), 'the menus');
     }
     s.error = '';
     s.worldSettings = { ...s.settings };
@@ -198,7 +200,7 @@ export class GameApp {
     const st = this.state;
     if (desktop) {
       st.remembered = { ...st.remembered, start: { seed: st.settings.seed, id: siteId } };
-      void writeJson('settings.json', st.remembered);
+      background(writeJson('settings.json', st.remembered), 'the menus');
     }
     this.screens.push(new CreationScreen(this, siteId));
   }

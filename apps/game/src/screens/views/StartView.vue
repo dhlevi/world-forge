@@ -3,7 +3,7 @@
 import { computed } from 'vue';
 import { settingsQuery } from '@worldforge/core/settings';
 import WorldView from '../../components/WorldView.vue';
-import { ATLAS_URL } from '../../app/app';
+import { ATLAS_URL } from '../../app/config';
 import type { ViewLayer } from '../../worker/protocol';
 import type { StartScreen } from '../menus';
 

@@ -1,0 +1,6 @@
+{
+  // The Node test scripts (scripts/*-test.ts) that use the game's code; typechecked with the rest.
+  "extends": "./tsconfig.json",
+  "compilerOptions": { "types": ["node", "vite/client"] },
+  "include": ["scripts/**/*.ts"]
+}

@@ -8,7 +8,8 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
+    "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.scripts.json",
+    "test": "tsx scripts/save-test.ts && tsx scripts/session-test.ts && tsx scripts/skills-test.ts && tsx scripts/inventory-test.ts && tsx scripts/needs-test.ts && tsx scripts/weather-test.ts && tsx scripts/creation-test.ts",
     "serve": "vite preview"
   },
   "dependencies": {
