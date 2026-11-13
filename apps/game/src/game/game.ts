@@ -7,6 +7,7 @@ import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, objectId } from '@worldforge/core/local/tiles';
 import { GameMap } from './map';
 import { Ground } from './ground';
+import { Camps } from './camp';
 import type { Activity } from '../actors/components';
 import { itemName } from '../actors/items/item';
 import { Discovery, FOOT_SIGHT_M } from './discovery';
@@ -53,6 +54,8 @@ export class Game {
   onChange: () => void = () => {};
   /** Things left on the map (game/ground.ts). */
   readonly ground = new Ground();
+  /** Camps made and kept (game/camp.ts). */
+  readonly camps = new Camps();
   /** How much slower the wanderer's load (and state) makes moving (actors/items/inventory.ts, actors/needs.ts). */
   loadSlow: () => number = () => 1;
   /** What the wanderer has been doing since the clock was last told (for needs and fatigue). */

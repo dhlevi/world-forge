@@ -67,7 +67,8 @@
           "properties": {
             "kcal": { "type": "number", "minimum": 0, "description": "Per use or portion; 0 for a drink." },
             "water": { "type": "number", "minimum": 0, "description": "Litres per use or portion." },
-            "verb": { "type": "string", "description": "\"eat a piece of the bread\"" }
+            "verb": { "type": "string", "description": "\"eat a piece of the bread\"" },
+            "raw": { "type": "boolean", "description": "Better cooked: eaten raw it gives half as much, and is unpleasant." }
           }
         },
         "teaches": {

@@ -104,7 +104,7 @@ export interface ItemDef {
   uses?: number;
   useWord?: string;
   /** Food and drink: what one use or portion gives (kcal 0 for a drink), and the words for it. */
-  food?: { kcal: number; water?: number; verb: string };
+  food?: { kcal: number; water?: number; verb: string; raw?: boolean };
   /** Books: reading teaches a skill, up to a level (actors/learning.ts). */
   teaches?: { skill: string; upTo: number };
   /** Mending when worn: the skill, and a kit that must be carried or things on the map to work beside (screens/inventory.ts). */
@@ -192,6 +192,7 @@ export function checkItem(o: unknown): string[] {
       num('food.kcal', f.kcal);
       if (f.water !== undefined) num('food.water', f.water);
       if (typeof f.verb !== 'string') bad.push('food.verb is needed ("eat a piece of the bread")');
+      if (f.raw !== undefined && typeof f.raw !== 'boolean') bad.push('food.raw must be true or false');
       if (r.uses === undefined && r.stack === undefined) bad.push('food needs uses or a stack to eat from');
     }
   }

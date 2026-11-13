@@ -7,6 +7,7 @@
  * Saves are kept in the desktop app's data folder (saves/<id>.json) or, in a browser, in the
  * page's local storage; either can be exported to a file and imported again.
  */
+import type { CampData } from './camp';
 import type { WorldSettings } from '@worldforge/core/settings';
 import { GENERATOR_VERSION } from '@worldforge/core/version';
 import { LOCAL_MAP_VERSION } from '@worldforge/core/local/chunk';
@@ -46,6 +47,8 @@ export interface SaveFile {
   discovered?: number[];
   /** Things left on the local map: [tx, ty, items] (game/ground.ts). */
   ground?: [number, number, Item[]][];
+  /** Camps made and kept (game/camp.ts). */
+  camps?: CampData[];
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
 }
@@ -96,6 +99,7 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     zoom: meta.zoom,
     discovered: game.discovery.export(),
     ground: game.ground.export(),
+    camps: game.camps.export(),
     ...(meta.character ? { character: meta.character } : {}),
   };
 }
@@ -111,6 +115,7 @@ export function applySave(game: Game, s: SaveFile): void {
   game.hud.log.splice(0, game.hud.log.length, ...s.log);
   if (s.discovered) game.discovery.import(s.discovered);
   if (s.ground) game.ground.import(s.ground);
+  game.camps.import(s.camps);
 }
 
 /** Checks a save read from a file or storage; throws with a plain message if it is not one. */

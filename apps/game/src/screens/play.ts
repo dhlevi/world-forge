@@ -16,6 +16,7 @@ import PlayView from '../components/PlayView.vue';
 import SheetView from './views/SheetView.vue';
 import { CityScreen } from './city';
 import { SleepScreen } from './sleep';
+import { CampScreen } from './camp';
 import { Needs, type NeedId } from '../actors/needs';
 import { airWord, seasonOf } from '../game/calendar';
 import { InventoryScreen } from './inventory';
@@ -36,8 +37,12 @@ export interface PlayHooks {
   game(): Game;
   /** Redraws the map. */
   redraw(): void;
-  /** Sleeps (or rests awake) for up to some hours; returns the hours slept. */
-  sleep(hours: number, quality: number, o?: { untilRested?: boolean; awake?: boolean }): number;
+  /** Sleeps (or rests awake) for up to some hours; returns the hours slept. `onHour` runs after each hour. */
+  sleep(hours: number, quality: number, o?: { untilRested?: boolean; awake?: boolean; onHour?: (h: number) => void }): number;
+  /** On foot (the local map) or travelling (the travel map). */
+  mode(): 'local' | 'travel';
+  /** Makes sure the local map is made for some tiles about the wanderer (for choosing a camp from the travel map). */
+  loadAround(tiles: number): Promise<boolean>;
 }
 
 export interface PlayOptions {
@@ -123,6 +128,10 @@ export class PlayScreen extends Screen {
       this.showSleep();
       return true;
     }
+    if (e.code === 'KeyC' && e.shiftKey && this.player && this.hooks) {
+      this.showCamp();
+      return true;
+    }
     if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player && this.hooks) {
       this.showInventory();
       return true;
@@ -162,6 +171,10 @@ export class PlayScreen extends Screen {
 
   showSleep(): void {
     if (this.player && this.hooks) this.manager?.push(new SleepScreen(this, this.player));
+  }
+
+  showCamp(): void {
+    if (this.player && this.hooks) this.manager?.push(new CampScreen(this, this.player));
   }
 
   showInventory(): void {

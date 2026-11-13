@@ -202,6 +202,45 @@ Pathfinder games, so resting does not require zooming in.
 - **A camp can be kept** for several days as a base for hunting or work, and can grow into a
   homestead.
 
+*Built (a first pass; `game/camp.ts`, `game/camping.ts`, `screens/camp.ts`; numbers proposed, to
+tune in play):*
+
+- **One camp, from either map.** Shift+C (or Camp on the travel map) looks about for a site: on
+  foot within about 60 m, from the travel map within about 120 m (the local map there is made
+  first). Up to five are offered: where you stand, the best all round, the most sheltered, by
+  water, and the most hidden, each described in words (shelter from the wind by the trees, rocks
+  and walls close by; wood by the trees and brush about; the nearest water; how hidden, by how
+  little can be seen from it and how far from a road or path). The camp is laid out on the local
+  map (a fire ring, a woodpile, a bedroll if a blanket is carried, the shelter, the snares) and
+  kept in the save; within 3 km, the camp screen offers to go back to it.
+- **Wood and fire.** Gathering wood (an hour, Survival) brings in more where the land is wooded
+  and with an axe or hatchet; it is stacked on the woodpile, as is firewood carried. Lighting the
+  fire needs flint and steel (Survival, harder in an exposed spot). A fire burns about 1 kg of wood
+  an hour, warms those within a few steps (up to 10°C, more in a sheltered spot, less in deep
+  cold), and burns out unless tended (waiting at the camp until evening keeps it fed; asleep, only if the night
+  plan says so, from the woodpile, at a small cost to sleep).
+- **Shelter.** A carried tent (20 minutes), a windbreak (40 minutes, Survival, where there is wood
+  to build with) or a lean-to (2 hours, Survival with Carpentry helping, and a blade). Each adds
+  warmth (tent 5°C, lean-to 3°C, windbreak 2°C) and better sleep; the tent and lean-to keep off
+  the rain.
+- **Food from the land.** Foraging (an hour, the better of Survival and Herbalism) finds what the
+  season and the land give: greens, roots and mushrooms in spring, berries in summer, nuts,
+  mushrooms and berries in autumn, little in winter, and now and then healing herbs. Snares
+  (Trapping, a quarter hour each, up to six) are set on runs with cover about the camp, and may
+  hold a rabbit when walked, by how well each was set, the land and the time. Roots, mushrooms
+  and rabbit are better cooked: eaten raw they give half as much and an unpleasant moodlet.
+- **The night.** From 18:00 (before then, wait until evening, keeping the fire in), the night is
+  settled in one step: cook up to two meals at the fire (raw food first), mend one worn thing,
+  keep watch for up to four hours, and keep the fire in; then sleep until seven. The site's
+  shelter and the fire add to the bedding (blanket or ground) and to warmth.
+- **What the night brings** (placeholders until creatures and people roam the map; about one
+  night in three): animals at the food (kept off by a fire or the watch), rain (kept off by a
+  tent or lean-to; otherwise soaked, and an unwatched fire put out), a stranger (welcome at the
+  fire on watch; otherwise perhaps a theft, more likely at a site in plain view), and wolves
+  (kept off by the fire or the watch; otherwise a sleepless night).
+- **Striking camp** packs the tent, takes up the snares (with anything in them), puts out the
+  fire, and leaves the ashes.
+
 ## Cities and towns
 
 The user's idea: cities reached through a **travel map of the city with menu choices**, as in

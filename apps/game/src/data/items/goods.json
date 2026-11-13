@@ -3,6 +3,20 @@
   "about": "Trade goods, books, papers and instruments.",
   "items": [
     {
+      "id": "firewood",
+      "name": "armful of firewood",
+      "plural": "armfuls of firewood",
+      "kind": "goods",
+      "weight": 3,
+      "bulk": 8,
+      "size": "medium",
+      "value": 1,
+      "stack": 5,
+      "durable": false,
+      "sold": ["market"],
+      "about": "Deadwood and split branches: about three hours of a small fire."
+    },
+    {
       "id": "reagents",
       "name": "reagents",
       "plural": "reagents",

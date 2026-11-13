@@ -16,7 +16,7 @@ const props = defineProps<{
   requestArea: (box: { west: number; south: number; east: number; north: number }, fine: boolean) => Promise<TravelArea>;
   requestPlan: (id: string, o: { mpp: number; radius: number; illustrated: boolean; lon?: number; lat?: number }) => Promise<PlanImage | null>;
 }>();
-const emit = defineEmits<{ zoomIn: [] }>();
+const emit = defineEmits<{ zoomIn: []; camp: [] }>();
 
 /** The three scales: country, realm, world (km across the view). */
 const LEVELS = [10, 200, 40000];
@@ -158,6 +158,7 @@ onBeforeUnmount(() => props.travel.stop());
         <span class="sep" />
         <button @click="mapRef?.centreOnParty()">Find party (F)</button>
         <button @click="emit('zoomIn')">Zoom in (Z)</button>
+        <button @click="props.travel.stop(); emit('camp')">Camp (Shift+C)</button>
       </div>
     </div>
   </div>

@@ -18,23 +18,13 @@ import { storageAt } from '../game/ground';
 import InventoryView from './views/InventoryView.vue';
 import { Needs } from '../actors/needs';
 import { OBJECT_TILES } from '@worldforge/core/local/tiles';
-import { check, DC, type Grade } from '../actors/checks';
+import { cookPortion, eatPortion, mendNeeds, mendThing, usePortion } from '../game/tasks';
 import { Skills, type Moodlet } from '../actors/components';
 import { readBook } from '../actors/learning';
 import { SKILL } from '../actors/data/skills';
-import { ITEM } from '../actors/items/defs';
 
 /** Things on the map to cook at. */
 const FIRES = ['hearth', 'campfire', 'oven', 'forge'];
-const COOKED: Record<Grade, { factor: number; text: string; mood?: Moodlet }> = {
-  fine: { factor: 1.3, text: 'You cook a fine hot meal of $ and eat it.', mood: { id: 'cooked', text: 'A fine hot meal', value: 3 } },
-  success: { factor: 1.15, text: 'You cook $ and eat it hot.', mood: { id: 'cooked', text: 'A hot meal', value: 2 } },
-  near: { factor: 1.05, text: 'You warm $ through and eat it.' },
-  fail: { factor: 1, text: 'You make a poor job of cooking $, but eat it.' },
-  fumble: { factor: 0.85, text: 'You burn $, and eat what you can of it.', mood: { id: 'cooked', text: 'Burnt supper', value: -1 } },
-};
-/** Condition a mending gives back, by grade. */
-const MENDED: Record<Grade, number> = { fine: 45, success: 30, near: 12, fail: 0, fumble: -8 };
 
 /** An item, carried or lying nearby. */
 export type Ref = { from: 'inv'; uid: string } | { from: 'ground'; x: number; y: number; uid: string };
@@ -221,33 +211,22 @@ export class InventoryScreen extends Screen {
       msg = sips ? `You ${food.verb}${(it.uses ?? 0) <= 0 ? ', and empty it' : ''}.` : 'You could not drink any more.';
       this.play.advance(10 + sips * 4);
     } else {
-      const took = n.eat(food.kcal, food.water ?? 0);
-      if (took < 50) {
-        this.state.message = 'You are too full to eat.';
+      const o = eatPortion(this.actor, this.inv, it);
+      if (!o.ok) {
+        this.state.message = o.text;
         return;
       }
-      msg = `You ${food.verb}.`;
-      this.usePortion(it);
-      this.play.advance(5 * 60);
+      msg = o.text;
+      if (o.mood) this.mood(o.mood, 6);
+      this.play.advance(o.seconds);
     }
     this.state.message = msg;
     this.play.say(msg);
     this.state.version++;
   }
 
-  /** A portion or use gone: the last of the last one takes the thing with it. */
   private usePortion(it: Item): void {
-    const d = defOf(it);
-    if (d.uses) {
-      it.uses = (it.uses ?? d.uses) - 1;
-      if (it.uses <= 0) {
-        if (it.qty > 1) {
-          it.qty -= 1;
-          it.uses = d.uses;
-        } else this.inv.drop(it.uid);
-      }
-    } else if (it.qty > 1) it.qty -= 1;
-    else this.inv.drop(it.uid);
+    usePortion(this.inv, it);
   }
 
   /** Something on the map beside the wanderer (or underfoot) by name, if any. */
@@ -278,34 +257,17 @@ export class InventoryScreen extends Screen {
   /** Cooks a portion at a fire beside, and eats it (Cooking). */
   cook(r: Ref): void {
     const it = this.item(r);
-    const n = this.actor.get(Needs);
     const food = it && defOf(it).food;
-    const fire = this.beside(FIRES);
-    if (!it || !n || !food || !fire || r.from !== 'inv') return;
-    this.play.advance(40 * 60);
-    const g = check(this.actor, 'cooking', { difficulty: DC.easy, now: this.play.now() }).grade;
-    const c = COOKED[g];
-    n.eat(food.kcal * c.factor, food.water ?? 0);
-    const name = `the ${itemName({ ...it, qty: 1 })}`;
-    this.usePortion(it);
-    if (c.mood) this.mood(c.mood, 6);
-    this.done(c.text.replace('$', name));
+    if (!it || !food || !this.beside(FIRES) || r.from !== 'inv') return;
+    const o = cookPortion(this.actor, this.inv, it, this.play.now() + 40 * 60);
+    this.play.advance(o.seconds);
+    if (o.mood) this.mood(o.mood, 6);
+    this.done(o.text);
   }
 
   /** What mending a thing needs that is missing (or null), and the kit to spend. */
   mendNeeds(it: Item): { why: string | null; kit?: Item } {
-    const m = defOf(it).mend;
-    if (!m) return { why: 'It cannot be mended.' };
-    if (defOf(it).durable === false) return { why: 'It does not wear.' };
-    if (it.condition >= 95) return { why: 'It needs no mending.' };
-    if (it.loc?.at === 'worn') return { why: 'Take it off first.' };
-    if (m.at?.length && !this.beside(m.at)) return { why: `You need ${m.at.map((x) => `a ${x}`).join(' or ')} to work at.` };
-    if (m.kit) {
-      const kit = this.inv.d.items.find((x) => x.def === m.kit && (x.uses === undefined || x.uses > 0) && x.condition > 0);
-      if (!kit) return { why: `You need ${ITEM.get(m.kit)?.name ? `a ${ITEM.get(m.kit)!.name}` : 'the tools'}.` };
-      return { why: null, kit };
-    }
-    return { why: null };
+    return mendNeeds(this.inv, it, (names) => !!this.beside(names));
   }
 
   /** Mends a worn thing (its mend skill): most of an hour, and a use of the kit. */
@@ -317,20 +279,9 @@ export class InventoryScreen extends Screen {
       this.state.message = need.why;
       return;
     }
-    const m = defOf(it).mend!;
-    const qual = { poor: -5, common: 0, fine: 10, masterwork: 25 }[it.quality];
-    this.play.advance(45 * 60);
-    const res = check(this.actor, m.skill, { difficulty: 15 + Math.round((100 - it.condition) * 0.3) + qual, now: this.play.now() });
-    const before = it.condition;
-    it.condition = Math.max(0, Math.min(100, it.condition + MENDED[res.grade]));
-    if (need.kit) {
-      if (defOf(need.kit).uses) this.usePortion(need.kit);
-      else need.kit.condition = Math.max(0, need.kit.condition - 1);
-    }
-    const name = itemName(it);
-    const skill = SKILL.get(m.skill)?.name.toLowerCase() ?? m.skill;
-    this.done(it.condition > before + 20 ? `You mend your ${name} well.` : it.condition > before ? `You patch up your ${name} as best you can.`
-      : it.condition < before ? `You make your ${name} worse; ${skill} is harder than it looks.` : `Your work on the ${name} comes to nothing.`);
+    const o = mendThing(this.actor, this.inv, it, this.play.now() + 45 * 60, need.kit);
+    this.play.advance(o.seconds);
+    this.done(o.text);
   }
 
   /** Reads a book that teaches, for an hour. */

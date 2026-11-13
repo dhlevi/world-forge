@@ -105,6 +105,12 @@ const GROUND: Def[] = [
   g('floor_boards', '#9b7650', 'a board floor', 'Indoor wooden floorboards.', { variants: 2 }),
   g('floor_earth', '#7f6a4a', 'an earth floor', 'Indoor beaten earth with rushes.', { variants: 2 }),
   // Added after the first release go below.
+  // Camps (apps/game/src/game/camp.ts).
+  o('bedroll', '=', '#8a7a5a', 'a bedroll', 'A blanket laid out to sleep on.', { pass: true }),
+  o('fire_out', '*', '#6a6058', 'a dead fire', 'A ring of stones with cold ashes.', { pass: true }),
+  o('windbreak', '#', '#7a6a45', 'a windbreak', 'A low wall of woven branches against the wind.'),
+  o('lean_to', '^', '#7a6a45', 'a lean-to', 'A slope of branches and bark to lie under.', { pass: true }),
+  o('snare', ',', '#b0a080', 'a snare', 'A wire noose set on an animal run.', { pass: true }),
 ];
 
 const wall = (mat: string, colour: string, look: string, art: string): Def =>
@@ -223,6 +229,12 @@ const OBJECT: Def[] = [
   o('workbench', '=', '#8a6a48', 'a workbench', 'A bench with tools.'),
   o('stool', 'h', '#9a7048', 'a stool', 'A three-legged stool.', { pass: true }),
   // Added after the first release go below.
+  // Camps (apps/game/src/game/camp.ts).
+  o('bedroll', '=', '#8a7a5a', 'a bedroll', 'A blanket laid out to sleep on.', { pass: true }),
+  o('fire_out', '*', '#6a6058', 'a dead fire', 'A ring of stones with cold ashes.', { pass: true }),
+  o('windbreak', '#', '#7a6a45', 'a windbreak', 'A low wall of woven branches against the wind.'),
+  o('lean_to', '^', '#7a6a45', 'a lean-to', 'A slope of branches and bark to lie under.', { pass: true }),
+  o('snare', ',', '#b0a080', 'a snare', 'A wire noose set on an animal run.', { pass: true }),
 ];
 
 export const GROUND_TILES: readonly TileDef[] = GROUND.map((d) => ({ ...d, layer: 'ground' as const }));

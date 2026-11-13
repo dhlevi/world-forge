@@ -69,7 +69,10 @@ game.onTime = (t) => {
   updateClimate();
   const dt = t - lastT;
   lastT = t;
-  screen.cast.clock(t, { activity: game.activity, ambientC: airTemp(climate, t, indoors()), loadSlow: invSlow(), sleepQuality: game.sleepQuality });
+  // Camp fires burn down (game/camp.ts); one beside the wanderer, and a shelter, warm them.
+  for (const c of game.camps.burn(game, Math.max(0, dt))) if (game.camps.at(game.px, game.py) === c) game.say('Your fire has burnt down to ashes.');
+  const air = airTemp(climate, t, indoors());
+  screen.cast.clock(t, { activity: game.activity, ambientC: air + game.camps.warmth(game.px, game.py, air), loadSlow: invSlow(), sleepQuality: game.sleepQuality });
   // Skills at work: swimming, hard going, wear on the feet (game/practice.ts).
   practice.time(dt, game.activity, invSlow());
   practice.flush();
@@ -118,7 +121,7 @@ function collapse(): void {
 }
 
 /** Sleeps or rests in hours, waking early when rested (or something needs seeing to). */
-function sleep(hours: number, quality: number, o: { untilRested?: boolean; awake?: boolean } = {}): number {
+function sleep(hours: number, quality: number, o: { untilRested?: boolean; awake?: boolean; onHour?: (h: number) => void } = {}): number {
   const n = needs();
   travel.stop();
   game.say(o.awake ? 'You sit and rest.' : 'You lie down to sleep.');
@@ -131,6 +134,7 @@ function sleep(hours: number, quality: number, o: { untilRested?: boolean; awake
     game.activity = o.awake ? 'rest' : 'sleep';
     game.updateHud();
     slept++;
+    o.onHour?.(h);
     if (o.untilRested && n && n.d.fatigue <= 2 && n.d.debt < 0.5) break;
     if (n?.collapse) break;
   }
@@ -214,7 +218,17 @@ screen.hooks = {
   game: () => game,
   redraw: () => redraw(),
   sleep: (h, q, opts) => sleep(h, q, opts),
+  mode: () => mode.value,
+  loadAround: (r) => loadAround(r),
 };
+
+/** Asks for the local map about the wanderer and waits until it is made (at most half a minute). */
+async function loadAround(r: number): Promise<boolean> {
+  map.want(game.px - r, game.py - r, game.px + r, game.py + r);
+  const ready = () => [[-r, -r], [r, -r], [-r, r], [r, r], [0, 0]].every(([dx, dy]) => map.loaded(game.px + dx, game.py + dy));
+  for (let i = 0; i < 300 && !ready(); i++) await new Promise((res) => setTimeout(res, 100));
+  return ready();
+}
 // The load carried, and hunger, thirst, fatigue and cold, slow the wanderer.
 game.loadSlow = () => invSlow() * (needs()?.slow() ?? 1);
 
@@ -455,6 +469,7 @@ onBeforeUnmount(() => {
       :request-area="app.worker.requestArea"
       :request-plan="app.worker.plan"
       @zoom-in="toLocal"
+      @camp="screen.showCamp()"
     />
     <aside class="panel">
       <div v-if="screen.state.name" class="who">
@@ -488,12 +503,14 @@ onBeforeUnmount(() => {
         <div><b>Inventory</b> I (G to pick up; eat and drink from it)</div>
         <div><b>Drink</b> Q at water or a well (fills waterskins too)</div>
         <div><b>Sleep or rest</b> Shift+Z</div>
+        <div><b>Camp</b> Shift+C: choose a site, fire, shelter, food, the night</div>
         <div><b>Town view</b> V, in a town or city</div>
         <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>
       <div class="hint" v-else>Press ? for keys.</div>
       <button v-if="mode === 'local'" class="travel-btn" @click="toTravel">Travel map (T)</button>
       <button v-if="screen.player" class="travel-btn" @click="screen.showInventory()">Inventory (I)</button>
+      <button v-if="screen.player && mode === 'local'" class="travel-btn" @click="screen.showCamp()">Camp (Shift+C)</button>
       <button v-if="mode === 'local' && hud.town" class="travel-btn" @click="screen.openCity(hud.town.id)">View {{ hud.town.name }} (V)</button>
       <button v-else class="travel-btn" @click="toLocal">Back on foot (T)</button>
       <div class="foot">

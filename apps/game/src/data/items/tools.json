@@ -184,6 +184,20 @@
       "about": "Rolled, it can be strapped to a pack."
     },
     {
+      "id": "tent",
+      "name": "tent",
+      "kind": "tool",
+      "weight": 5,
+      "bulk": 12,
+      "size": "large",
+      "value": 60,
+      "back": true,
+      "strap": true,
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
+      "sold": ["market", "store", "tailor"],
+      "about": "A small canvas tent for one or two, with its pole and pegs. Rolled, it straps to a pack."
+    },
+    {
       "id": "torch",
       "name": "torch",
       "kind": "light",
