@@ -1,0 +1,399 @@
+{
+  "$schema": "./item.schema.json",
+  "about": "Clothes, worn by body region and layer.",
+  "items": [
+    {
+      "id": "undershirt",
+      "name": "linen undershirt",
+      "kind": "clothing",
+      "weight": 0.2,
+      "bulk": 0.6,
+      "size": "small",
+      "value": 8,
+      "wear": { "regions": ["torso"], "layer": "under", "seconds": 15, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "shirt",
+      "name": "shirt",
+      "kind": "clothing",
+      "weight": 0.3,
+      "bulk": 1,
+      "size": "small",
+      "value": 12,
+      "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 15, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "tunic",
+      "name": "tunic",
+      "kind": "clothing",
+      "weight": 0.6,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 15,
+      "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 15, "warmth": 2 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "doublet",
+      "name": "doublet",
+      "kind": "clothing",
+      "weight": 0.8,
+      "bulk": 2,
+      "size": "small",
+      "value": 60,
+      "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 30, "warmth": 2 },
+      "sold": ["tailor"],
+      "about": "Good clothes, fitted and fastened."
+    },
+    {
+      "id": "dress",
+      "name": "dress",
+      "kind": "clothing",
+      "weight": 0.9,
+      "bulk": 2.5,
+      "size": "medium",
+      "value": 30,
+      "wear": {
+        "regions": ["torso", "arms", "legs"],
+        "layer": "main",
+        "seconds": 20,
+        "warmth": 2
+      },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "robe",
+      "name": "robe",
+      "kind": "clothing",
+      "weight": 1.2,
+      "bulk": 3,
+      "size": "medium",
+      "value": 20,
+      "wear": {
+        "regions": ["torso", "arms", "legs"],
+        "layer": "main",
+        "seconds": 15,
+        "warmth": 3
+      },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "vestments",
+      "name": "vestments",
+      "kind": "clothing",
+      "weight": 2,
+      "bulk": 4,
+      "size": "medium",
+      "value": 120,
+      "wear": {
+        "regions": ["torso", "arms", "legs"],
+        "layer": "outer",
+        "seconds": 40,
+        "warmth": 3
+      }
+    },
+    {
+      "id": "scholar_gown",
+      "name": "scholar's gown",
+      "kind": "clothing",
+      "weight": 1.5,
+      "bulk": 3,
+      "size": "medium",
+      "value": 70,
+      "wear": {
+        "regions": ["torso", "arms", "legs"],
+        "layer": "outer",
+        "seconds": 20,
+        "warmth": 3
+      }
+    },
+    {
+      "id": "college_robes",
+      "name": "robes of the college",
+      "kind": "clothing",
+      "weight": 1.8,
+      "bulk": 3.5,
+      "size": "medium",
+      "value": 150,
+      "wear": {
+        "regions": ["torso", "arms", "legs"],
+        "layer": "outer",
+        "seconds": 25,
+        "warmth": 3
+      }
+    },
+    {
+      "id": "costume",
+      "name": "player's costume",
+      "kind": "clothing",
+      "weight": 1.2,
+      "bulk": 3,
+      "size": "medium",
+      "value": 40,
+      "wear": { "regions": ["torso", "arms"], "layer": "outer", "seconds": 30, "warmth": 1 }
+    },
+    {
+      "id": "apron",
+      "name": "leather apron",
+      "kind": "clothing",
+      "weight": 0.8,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 10,
+      "wear": { "regions": ["torso", "legs"], "layer": "outer", "seconds": 10, "armour": 1 },
+      "sold": ["market", "smithy"]
+    },
+    {
+      "id": "braies",
+      "name": "braies",
+      "plural": "braies",
+      "kind": "clothing",
+      "weight": 0.2,
+      "bulk": 0.5,
+      "size": "small",
+      "value": 6,
+      "wear": { "regions": ["legs"], "layer": "under", "seconds": 15, "warmth": 1 },
+      "sold": ["market", "tailor"],
+      "about": "Linen drawers."
+    },
+    {
+      "id": "trousers",
+      "name": "trousers",
+      "plural": "trousers",
+      "kind": "clothing",
+      "weight": 0.6,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 14,
+      "wear": { "regions": ["legs"], "layer": "main", "seconds": 20, "warmth": 2 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "hose",
+      "name": "hose",
+      "plural": "hose",
+      "kind": "clothing",
+      "weight": 0.4,
+      "bulk": 1,
+      "size": "small",
+      "value": 18,
+      "wear": { "regions": ["legs"], "layer": "main", "seconds": 25, "warmth": 2 },
+      "sold": ["tailor"]
+    },
+    {
+      "id": "skirt",
+      "name": "skirt",
+      "kind": "clothing",
+      "weight": 0.6,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 14,
+      "wear": { "regions": ["legs"], "layer": "main", "seconds": 15, "warmth": 2 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "socks",
+      "name": "wool socks",
+      "plural": "wool socks",
+      "kind": "clothing",
+      "weight": 0.1,
+      "bulk": 0.3,
+      "size": "tiny",
+      "value": 3,
+      "wear": { "regions": ["feet"], "layer": "under", "seconds": 10, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "shoes",
+      "name": "shoes",
+      "plural": "shoes",
+      "kind": "clothing",
+      "weight": 0.6,
+      "bulk": 2,
+      "size": "small",
+      "value": 15,
+      "wear": { "regions": ["feet"], "layer": "main", "seconds": 15, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "boots",
+      "name": "boots",
+      "plural": "boots",
+      "kind": "clothing",
+      "weight": 1.4,
+      "bulk": 4,
+      "size": "medium",
+      "value": 35,
+      "wear": { "regions": ["feet"], "layer": "main", "seconds": 30, "warmth": 2, "armour": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "sandals",
+      "name": "sandals",
+      "plural": "sandals",
+      "kind": "clothing",
+      "weight": 0.4,
+      "bulk": 1,
+      "size": "small",
+      "value": 8,
+      "wear": { "regions": ["feet"], "layer": "main", "seconds": 10 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "cap",
+      "name": "cap",
+      "kind": "clothing",
+      "weight": 0.1,
+      "bulk": 0.4,
+      "size": "small",
+      "value": 5,
+      "wear": { "regions": ["head"], "layer": "main", "seconds": 5, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "hood",
+      "name": "hood",
+      "kind": "clothing",
+      "weight": 0.3,
+      "bulk": 1,
+      "size": "small",
+      "value": 8,
+      "wear": { "regions": ["head"], "layer": "outer", "seconds": 5, "warmth": 2 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "hat",
+      "name": "broad hat",
+      "kind": "clothing",
+      "weight": 0.3,
+      "bulk": 3,
+      "size": "medium",
+      "value": 12,
+      "wear": { "regions": ["head"], "layer": "main", "seconds": 5, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "veil",
+      "name": "veil",
+      "kind": "clothing",
+      "weight": 0.1,
+      "bulk": 0.3,
+      "size": "tiny",
+      "value": 10,
+      "wear": { "regions": ["face"], "layer": "main", "seconds": 10 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "scarf",
+      "name": "scarf",
+      "kind": "clothing",
+      "weight": 0.2,
+      "bulk": 0.5,
+      "size": "small",
+      "value": 6,
+      "wear": { "regions": ["face"], "layer": "outer", "seconds": 5, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "gloves",
+      "name": "leather gloves",
+      "plural": "leather gloves",
+      "kind": "clothing",
+      "weight": 0.2,
+      "bulk": 0.5,
+      "size": "small",
+      "value": 12,
+      "wear": { "regions": ["hands"], "layer": "main", "seconds": 10, "warmth": 1 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "mittens",
+      "name": "fur mittens",
+      "plural": "fur mittens",
+      "kind": "clothing",
+      "weight": 0.3,
+      "bulk": 1,
+      "size": "small",
+      "value": 14,
+      "wear": { "regions": ["hands"], "layer": "outer", "seconds": 10, "warmth": 3 },
+      "sold": ["market"]
+    },
+    {
+      "id": "jacket",
+      "name": "jacket",
+      "kind": "clothing",
+      "weight": 1.2,
+      "bulk": 3,
+      "size": "medium",
+      "value": 30,
+      "wear": { "regions": ["torso", "arms"], "layer": "outer", "seconds": 20, "warmth": 3 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "coat",
+      "name": "wool coat",
+      "kind": "clothing",
+      "weight": 2.2,
+      "bulk": 6,
+      "size": "medium",
+      "value": 50,
+      "wear": {
+        "regions": ["torso", "arms", "legs"],
+        "layer": "outer",
+        "seconds": 25,
+        "warmth": 5
+      },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "cloak",
+      "name": "cloak",
+      "kind": "clothing",
+      "weight": 1.5,
+      "bulk": 4,
+      "size": "medium",
+      "value": 25,
+      "wear": { "regions": ["torso", "arms"], "layer": "cloak", "seconds": 10, "warmth": 3 },
+      "sold": ["market", "tailor"]
+    },
+    {
+      "id": "fur_cloak",
+      "name": "fur cloak",
+      "kind": "clothing",
+      "weight": 3,
+      "bulk": 8,
+      "size": "medium",
+      "value": 90,
+      "wear": { "regions": ["torso", "arms"], "layer": "cloak", "seconds": 10, "warmth": 6 },
+      "sold": ["market"]
+    },
+    {
+      "id": "belt",
+      "name": "belt",
+      "kind": "clothing",
+      "weight": 0.3,
+      "bulk": 0.5,
+      "size": "small",
+      "value": 6,
+      "loops": 3,
+      "wear": { "regions": ["waist"], "layer": "main", "seconds": 10 },
+      "sold": ["market", "tailor"],
+      "about": "Three things can hang from it."
+    },
+    {
+      "id": "sword_belt",
+      "name": "sword belt",
+      "kind": "clothing",
+      "weight": 0.5,
+      "bulk": 0.8,
+      "size": "small",
+      "value": 20,
+      "loops": 4,
+      "wear": { "regions": ["waist"], "layer": "main", "seconds": 15 },
+      "sold": ["smithy", "market"],
+      "about": "A broad belt with a frog for a sword; four things can hang from it."
+    }
+  ]
+}

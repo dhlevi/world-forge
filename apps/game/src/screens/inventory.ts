@@ -12,7 +12,7 @@ import { Inventory, type Dest } from '../actors/items/inventory';
 import { defOf, itemName, fitsSize, ownBulk, type Item } from '../actors/items/item';
 import { storageAt } from '../game/ground';
 import InventoryView from './views/InventoryView.vue';
-import { Needs, NOURISH } from '../actors/needs';
+import { Needs } from '../actors/needs';
 
 /** An item, carried or lying nearby. */
 export type Ref = { from: 'inv'; uid: string } | { from: 'ground'; x: number; y: number; uid: string };
@@ -184,7 +184,7 @@ export class InventoryScreen extends Screen {
   consume(r: Ref): void {
     const it = this.item(r);
     const n = this.actor.get(Needs);
-    const food = it && NOURISH[it.def];
+    const food = it && defOf(it).food;
     if (!it || !n || !food || r.from !== 'inv') return;
     const d = defOf(it);
     let msg = '';
@@ -276,7 +276,7 @@ export class InventoryScreen extends Screen {
       add(s.litres ? `Put in the ${s.label.toLowerCase()}` : 'Drop', { at: 'ground', x: s.x, y: s.y });
     }
     if (it.qty > 1 && r.from === 'inv') out.push({ label: 'Take out one', target: 'split', why: null });
-    const food = NOURISH[it.def];
+    const food = defOf(it).food;
     if (food && r.from === 'inv') {
       const n = this.actor.get(Needs);
       const drink = food.kcal === 0;

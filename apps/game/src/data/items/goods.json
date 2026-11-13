@@ -1,0 +1,137 @@
+{
+  "$schema": "./item.schema.json",
+  "about": "Trade goods, books, papers and instruments.",
+  "items": [
+    {
+      "id": "reagents",
+      "name": "reagents",
+      "plural": "reagents",
+      "kind": "goods",
+      "weight": 0.5,
+      "bulk": 0.6,
+      "size": "small",
+      "value": 20,
+      "durable": false,
+      "sold": ["apothecary"]
+    },
+    {
+      "id": "trade_goods",
+      "name": "bundle of trade goods",
+      "plural": "bundles of trade goods",
+      "kind": "goods",
+      "weight": 8,
+      "bulk": 14,
+      "size": "medium",
+      "value": 60,
+      "durable": false
+    },
+    {
+      "id": "ledger",
+      "name": "ledger",
+      "kind": "book",
+      "weight": 1,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 20
+    },
+    {
+      "id": "book",
+      "name": "book",
+      "kind": "book",
+      "weight": 1,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 60
+    },
+    {
+      "id": "holy_book",
+      "name": "holy book",
+      "kind": "book",
+      "weight": 1.5,
+      "bulk": 2,
+      "size": "small",
+      "value": 80
+    },
+    {
+      "id": "spell_book",
+      "name": "spell book",
+      "kind": "book",
+      "weight": 2,
+      "bulk": 2,
+      "size": "medium",
+      "value": 300
+    },
+    {
+      "id": "old_map",
+      "name": "old map",
+      "kind": "book",
+      "weight": 0.1,
+      "bulk": 0.2,
+      "size": "small",
+      "value": 40
+    },
+    {
+      "id": "sea_charts",
+      "name": "sea charts",
+      "plural": "sea charts",
+      "kind": "book",
+      "weight": 0.3,
+      "bulk": 0.5,
+      "size": "small",
+      "value": 120
+    },
+    {
+      "id": "letter",
+      "name": "letter",
+      "kind": "book",
+      "weight": 0.01,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 0,
+      "durable": false
+    },
+    {
+      "id": "token",
+      "name": "token",
+      "kind": "goods",
+      "weight": 0.02,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 2,
+      "durable": false
+    },
+    {
+      "id": "pipe",
+      "name": "pipe",
+      "kind": "music",
+      "weight": 0.2,
+      "bulk": 0.3,
+      "size": "small",
+      "value": 6,
+      "sold": ["market"]
+    },
+    {
+      "id": "lute",
+      "name": "lute",
+      "kind": "music",
+      "weight": 2,
+      "bulk": 12,
+      "size": "large",
+      "value": 80,
+      "back": true,
+      "strap": true,
+      "sold": ["market"]
+    },
+    {
+      "id": "statue",
+      "name": "stone statue",
+      "kind": "goods",
+      "weight": 60,
+      "bulk": 30,
+      "size": "huge",
+      "value": 400,
+      "hands": 2,
+      "about": "You could lift it, just; you could not pack it."
+    }
+  ]
+}

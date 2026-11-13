@@ -342,11 +342,3 @@ const MOOD: Record<string, number> = {
   Tired: -2, 'Very tired': -4, Exhausted: -8, Collapsing: -12, Spent: -4, Chilly: -2, Shivering: -6, Hypothermic: -15, Hot: -2, Overheating: -10, Full: 1,
 };
 
-/** Food and drink per use or portion (kcal, litres of water), by item kind. */
-export const NOURISH: Record<string, { kcal: number; water?: number; verb: string }> = {
-  bread: { kcal: 300, verb: 'eat a piece of the bread' },
-  cheese: { kcal: 400, verb: 'eat some cheese' },
-  dried_meat: { kcal: 350, verb: 'chew a strip of dried meat' },
-  apple: { kcal: 80, water: 0.1, verb: 'eat an apple' },
-  waterskin: { kcal: 0, water: 0.125, verb: 'drink from the waterskin' },
-};

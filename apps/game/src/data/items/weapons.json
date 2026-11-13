@@ -1,0 +1,151 @@
+{
+  "$schema": "./item.schema.json",
+  "about": "Weapons and shields.",
+  "items": [
+    {
+      "id": "knife",
+      "name": "knife",
+      "kind": "weapon",
+      "weight": 0.2,
+      "bulk": 0.2,
+      "size": "small",
+      "value": 8,
+      "belt": true,
+      "sold": ["smithy", "market"]
+    },
+    {
+      "id": "dagger",
+      "name": "dagger",
+      "kind": "weapon",
+      "weight": 0.4,
+      "bulk": 0.3,
+      "size": "small",
+      "value": 30,
+      "belt": true,
+      "sold": ["smithy"]
+    },
+    {
+      "id": "sword",
+      "name": "sword",
+      "kind": "weapon",
+      "weight": 1.3,
+      "bulk": 2,
+      "size": "large",
+      "value": 250,
+      "belt": true,
+      "back": true,
+      "sold": ["smithy"]
+    },
+    {
+      "id": "hatchet",
+      "name": "hatchet",
+      "kind": "weapon",
+      "weight": 1,
+      "bulk": 1,
+      "size": "small",
+      "value": 15,
+      "belt": true,
+      "sold": ["smithy", "market"]
+    },
+    {
+      "id": "axe",
+      "name": "axe",
+      "kind": "weapon",
+      "weight": 1.6,
+      "bulk": 2.5,
+      "size": "large",
+      "value": 25,
+      "belt": true,
+      "strap": true,
+      "sold": ["smithy", "market"]
+    },
+    {
+      "id": "spear",
+      "name": "spear",
+      "kind": "weapon",
+      "weight": 2.2,
+      "bulk": 4,
+      "size": "huge",
+      "value": 25,
+      "back": true,
+      "strap": true,
+      "sold": ["smithy"],
+      "about": "Too long for any pack: carried, slung or strapped to one."
+    },
+    {
+      "id": "staff",
+      "name": "staff",
+      "kind": "weapon",
+      "weight": 1.5,
+      "bulk": 3,
+      "size": "huge",
+      "value": 4,
+      "back": true,
+      "strap": true,
+      "sold": ["market"]
+    },
+    {
+      "id": "round_shield",
+      "name": "round shield",
+      "kind": "weapon",
+      "weight": 4,
+      "bulk": 12,
+      "size": "large",
+      "value": 40,
+      "back": true,
+      "strap": true,
+      "sold": ["smithy"]
+    },
+    {
+      "id": "heater_shield",
+      "name": "heater shield",
+      "kind": "weapon",
+      "weight": 3.5,
+      "bulk": 10,
+      "size": "large",
+      "value": 70,
+      "back": true,
+      "strap": true,
+      "sold": ["smithy"]
+    },
+    {
+      "id": "short_bow",
+      "name": "short bow",
+      "kind": "weapon",
+      "weight": 0.8,
+      "bulk": 3,
+      "size": "large",
+      "value": 40,
+      "belt": true,
+      "back": true,
+      "strap": true,
+      "sold": ["market"],
+      "about": "Short enough to hang from a belt in a bow case."
+    },
+    {
+      "id": "hunting_bow",
+      "name": "hunting bow",
+      "kind": "weapon",
+      "weight": 1,
+      "bulk": 4,
+      "size": "large",
+      "value": 60,
+      "back": true,
+      "strap": true,
+      "sold": ["market"]
+    },
+    {
+      "id": "arrows",
+      "name": "arrow",
+      "plural": "arrows",
+      "kind": "weapon",
+      "weight": 0.04,
+      "bulk": 0.05,
+      "size": "medium",
+      "value": 1,
+      "stack": 40,
+      "durable": false,
+      "sold": ["market"]
+    }
+  ]
+}

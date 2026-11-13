@@ -364,6 +364,10 @@ with the game. Markets and shops in the city view sell the everyday things of th
 - **The view:** an inventory screen as a popup over the map, with the body and its slots, the
   containers and what each holds, total weight and bulk against the limits, and the encumbrance
   that results.
+- **Items are data:** each kind of item is defined in JSON, one file per type
+  (`apps/game/src/data/items/`, with a JSON Schema), checked as it is loaded. Mods add or replace
+  items with files of the same form, read at start (the desktop app's `mods` folder, or
+  `mods/index.json` in a browser); faulty entries are left out and reported.
 
 ## People in your life
 

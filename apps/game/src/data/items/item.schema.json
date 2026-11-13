@@ -1,0 +1,79 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "item.schema.json",
+  "title": "World Forge item pack",
+  "description": "A file of item kinds: the game's own (src/data/items/) or a mod's. See apps/game/src/actors/items/defs.ts for how each field is used.",
+  "type": "object",
+  "required": ["items"],
+  "properties": {
+    "$schema": { "type": "string" },
+    "about": { "type": "string", "description": "What the file holds." },
+    "items": { "type": "array", "items": { "$ref": "#/definitions/item" } }
+  },
+  "definitions": {
+    "size": { "enum": ["tiny", "small", "medium", "large", "huge"] },
+    "region": { "enum": ["head", "face", "torso", "arms", "hands", "waist", "legs", "feet"] },
+    "item": {
+      "type": "object",
+      "required": ["id", "name", "kind", "weight", "bulk", "size", "value"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z0-9_]+$", "description": "Unique; an item with the id of an existing one replaces it." },
+        "name": { "type": "string" },
+        "plural": { "type": "string", "description": "The plural, where it is not the name with an s." },
+        "kind": { "enum": ["clothing", "armour", "jewellery", "container", "weapon", "tool", "food", "drink", "medicine", "light", "goods", "book", "music"] },
+        "weight": { "type": "number", "minimum": 0, "description": "Each, kg." },
+        "bulk": { "type": "number", "minimum": 0, "description": "Each, litres." },
+        "size": { "$ref": "#/definitions/size", "description": "How big at its largest: what it fits into." },
+        "value": { "type": "number", "minimum": 0, "description": "Copper, at common quality." },
+        "hands": { "enum": [1, 2], "description": "Hands needed to carry it (default 1)." },
+        "belt": { "type": "boolean", "description": "Can hang from a belt." },
+        "back": { "type": "boolean", "description": "Can be carried on the back (a pack, or one thing slung)." },
+        "strap": { "type": "boolean", "description": "Can be strapped to the outside of a pack." },
+        "loops": { "type": "integer", "minimum": 1, "description": "Belts: how many things hang from it." },
+        "wear": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["seconds"],
+          "properties": {
+            "regions": { "type": "array", "items": { "$ref": "#/definitions/region" }, "minItems": 1 },
+            "layer": { "enum": ["under", "main", "padding", "armour", "outer", "cloak"] },
+            "jewel": { "enum": ["ears", "brow", "neck", "brooch", "wrists", "fingers", "ankles"] },
+            "seconds": { "type": "number", "minimum": 0, "description": "To put on, and to take off." },
+            "warmth": { "type": "number" },
+            "armour": { "type": "number" }
+          }
+        },
+        "container": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["litres", "maxKg", "maxSize"],
+          "properties": {
+            "litres": { "type": "number", "minimum": 0 },
+            "maxKg": { "type": "number", "minimum": 0 },
+            "maxSize": { "$ref": "#/definitions/size" },
+            "only": { "type": "array", "items": { "type": "string" }, "description": "Only these item ids go in." },
+            "straps": { "type": "integer", "minimum": 0 },
+            "strapKg": { "type": "number", "minimum": 0 }
+          }
+        },
+        "stack": { "type": "integer", "minimum": 1, "description": "The most in one stack." },
+        "uses": { "type": "integer", "minimum": 1, "description": "Uses or portions when full." },
+        "useWord": { "type": "string" },
+        "food": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kcal", "verb"],
+          "properties": {
+            "kcal": { "type": "number", "minimum": 0, "description": "Per use or portion; 0 for a drink." },
+            "water": { "type": "number", "minimum": 0, "description": "Litres per use or portion." },
+            "verb": { "type": "string", "description": "\"eat a piece of the bread\"" }
+          }
+        },
+        "durable": { "type": "boolean", "description": "Wears with use (default true)." },
+        "sold": { "type": "array", "items": { "type": "string" }, "description": "Where it is sold: market, store, and shop roles (smithy, tailor, apothecary...)." },
+        "about": { "type": "string" }
+      }
+    }
+  }
+}

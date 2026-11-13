@@ -1,0 +1,122 @@
+{
+  "$schema": "./item.schema.json",
+  "about": "Armour, worn by body region and layer.",
+  "items": [
+    {
+      "id": "padded_coat",
+      "name": "padded coat",
+      "kind": "armour",
+      "weight": 3,
+      "bulk": 8,
+      "size": "medium",
+      "value": 60,
+      "wear": {
+        "regions": ["torso", "arms"],
+        "layer": "padding",
+        "seconds": 40,
+        "warmth": 4,
+        "armour": 2
+      },
+      "sold": ["smithy", "market"],
+      "about": "A quilted coat, armour on its own or padding under mail."
+    },
+    {
+      "id": "leather_jerkin",
+      "name": "leather jerkin",
+      "kind": "armour",
+      "weight": 3,
+      "bulk": 5,
+      "size": "medium",
+      "value": 70,
+      "wear": {
+        "regions": ["torso"],
+        "layer": "armour",
+        "seconds": 40,
+        "warmth": 2,
+        "armour": 3
+      },
+      "sold": ["smithy", "market"]
+    },
+    {
+      "id": "mail_shirt",
+      "name": "mail shirt",
+      "kind": "armour",
+      "weight": 11,
+      "bulk": 6,
+      "size": "medium",
+      "value": 600,
+      "wear": { "regions": ["torso", "arms"], "layer": "armour", "seconds": 90, "armour": 6 },
+      "sold": ["smithy"]
+    },
+    {
+      "id": "coif",
+      "name": "padded coif",
+      "kind": "armour",
+      "weight": 0.4,
+      "bulk": 1,
+      "size": "small",
+      "value": 15,
+      "wear": {
+        "regions": ["head"],
+        "layer": "padding",
+        "seconds": 10,
+        "warmth": 1,
+        "armour": 1
+      },
+      "sold": ["smithy"]
+    },
+    {
+      "id": "helm",
+      "name": "helm",
+      "kind": "armour",
+      "weight": 2,
+      "bulk": 5,
+      "size": "medium",
+      "value": 120,
+      "wear": { "regions": ["head"], "layer": "armour", "seconds": 15, "armour": 5 },
+      "sold": ["smithy"]
+    },
+    {
+      "id": "bracers",
+      "name": "leather bracers",
+      "plural": "leather bracers",
+      "kind": "armour",
+      "weight": 0.5,
+      "bulk": 1,
+      "size": "small",
+      "value": 20,
+      "wear": { "regions": ["arms"], "layer": "armour", "seconds": 20, "armour": 2 },
+      "sold": ["smithy", "market"]
+    },
+    {
+      "id": "gauntlets",
+      "name": "gauntlets",
+      "plural": "gauntlets",
+      "kind": "armour",
+      "weight": 1.2,
+      "bulk": 2,
+      "size": "small",
+      "value": 90,
+      "wear": {
+        "regions": ["hands"],
+        "layer": "armour",
+        "seconds": 20,
+        "warmth": 1,
+        "armour": 4
+      },
+      "sold": ["smithy"]
+    },
+    {
+      "id": "greaves",
+      "name": "greaves",
+      "plural": "greaves",
+      "kind": "armour",
+      "weight": 2.5,
+      "bulk": 3,
+      "size": "medium",
+      "value": 110,
+      "wear": { "regions": ["legs"], "layer": "armour", "seconds": 40, "armour": 4 },
+      "sold": ["smithy"]
+    }
+  ]
+}

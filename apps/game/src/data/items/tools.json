@@ -1,0 +1,176 @@
+{
+  "$schema": "./item.schema.json",
+  "about": "Tools, gear and light.",
+  "items": [
+    {
+      "id": "flint",
+      "name": "flint and steel",
+      "plural": "flint and steel",
+      "kind": "tool",
+      "weight": 0.1,
+      "bulk": 0.1,
+      "size": "tiny",
+      "value": 4,
+      "sold": ["market", "store"]
+    },
+    {
+      "id": "sickle",
+      "name": "sickle",
+      "kind": "tool",
+      "weight": 0.5,
+      "bulk": 1,
+      "size": "small",
+      "value": 8,
+      "belt": true,
+      "sold": ["smithy", "market"]
+    },
+    {
+      "id": "hoe",
+      "name": "hoe",
+      "kind": "tool",
+      "weight": 1.5,
+      "bulk": 3,
+      "size": "huge",
+      "value": 10,
+      "strap": true,
+      "sold": ["smithy", "market"]
+    },
+    {
+      "id": "tool_roll",
+      "name": "tool roll",
+      "kind": "tool",
+      "weight": 2.5,
+      "bulk": 3,
+      "size": "small",
+      "value": 60,
+      "sold": ["smithy"],
+      "about": "A craftsman's tools rolled in leather."
+    },
+    {
+      "id": "writing_kit",
+      "name": "writing kit",
+      "kind": "tool",
+      "weight": 0.5,
+      "bulk": 1,
+      "size": "small",
+      "value": 30,
+      "about": "Quills, ink, a knife and a little paper."
+    },
+    {
+      "id": "lockpicks",
+      "name": "lockpicks",
+      "plural": "lockpicks",
+      "kind": "tool",
+      "weight": 0.1,
+      "bulk": 0.1,
+      "size": "tiny",
+      "value": 40
+    },
+    {
+      "id": "scales",
+      "name": "merchant's scales",
+      "plural": "merchant's scales",
+      "kind": "tool",
+      "weight": 1,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 50
+    },
+    {
+      "id": "rope",
+      "name": "rope (15 m)",
+      "kind": "tool",
+      "weight": 3,
+      "bulk": 4,
+      "size": "medium",
+      "value": 15,
+      "strap": true,
+      "sold": ["market", "store"]
+    },
+    {
+      "id": "net",
+      "name": "fishing net",
+      "kind": "tool",
+      "weight": 2,
+      "bulk": 6,
+      "size": "medium",
+      "value": 20,
+      "sold": ["market"]
+    },
+    {
+      "id": "snares",
+      "name": "snare wire",
+      "plural": "snare wires",
+      "kind": "tool",
+      "weight": 0.1,
+      "bulk": 0.1,
+      "size": "tiny",
+      "value": 3,
+      "stack": 10,
+      "sold": ["market"]
+    },
+    {
+      "id": "surgeon_kit",
+      "name": "surgeon's kit",
+      "kind": "tool",
+      "weight": 1.5,
+      "bulk": 2,
+      "size": "small",
+      "value": 150,
+      "sold": ["apothecary"]
+    },
+    {
+      "id": "begging_bowl",
+      "name": "begging bowl",
+      "kind": "tool",
+      "weight": 0.3,
+      "bulk": 0.8,
+      "size": "small",
+      "value": 1
+    },
+    {
+      "id": "whistle",
+      "name": "whistle",
+      "kind": "tool",
+      "weight": 0.05,
+      "bulk": 0.05,
+      "size": "tiny",
+      "value": 3
+    },
+    {
+      "id": "blanket",
+      "name": "wool blanket",
+      "kind": "tool",
+      "weight": 2,
+      "bulk": 6,
+      "size": "medium",
+      "value": 15,
+      "strap": true,
+      "sold": ["market", "store"],
+      "about": "Rolled, it can be strapped to a pack."
+    },
+    {
+      "id": "torch",
+      "name": "torch",
+      "kind": "light",
+      "weight": 0.5,
+      "bulk": 0.8,
+      "size": "small",
+      "value": 1,
+      "uses": 6,
+      "useWord": "hours",
+      "sold": ["market", "store"]
+    },
+    {
+      "id": "candle",
+      "name": "candle",
+      "kind": "light",
+      "weight": 0.1,
+      "bulk": 0.1,
+      "size": "tiny",
+      "value": 1,
+      "stack": 10,
+      "sold": ["market", "store"]
+    }
+  ]
+}

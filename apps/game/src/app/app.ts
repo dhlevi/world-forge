@@ -10,6 +10,7 @@ import { GENERATOR_VERSION } from '@worldforge/core/version';
 import { MessageDispatcher } from '../engine/messages';
 import { ScreenManager } from '../engine/screens';
 import { WorkerClient } from './worker-client';
+import { loadMods, type ModReport } from './mods';
 import { desktop, readJson, writeJson, type DesktopInfo } from '../desktop';
 import { deleteSave, listSaves, loadSave, readSave, versionNote, writeSave, newGameId, type SaveFile, type SaveSummary } from '../game/save';
 import type { Catalogue, StartSite, WorldSummary } from '../worker/protocol';
@@ -45,6 +46,8 @@ export class GameApp {
     /** Where the atlas was looking, from a world file. */
     viewCentre: null as [number, number] | null,
     remembered: {} as Remembered,
+    /** Mods read at start (app/mods.ts). */
+    mods: null as ModReport | null,
   });
   /** The world's peoples and realms, once asked for (character creation). */
   private catalogueP: Promise<Catalogue> | null = null;
@@ -79,7 +82,13 @@ export class GameApp {
   start(): void {
     void this.refreshSaves();
     this.screens.start();
-    this.screens.switchTo(new TitleScreen(this));
+    // Mods first (they are local files, and quick): saves and characters may use their items.
+    void loadMods()
+      .catch((e: Error): ModReport => ({ loaded: [], errors: [`The mods could not be read: ${e.message}`] }))
+      .then((r) => {
+        this.state.mods = r;
+        this.screens.switchTo(new TitleScreen(this));
+      });
   }
 
   async refreshSaves(): Promise<void> {

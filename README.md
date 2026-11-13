@@ -561,6 +561,17 @@ A chunk depends only on the world and its position (never on which chunks were m
 
 **Saving** (`apps/game/src/game/save.ts`). A save holds only what the player has changed or learnt, never the world itself: the world's settings (the world is made again, the same, from its seed), the settlement the game began in, the character (every component of the actor), the wanderer's place, the clock, every object changed over the baseline (doors opened or closed), what has been seen (bit-packed per chunk) and the recent message log, with the generator and local-map versions it was made with. A save is a few kilobytes. The game saves on Ctrl+S or the Save button, every few minutes of play when something has happened, and on leaving; the start screen lists saved games under **Continue**, which makes the world again, returns to the place and restores the state, warning if the save was made with another generator or local-map version. In the desktop app saves are files in the data folder (`saves/<id>.json`, File › Save Game); in a browser they are kept in the page's local storage. **Export** writes a save to a file, and **Import a saved game** on the start screen reads one back (from either kind of game).
 
+**Item data and mods** (`apps/game/src/data/items/`, `actors/items/defs.ts`, `app/mods.ts`). The items are data, not code: one JSON file per type (`containers`, `clothing`, `armour`, `jewellery`, `weapons`, `tools`, `provisions`, `goods`), described by `item.schema.json` beside them (an editor that knows JSON Schema completes and checks the fields), with `gear.json` for what each occupation's gear becomes at character creation. A field left out takes its default (`durable` true, `hands` 1, no warmth or armour). Food and drink carry a `food` field: kcal and litres of water per portion, and the words for eating it. `defs.ts` holds the types, checks every item as it is registered and keeps the registry; a fault in the game's own files stops the game at once with the item and the field named. **Mods** are more files of the same form, read at start: in the desktop app every `.json` file in the `mods` folder of the data folder (in name order); in a browser the files listed in `mods/index.json` beside the page. An item with a new id is added; one with the id of an existing item replaces it (a mod can retune bread). A faulty item or file is left out, and the title screen lists what was loaded and what was wrong. For example, `mods/sweets.json`:
+
+```json
+{
+  "items": [
+    { "id": "honey_cake", "name": "honey cake", "kind": "food", "weight": 0.2, "bulk": 0.3, "size": "small", "value": 3,
+      "uses": 2, "useWord": "pieces", "food": { "kcal": 250, "verb": "eat some honey cake" }, "durable": false, "sold": ["market"] }
+  ]
+}
+```
+
 ### The desktop app
 
 `apps/desktop` wraps the game in Electron (version 45), so it can be played as an ordinary program and, later, keep its saves on disk.

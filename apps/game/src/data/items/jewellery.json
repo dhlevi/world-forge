@@ -1,0 +1,125 @@
+{
+  "$schema": "./item.schema.json",
+  "about": "Jewellery, worn in its own places.",
+  "items": [
+    {
+      "id": "earrings",
+      "name": "earrings",
+      "plural": "earrings",
+      "kind": "jewellery",
+      "weight": 0.01,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 40,
+      "wear": { "jewel": "ears", "seconds": 5 },
+      "durable": false,
+      "sold": ["market"]
+    },
+    {
+      "id": "circlet",
+      "name": "circlet",
+      "kind": "jewellery",
+      "weight": 0.1,
+      "bulk": 0.2,
+      "size": "small",
+      "value": 200,
+      "wear": { "jewel": "brow", "seconds": 5 },
+      "durable": false
+    },
+    {
+      "id": "necklace",
+      "name": "necklace",
+      "kind": "jewellery",
+      "weight": 0.05,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 60,
+      "wear": { "jewel": "neck", "seconds": 5 },
+      "durable": false,
+      "sold": ["market"]
+    },
+    {
+      "id": "amulet",
+      "name": "amulet",
+      "kind": "jewellery",
+      "weight": 0.05,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 30,
+      "wear": { "jewel": "neck", "seconds": 5 },
+      "durable": false,
+      "sold": ["market", "apothecary"]
+    },
+    {
+      "id": "prayer_beads",
+      "name": "prayer beads",
+      "plural": "prayer beads",
+      "kind": "jewellery",
+      "weight": 0.05,
+      "bulk": 0.05,
+      "size": "tiny",
+      "value": 5,
+      "wear": { "jewel": "neck", "seconds": 5 },
+      "durable": false
+    },
+    {
+      "id": "brooch",
+      "name": "cloak brooch",
+      "kind": "jewellery",
+      "weight": 0.03,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 25,
+      "wear": { "jewel": "brooch", "seconds": 5 },
+      "durable": false,
+      "sold": ["market"]
+    },
+    {
+      "id": "bracelet",
+      "name": "bracelet",
+      "kind": "jewellery",
+      "weight": 0.03,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 35,
+      "wear": { "jewel": "wrists", "seconds": 5 },
+      "durable": false,
+      "sold": ["market"]
+    },
+    {
+      "id": "ring",
+      "name": "ring",
+      "kind": "jewellery",
+      "weight": 0.01,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 30,
+      "wear": { "jewel": "fingers", "seconds": 5 },
+      "durable": false,
+      "sold": ["market"]
+    },
+    {
+      "id": "signet_ring",
+      "name": "signet ring",
+      "kind": "jewellery",
+      "weight": 0.02,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 120,
+      "wear": { "jewel": "fingers", "seconds": 5 },
+      "durable": false
+    },
+    {
+      "id": "anklet",
+      "name": "anklet",
+      "kind": "jewellery",
+      "weight": 0.02,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 25,
+      "wear": { "jewel": "ankles", "seconds": 5 },
+      "durable": false,
+      "sold": ["market"]
+    }
+  ]
+}

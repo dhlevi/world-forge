@@ -1,0 +1,190 @@
+{
+  "about": "What the gear named by occupations (actors/data/occupations.ts) becomes as items at character creation. Animals are owned, not carried.",
+  "animals": ["horse", "mule", "ox", "hound"],
+  "gear": {
+    "spear": [
+      { "id": "spear" }
+    ],
+    "padded coat": [
+      { "id": "padded_coat" }
+    ],
+    "knife": [
+      { "id": "knife" }
+    ],
+    "round shield": [
+      { "id": "round_shield" }
+    ],
+    "mail shirt": [
+      { "id": "mail_shirt" }
+    ],
+    "sword": [
+      { "id": "sword" },
+      { "id": "sword_belt" }
+    ],
+    "heater shield": [
+      { "id": "heater_shield" }
+    ],
+    "helm": [
+      { "id": "helm" }
+    ],
+    "sickle": [
+      { "id": "sickle" }
+    ],
+    "tool roll": [
+      { "id": "tool_roll" }
+    ],
+    "writing kit": [
+      { "id": "writing_kit" }
+    ],
+    "good clothes": [
+      { "id": "doublet", "quality": "fine" },
+      { "id": "hose", "quality": "fine" }
+    ],
+    "ledger": [
+      { "id": "ledger" }
+    ],
+    "robe": [
+      { "id": "robe" }
+    ],
+    "prayer beads": [
+      { "id": "prayer_beads" }
+    ],
+    "staff": [
+      { "id": "staff" }
+    ],
+    "begging bowl": [
+      { "id": "begging_bowl" }
+    ],
+    "vestments": [
+      { "id": "vestments" }
+    ],
+    "holy book": [
+      { "id": "holy_book" }
+    ],
+    "signet ring": [
+      { "id": "signet_ring" }
+    ],
+    "book": [
+      { "id": "book" }
+    ],
+    "books": [
+      { "id": "book", "qty": 3 }
+    ],
+    "old map": [
+      { "id": "old_map" }
+    ],
+    "scholar's gown": [
+      { "id": "scholar_gown" }
+    ],
+    "pack": [
+      { "id": "pack" }
+    ],
+    "trade goods": [
+      { "id": "trade_goods" }
+    ],
+    "scales": [
+      { "id": "scales" }
+    ],
+    "apron": [
+      { "id": "apron" }
+    ],
+    "master's mark": [
+      { "id": "token", "name": "master's mark" }
+    ],
+    "blanket": [
+      { "id": "blanket" }
+    ],
+    "short bow": [
+      { "id": "short_bow" }
+    ],
+    "arrows": [
+      { "id": "quiver" },
+      { "id": "arrows", "qty": 20 }
+    ],
+    "lockpicks": [
+      { "id": "lockpicks" }
+    ],
+    "guild token": [
+      { "id": "token", "name": "guild token" }
+    ],
+    "basket": [
+      { "id": "basket" }
+    ],
+    "snares": [
+      { "id": "snares", "qty": 5 }
+    ],
+    "hunting bow": [
+      { "id": "hunting_bow" }
+    ],
+    "axe": [
+      { "id": "axe" }
+    ],
+    "rope": [
+      { "id": "rope" }
+    ],
+    "net": [
+      { "id": "net" }
+    ],
+    "sea chest": [
+      { "id": "sea_chest" }
+    ],
+    "whistle": [
+      { "id": "whistle" }
+    ],
+    "sea charts": [
+      { "id": "sea_charts" }
+    ],
+    "pipe": [
+      { "id": "pipe" }
+    ],
+    "lute": [
+      { "id": "lute" }
+    ],
+    "costume": [
+      { "id": "costume" }
+    ],
+    "fine lute": [
+      { "id": "lute", "quality": "fine" }
+    ],
+    "patron's letter": [
+      { "id": "letter", "name": "patron's letter" }
+    ],
+    "herb satchel": [
+      { "id": "herb_satchel" },
+      { "id": "herbs", "qty": 5 }
+    ],
+    "bandages": [
+      { "id": "bandages", "qty": 6 }
+    ],
+    "surgeon's kit": [
+      { "id": "surgeon_kit" }
+    ],
+    "medicine chest": [
+      { "id": "medicine_chest" }
+    ],
+    "hoe": [
+      { "id": "hoe" }
+    ],
+    "spell book": [
+      { "id": "spell_book" }
+    ],
+    "reagents": [
+      { "id": "reagents" }
+    ],
+    "robes of the college": [
+      { "id": "college_robes" }
+    ],
+    "clothes": [],
+    "boots": [],
+    "cloak": [],
+    "flint and steel": [
+      { "id": "flint" }
+    ],
+    "waterskin": [
+      { "id": "waterskin" }
+    ],
+    "bread": [
+      { "id": "bread", "qty": 2 }
+    ]
+  }
+}
