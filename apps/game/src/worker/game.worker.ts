@@ -149,7 +149,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       if (!world) throw new Error('No world yet.');
       const r = world.raster;
       const i = ((Math.floor(((m.lon + 180) / 360) * r.W) % r.W) + r.W) % r.W, j = Math.min(r.H - 1, Math.max(0, Math.floor(((90 - m.lat) / 180) * r.H)));
-      post({ type: 'climate', id: m.id, warm: r.tempWarm[j * r.W + i], cold: r.tempCold[j * r.W + i] });
+      const c = j * r.W + i;
+      post({ type: 'climate', id: m.id, warm: r.tempWarm[c], cold: r.tempCold[c], precipSummer: r.precipSummer[c], precipWinter: r.precipWinter[c], windU: r.windU[c], windV: r.windV[c] });
     } else if (m.type === 'plan') {
       if (!local) throw new Error('No game started.');
       const s = findSite(local.towns, m.siteId, m.lon, m.lat);

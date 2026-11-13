@@ -31,6 +31,14 @@ export interface TimeCtx {
   loadSlow?: number;
   /** How well they sleep (1 a bed, less rough). */
   sleepQuality?: number;
+  /** The weather out of doors (game/weather.ts): rain or snow (mm an hour), wind (m/s), and direct sun (0 to 1). */
+  weather?: { rainMm: number; snow: boolean; windMs: number; sun: number };
+  /** How much a roof or shelter keeps the weather off (0 none, 1 indoors or in a tent). */
+  cover?: number;
+  /** How much shelter there is from the wind (0 none, 1 indoors). */
+  windCover?: number;
+  /** Beside a fire (drying out). */
+  fire?: boolean;
 }
 
 // ---- Identity ------------------------------------------------------------------------------------

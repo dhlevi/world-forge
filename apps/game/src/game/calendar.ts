@@ -8,6 +8,16 @@
 export const START_DAY_OF_YEAR = 110;
 const YEAR = 365;
 
+/** A place's climate as the worker gives it (worker/game.worker.ts). */
+export interface PlaceClimate {
+  warm: number;
+  cold: number;
+  precipSummer: number;
+  precipWinter: number;
+  windU: number;
+  windV: number;
+}
+
 /** The place's climate: its warmest and coldest months (°C) and latitude. */
 export interface Climate {
   warm: number;

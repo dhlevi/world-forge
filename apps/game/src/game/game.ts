@@ -22,6 +22,8 @@ export const WAIT_S = 5;
 export const SWIM_S = 4;
 /** How far the wanderer sees by day, in tiles. */
 export const SIGHT = 30;
+/** Things that give light, and how far it reaches (tiles). */
+export const LIGHTS: Record<string, number> = { campfire: 7, hearth: 6, forge: 6, oven: 3, candle: 3 };
 
 export interface Hud {
   place: string;
@@ -71,6 +73,13 @@ export class Game {
     this.say(`You stand in ${startName}.`);
   }
 
+  /** The light out of doors and how far it lets the wanderer see (tiles); set as the sky changes (game/weather.ts). */
+  ambient = { light: 1, range: SIGHT };
+  /** How far a light the wanderer carries reaches (tiles; 0 none). */
+  carriedLight: () => number = () => 0;
+  /** Light on each visible tile (negative: firelight). */
+  private lit = new Map<number, number>();
+
   isVisible(x: number, y: number): boolean {
     return this.visible.has(vkey(x, y));
   }
@@ -80,14 +89,50 @@ export class Game {
     const r = SIGHT + CHUNK / 2;
     this.map.want(this.px - r, this.py - r, this.px + r, this.py + r);
     this.discovery.reveal(this.px, this.py, FOOT_SIGHT_M);
-    this.visible.clear();
-    this.fov.compute(this.px, this.py, SIGHT, (x: number, y: number) => {
-      if (!this.map.loaded(x, y)) return;
-      this.visible.add(vkey(x, y));
-      this.map.markSeen(x, y);
-    });
+    this.computeSight();
     this.updateHud();
     this.onChange();
+  }
+
+  /**
+   * What can be seen (survival.md, Light sets sight): everything in line of sight within the range
+   * the daylight (or moonlight, through cloud, fog and rain) allows, and beyond that whatever a
+   * fire, hearth or carried light lights up. Each visible tile keeps how lit it is (0 to 1), and
+   * whether by firelight, for drawing.
+   */
+  private computeSight(): void {
+    this.visible.clear();
+    this.lit.clear();
+    const range = Math.max(1.5, Math.min(SIGHT, this.ambient.range));
+    const cand: [number, number][] = [];
+    const sources: [number, number, number][] = [];
+    this.fov.compute(this.px, this.py, SIGHT, (x: number, y: number) => {
+      if (!this.map.loaded(x, y)) return;
+      cand.push([x, y]);
+      const r = LIGHTS[OBJECT_TILES[this.map.object(x, y)]?.name ?? ''];
+      if (r) sources.push([x, y, r]);
+    });
+    const carried = this.carriedLight();
+    if (carried) sources.push([this.px, this.py, carried]);
+    for (const [x, y] of cand) {
+      const d = Math.hypot(x - this.px, y - this.py);
+      let fire = 0;
+      for (const [sx, sy, r] of sources) {
+        const e = Math.hypot(x - sx, y - sy);
+        if (e <= r) fire = Math.max(fire, 1 - (e / r) * 0.7);
+      }
+      const amb = d <= range ? this.ambient.light : 0;
+      if (amb <= 0 && fire <= 0 && d > 1.5) continue;
+      this.visible.add(vkey(x, y));
+      this.map.markSeen(x, y);
+      this.lit.set(vkey(x, y), fire > amb ? -fire : Math.max(amb, 0.05));
+    }
+  }
+
+  /** How lit a visible tile is (0 to 1), and whether by firelight rather than the sky. */
+  lightAt(x: number, y: number): { level: number; fire: boolean } {
+    const v = this.lit.get(vkey(x, y)) ?? 0;
+    return { level: Math.abs(v), fire: v < 0 };
   }
 
   say(text: string): void {
@@ -172,14 +217,9 @@ export class Game {
   }
 
   private refreshSight(): void {
-    this.visible.clear();
-    this.fov.compute(this.px, this.py, SIGHT, (x: number, y: number) => {
-      if (this.map.loaded(x, y)) {
-        this.visible.add(vkey(x, y));
-        this.map.markSeen(x, y);
-      }
-    });
+    this.computeSight();
   }
+
 
   /** Opens or closes a door (or gate) at a tile. */
   toggle(x: number, y: number, wantOpen: boolean | null, quiet = false): boolean {

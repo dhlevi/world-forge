@@ -34,7 +34,15 @@
       "bulk": 1.5,
       "size": "small",
       "value": 15,
-      "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 15, "warmth": 2 },
+      "wear": {
+        "regions": ["torso", "arms"],
+        "layer": "main",
+        "seconds": 15,
+        "warmth": 2,
+        "wind": 0.1,
+        "sun": 0.2,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -46,7 +54,15 @@
       "bulk": 2,
       "size": "small",
       "value": 60,
-      "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 30, "warmth": 2 },
+      "wear": {
+        "regions": ["torso", "arms"],
+        "layer": "main",
+        "seconds": 30,
+        "warmth": 2,
+        "wind": 0.2,
+        "sun": 0.2,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["tailor"],
       "about": "Good clothes, fitted and fastened."
@@ -80,7 +96,11 @@
         "regions": ["torso", "arms", "legs"],
         "layer": "main",
         "seconds": 15,
-        "warmth": 3
+        "warmth": 3,
+        "rain": 0.1,
+        "wind": 0.2,
+        "sun": 0.5,
+        "wool": true
       },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
@@ -97,7 +117,11 @@
         "regions": ["torso", "arms", "legs"],
         "layer": "outer",
         "seconds": 40,
-        "warmth": 3
+        "warmth": 3,
+        "rain": 0.1,
+        "wind": 0.2,
+        "sun": 0.4,
+        "wool": true
       },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" }
     },
@@ -113,7 +137,11 @@
         "regions": ["torso", "arms", "legs"],
         "layer": "outer",
         "seconds": 20,
-        "warmth": 3
+        "warmth": 3,
+        "rain": 0.1,
+        "wind": 0.2,
+        "sun": 0.4,
+        "wool": true
       },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" }
     },
@@ -129,7 +157,11 @@
         "regions": ["torso", "arms", "legs"],
         "layer": "outer",
         "seconds": 25,
-        "warmth": 3
+        "warmth": 3,
+        "rain": 0.1,
+        "wind": 0.2,
+        "sun": 0.4,
+        "wool": true
       },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" }
     },
@@ -179,7 +211,14 @@
       "bulk": 1.5,
       "size": "small",
       "value": 14,
-      "wear": { "regions": ["legs"], "layer": "main", "seconds": 20, "warmth": 2 },
+      "wear": {
+        "regions": ["legs"],
+        "layer": "main",
+        "seconds": 20,
+        "warmth": 2,
+        "wind": 0.1,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -192,7 +231,14 @@
       "bulk": 1,
       "size": "small",
       "value": 18,
-      "wear": { "regions": ["legs"], "layer": "main", "seconds": 25, "warmth": 2 },
+      "wear": {
+        "regions": ["legs"],
+        "layer": "main",
+        "seconds": 25,
+        "warmth": 2,
+        "wind": 0.1,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["tailor"]
     },
@@ -217,7 +263,13 @@
       "bulk": 0.3,
       "size": "tiny",
       "value": 3,
-      "wear": { "regions": ["feet"], "layer": "under", "seconds": 10, "warmth": 1 },
+      "wear": {
+        "regions": ["feet"],
+        "layer": "under",
+        "seconds": 10,
+        "warmth": 1,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -230,7 +282,14 @@
       "bulk": 2,
       "size": "small",
       "value": 15,
-      "wear": { "regions": ["feet"], "layer": "main", "seconds": 15, "warmth": 1 },
+      "wear": {
+        "regions": ["feet"],
+        "layer": "main",
+        "seconds": 15,
+        "warmth": 1,
+        "rain": 0.2,
+        "wind": 0.1
+      },
       "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"]
     },
@@ -243,7 +302,15 @@
       "bulk": 4,
       "size": "medium",
       "value": 35,
-      "wear": { "regions": ["feet"], "layer": "main", "seconds": 30, "warmth": 2, "armour": 1 },
+      "wear": {
+        "regions": ["feet"],
+        "layer": "main",
+        "seconds": 30,
+        "warmth": 2,
+        "armour": 1,
+        "rain": 0.4,
+        "wind": 0.2
+      },
       "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"]
     },
@@ -268,7 +335,16 @@
       "bulk": 0.4,
       "size": "small",
       "value": 5,
-      "wear": { "regions": ["head"], "layer": "main", "seconds": 5, "warmth": 1 },
+      "wear": {
+        "regions": ["head"],
+        "layer": "main",
+        "seconds": 5,
+        "warmth": 1,
+        "rain": 0.1,
+        "wind": 0.1,
+        "sun": 0.3,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -280,7 +356,16 @@
       "bulk": 1,
       "size": "small",
       "value": 8,
-      "wear": { "regions": ["head"], "layer": "outer", "seconds": 5, "warmth": 2 },
+      "wear": {
+        "regions": ["head"],
+        "layer": "outer",
+        "seconds": 5,
+        "warmth": 2,
+        "rain": 0.4,
+        "wind": 0.4,
+        "sun": 0.3,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -292,7 +377,15 @@
       "bulk": 3,
       "size": "medium",
       "value": 12,
-      "wear": { "regions": ["head"], "layer": "main", "seconds": 5, "warmth": 1 },
+      "wear": {
+        "regions": ["head"],
+        "layer": "main",
+        "seconds": 5,
+        "warmth": 1,
+        "rain": 0.4,
+        "wind": 0.1,
+        "sun": 0.7
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -304,7 +397,7 @@
       "bulk": 0.3,
       "size": "tiny",
       "value": 10,
-      "wear": { "regions": ["face"], "layer": "main", "seconds": 10 },
+      "wear": { "regions": ["face"], "layer": "main", "seconds": 10, "sun": 0.5 },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -316,7 +409,15 @@
       "bulk": 0.5,
       "size": "small",
       "value": 6,
-      "wear": { "regions": ["face"], "layer": "outer", "seconds": 5, "warmth": 1 },
+      "wear": {
+        "regions": ["face"],
+        "layer": "outer",
+        "seconds": 5,
+        "warmth": 1,
+        "wind": 0.4,
+        "sun": 0.2,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -329,7 +430,14 @@
       "bulk": 0.5,
       "size": "small",
       "value": 12,
-      "wear": { "regions": ["hands"], "layer": "main", "seconds": 10, "warmth": 1 },
+      "wear": {
+        "regions": ["hands"],
+        "layer": "main",
+        "seconds": 10,
+        "warmth": 1,
+        "rain": 0.1,
+        "wind": 0.3
+      },
       "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"]
     },
@@ -342,7 +450,14 @@
       "bulk": 1,
       "size": "small",
       "value": 14,
-      "wear": { "regions": ["hands"], "layer": "outer", "seconds": 10, "warmth": 3 },
+      "wear": {
+        "regions": ["hands"],
+        "layer": "outer",
+        "seconds": 10,
+        "warmth": 3,
+        "wind": 0.4,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market"]
     },
@@ -354,7 +469,16 @@
       "bulk": 3,
       "size": "medium",
       "value": 30,
-      "wear": { "regions": ["torso", "arms"], "layer": "outer", "seconds": 20, "warmth": 3 },
+      "wear": {
+        "regions": ["torso", "arms"],
+        "layer": "outer",
+        "seconds": 20,
+        "warmth": 3,
+        "rain": 0.2,
+        "wind": 0.4,
+        "sun": 0.2,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -370,7 +494,11 @@
         "regions": ["torso", "arms", "legs"],
         "layer": "outer",
         "seconds": 25,
-        "warmth": 5
+        "warmth": 5,
+        "rain": 0.4,
+        "wind": 0.6,
+        "sun": 0.2,
+        "wool": true
       },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
@@ -383,7 +511,16 @@
       "bulk": 4,
       "size": "medium",
       "value": 25,
-      "wear": { "regions": ["torso", "arms"], "layer": "cloak", "seconds": 10, "warmth": 3 },
+      "wear": {
+        "regions": ["torso", "arms"],
+        "layer": "cloak",
+        "seconds": 10,
+        "warmth": 3,
+        "rain": 0.5,
+        "wind": 0.5,
+        "sun": 0.3,
+        "wool": true
+      },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
@@ -395,9 +532,40 @@
       "bulk": 8,
       "size": "medium",
       "value": 90,
-      "wear": { "regions": ["torso", "arms"], "layer": "cloak", "seconds": 10, "warmth": 6 },
+      "wear": {
+        "regions": ["torso", "arms"],
+        "layer": "cloak",
+        "seconds": 10,
+        "warmth": 6,
+        "rain": 0.4,
+        "wind": 0.8,
+        "sun": 0.2,
+        "wool": true
+      },
       "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market"]
+    },
+    {
+      "id": "oilskin_cloak",
+      "name": "oiled cloak",
+      "kind": "clothing",
+      "weight": 2,
+      "bulk": 4,
+      "size": "medium",
+      "value": 45,
+      "strap": true,
+      "wear": {
+        "regions": ["torso", "arms"],
+        "layer": "cloak",
+        "seconds": 10,
+        "warmth": 2,
+        "rain": 0.9,
+        "wind": 0.6,
+        "sun": 0.2
+      },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
+      "sold": ["tailor", "market"],
+      "about": "Waxed and oiled canvas: it sheds the rain as a duck's back does."
     },
     {
       "id": "belt",

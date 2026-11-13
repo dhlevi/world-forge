@@ -17,8 +17,9 @@
  * - **Snares** (Trapping): set on runs about the camp; each may hold a rabbit when checked, by how
  *   well it was set, the land, and how long it has been.
  * - **The night's events** (placeholders until there are creatures and people about): animals at
- *   the food, rain, a stranger, wolves. Keeping watch, a fire, a shelter and a hidden site each
- *   turn them aside.
+ *   the food, a stranger, wolves. Keeping watch, a fire and a hidden site each turn them aside.
+ *   Rain and snow are the real weather's (game/weather.ts): a tent or lean-to keeps them off, and
+ *   heavy rain puts out an open fire.
  *
  * Proposed numbers, to tune in play.
  */
@@ -384,7 +385,7 @@ export function mendable(c: CampCtx): { it: Item; kit?: Item } | null {
   return null;
 }
 
-type NightEvent = 'animals' | 'rain' | 'stranger' | 'wolves';
+type NightEvent = 'animals' | 'stranger' | 'wolves';
 
 /** Hours from now until seven in the morning (at least four, at most fourteen). */
 export function hoursToMorning(time: number): number {
@@ -427,16 +428,14 @@ export function spendNight(c: CampCtx, camp: CampData, plan: NightPlan, bedQuali
   const rnd = () => s?.random() ?? 0.5;
   let event: NightEvent | null = null, at = -1;
   if (rnd() < 0.3) {
-    const season = c.season();
     const food = cookable(c).length > 0;
     const w: [NightEvent, number][] = [
       ['animals', food ? 3 : 0.5],
-      ['rain', season === 'summer' ? 2 : season === 'winter' ? 1 : 3],
       ['stranger', (1 - camp.site.hidden) * 3 + 0.3],
       ['wolves', camp.site.wood > 0.3 ? 1.2 : 0.4],
     ];
     let x = rnd() * w.reduce((t, [, v]) => t + v, 0);
-    event = w.find(([, v]) => (x -= v) < 0)?.[0] ?? 'rain';
+    event = w.find(([, v]) => (x -= v) < 0)?.[0] ?? 'wolves';
     at = Math.floor(rnd() * hours);
   }
   const happen = (onWatch: boolean) => {
@@ -484,19 +483,6 @@ function nightEvent(c: CampCtx, camp: CampData, e: NightEvent, onWatch: boolean)
       c.say(`You wake to find something has been at your food: the ${name} is gone.`);
       return;
     }
-    case 'rain':
-      if (shelter?.rain) {
-        c.say(`Rain comes in the night and drums on your ${camp.shelter!.kind === 'tent' ? 'tent' : 'lean-to'}; you stay dry.`);
-        return;
-      }
-      if (n) n.d.heat = Math.max(-100, n.d.heat - 20);
-      if (fire && !onWatch) {
-        camp.fire.fuelH = 0;
-        g.camps.setFire(g, camp, false);
-      }
-      c.mood({ id: 'soaked-night', text: 'Soaked in the night', value: -3 }, 12);
-      c.say(onWatch ? 'Rain sets in while you sit watch, and soaks you through.' : `Rain comes in the night and soaks you through${fire ? '; the fire hisses out' : ''}.`);
-      return;
     case 'stranger': {
       if (onWatch) {
         c.mood({ id: 'stranger', text: 'Shared the fire with a traveller', value: 1 }, 12);

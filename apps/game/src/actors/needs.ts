@@ -29,7 +29,7 @@ import { Body, Mood, Pools, Skills, type Activity, type TimeCtx } from './compon
 import { Inventory } from './items/inventory';
 import { defOf } from './items/item';
 
-export type NeedId = 'hunger' | 'thirst' | 'sleep' | 'stamina' | 'heat';
+export type NeedId = 'hunger' | 'thirst' | 'sleep' | 'stamina' | 'heat' | 'wet';
 
 export interface NeedsData {
   /** Food waiting in the stomach (kcal), and the day's reserve (kcal). */
@@ -49,6 +49,10 @@ export interface NeedsData {
   heat: number;
   /** The air about them when last told (°C). */
   airC: number;
+  /** How wet they are, 0 dry to 100 soaked through (from rain, snow, wading and swimming; game/weather.ts). */
+  wet?: number;
+  /** What the cold felt like when last told, with wind and wet counted in (°C). */
+  feltC?: number;
   /** The words last reported for each need. */
   said: Partial<Record<NeedId, string>>;
 }
@@ -74,6 +78,8 @@ const EFFORT_HEAT: Record<Activity, number> = { rest: 0, sleep: -2, walk: 3, tra
 export class Needs extends Component {
   static readonly key = 'needs';
   private notes: NeedNote[] = [];
+  /** Game time when last told (for timed moodlets). */
+  private now = 0;
   /** A collapse waiting to be dealt with by the game: why. */
   collapse: NeedId | null = null;
 
@@ -95,11 +101,35 @@ export class Needs extends Component {
     return { kcal: 1300 * k, litres: 1.2 * k };
   }
 
-  /** Warmth of what is worn. */
+  /** Warmth of what is worn: wet clothes keep less of it, except wool and fur. */
   insulation(): number {
     const inv = this.actor?.get(Inventory);
     if (!inv) return 6;
-    return inv.worn().reduce((s, i) => s + (defOf(i).wear?.warmth ?? 0), 0);
+    const wet = (this.d.wet ?? 0) / 100;
+    return inv.worn().reduce((s, i) => {
+      const w = defOf(i).wear;
+      return s + (w?.warmth ?? 0) * (1 - wet * (w?.wool ? 0.2 : 0.6));
+    }, 0);
+  }
+
+  /** What the clothes keep off: rain (by the body and the head), wind, and a hot sun (0 to 1). */
+  protection(): { rain: number; wind: number; sun: number } {
+    const inv = this.actor?.get(Inventory);
+    let body = 0, head = 0, wind = 0, sunB = 0, sunH = 0;
+    for (const i of inv?.worn() ?? []) {
+      const w = defOf(i).wear;
+      if (!w?.regions) continue;
+      if (w.regions.includes('torso')) {
+        body = Math.max(body, w.rain ?? 0);
+        wind = Math.max(wind, w.wind ?? 0);
+        sunB = Math.max(sunB, w.sun ?? 0);
+      }
+      if (w.regions.includes('head') || w.regions.includes('face')) {
+        head = Math.max(head, w.rain ?? 0);
+        sunH = Math.max(sunH, w.sun ?? 0);
+      }
+    }
+    return { rain: body * 0.75 + head * 0.25, wind, sun: sunH * 0.6 + sunB * 0.4 };
   }
 
   /** The range of air temperature this person is comfortable in, as dressed (°C). */
@@ -110,7 +140,8 @@ export class Needs extends Component {
 
   onMessage(m: Message): boolean {
     if (m.type !== 'time.passed') return false;
-    const { dt, ctx } = (m as Message<'time.passed'>).payload;
+    const { dt, ctx, now } = (m as Message<'time.passed'>).payload;
+    this.now = now;
     let left = dt;
     while (left > 0) {
       const step = Math.min(left, 600);
@@ -130,9 +161,28 @@ export class Needs extends Component {
     const kg = this.bodyKg();
     const asleep = act === 'sleep';
 
+    // ---- Wet and dry (survival.md, Wetness).
+    const wx = ctx.weather;
+    const cover = clamp(ctx.cover ?? 0, 0, 1), windCover = clamp(ctx.windCover ?? cover, 0, 1);
+    const prot = this.protection();
+    let wet = d.wet ?? 0;
+    if (act === 'swim') wet = 100;
+    else {
+      if (wx && wx.rainMm > 0) wet += wx.rainMm * (wx.snow ? 4 : 12) * (1 - prot.rain) * (1 - cover) * h;
+      // Drying: faster in sun, wind, by a fire or indoors, and while working up a sweat (slower in the cold).
+      const wind = wx ? wx.windMs * (1 - windCover) : 0;
+      const dry = (5 + (wx?.sun ?? 0) * 15 * (1 - cover) + Math.min(20, wind * 1.2) + (ctx.fire ? 35 : 0) + cover * 8) * (d.airC < 0 ? 0.4 : d.airC < 8 ? 0.7 : 1);
+      if (!wx || wx.rainMm <= 0 || cover >= 0.9) wet -= dry * h;
+    }
+    d.wet = clamp(wet, 0, 100);
+
     // ---- Body heat.
     const c = this.comfort();
-    const felt = d.airC + EFFORT_HEAT[act] * (act === 'travel' || act === 'walk' ? Math.min(1.5, load) : 1);
+    // The wind chills the unsheltered (less through windproof clothes), and so does being wet.
+    const chill = wx && d.airC < 18 ? Math.max(0, wx.windMs - 1.5) * 0.7 * (1 - prot.wind * 0.8) * (1 - windCover) : 0;
+    const sunHeat = wx ? wx.sun * 5 * (1 - prot.sun * 0.7) * (1 - cover) : 0;
+    const felt = d.airC - chill - (d.wet / 100) * 4 + sunHeat + EFFORT_HEAT[act] * (act === 'travel' || act === 'walk' ? Math.min(1.5, load) : 1);
+    d.feltC = Math.round(felt * 10) / 10;
     const target = felt < c.low ? -Math.min(100, (c.low - felt) * 4) : felt > c.high ? Math.min(100, (felt - c.high) * 4) : 0;
     d.heat += (target - d.heat) * Math.min(1, h * 1.2);
 
@@ -218,7 +268,9 @@ export class Needs extends Component {
     const stamina = !P ? '' : P.physDay.value <= 0 ? 'Spent' : P.physDay.value < P.physDay.max * 0.2 ? 'Weary' : P.physBurst.value < P.physBurst.max * 0.15 ? 'Winded' : '';
     const x = d.heat;
     const heat = x <= -70 ? 'Hypothermic' : x <= -40 ? 'Shivering' : x <= -15 ? 'Chilly' : x >= 70 ? 'Overheating' : x >= 40 ? 'Hot' : x >= 15 ? 'Warm' : '';
-    return { hunger, thirst, sleep, stamina, heat };
+    const wv = d.wet ?? 0;
+    const wet = wv >= 60 ? 'Soaked' : wv >= 20 ? 'Damp' : '';
+    return { hunger, thirst, sleep, stamina, heat, wet };
   }
 
   /** How much these states slow the person (1 not at all). */
@@ -241,6 +293,7 @@ export class Needs extends Component {
       sleep: clamp(1 - this.tiredness() / 140, 0, 1),
       stamina: P ? clamp((P.physDay.value / P.physDay.max) * 0.7 + (P.physBurst.value / P.physBurst.max) * 0.3, 0, 1) : 1,
       heat: clamp(1 - Math.abs(d.heat) / 100, 0, 1),
+      wet: clamp(1 - (d.wet ?? 0) / 100, 0, 1),
     };
   }
 
@@ -250,6 +303,7 @@ export class Needs extends Component {
     sleep: ['', 'Tired', 'Very tired', 'Exhausted', 'Collapsing'],
     stamina: ['', 'Winded', 'Weary', 'Spent'],
     heat: ['', 'Warm', 'Chilly', 'Hot', 'Shivering', 'Overheating', 'Hypothermic'],
+    wet: ['', 'Damp', 'Soaked'],
   };
 
   private static readonly TEXT: Record<string, string> = {
@@ -258,7 +312,7 @@ export class Needs extends Component {
     Dehydrated: 'Your head aches with thirst.', 'Badly dehydrated': 'You are dizzy and confused with thirst.', Tired: 'You are tired.', 'Very tired': 'You are very tired.',
     Exhausted: 'You are exhausted; you need sleep.', Collapsing: 'You can barely stay on your feet.', Winded: 'You are out of breath.', Weary: 'Your legs are heavy.',
     Spent: 'You are spent: every step is an effort.', Warm: 'You are warm.', Chilly: 'You feel the chill.', Hot: 'You are hot and sweating.',
-    Shivering: 'You are shivering.', Overheating: 'You are overheating; your head pounds.', Hypothermic: 'You are shaking with cold; your fingers have gone numb.',
+    Shivering: 'You are shivering.', Damp: 'You are damp.', Soaked: 'You are soaked through.', Overheating: 'You are overheating; your head pounds.', Hypothermic: 'You are shaking with cold; your fingers have gone numb.',
   };
 
   /** Compares the states with those last reported; keeps notes, moodlets, and a collapse. */
@@ -273,7 +327,9 @@ export class Needs extends Component {
       const order = Needs.ORDER[k];
       const worse = order.indexOf(now) > order.indexOf(before) && now !== 'Full' && now !== 'Warm';
       this.d.said[k] = now;
-      this.notes.push({ need: k, word: now, worse, text: now ? Needs.TEXT[now] ?? now : k === 'heat' ? 'You are comfortable again.' : k === 'sleep' ? 'You feel rested.' : k === 'stamina' ? 'You have your strength back.' : k === 'hunger' ? 'Your hunger is gone.' : 'Your thirst is gone.' });
+      this.notes.push({ need: k, word: now, worse, text: now ? Needs.TEXT[now] ?? now : k === 'heat' ? 'You are comfortable again.' : k === 'sleep' ? 'You feel rested.' : k === 'stamina' ? 'You have your strength back.' : k === 'hunger' ? 'Your hunger is gone.' : k === 'wet' ? 'You are dry again.' : 'Your thirst is gone.' });
+      // Warm and dry after a soaking: a small relief.
+      if (k === 'wet' && !now && before && mood && Math.abs(this.d.heat) < 15) mood.add({ id: 'dry-again', text: 'Warm and dry again', value: 1, until: this.now + 4 * 3600 });
       // A moodlet for the state while it lasts.
       if (mood) {
         mood.moodlets = mood.moodlets.filter((x) => x.id !== `need.${k}`);
@@ -347,6 +403,6 @@ export class Needs extends Component {
 /** Moodlets for the states (while they last). */
 const MOOD: Record<string, number> = {
   Hungry: -2, Ravenous: -5, Underfed: -4, Malnourished: -8, Starving: -15, Thirsty: -2, Parched: -6, Dehydrated: -8, 'Badly dehydrated': -15,
-  Tired: -2, 'Very tired': -4, Exhausted: -8, Collapsing: -12, Spent: -4, Chilly: -2, Shivering: -6, Hypothermic: -15, Hot: -2, Overheating: -10, Full: 1,
+  Tired: -2, 'Very tired': -4, Exhausted: -8, Collapsing: -12, Spent: -4, Chilly: -2, Shivering: -6, Hypothermic: -15, Hot: -2, Overheating: -10, Full: 1, Damp: -1, Soaked: -3,
 };
 

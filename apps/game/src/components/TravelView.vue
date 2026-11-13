@@ -12,6 +12,8 @@ import type { PlanImage, StartSite, TravelArea, ViewLayer } from '../worker/prot
 const props = defineProps<{
   travel: Travel;
   starts: StartSite[];
+  /** How dark it is (0 day to 1 night), to dim the map. */
+  dark?: number;
   requestTile: (z: number, x: number, y: number, layer: ViewLayer) => Promise<ImageBitmap | null>;
   requestArea: (box: { west: number; south: number; east: number; north: number }, fine: boolean) => Promise<TravelArea>;
   requestPlan: (id: string, o: { mpp: number; radius: number; illustrated: boolean; lon?: number; lat?: number }) => Promise<PlanImage | null>;
@@ -141,6 +143,7 @@ onBeforeUnmount(() => props.travel.stop());
       @view="onView"
       @level="(i: number) => (level = i)"
     />
+    <div class="night" :style="{ opacity: Math.max(0, Math.min(0.7, ((dark ?? 0) - 0.35) * 1.1)) }" />
     <div class="travel-bar">
       <div class="row">
         <button v-for="(n, i) in LEVEL_NAMES" :key="n" :class="{ on: level === i }" @click="level = i">{{ n }}</button>

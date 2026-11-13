@@ -3,6 +3,7 @@
  * routes, areas, the catalogue, names) as promises, and the worker's own news (progress, a world
  * made, a game started, chunks, errors) as messages on the bus.
  */
+import type { PlaceClimate } from '../game/calendar';
 import type { MessageDispatcher } from '../engine/messages';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
@@ -100,9 +101,10 @@ export class WorkerClient {
     return p;
   };
 
-  /** The climate at a place: its warmest and coldest months (°C). */
-  climate = (lon: number, lat: number): Promise<{ warm: number; cold: number }> =>
-    this.ask((id) => ({ type: 'climate', id, lon, lat }), (m) => (m.type === 'climate' ? { warm: m.warm, cold: m.cold } : { warm: 20, cold: 0 }));
+  /** The climate at a place: its warmest and coldest months (°C), its rain by half-year (mm a year) and its prevailing wind. */
+  climate = (lon: number, lat: number): Promise<PlaceClimate> =>
+    this.ask((id) => ({ type: 'climate', id, lon, lat }), (m) =>
+      m.type === 'climate' ? { warm: m.warm, cold: m.cold, precipSummer: m.precipSummer, precipWinter: m.precipWinter, windU: m.windU, windV: m.windV } : { warm: 20, cold: 0, precipSummer: 600, precipWinter: 600, windU: 0.5, windV: 0 });
 
   /** Forgets kept plan images (a new world). */
   clearPlans(): void {

@@ -60,6 +60,11 @@ export interface WearDef {
   /** Warmth and protection (for the needs and combat to come). */
   warmth?: number;
   armour?: number;
+  /** Keeping off rain, wind and a hot sun (0 to 1), and whether it stays warm when wet (wool, fur): actors/needs.ts. */
+  rain?: number;
+  wind?: number;
+  sun?: number;
+  wool?: boolean;
 }
 
 export interface ContainerDef {
@@ -171,6 +176,8 @@ export function checkItem(o: unknown): string[] {
       if (w.jewel !== undefined && !(String(w.jewel) in JEWEL_SLOTS)) bad.push(`wear.jewel must be one of ${Object.keys(JEWEL_SLOTS).join(', ')}`);
       if (!w.jewel && (!regions || !w.layer)) bad.push('wear needs regions and a layer, or a jewel slot');
       for (const k of ['warmth', 'armour']) if (w[k] !== undefined && typeof w[k] !== 'number') bad.push(`wear.${k} must be a number`);
+      for (const k of ['rain', 'wind', 'sun']) if (w[k] !== undefined && (typeof w[k] !== 'number' || (w[k] as number) < 0 || (w[k] as number) > 1)) bad.push(`wear.${k} must be from 0 to 1`);
+      if (w.wool !== undefined && typeof w.wool !== 'boolean') bad.push('wear.wool must be true or false');
     }
   }
   const c = r.container as Record<string, unknown> | undefined;

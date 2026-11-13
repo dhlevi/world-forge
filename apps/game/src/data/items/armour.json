@@ -15,7 +15,9 @@
         "layer": "padding",
         "seconds": 40,
         "warmth": 4,
-        "armour": 2
+        "armour": 2,
+        "rain": 0.2,
+        "wind": 0.5
       },
       "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["smithy", "market"],
@@ -34,7 +36,9 @@
         "layer": "armour",
         "seconds": 40,
         "warmth": 2,
-        "armour": 3
+        "armour": 3,
+        "rain": 0.3,
+        "wind": 0.6
       },
       "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["smithy", "market"]
@@ -64,7 +68,8 @@
         "layer": "padding",
         "seconds": 10,
         "warmth": 1,
-        "armour": 1
+        "armour": 1,
+        "wind": 0.1
       },
       "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy"]

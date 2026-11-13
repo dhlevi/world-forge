@@ -15,11 +15,17 @@ import { HOME_KNOWN_M } from '../game/discovery';
 import { applySave, exportSave, makeSave, writeSave } from '../game/save';
 import { desktop } from '../desktop';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
-import { Knowledge, type Moodlet } from '../actors/components';
+import { Knowledge, Skills, type Moodlet } from '../actors/components';
+import { check, DC } from '../actors/checks';
 import { Inventory } from '../actors/items/inventory';
 import { defOf } from '../actors/items/item';
 import { Needs } from '../actors/needs';
-import { airTemp, type Climate } from '../game/calendar';
+import { airWord } from '../game/calendar';
+import { WeatherService, type Sky } from '../game/weather';
+import { SHELTERS } from '../game/camp';
+import { SIGHT } from '../game/game';
+import { RainLayer } from '../game/rain';
+import type { Item } from '../actors/items/item';
 import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import type { PlayScreen } from '../screens/play';
 import { Practice } from '../game/practice';
@@ -50,34 +56,125 @@ if (o.restore) {
 }
 // ---- Needs, fatigue and the air (actors/needs.ts, game/calendar.ts) ------------------------------
 
-/** The climate where the party is (asked of the worker as it moves). */
-let climate: Climate = { warm: 18, cold: 2, lat: o.site.lat };
+/** The weather where the party is (game/weather.ts), from the climate the worker gives as it moves. */
+const weather = new WeatherService(o.settings.seed, o.site.lon, o.site.lat);
 let climateAt: [number, number] | null = null;
 function updateClimate(): void {
   const [lon, lat] = travel.party();
   if (climateAt && Math.abs(climateAt[0] - lon) < 0.05 && Math.abs(climateAt[1] - lat) < 0.05) return;
   climateAt = [lon, lat];
-  void app.worker.climate(lon, lat).then((c) => (climate = { ...c, lat }));
+  void app.worker.climate(lon, lat).then((c) => {
+    weather.setPlace(lon, lat, c);
+    applySky(weather.sky(game.time));
+  });
 }
 const indoors = () => GROUND_TILES[game.map.ground(game.px, game.py)]?.name.startsWith('floor_') ?? false;
 const needs = () => screen.player?.get(Needs);
 const invSlow = () => screen.player?.get(Inventory)?.loadInfo().slow ?? 1;
 
+/** The sky as it was when last looked at (for what has changed). */
+let sky: Sky = weather.sky(game.time);
+let lastSky: Sky | null = null;
+/** How dark it is out of doors (for the travel map). */
+const darkness = ref(0);
+/** Light carried: a torch or candle in hand, by night, burns down an hour a use. */
+let torchS = 0;
+function heldLight(): Item | undefined {
+  const inv = screen.player?.get(Inventory);
+  const h = inv?.hands();
+  return [h?.left, h?.right, h?.both].find((i) => i && (i.def === 'torch' || i.def === 'candle') && (i.uses ?? 1) > 0);
+}
+game.carriedLight = () => {
+  const it = heldLight();
+  return it ? (it.def === 'torch' ? 7 : 3) : 0;
+};
+/** The sky's colour on the map by the hour. */
+function skyTint(s: Sky): number {
+  if (s.sun.phase === 'night') return 0x7484bc;
+  if (s.sun.phase === 'dawn' || s.sun.phase === 'dusk') return s.w.cloud > 0.8 ? 0xb0a8b8 : 0xffc29a;
+  return s.w.fog > 0.4 ? 0xd8dce2 : s.w.cloud > 0.8 ? 0xdde2ea : 0xffffff;
+}
+/** Puts the sky on the map, the panel and sight. */
+function applySky(s: Sky): void {
+  sky = s;
+  darkness.value = Math.round((1 - s.light) * 20) / 20;
+  const w = s.w;
+  const inside = indoors();
+  let range = s.light >= 0.9 ? SIGHT : Math.round(3 + 27 * Math.pow(s.light, 0.8));
+  range = Math.round(range * (1 - w.fog * 0.75) * (w.rainMm > 3 ? 0.6 : w.kind.includes('snow') ? 0.7 : 1));
+  game.ambient = inside ? { light: Math.max(0.15, s.light * 0.75), range: Math.max(4, range) } : { light: s.light, range: Math.max(2, range) };
+  renderer.look = { sky: inside ? 0xffffff : skyTint(s), snowCm: s.snowCm, season: s.season, light: inside ? Math.max(0.4, s.light) : s.light };
+  const n = needs();
+  const felt = n?.d.feltC;
+  screen.state.weather = {
+    when: `${WeatherService.partOfDay(s)[0].toUpperCase()}${WeatherService.partOfDay(s).slice(1)}; ${WeatherService.skyWords(s)}`,
+    wind: inside ? 'Indoors' : `${WeatherService.windWords(w)[0].toUpperCase()}${WeatherService.windWords(w).slice(1)}`,
+    air: `${Math.round(n?.d.airC ?? w.tempC)}°C${felt !== undefined && Math.abs(felt - (n?.d.airC ?? 0)) >= 3 ? ` (feels ${Math.round(felt)}°C)` : ''}, ${airWord(n?.d.airC ?? w.tempC)}; ${s.season}${s.snowCm >= 2 ? `; snow ${s.snowCm} cm deep` : s.mud > 0.5 ? '; the ground is muddy' : ''}`,
+    sun: weather.sunWords(s.t),
+  };
+  rain.set(mode.value === 'local' && !inside ? w : null);
+}
+
+/** How the ground slows going: deep snow and mud. */
+const groundSlow = () => 1 + Math.min(1.2, Math.max(0, sky.snowCm - 5) / 40) + sky.mud * 0.2;
+
+const rain = new RainLayer();
 const practice = new Practice(screen, game);
 let lastT = game.time;
 game.onTime = (t) => {
   updateClimate();
   const dt = t - lastT;
   lastT = t;
-  // Camp fires burn down (game/camp.ts); one beside the wanderer, and a shelter, warm them.
-  for (const c of game.camps.burn(game, Math.max(0, dt))) if (game.camps.at(game.px, game.py) === c) game.say('Your fire has burnt down to ashes.');
-  const air = airTemp(climate, t, indoors());
-  screen.cast.clock(t, { activity: game.activity, ambientC: air + game.camps.warmth(game.px, game.py, air), loadSlow: invSlow(), sleepQuality: game.sleepQuality });
+  const s = weather.sky(t);
+  const w = s.w;
+  const inside = indoors();
+  const camp = game.camps.at(game.px, game.py);
+  // Camp fires burn down (game/camp.ts); heavy rain puts out an open fire.
+  for (const c of game.camps.burn(game, Math.max(0, dt))) if (camp === c) game.say('Your fire has burnt down to ashes.');
+  if (!inside && w.rainMm > 2 && !w.kind.includes('snow')) {
+    for (const c of game.camps.list) if (c.fire.lit && Math.hypot(c.x - game.px, c.y - game.py) < 400) {
+      game.camps.setFire(game, c, false);
+      c.fire.fuelH = 0;
+      if (c === camp) game.say('The rain puts out your fire.');
+    }
+  }
+  // The air, out of doors or in; a camp's fire and shelter warm it.
+  const air = inside ? w.tempC + (16 - w.tempC) * 0.6 : w.tempC;
+  const resting = game.activity === 'sleep' || game.activity === 'rest';
+  const shelter = camp?.shelter && resting ? SHELTERS[camp.shelter.kind] : null;
+  const cover = inside ? 1 : shelter?.rain ? 0.95 : 0;
+  const windCover = inside ? 1 : shelter ? (shelter.rain ? 0.9 : 0.6) : camp ? camp.site.shelter * 0.5 : 0;
+  const sun = !inside && s.sun.altitude > 0 ? (1 - w.cloud) * Math.min(1, s.sun.altitude / 40) : 0;
+  const fireBy = !!camp?.fire.lit || (inside && LIGHTS_NEAR(['hearth', 'forge', 'oven']));
+  screen.cast.clock(t, {
+    activity: game.activity, ambientC: air + game.camps.warmth(game.px, game.py, air), loadSlow: invSlow(), sleepQuality: game.sleepQuality,
+    weather: inside ? undefined : { rainMm: w.rainMm, snow: w.kind.includes('snow'), windMs: w.windMs, sun }, cover, windCover, fire: fireBy,
+  });
+  // Weather in the log (not while asleep, but a season or snow noticed on waking).
+  const changed = WeatherService.changes(lastSky, s);
+  lastSky = s;
+  if (game.activity !== 'sleep') for (const line of changed) game.say(line);
+  // A storm stops a journey.
+  if (travel.running && (w.windMs >= 20 || (w.thunder && w.rainMm > 3) || w.kind === 'heavy snow')) {
+    travel.stop();
+    game.say(w.kind === 'heavy snow' ? 'The snow is too thick to go on in; you stop.' : 'The storm is too fierce to travel in; you stop and take what shelter you can.');
+  }
+  // A torch held by night burns down.
+  const lamp = heldLight();
+  if (lamp && s.light < 0.5) {
+    torchS += Math.max(0, dt);
+    while (torchS >= 3600 && (lamp.uses ?? 0) > 0) {
+      torchS -= 3600;
+      lamp.uses = (lamp.uses ?? 1) - 1;
+      if (lamp.uses <= 0) game.say(`Your ${lamp.def === 'torch' ? 'torch gutters out' : 'candle burns down'}.`);
+    }
+  }
   // Skills at work: swimming, hard going, wear on the feet (game/practice.ts).
   practice.time(dt, game.activity, invSlow());
   practice.flush();
   game.activity = 'rest';
   screen.describe(t);
+  applySky(s);
   const n = needs();
   if (!n) return;
   for (const note of n.takeNotes()) {
@@ -93,6 +190,34 @@ game.onTime = (t) => {
     setTimeout(() => collapse(), 0);
   }
 };
+/** Reading the sky for what is coming (Survival): once an hour gives one reading. */
+let lastReading: { hour: number; text: string } | null = null;
+function readSky(): void {
+  const a = screen.player;
+  if (!a) return;
+  if (indoors()) {
+    game.say('You cannot see the sky from in here.');
+    return;
+  }
+  const hour = Math.floor(game.time / 3600);
+  if (lastReading && lastReading.hour === hour) {
+    game.say(lastReading.text);
+    return;
+  }
+  game.time += 5 * 60;
+  const r = check(a, 'survival', { difficulty: DC.routine - 10, now: game.time, mods: sky.light < 0.2 ? [{ why: 'the dark', value: -10 }] : [] });
+  const text = weather.forecast(game.time, r.grade, () => a.need(Skills).random());
+  lastReading = { hour, text };
+  game.say(text);
+  practice.flush();
+  game.updateHud();
+}
+
+/** Whether one of some things is beside the wanderer. */
+function LIGHTS_NEAR(names: string[]): boolean {
+  for (let dy = -2; dy <= 2; dy++) for (let dx = -2; dx <= 2; dx++) if (names.includes(OBJECT_TILES[game.map.object(game.px + dx, game.py + dy)]?.name ?? '')) return true;
+  return false;
+}
 
 let collapsing = false;
 /** The body gives out: hours pass senseless, then the wanderer comes round, worse for it. */
@@ -102,7 +227,7 @@ function collapse(): void {
     collapsing = false;
     return;
   }
-  const why = { thirst: 'Your legs give way: you have had nothing to drink for too long.', hunger: 'You faint from hunger.', sleep: 'You can stay awake no longer and drop where you stand.', heat: n.d.heat < 0 ? 'The cold takes you, and the world goes dark.' : 'The heat overcomes you, and you fall.', stamina: 'You collapse.' }[n.collapse];
+  const why = { thirst: 'Your legs give way: you have had nothing to drink for too long.', hunger: 'You faint from hunger.', sleep: 'You can stay awake no longer and drop where you stand.', heat: n.d.heat < 0 ? 'The cold takes you, and the world goes dark.' : 'The heat overcomes you, and you fall.', stamina: 'You collapse.', wet: 'You collapse.' }[n.collapse];
   travel.stop();
   game.say(why);
   game.sleepQuality = 0.3;
@@ -219,6 +344,8 @@ screen.hooks = {
   redraw: () => redraw(),
   sleep: (h, q, opts) => sleep(h, q, opts),
   mode: () => mode.value,
+  sky: () => sky,
+  readSky: () => readSky(),
   loadAround: (r) => loadAround(r),
 };
 
@@ -230,7 +357,12 @@ async function loadAround(r: number): Promise<boolean> {
   return ready();
 }
 // The load carried, and hunger, thirst, fatigue and cold, slow the wanderer.
-game.loadSlow = () => invSlow() * (needs()?.slow() ?? 1);
+game.loadSlow = () => invSlow() * (needs()?.slow() ?? 1) * groundSlow();
+// Weather on the road: deep snow and mud slow it (in loadSlow), and the dark, fog and rain shorten sight.
+travel.sightFactor = () => {
+  const w = sky.w;
+  return Math.max(0.1, Math.min(1, 0.15 + sky.light)) * (1 - w.fog * 0.7) * (w.rainMm > 3 ? 0.5 : w.kind.includes('snow') ? 0.6 : 1);
+};
 
 /**
  * What the character knew of the world before setting out (their occupations and standing,
@@ -434,6 +566,8 @@ const ro = new ResizeObserver(() => redraw());
 
 onMounted(async () => {
   await renderer.init(el.value!);
+  rain.mount(el.value!);
+  applySky(weather.sky(game.time));
   const n = await tiles.load(import.meta.env.BASE_URL);
   tilesetNote.value = n ? `Tileset: ${tiles.drawn.size} tiles drawn, the rest placeholders.` : 'Placeholder tiles (no tileset in public/tileset).';
   screen.onKey = (e) => {
@@ -453,6 +587,7 @@ onBeforeUnmount(() => {
   screen.onKey = () => false;
   ro.disconnect();
   renderer.app.destroy(true);
+  rain.destroy();
 });
 </script>
 
@@ -470,6 +605,7 @@ onBeforeUnmount(() => {
       :request-plan="app.worker.plan"
       @zoom-in="toLocal"
       @camp="screen.showCamp()"
+      :dark="darkness"
     />
     <aside class="panel">
       <div v-if="screen.state.name" class="who">
@@ -482,7 +618,13 @@ onBeforeUnmount(() => {
           <span class="nb"><span :style="{ width: `${Math.round(n.bar * 100)}%` }" /></span>
           <span class="nw">{{ n.word }}</span>
         </div>
-        <div class="dim air">{{ screen.state.air }}</div>
+        <div v-if="screen.state.weather" class="dim air">
+          <div>{{ screen.state.weather.when }}</div>
+          <div>{{ screen.state.weather.wind }}</div>
+          <div>{{ screen.state.weather.air }}</div>
+          <div>{{ screen.state.weather.sun }}</div>
+        </div>
+        <div v-else class="dim air">{{ screen.state.air }}</div>
       </div>
       <div class="place">{{ hud.place }}</div>
       <div class="where">{{ hud.where }}</div>
@@ -504,6 +646,7 @@ onBeforeUnmount(() => {
         <div><b>Drink</b> Q at water or a well (fills waterskins too)</div>
         <div><b>Sleep or rest</b> Shift+Z</div>
         <div><b>Camp</b> Shift+C: choose a site, fire, shelter, food, the night</div>
+        <div><b>Read the sky</b> Shift+W: what weather is coming (Survival)</div>
         <div><b>Town view</b> V, in a town or city</div>
         <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
       </div>

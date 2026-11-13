@@ -41,7 +41,11 @@
             "jewel": { "enum": ["ears", "brow", "neck", "brooch", "wrists", "fingers", "ankles"] },
             "seconds": { "type": "number", "minimum": 0, "description": "To put on, and to take off." },
             "warmth": { "type": "number" },
-            "armour": { "type": "number" }
+            "armour": { "type": "number" },
+            "rain": { "type": "number", "minimum": 0, "maximum": 1, "description": "How well it keeps rain off what it covers (0 not at all, 1 entirely)." },
+            "wind": { "type": "number", "minimum": 0, "maximum": 1, "description": "How well it keeps out the wind." },
+            "sun": { "type": "number", "minimum": 0, "maximum": 1, "description": "Shade from a hot sun (hats, veils, loose robes)." },
+            "wool": { "type": "boolean", "description": "Wool or fur: still warm when wet." }
           }
         },
         "container": {

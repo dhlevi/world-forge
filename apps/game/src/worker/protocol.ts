@@ -220,5 +220,5 @@ export type FromWorker =
   | { type: 'names'; id: number; male: PersonName[]; female: PersonName[] }
   | { type: 'site'; id: number; site: SiteInfo | null; gates: Gate[] }
   | { type: 'plan'; id: number; image: PlanImage | null }
-  | { type: 'climate'; id: number; warm: number; cold: number }
+  | { type: 'climate'; id: number; warm: number; cold: number; precipSummer: number; precipWinter: number; windU: number; windV: number }
   | { type: 'error'; message: string };

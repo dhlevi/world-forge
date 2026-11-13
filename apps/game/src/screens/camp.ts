@@ -9,7 +9,6 @@ import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
 import type { Actor } from '../actors/actor';
 import type { Moodlet } from '../actors/components';
-import { seasonOf } from '../game/calendar';
 import { findSites, type CampData, type ShelterKind, type SiteChoice } from '../game/camp';
 import * as C from '../game/camping';
 import { beddingAt } from './sleep';
@@ -52,7 +51,8 @@ export class CampScreen extends Screen {
         this.state.message = t;
       },
       mood: (m: Moodlet, hours: number) => play.app.bus.send('actor.moodlet', { ...m, until: h.now() + hours * 3600 }, { to: actor.id }),
-      season: () => seasonOf(h.now(), play.o.site.lat),
+      // The season as the land shows it: deep snow is winter whatever the calendar says.
+      season: () => (h.sky().snowCm >= 10 ? 'winter' : h.sky().season),
       sleep: (hours, quality, onHour) => h.sleep(hours, quality, { onHour }),
     };
   }

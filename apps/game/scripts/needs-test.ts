@@ -1,7 +1,8 @@
 /** Runs needs and fatigue over game days and prints how they go (npx tsx apps/game/scripts/needs-test.ts). */
 import { Actor } from '../src/actors/actor';
 import { Body, Mood, Pools, Traits, type TimeCtx } from '../src/actors/components';
-import { startingInventory } from '../src/actors/items/inventory';
+import { Inventory, startingInventory } from '../src/actors/items/inventory';
+import { makeItem } from '../src/actors/items/item';
 import { Needs } from '../src/actors/needs';
 import { MessageDispatcher } from '../src/engine/messages';
 import { Cast } from '../src/actors/cast';
@@ -45,3 +46,22 @@ run('Travelling laden (heavy), 30 C', 24, () => ({ activity: 'travel', ambientC:
 run('Awake for two days, resting, fed by nothing', 50, () => ({ activity: 'rest', ambientC: 15 }), 10);
 run('Standing about in -5 C, dressed as a traveller', 6, () => ({ activity: 'rest', ambientC: -5 }), 1);
 run('Asleep in a bed 8 h after 16 h awake', 24, (h) => (h <= 16 ? { activity: 'rest', ambientC: 16 } : { activity: 'sleep', ambientC: 16, sleepQuality: 1 }), 4);
+
+// ---- Rain, wind and clothing (survival.md, Wetness; Clothing) ----
+{
+  console.log('\n== Three hours walking in rain (2 mm/h), wind 8 m/s, 6 C');
+  const rainy = (h: number): TimeCtx => (h <= 3 ? { activity: 'walk', ambientC: 6, weather: { rainMm: 2, snow: false, windMs: 8, sun: 0 } } : { activity: 'rest', ambientC: 6, fire: true, cover: 1 });
+  for (const label of ['in a wool cloak', 'in an oiled cloak', 'with no cloak']) {
+    const { a, cast, n } = person();
+    const inv = a.get(Inventory)!;
+    const cloak = inv.worn().find((i) => i.def === 'cloak');
+    if (label !== 'in a wool cloak' && cloak) inv.drop(cloak.uid);
+    if (label === 'in an oiled cloak') inv.put(makeItem('oilskin_cloak'), { at: 'worn' });
+    const line: string[] = [];
+    for (let h = 1; h <= 6; h++) {
+      cast.clock(h * 3600, rainy(h));
+      if (h === 3 || h === 6) line.push(`${h === 3 ? 'after the rain' : 'three hours by a fire indoors'}: wet ${Math.round(n.d.wet ?? 0)}, felt ${n.d.feltC} C, heat ${Math.round(n.d.heat)}`);
+    }
+    console.log(`  ${label}: ${line.join('; ')}`);
+  }
+}

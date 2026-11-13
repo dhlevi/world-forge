@@ -3,6 +3,7 @@
  * character sheet laid over it.
  */
 import type { Grade } from '../actors/checks';
+import type { Sky } from '../game/weather';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { GameApp } from '../app/app';
@@ -43,6 +44,10 @@ export interface PlayHooks {
   mode(): 'local' | 'travel';
   /** Makes sure the local map is made for some tiles about the wanderer (for choosing a camp from the travel map). */
   loadAround(tiles: number): Promise<boolean>;
+  /** The sky where the wanderer is now (game/weather.ts). */
+  sky(): Sky;
+  /** Reads the sky for what weather is coming (Survival). */
+  readSky(): void;
 }
 
 export interface PlayOptions {
@@ -67,6 +72,8 @@ export class PlayScreen extends Screen {
     /** The needs as bars and words (actors/needs.ts), and the air. */
     needs: [] as { id: NeedId; label: string; word: string; bar: number }[],
     air: '',
+    /** The weather and the hour in words (game/weather.ts). */
+    weather: null as { when: string; wind: string; air: string; sun: string } | null,
   });
   /** Set by the view: its key handler and its sink for chunks. */
   onKey: (e: KeyboardEvent) => boolean = () => false;
@@ -100,7 +107,7 @@ export class PlayScreen extends Screen {
     const n = this.player?.get(Needs);
     if (n) {
       const w = n.words(), b = n.bars();
-      const LABEL: Record<NeedId, string> = { hunger: 'Food', thirst: 'Water', sleep: 'Rest', stamina: 'Stamina', heat: 'Warmth' };
+      const LABEL: Record<NeedId, string> = { hunger: 'Food', thirst: 'Water', sleep: 'Rest', stamina: 'Stamina', heat: 'Warmth', wet: 'Dry' };
       this.state.needs = (Object.keys(LABEL) as NeedId[]).map((k) => ({ id: k, label: LABEL[k], word: w[k], bar: b[k] }));
       this.state.air = `${Math.round(n.d.airC)}°C, ${airWord(n.d.airC)}; ${seasonOf(time, this.o.site.lat)}`;
     }
@@ -126,6 +133,10 @@ export class PlayScreen extends Screen {
     }
     if (e.code === 'KeyZ' && e.shiftKey && this.player && this.hooks) {
       this.showSleep();
+      return true;
+    }
+    if (e.code === 'KeyW' && e.shiftKey && this.player && this.hooks) {
+      this.hooks.readSky();
       return true;
     }
     if (e.code === 'KeyC' && e.shiftKey && this.player && this.hooks) {

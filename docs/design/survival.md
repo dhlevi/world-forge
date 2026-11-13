@@ -49,6 +49,32 @@ follow a general path, as the generator's winds would have them.
 - **Reading the sky:** the Survival skill gives a forecast (and Sailing at sea); the better the
   skill, the further ahead and the more reliable it is.
 
+*Built (a first pass; `packages/core/src/weather/weather.ts`, `apps/game/src/game/weather.ts`;
+numbers proposed, tuned with `apps/game/scripts/weather-test.ts`):*
+
+- **Weather systems** are born on a lattice of 500 km and 12 hours, each by chance from the seed,
+  more often where the season is wet; each lives 30 to 84 hours, grows and fades, is 200 to 500
+  km across, and drifts along the place's prevailing wind (12 to 36 km an hour), so a front
+  reaches a place 150 km downwind about four hours later. A system brings cloud, rain or snow
+  (snow at or below freezing, sleet just above), wind (gales from the strongest) and a change of
+  temperature; thunder from strong systems in warm weather. How much rain they give follows the
+  season's rainfall: over a year the test places come within about 40% of their climate's
+  figures, from a desert's 60 mm in 2% of hours to a rainforest's 3,100 mm in 23% of hours.
+- **The baseline** is the season's temperature between the coldest and warmest month, and the
+  day's swing (less under cloud). Fog gathers on still, damp mornings.
+- **The ground** is worked out from the last fortnight: snow falls and melts (by degree-hours, and
+  rain on it), rain soaks in and dries; frozen ground is not muddy. Deep snow and mud slow walking
+  and travel.
+- **In play** the weather follows the party (the climate is asked of the worker as it moves). The
+  side panel gives the hour, the sky, the wind and the temperature (and what it feels like) in
+  words, with the day's sunrise and sunset; the log notes changes (the rain begins, the wind rises
+  to a gale, a fog comes down, the sun sets, snow lies on the ground, a new season). A storm,
+  heavy snow or a gale stops a journey. Heavy rain puts out an open camp fire. Rain and snow fall
+  over the local map.
+- **Reading the sky** (Shift+W, Survival): a forecast of rain or snow coming or clearing, and of
+  wind and temperature, 24 hours ahead with a fine success, 12 with a success, 6 otherwise; a
+  failure gets the timing wrong, a fumble the weather.
+
 ## Day, night and light
 
 **Decided:** day and night follow the seasons: long summer days and long winter nights in the
@@ -63,6 +89,15 @@ north, little change near the equator.
 - **Light sets sight:** the sight radius on the local map shrinks from day through dusk to night,
   and with cloud, fog and falling snow; fires, torches, lanterns and lit windows make light of
   their own (Eyesight and night-adapted races see further in the dark).
+
+*Built (a first pass):* sunrise, sunset and twilight from the latitude and the day of the year,
+with polar days and nights; the moon's phases on a 29.5-day cycle; the light out of doors from
+the sun (dimmed by cloud, fog and heavy rain) or the moon (dimmed by cloud, brighter on snow). On
+the local map the light sets how far the wanderer sees (30 tiles by day, a few by night), and
+fires, hearths, forges, ovens, candlestands and a carried torch (7 tiles) or candle (3) light
+their surroundings; a torch burns down an hour a use by night. Tiles are tinted by the sky's
+colour at dawn, by day, at dusk and by night, and warm where firelight falls. On the travel map
+the dark, fog and rain shorten how far the land is seen, and the map dims at night.
 
 ## Body heat
 
@@ -119,6 +154,15 @@ they are covered, wading and swimming, falling in, and sweat. Wet clothes lose m
 protection (except wool and fur) and weigh more. Drying comes from a fire, sun, wind, or shelter,
 faster with the wet things off. Moodlets: damp, soaked, and, after getting warm and dry again, a
 small one of relief.
+
+*Built (a first pass; `actors/needs.ts`, the item data):* wetness from 0 to 100, from rain and
+snow (by how much the clothes keep off, and any roof or shelter), and swimming; drying faster in
+sun and wind, by a fire and indoors, slower in the cold. Damp (-1) and Soaked (-3) as states with
+moodlets, and a small one (Warm and dry again) on drying out. Wet clothes lose warmth (wool and fur
+much less). The wind chills the unsheltered (less in windproof clothes, behind a windbreak, in a
+tent or lean-to, or indoors), and a hot sun warms (less under a hat or a loose robe). Clothing in
+the item data now carries `rain`, `wind`, `sun` (0 to 1) and `wool`; an oiled cloak keeps off
+most rain.
 
 ## Temperature indoors
 
