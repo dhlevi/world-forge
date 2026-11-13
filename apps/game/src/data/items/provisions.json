@@ -14,6 +14,7 @@
       "uses": 8,
       "useWord": "drinks",
       "food": { "kcal": 0, "water": 0.125, "verb": "drink from the waterskin" },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "store"],
       "about": "Holds a litre of water: eight drinks."
     },

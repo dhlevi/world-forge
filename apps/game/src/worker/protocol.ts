@@ -122,6 +122,8 @@ export interface RouteStep {
   biome: number;
   /** How far the land can be seen from it (m). */
   sight: number;
+  /** How steep the step into it is (rise over run, either way). */
+  slope?: number;
 }
 
 /** What the travel map draws over the tiles: ways and places in an area. */

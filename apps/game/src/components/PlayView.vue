@@ -22,6 +22,7 @@ import { Needs } from '../actors/needs';
 import { airTemp, type Climate } from '../game/calendar';
 import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import type { PlayScreen } from '../screens/play';
+import { Practice } from '../game/practice';
 
 const props = defineProps<{ screen: PlayScreen }>();
 const screen = props.screen;
@@ -62,9 +63,16 @@ const indoors = () => GROUND_TILES[game.map.ground(game.px, game.py)]?.name.star
 const needs = () => screen.player?.get(Needs);
 const invSlow = () => screen.player?.get(Inventory)?.loadInfo().slow ?? 1;
 
+const practice = new Practice(screen, game);
+let lastT = game.time;
 game.onTime = (t) => {
   updateClimate();
+  const dt = t - lastT;
+  lastT = t;
   screen.cast.clock(t, { activity: game.activity, ambientC: airTemp(climate, t, indoors()), loadSlow: invSlow(), sleepQuality: game.sleepQuality });
+  // Skills at work: swimming, hard going, wear on the feet (game/practice.ts).
+  practice.time(dt, game.activity, invSlow());
+  practice.flush();
   game.activity = 'rest';
   screen.describe(t);
   const n = needs();
@@ -113,8 +121,10 @@ function collapse(): void {
 function sleep(hours: number, quality: number, o: { untilRested?: boolean; awake?: boolean } = {}): number {
   const n = needs();
   travel.stop();
-  game.sleepQuality = quality;
   game.say(o.awake ? 'You sit and rest.' : 'You lie down to sleep.');
+  // Sleeping rough, Survival makes a better or worse bed of it.
+  if (!o.awake && quality < 1) quality = practice.roughSleep(quality);
+  game.sleepQuality = quality;
   let slept = 0;
   for (let h = 0; h < hours; h++) {
     game.time += 3600;
@@ -153,6 +163,8 @@ function drinkHere(): void {
   }
   if (!found) {
     game.say('There is no water here to drink.');
+    // Search the land about for some (Survival).
+    if (!indoors()) practice.findWater();
     return;
   }
   const took = n.drink(n.room().litres);
@@ -175,6 +187,7 @@ const mode = ref<'local' | 'travel'>('local');
 const travel = new Travel(game, [o.site.lon, o.site.lat], app.worker.requestRoute);
 const travelRef = ref<InstanceType<typeof TravelView> | null>(null);
 travel.requestSite = app.worker.site;
+travel.onStep = (st) => practice.travelStep(st, invSlow());
 // Arriving at a town or city opens its city view; a village opens straight onto the local map.
 travel.onArrive = (site) => {
   if (!site) return;
@@ -269,7 +282,7 @@ const redraw = () => {
 };
 game.onChange = redraw;
 // For poking at in the browser console while developing.
-if (import.meta.env.DEV) Object.assign(window, { __game: game, __renderer: renderer, __travel: travel, __play: screen });
+if (import.meta.env.DEV) Object.assign(window, { __game: game, __renderer: renderer, __travel: travel, __play: screen, __practice: practice });
 
 screen.onChunk = (c: ChunkData) => {
   map.add(c);

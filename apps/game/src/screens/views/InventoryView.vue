@@ -188,7 +188,7 @@ const pct = (a: number, b: number) => `${Math.min(100, Math.round((a / Math.max(
 
     <footer class="inv-foot">
       <span class="msg">{{ ui.message }}</span>
-      <span class="dim">Drag things between places, or choose one: W wear or take off, H hold, B back, S strap to a pack, L belt, P put in a bag, E eat or drink, D drop, T take; up and down to choose.</span>
+      <span class="dim">Drag things between places, or choose one: W wear or take off, H hold, B back, S strap to a pack, L belt, P put in a bag, E eat or drink, C cook and eat (at a fire), M mend, R read, D drop, T take; up and down to choose.</span>
     </footer>
   </div>
 </template>

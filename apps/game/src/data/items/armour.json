@@ -17,6 +17,7 @@
         "warmth": 4,
         "armour": 2
       },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["smithy", "market"],
       "about": "A quilted coat, armour on its own or padding under mail."
     },
@@ -35,6 +36,7 @@
         "warmth": 2,
         "armour": 3
       },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["smithy", "market"]
     },
     {
@@ -46,6 +48,7 @@
       "size": "medium",
       "value": 600,
       "wear": { "regions": ["torso", "arms"], "layer": "armour", "seconds": 90, "armour": 6 },
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy"]
     },
     {
@@ -63,6 +66,7 @@
         "warmth": 1,
         "armour": 1
       },
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy"]
     },
     {
@@ -74,6 +78,7 @@
       "size": "medium",
       "value": 120,
       "wear": { "regions": ["head"], "layer": "armour", "seconds": 15, "armour": 5 },
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy"]
     },
     {
@@ -86,6 +91,7 @@
       "size": "small",
       "value": 20,
       "wear": { "regions": ["arms"], "layer": "armour", "seconds": 20, "armour": 2 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["smithy", "market"]
     },
     {
@@ -104,6 +110,7 @@
         "warmth": 1,
         "armour": 4
       },
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy"]
     },
     {
@@ -116,6 +123,7 @@
       "size": "medium",
       "value": 110,
       "wear": { "regions": ["legs"], "layer": "armour", "seconds": 40, "armour": 4 },
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy"]
     }
   ]

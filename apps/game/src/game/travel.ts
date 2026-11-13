@@ -57,6 +57,8 @@ export function stepEvents(step: RouteStep, before: number, after: number, stopA
 }
 
 export class Travel {
+  /** Called on each step walked: extra seconds it took (skill checks, game/practice.ts). */
+  onStep: (st: RouteStep) => number = () => 0;
   steps: RouteStep[] = [];
   i = 0;
   dest: LL | null = null;
@@ -217,6 +219,8 @@ export class Travel {
     g.py = st.cy * CHUNK + CHUNK / 2;
     g.time += st.min * 60 * g.loadSlow();
     g.activity = 'travel';
+    // Fords, steep ground and the like (game/practice.ts) may take longer.
+    g.time += this.onStep(st);
     g.discovery.reveal(g.px, g.py, st.sight ?? TRAVEL_SIGHT_M);
     this.sightM = st.sight ?? TRAVEL_SIGHT_M;
     for (const ev of stepEvents(st, before, g.time, this.stopAtDusk, Math.random)) {

@@ -20,6 +20,7 @@ import tools from '../../data/items/tools.json';
 import provisions from '../../data/items/provisions.json';
 import goods from '../../data/items/goods.json';
 import gear from '../../data/items/gear.json';
+import { SKILL } from '../data/skills';
 
 /** How big a thing is at its largest: what it can go into. */
 export const SIZES = ['tiny', 'small', 'medium', 'large', 'huge'] as const;
@@ -104,6 +105,10 @@ export interface ItemDef {
   useWord?: string;
   /** Food and drink: what one use or portion gives (kcal 0 for a drink), and the words for it. */
   food?: { kcal: number; water?: number; verb: string };
+  /** Books: reading teaches a skill, up to a level (actors/learning.ts). */
+  teaches?: { skill: string; upTo: number };
+  /** Mending when worn: the skill, and a kit that must be carried or things on the map to work beside (screens/inventory.ts). */
+  mend?: { skill: string; kit?: string; at?: string[] };
   /** Wears with use (most things): has a condition. */
   durable?: boolean;
   /** Where it is sold (the city view's places: market, and shop roles). */
@@ -124,7 +129,7 @@ export function itemDef(id: string): ItemDef {
 }
 
 const KINDS: readonly ItemKind[] = ['clothing', 'armour', 'jewellery', 'container', 'weapon', 'tool', 'food', 'drink', 'medicine', 'light', 'goods', 'book', 'music'];
-const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'container', 'stack', 'uses', 'useWord', 'food', 'durable', 'sold', 'about']);
+const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'container', 'stack', 'uses', 'useWord', 'food', 'teaches', 'mend', 'durable', 'sold', 'about']);
 
 /** What is wrong with one item as read from a file (empty when it is sound). */
 export function checkItem(o: unknown): string[] {
@@ -190,6 +195,19 @@ export function checkItem(o: unknown): string[] {
       if (r.uses === undefined && r.stack === undefined) bad.push('food needs uses or a stack to eat from');
     }
   }
+  const t = r.teaches as Record<string, unknown> | undefined;
+  if (t !== undefined) {
+    if (!t || typeof t !== 'object' || typeof t.skill !== 'string') bad.push('teaches needs a skill');
+    else if (typeof t.upTo !== 'number' || t.upTo < 1 || t.upTo > 50) bad.push('teaches.upTo must be a level from 1 to 50');
+  }
+  const m = r.mend as Record<string, unknown> | undefined;
+  if (m !== undefined) {
+    if (!m || typeof m !== 'object' || typeof m.skill !== 'string') bad.push('mend needs a skill');
+    else {
+      if (m.kit !== undefined && typeof m.kit !== 'string') bad.push('mend.kit must be an item id');
+      if (m.at !== undefined && !isStrs(m.at)) bad.push('mend.at must be a list of things on the map');
+    }
+  }
   return bad;
 }
 
@@ -225,6 +243,10 @@ export function registerItems(list: unknown, source: string): string[] {
 export function checkReferences(): string[] {
   const errors: string[] = [];
   for (const d of ITEMS) for (const id of d.container?.only ?? []) if (!ITEM.has(id)) errors.push(`item "${d.id}": container.only names "${id}", which is not an item`);
+  for (const d of ITEMS) {
+    if (d.mend?.kit && !ITEM.has(d.mend.kit)) errors.push(`item "${d.id}": mend.kit names "${d.mend.kit}", which is not an item`);
+    for (const sk of [d.mend?.skill, d.teaches?.skill]) if (sk && !SKILL.has(sk)) errors.push(`item "${d.id}": no skill "${sk}"`);
+  }
   for (const [g, list] of Object.entries(GEAR_ITEMS)) for (const x of list) if (!ITEM.has(x.id)) errors.push(`gear "${g}": no item "${x.id}"`);
   return errors;
 }

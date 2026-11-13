@@ -70,6 +70,27 @@
             "verb": { "type": "string", "description": "\"eat a piece of the bread\"" }
           }
         },
+        "teaches": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["skill", "upTo"],
+          "description": "Books: reading it (an hour at a time, for one who can read) teaches a skill, up to a level.",
+          "properties": {
+            "skill": { "type": "string", "description": "A skill id (actors/data/skills.ts)." },
+            "upTo": { "type": "number", "minimum": 1, "maximum": 50 }
+          }
+        },
+        "mend": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["skill"],
+          "description": "How it is mended when worn: the skill, and a kit carried (whose uses it spends) or a place to stand beside.",
+          "properties": {
+            "skill": { "type": "string", "description": "A skill id: tailoring, hideworking, carpentry, smithing..." },
+            "kit": { "type": "string", "description": "An item id that must be carried (a sewing kit)." },
+            "at": { "type": "array", "items": { "type": "string" }, "description": "Things on the map to work beside (forge, anvil)." }
+          }
+        },
         "durable": { "type": "boolean", "description": "Wears with use (default true)." },
         "sold": { "type": "array", "items": { "type": "string" }, "description": "Where it is sold: market, store, and shop roles (smithy, tailor, apothecary...)." },
         "about": { "type": "string" }

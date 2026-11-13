@@ -429,6 +429,8 @@ export function startingInventory(gear: string[], copper: number, o: StartOpts):
   inv.put(mk('pouch'), { at: 'belt' });
   inv.put(mk('knife'), { at: 'belt' });
   inv.put(mk(gear.includes('pack') ? 'pack' : 'pack_small'), { at: 'back' });
+  // Every traveller carries needle and thread.
+  inv.stow(makeItem('sewing_kit', { make: o.make }));
 
   for (const g of gear) {
     if (GEAR_ANIMALS.has(g)) {

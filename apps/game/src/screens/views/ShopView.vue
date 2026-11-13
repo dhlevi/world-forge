@@ -2,7 +2,7 @@
 /** A market's or shop's goods: what is for sale, at what price, and buying. */
 import { computed } from 'vue';
 import type { ShopScreen, Ware } from '../shop';
-import { defOf, itemName, QUALITY_WORD } from '../../actors/items/item';
+import { conditionWord, defOf, itemName, QUALITY_WORD } from '../../actors/items/item';
 import { moneyText } from '../../actors/components';
 
 const props = defineProps<{ screen: ShopScreen }>();
@@ -22,6 +22,10 @@ const groups = computed(() => {
     m.get(k)!.push(w);
   }
   return [...m].map(([k, list]) => ({ name: KIND_NAMES[k] ?? k, list }));
+});
+const offers = computed(() => {
+  void ui.version;
+  return screen.offers();
 });
 const purse = computed(() => {
   void ui.version;
@@ -45,7 +49,21 @@ const load = computed(() => {
       <button @click="screen.play.showInventory()">Inventory</button>
       <button @click="screen.close()">Done (Esc)</button>
     </header>
-    <div class="shop-list">
+    <div class="row tabs">
+      <button :class="{ on: ui.tab === 'buy' }" @click="ui.tab = 'buy'">Buy</button>
+      <button :class="{ on: ui.tab === 'sell' }" @click="ui.tab = 'sell'">Sell</button>
+      <span class="dim deal">{{ screen.dealText }}</span>
+    </div>
+    <div v-if="ui.tab === 'sell'" class="shop-list">
+      <p v-if="!offers.length" class="dim">You carry nothing they would buy.</p>
+      <div v-for="o in offers" :key="o.item.uid" class="ware" :class="{ gone: !!o.why }">
+        <span class="nm">{{ itemName(o.item) }} <span class="dim">{{ QUALITY_WORD[o.item.quality] }}, {{ conditionWord(o.item.condition) }}</span></span>
+        <span class="dim">{{ o.why ?? (screen.inv ? screen.inv.where(o.item.loc) : '') }}</span>
+        <span class="price">{{ o.price > 0 ? moneyText(o.price) : '' }}</span>
+        <button :disabled="!!o.why" @click="screen.sell(o)">Sell</button>
+      </div>
+    </div>
+    <div v-else class="shop-list">
       <p v-if="!screen.wares.length" class="dim">Nothing here is for sale to you today.</p>
       <div v-for="g in groups" :key="g.name">
         <div class="cc-label">{{ g.name }}</div>
@@ -71,5 +89,7 @@ const load = computed(() => {
 .ware.gone { opacity: 0.5; }
 .ware button { padding: 2px 8px; }
 .price { text-align: right; }
+.tabs button.on { border-color: var(--accent); color: var(--accent); }
+.deal { font-size: 0.9em; margin-left: 8px; }
 .msg { color: var(--accent); min-height: 1.2em; font-size: 0.92em; }
 </style>

@@ -12,6 +12,7 @@
       "value": 4,
       "belt": true,
       "container": { "litres": 0.5, "maxKg": 1, "maxSize": "tiny" },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "store"],
       "about": "A small leather pouch for coins, rings and keys."
     },
@@ -25,6 +26,7 @@
       "value": 12,
       "belt": true,
       "container": { "litres": 2, "maxKg": 3, "maxSize": "small" },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "store"],
       "about": "A small bag for potions, herbs and the like, looped on a belt or carried."
     },
@@ -38,6 +40,7 @@
       "value": 15,
       "belt": true,
       "container": { "litres": 3, "maxKg": 3, "maxSize": "small" },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["apothecary"],
       "about": "A satchel of pockets for herbs and remedies."
     },
@@ -50,6 +53,7 @@
       "size": "small",
       "value": 6,
       "container": { "litres": 8, "maxKg": 6, "maxSize": "small" },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "store"],
       "about": "A drawstring bag, carried in the hand or packed away to keep things sorted."
     },
@@ -62,6 +66,7 @@
       "size": "medium",
       "value": 8,
       "container": { "litres": 40, "maxKg": 30, "maxSize": "medium" },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "store"],
       "about": "A big hemp sack: room for much, carried in the hand or over a shoulder."
     },
@@ -74,6 +79,7 @@
       "size": "medium",
       "value": 5,
       "container": { "litres": 12, "maxKg": 8, "maxSize": "small" },
+      "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "sold": ["market"],
       "about": "A wicker basket with a handle."
     },
@@ -87,6 +93,7 @@
       "value": 25,
       "back": true,
       "container": { "litres": 15, "maxKg": 12, "maxSize": "medium", "straps": 1, "strapKg": 6 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "store"],
       "about": "A small pack worn on the back, with one strap outside for a blanket or a shield."
     },
@@ -100,6 +107,7 @@
       "value": 45,
       "back": true,
       "container": { "litres": 30, "maxKg": 22, "maxSize": "medium", "straps": 2, "strapKg": 10 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "store"],
       "about": "A leather pack worn on the back, with two straps outside for a shield, a bow, a staff or a bedroll."
     },
@@ -113,6 +121,7 @@
       "value": 80,
       "back": true,
       "container": { "litres": 50, "maxKg": 35, "maxSize": "medium", "straps": 3, "strapKg": 15 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market"],
       "about": "A big framed pack for long journeys, with three straps outside."
     },
@@ -128,6 +137,7 @@
       "back": true,
       "strap": true,
       "container": { "litres": 2.5, "maxKg": 3, "maxSize": "medium", "only": ["arrows"] },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market"],
       "about": "Holds forty arrows, on the belt or across the back."
     },
@@ -141,6 +151,7 @@
       "value": 60,
       "hands": 2,
       "container": { "litres": 60, "maxKg": 60, "maxSize": "medium" },
+      "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "about": "A sailor's chest, too heavy to carry far."
     },
     {
@@ -152,6 +163,7 @@
       "size": "medium",
       "value": 120,
       "container": { "litres": 8, "maxKg": 6, "maxSize": "small" },
+      "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "sold": ["apothecary"],
       "about": "A box of drawers for physic."
     }

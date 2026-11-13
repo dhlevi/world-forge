@@ -2,6 +2,7 @@
  * Playing: the local and travel maps with the wanderer (components/PlayView.vue), and the
  * character sheet laid over it.
  */
+import type { Grade } from '../actors/checks';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { GameApp } from '../app/app';
@@ -67,6 +68,8 @@ export class PlayScreen extends Screen {
   onChunk: (c: ChunkData) => void = () => {};
   onResume: () => void = () => {};
   hooks: PlayHooks | null = null;
+  /** Checks that hold for a while (haggling at a place, for the day), by "place|day|what". */
+  readonly dealings = new Map<string, Grade>();
   private offChunk: () => void = () => {};
 
   constructor(readonly app: GameApp, readonly o: PlayOptions) {

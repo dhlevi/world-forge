@@ -32,7 +32,8 @@
       "weight": 1,
       "bulk": 1.5,
       "size": "small",
-      "value": 20
+      "value": 20,
+      "teaches": { "skill": "stewardship", "upTo": 20 }
     },
     {
       "id": "book",
@@ -41,7 +42,8 @@
       "weight": 1,
       "bulk": 1.5,
       "size": "small",
-      "value": 60
+      "value": 60,
+      "teaches": { "skill": "storytelling", "upTo": 20 }
     },
     {
       "id": "holy_book",
@@ -68,7 +70,8 @@
       "weight": 0.1,
       "bulk": 0.2,
       "size": "small",
-      "value": 40
+      "value": 40,
+      "teaches": { "skill": "cartography", "upTo": 15 }
     },
     {
       "id": "sea_charts",
@@ -78,7 +81,59 @@
       "weight": 0.3,
       "bulk": 0.5,
       "size": "small",
-      "value": 120
+      "value": 120,
+      "teaches": { "skill": "sailing", "upTo": 25 }
+    },
+    {
+      "id": "herbal",
+      "name": "herbal",
+      "kind": "book",
+      "weight": 1,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 70,
+      "teaches": { "skill": "herbalism", "upTo": 30 },
+      "sold": ["apothecary", "witch"],
+      "about": "The herbs of field and wood, drawn and named, with their uses."
+    },
+    {
+      "id": "physic_book",
+      "name": "book of physic",
+      "plural": "books of physic",
+      "kind": "book",
+      "weight": 1.2,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 90,
+      "teaches": { "skill": "medicine", "upTo": 30 },
+      "sold": ["apothecary"],
+      "about": "Wounds, fevers and their treatment, as the physicians teach them."
+    },
+    {
+      "id": "husbandry",
+      "name": "treatise on husbandry",
+      "plural": "treatises on husbandry",
+      "kind": "book",
+      "weight": 1,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 45,
+      "teaches": { "skill": "agriculture", "upTo": 25 },
+      "sold": ["market"],
+      "about": "Soils, seasons, beasts and the keeping of a farm."
+    },
+    {
+      "id": "merchant_manual",
+      "name": "merchant's manual",
+      "plural": "merchant's manuals",
+      "kind": "book",
+      "weight": 0.8,
+      "bulk": 1,
+      "size": "small",
+      "value": 60,
+      "teaches": { "skill": "trading", "upTo": 25 },
+      "sold": ["market", "store"],
+      "about": "Weights, measures, coin, and how not to be cheated."
     },
     {
       "id": "letter",

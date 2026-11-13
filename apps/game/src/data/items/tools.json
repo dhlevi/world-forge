@@ -22,6 +22,7 @@
       "size": "small",
       "value": 8,
       "belt": true,
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy", "market"]
     },
     {
@@ -33,6 +34,7 @@
       "size": "huge",
       "value": 10,
       "strap": true,
+      "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "sold": ["smithy", "market"]
     },
     {
@@ -43,8 +45,38 @@
       "bulk": 3,
       "size": "small",
       "value": 60,
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["smithy"],
       "about": "A craftsman's tools rolled in leather."
+    },
+    {
+      "id": "sewing_kit",
+      "name": "sewing kit",
+      "kind": "tool",
+      "weight": 0.2,
+      "bulk": 0.3,
+      "size": "tiny",
+      "value": 12,
+      "uses": 10,
+      "useWord": "mendings",
+      "durable": false,
+      "sold": ["tailor", "market"],
+      "about": "Needles, thread, wax and a roll of patches: for mending cloth."
+    },
+    {
+      "id": "awl",
+      "name": "leatherworker's awl",
+      "plural": "leatherworker's awls",
+      "kind": "tool",
+      "weight": 0.3,
+      "bulk": 0.3,
+      "size": "small",
+      "value": 10,
+      "uses": 10,
+      "useWord": "mendings",
+      "durable": false,
+      "sold": ["market", "store", "butcher"],
+      "about": "An awl, waxed thread and offcuts of hide: for mending leather."
     },
     {
       "id": "writing_kit",
@@ -95,6 +127,7 @@
       "bulk": 6,
       "size": "medium",
       "value": 20,
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market"]
     },
     {
@@ -146,6 +179,7 @@
       "size": "medium",
       "value": 15,
       "strap": true,
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "store"],
       "about": "Rolled, it can be strapped to a pack."
     },

@@ -267,6 +267,56 @@ the learnt level, not a loss of it, and practice shakes it off quickly.
 **Proposed:** rust grows slowly after a few weeks without use, to a limit (for example a third
 of the level), and each use removes it many times faster than new learning would come.
 
+**Proposed: how checks and learning work** (`actors/checks.ts`, `actors/learning.ts`,
+`game/practice.ts`; numbers to tune in play, with `apps/game/scripts/skills-test.ts`).
+
+- **The check:** a graded d100 roll from the person's own dice (a stream saved with them, so a
+  game replays the same). The score is the skill less rust, plus 1.5 per point of the governing
+  traits' mean above 10, plus modifiers with reasons (tools and their quality, the load, and the
+  body: tiredness, hunger, thirst, cold, a winded or spent body, a mood far from even). The chance
+  is 50% when the score meets the difficulty, 1.5 points per point between them, kept between 2%
+  and 98%. Difficulties: trivial 0, easy 20, routine 35, hard 50, very hard 65, heroic 80. A
+  skill that must be taught cannot be tried untaught.
+- **Grades:** a fine success (the best fifth of the successes), a success, a narrow failure (within
+  10 of the chance), a failure, or a fumble (the worst rolls, about one in twenty at an even
+  chance). Each use says what the grade does (a better bed of it sleeping rough, a price off at
+  an inn, a fall on steep ground).
+- **Learning:** every check teaches; a task about 5 above the level teaches most, one far below
+  almost nothing; a narrow failure teaches as much as a success, a failure half, a fumble little.
+  Intelligence sets the pace (0.6 + 0.04 x Intelligence). Learning slows toward the cap. Within
+  a day, what more practice teaches falls as the day's learning at that skill mounts (to half
+  after about four fair uses, a quarter after about twelve), so that repeating one thing all day
+  gives little more; the next day it is fresh.
+- **Rust:** after 28 days unused, rust grows to a third of the level over about 150 days. Each
+  use shakes off about twenty times what it teaches. The log notes when a skill grows rusty and
+  when the knack comes back; the sheet shows the effective level.
+- **What the log says:** outcomes in words, and a note when a skill passes a mark (every 5 levels)
+  or reaches a new word (novice, beginner, competent, journeyman, expert, master). Levels, caps,
+  rust and how much practice still teaches today are on the character sheet only.
+- **Teachers** (the city view, at places whose work it is: a smithy smithing, a temple medicine
+  and persuasion, a guild of warriors the arms): a teacher's level comes from the size of the
+  town (village 30 to 42, town 42 to 58, city 52 to 72); lessons take a pupil to 10 below it, and
+  50 at most. An hour's lesson teaches about three uses' worth, for 3 copper and a sixth of the
+  teacher's level (double for skills that must be taught; a teacher can start them).
+- **Books** that teach say what and how far (`teaches` in the item data; up to 15 to 30). Reading
+  one needs letters in some script; an hour teaches about two uses' worth.
+
+**First uses in play.** Swimming (every two minutes in deep water; also eases the cost of
+swimming); Athletics (every hour going laden or worn out, and each ford; also eases the cost of
+a load); Climbing (steep steps of a journey); Survival (sleeping rough, and searching for water
+with Q where there is none); Trading (once a day at a market or shop, setting its prices both
+ways; shops now buy what they deal in); Persuasion (a better price at an inn, once a day);
+Storytelling (a tale at an inn or tavern); Musicianship (playing for coin, with an instrument);
+Cooking (cooking food at a hearth, fire or oven before eating it); and the crafts that mend
+things (Tailoring with a sewing kit, Hideworking with an awl, Carpentry with a tool roll, Smithing
+at a forge or anvil; `mend` in the item data). Boots and shoes wear with the distance walked.
+
+**Proposed, not yet built: traits that grow with use.** Hard physical work slowly raises Strength
+and Constitution, long practice of fine work Agility, and study Intelligence, by a fraction of a
+point over months and only toward a limit set by the person's starting value and age (a point or
+two above where they began, less with age). Disuse and long illness let them fall back as slowly.
+Traits move far more slowly than skills, so that a season's labour shows, a week's does not.
+
 ## Languages
 
 **Decided.** Languages can be learnt; how many and how fast depends on Intelligence.

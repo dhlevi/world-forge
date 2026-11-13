@@ -3,6 +3,10 @@
  * container carried with what it holds, and what lies nearby (on the ground here, or in a chest,
  * barrel, crate, wardrobe or shelf beside). Things are dragged from place to place, or chosen and
  * given an action (wear, hold, put in..., drop, take); each takes the time it takes.
+ *
+ * Some actions are skill checks (actors/checks.ts): mending a worn thing (its `mend` skill, with
+ * the kit it needs carried, or beside a forge), cooking food at a fire before eating it
+ * (Cooking), and reading a book that teaches (actors/learning.ts).
  */
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
@@ -13,6 +17,24 @@ import { defOf, itemName, fitsSize, ownBulk, type Item } from '../actors/items/i
 import { storageAt } from '../game/ground';
 import InventoryView from './views/InventoryView.vue';
 import { Needs } from '../actors/needs';
+import { OBJECT_TILES } from '@worldforge/core/local/tiles';
+import { check, DC, type Grade } from '../actors/checks';
+import { Skills, type Moodlet } from '../actors/components';
+import { readBook } from '../actors/learning';
+import { SKILL } from '../actors/data/skills';
+import { ITEM } from '../actors/items/defs';
+
+/** Things on the map to cook at. */
+const FIRES = ['hearth', 'campfire', 'oven', 'forge'];
+const COOKED: Record<Grade, { factor: number; text: string; mood?: Moodlet }> = {
+  fine: { factor: 1.3, text: 'You cook a fine hot meal of $ and eat it.', mood: { id: 'cooked', text: 'A fine hot meal', value: 3 } },
+  success: { factor: 1.15, text: 'You cook $ and eat it hot.', mood: { id: 'cooked', text: 'A hot meal', value: 2 } },
+  near: { factor: 1.05, text: 'You warm $ through and eat it.' },
+  fail: { factor: 1, text: 'You make a poor job of cooking $, but eat it.' },
+  fumble: { factor: 0.85, text: 'You burn $, and eat what you can of it.', mood: { id: 'cooked', text: 'Burnt supper', value: -1 } },
+};
+/** Condition a mending gives back, by grade. */
+const MENDED: Record<Grade, number> = { fine: 45, success: 30, near: 12, fail: 0, fumble: -8 };
 
 /** An item, carried or lying nearby. */
 export type Ref = { from: 'inv'; uid: string } | { from: 'ground'; x: number; y: number; uid: string };
@@ -31,7 +53,7 @@ export type Target = Dest | { at: 'ground'; x: number; y: number };
 
 export interface ItemAction {
   label: string;
-  target: Target | 'split' | 'consume';
+  target: Target | 'split' | 'consume' | 'cook' | 'mend' | 'read';
   why?: string | null;
 }
 
@@ -205,22 +227,126 @@ export class InventoryScreen extends Screen {
         return;
       }
       msg = `You ${food.verb}.`;
-      // A portion gone: the last portion of the last one takes the thing with it.
-      if (d.uses) {
-        it.uses = (it.uses ?? d.uses) - 1;
-        if (it.uses <= 0) {
-          if (it.qty > 1) {
-            it.qty -= 1;
-            it.uses = d.uses;
-          } else this.inv.drop(it.uid);
-        }
-      } else if (it.qty > 1) it.qty -= 1;
-      else this.inv.drop(it.uid);
+      this.usePortion(it);
       this.play.advance(5 * 60);
     }
     this.state.message = msg;
     this.play.say(msg);
     this.state.version++;
+  }
+
+  /** A portion or use gone: the last of the last one takes the thing with it. */
+  private usePortion(it: Item): void {
+    const d = defOf(it);
+    if (d.uses) {
+      it.uses = (it.uses ?? d.uses) - 1;
+      if (it.uses <= 0) {
+        if (it.qty > 1) {
+          it.qty -= 1;
+          it.uses = d.uses;
+        } else this.inv.drop(it.uid);
+      }
+    } else if (it.qty > 1) it.qty -= 1;
+    else this.inv.drop(it.uid);
+  }
+
+  /** Something on the map beside the wanderer (or underfoot) by name, if any. */
+  private beside(names: string[]): string | null {
+    const g = this.game;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const o = OBJECT_TILES[g.map.object(g.px + dx, g.py + dy)];
+      if (o && names.includes(o.name)) return o.look;
+    }
+    return null;
+  }
+
+  private mood(m: Moodlet, hours: number): void {
+    this.play.app.bus.send('actor.moodlet', { ...m, until: this.play.now() + hours * 3600 }, { to: this.actor.id });
+  }
+
+  private skillNotes(): void {
+    for (const n of this.actor.get(Skills)?.takeNotes() ?? []) this.play.say(n.text);
+  }
+
+  private done(msg: string): void {
+    this.state.message = msg;
+    this.play.say(msg);
+    this.skillNotes();
+    this.state.version++;
+  }
+
+  /** Cooks a portion at a fire beside, and eats it (Cooking). */
+  cook(r: Ref): void {
+    const it = this.item(r);
+    const n = this.actor.get(Needs);
+    const food = it && defOf(it).food;
+    const fire = this.beside(FIRES);
+    if (!it || !n || !food || !fire || r.from !== 'inv') return;
+    this.play.advance(40 * 60);
+    const g = check(this.actor, 'cooking', { difficulty: DC.easy, now: this.play.now() }).grade;
+    const c = COOKED[g];
+    n.eat(food.kcal * c.factor, food.water ?? 0);
+    const name = `the ${itemName({ ...it, qty: 1 })}`;
+    this.usePortion(it);
+    if (c.mood) this.mood(c.mood, 6);
+    this.done(c.text.replace('$', name));
+  }
+
+  /** What mending a thing needs that is missing (or null), and the kit to spend. */
+  mendNeeds(it: Item): { why: string | null; kit?: Item } {
+    const m = defOf(it).mend;
+    if (!m) return { why: 'It cannot be mended.' };
+    if (defOf(it).durable === false) return { why: 'It does not wear.' };
+    if (it.condition >= 95) return { why: 'It needs no mending.' };
+    if (it.loc?.at === 'worn') return { why: 'Take it off first.' };
+    if (m.at?.length && !this.beside(m.at)) return { why: `You need ${m.at.map((x) => `a ${x}`).join(' or ')} to work at.` };
+    if (m.kit) {
+      const kit = this.inv.d.items.find((x) => x.def === m.kit && (x.uses === undefined || x.uses > 0) && x.condition > 0);
+      if (!kit) return { why: `You need ${ITEM.get(m.kit)?.name ? `a ${ITEM.get(m.kit)!.name}` : 'the tools'}.` };
+      return { why: null, kit };
+    }
+    return { why: null };
+  }
+
+  /** Mends a worn thing (its mend skill): most of an hour, and a use of the kit. */
+  mend(r: Ref): void {
+    const it = this.item(r);
+    if (!it || r.from !== 'inv') return;
+    const need = this.mendNeeds(it);
+    if (need.why) {
+      this.state.message = need.why;
+      return;
+    }
+    const m = defOf(it).mend!;
+    const qual = { poor: -5, common: 0, fine: 10, masterwork: 25 }[it.quality];
+    this.play.advance(45 * 60);
+    const res = check(this.actor, m.skill, { difficulty: 15 + Math.round((100 - it.condition) * 0.3) + qual, now: this.play.now() });
+    const before = it.condition;
+    it.condition = Math.max(0, Math.min(100, it.condition + MENDED[res.grade]));
+    if (need.kit) {
+      if (defOf(need.kit).uses) this.usePortion(need.kit);
+      else need.kit.condition = Math.max(0, need.kit.condition - 1);
+    }
+    const name = itemName(it);
+    const skill = SKILL.get(m.skill)?.name.toLowerCase() ?? m.skill;
+    this.done(it.condition > before + 20 ? `You mend your ${name} well.` : it.condition > before ? `You patch up your ${name} as best you can.`
+      : it.condition < before ? `You make your ${name} worse; ${skill} is harder than it looks.` : `Your work on the ${name} comes to nothing.`);
+  }
+
+  /** Reads a book that teaches, for an hour. */
+  read(r: Ref): void {
+    const it = this.item(r);
+    const t = it && defOf(it).teaches;
+    if (!it || !t || r.from !== 'inv') return;
+    const before = this.actor.get(Skills)?.level(t.skill) ?? 0;
+    const res = readBook(this.actor, t, this.play.now() + 3600);
+    if (res.why) {
+      this.state.message = res.why;
+      return;
+    }
+    this.play.advance(3600);
+    const gained = (this.actor.get(Skills)?.level(t.skill) ?? 0) - before;
+    this.done(`You read the ${itemName(it)} for an hour${gained >= 0.5 ? ', and learn from it' : ', but little sinks in today'}.`);
   }
 
   /** Picks up a thing nearby into wherever it best goes. */
@@ -284,6 +410,16 @@ export class InventoryScreen extends Screen {
       const room = n?.room();
       const why = empty ? 'It is empty.' : room && (drink ? room.litres < 0.05 : room.kcal < 50) ? (drink ? 'You could not drink any more.' : 'You are too full to eat.') : null;
       out.unshift({ label: drink ? 'Drink' : 'Eat', target: 'consume', why });
+      if (!drink && this.beside(FIRES)) out.splice(1, 0, { label: 'Cook and eat', target: 'cook', why });
+    }
+    if (d.teaches && r.from === 'inv') {
+      const s = this.actor.get(Skills);
+      const limit = Math.min(d.teaches.upTo, s?.cap(d.teaches.skill) ?? 0);
+      const why = !s?.literate() ? 'You cannot read.' : (s.level(d.teaches.skill) >= limit - 0.05) ? 'It has nothing more to teach you.' : null;
+      out.unshift({ label: `Read (${SKILL.get(d.teaches.skill)?.name ?? d.teaches.skill})`, target: 'read', why });
+    }
+    if (d.mend && d.durable !== false && it.condition < 95 && r.from === 'inv') {
+      out.push({ label: `Mend (${SKILL.get(d.mend.skill)?.name ?? d.mend.skill})`, target: 'mend', why: this.mendNeeds(it).why });
     }
     return out;
   }
@@ -293,6 +429,9 @@ export class InventoryScreen extends Screen {
     if (!r) return;
     if (a.target === 'split') this.splitOne(r);
     else if (a.target === 'consume') this.consume(r);
+    else if (a.target === 'cook') this.cook(r);
+    else if (a.target === 'mend') this.mend(r);
+    else if (a.target === 'read') this.read(r);
     else this.move(r, a.target);
   }
 
@@ -346,9 +485,15 @@ export class InventoryScreen extends Screen {
     else if (e.code === 'KeyT' || e.code === 'KeyG' || e.code === 'Enter') a = find(/^Take$/) ?? (e.code === 'Enter' ? acts.find((x) => !x.why) : undefined);
     else if (e.code === 'KeyP') a = find(/^Put in your/);
     else if (e.code === 'KeyE') a = find(/^Eat$|^Drink$/);
+    else if (e.code === 'KeyC') a = find(/^Cook and eat/);
+    else if (e.code === 'KeyM') a = find(/^Mend/);
+    else if (e.code === 'KeyR') a = find(/^Read/);
     else return false;
     if (a) this.act(a);
-    else if (cur) this.state.message = acts.find((x) => /^(Wear|Take|Hold|Carry|Hang|Drop|Put)/.test(x.label))?.why ?? 'That cannot be done with it.';
+    else if (cur) {
+      const want = { KeyM: /^Mend/, KeyR: /^Read/, KeyC: /^Cook/, KeyE: /^Eat|^Drink/ }[e.code as 'KeyM'] ?? /^(Wear|Take|Hold|Carry|Hang|Drop|Put)/;
+      this.state.message = acts.find((x) => want.test(x.label))?.why ?? 'That cannot be done with it.';
+    }
     return true;
   }
 }

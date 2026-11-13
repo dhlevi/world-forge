@@ -9,11 +9,18 @@ import { Screen } from '../engine/screens';
 import { LocalFrame } from '@worldforge/core/towns/plan';
 import type { PlanImage, SiteInfo, SitePlace } from '../worker/protocol';
 import type { PlayScreen } from './play';
-import { moneyText, type Moodlet } from '../actors/components';
+import { moneyText, Skills, type Moodlet } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
 import CityView from './views/CityView.vue';
 import { ShopScreen } from './shop';
 import { Needs } from '../actors/needs';
+import { check, DC, type Grade } from '../actors/checks';
+import { defOf, itemName, type Item } from '../actors/items/item';
+import { taughtAt } from '../actors/learning';
+import { LessonsScreen } from './lessons';
+
+/** What asking for a better price at an inn does (Persuasion, once a day). */
+const INN_FACTOR: Record<Grade, number> = { fine: 0.7, success: 0.85, near: 1, fail: 1, fumble: 1.2 };
 
 /** Walking pace in a town (m/s), and how much longer the streets make a straight line. */
 const PACE = 1.25, WINDING = 1.3;
@@ -135,18 +142,38 @@ export class CityScreen extends Screen {
     if (p) this.play.app.bus.send('actor.moodlet', m, { to: p.id });
   }
 
+  /** A check that holds at a place for the day (asking a better price), if made yet. */
+  private dealing(p: SitePlace, what: string): Grade | undefined {
+    return this.play.dealings.get(`${p.id}|${Math.floor(this.play.now() / 86400)}|${what}`);
+  }
+
+  /** The inn's price for a thing today. */
+  innPrice(p: SitePlace, base: number): number {
+    const g = this.dealing(p, 'persuasion');
+    return Math.max(1, Math.round(base * (g ? INN_FACTOR[g] : 1)));
+  }
+
+  /** An instrument carried, to play for coin. */
+  private instrument(): Item | undefined {
+    return this.play.player?.get(Inventory)?.d.items.find((i) => defOf(i).kind === 'music');
+  }
+
   actions(): SceneAction[] {
     const p = this.place(this.state.at);
     if (!p) return [];
     const broke = (c: number) => (this.copper() < c ? `You have ${moneyText(this.copper())}.` : undefined);
     const out: SceneAction[] = [];
     if (p.kind === 'inn') {
-      out.push({ id: 'meal', label: 'Take a hot meal (4 copper)', disabled: broke(4) });
-      out.push({ id: 'room', label: 'Take a room for the night (1 silver)', disabled: broke(10) });
+      const meal = this.innPrice(p, 4), room = this.innPrice(p, 10);
+      out.push({ id: 'meal', label: `Take a hot meal (${moneyText(meal)})`, disabled: broke(meal) });
+      out.push({ id: 'room', label: `Take a room for the night (${moneyText(room)})`, disabled: broke(room) });
+      if (!this.dealing(p, 'persuasion')) out.push({ id: 'haggle', label: 'Ask for a better price' });
       out.push({ id: 'news', label: 'Ask the travellers for news' });
+      out.push({ id: 'tale', label: 'Tell a tale by the fire' });
     } else if (p.kind === 'tavern') {
       out.push({ id: 'drink', label: 'Buy a drink (2 copper)', disabled: broke(2) });
       out.push({ id: 'news', label: 'Listen to the talk' });
+      out.push({ id: 'tale', label: 'Tell a tale' });
     } else if (p.kind === 'temple') {
       out.push({ id: 'pray', label: 'Pray a while' });
     } else if (p.kind === 'market' || p.kind === 'shop') {
@@ -154,6 +181,11 @@ export class CityScreen extends Screen {
     } else if (p.kind === 'gate') {
       out.push({ id: 'leave', label: 'Leave the town by this way' });
     }
+    if (p.kind === 'market' || p.kind === 'tavern' || p.kind === 'inn') {
+      const ins = this.instrument();
+      out.push({ id: 'busk', label: ins ? `Play your ${itemName(ins)} for coin (an hour)` : 'Play for coin (you have no instrument)', disabled: ins ? undefined : 'You carry no instrument.' });
+    }
+    if (taughtAt(p.kind, p.role).length) out.push({ id: 'lessons', label: 'Seek someone to teach you' });
     out.push({ id: 'look', label: 'Look around' });
     out.push({ id: 'walk', label: 'Walk in (the local map)' });
     return out;
@@ -169,14 +201,14 @@ export class CityScreen extends Screen {
     };
     switch (id) {
       case 'meal':
-        if (!this.pay(4)) return;
+        if (!this.pay(this.innPrice(p, 4))) return;
         this.play.player?.get(Needs)?.eat(800, 0.4);
         this.play.advance(45 * 60);
         this.mood({ id: 'hot-meal', text: 'Had a hot meal', value: 2, until: now + 6 * 3600 });
         say('A bowl of stew, bread and small beer, eaten by the fire.');
         break;
       case 'room': {
-        if (!this.pay(10)) return;
+        if (!this.pay(this.innPrice(p, 10))) return;
         // Sleep in a bed until seven in the morning (at least six hours).
         const day = 86400, seven = 7 * 3600;
         let wake = Math.floor(now / day) * day + seven;
@@ -195,6 +227,57 @@ export class CityScreen extends Screen {
       case 'news':
         this.play.advance(30 * 60);
         say('People talk of prices, weather and their neighbours. (Rumours of places and troubles are still to come.)');
+        break;
+      case 'haggle': {
+        const a = this.play.player;
+        if (!a) return;
+        this.play.advance(5 * 60);
+        const g = check(a, 'persuasion', { difficulty: DC.routine, now: this.play.now() }).grade;
+        this.play.dealings.set(`${p.id}|${Math.floor(this.play.now() / 86400)}|persuasion`, g);
+        say({ fine: 'The innkeeper laughs and knocks a good deal off.', success: 'The innkeeper agrees to something off, for you.', near: 'The innkeeper hears you out, but the price stands.', fail: 'The innkeeper shakes their head: the price is the price.', fumble: 'You give offence; the innkeeper decides your price has gone up.' }[g]);
+        break;
+      }
+      case 'tale': {
+        const a = this.play.player;
+        if (!a) return;
+        this.play.advance(30 * 60);
+        const g = check(a, 'storytelling', { difficulty: p.kind === 'inn' ? DC.routine : DC.easy + 10, now: this.play.now() }).grade;
+        if (g === 'fine') {
+          this.play.player?.get(Needs)?.drink(0.4);
+          const inv = this.play.player?.get(Inventory);
+          if (inv) inv.d.copper += 3;
+          this.mood({ id: 'tale', text: 'Held the room with a tale', value: 3, until: now + 8 * 3600 });
+          say('The room hangs on your every word. Someone buys you a drink, and a few coins come your way.');
+        } else if (g === 'success') {
+          this.mood({ id: 'tale', text: 'Told a good tale', value: 1, until: now + 6 * 3600 });
+          say('Your tale goes down well; there is laughter and a raised cup or two.');
+        } else if (g === 'near') say('Your tale is heard out politely.');
+        else if (g === 'fail') say('Your tale wanders, and the talk drifts back to other things.');
+        else {
+          this.mood({ id: 'tale', text: 'Made a fool of myself', value: -2, until: now + 8 * 3600 });
+          say('You lose the thread entirely, and someone jeers.');
+        }
+        break;
+      }
+      case 'busk': {
+        const a = this.play.player, ins = this.instrument();
+        if (!a || !ins) return;
+        this.play.advance(3600);
+        const qual = { poor: -5, common: 0, fine: 5, masterwork: 10 }[ins.quality];
+        const g = check(a, 'music', { difficulty: DC.routine, mods: qual ? [{ why: `a ${ins.quality} instrument`, value: qual }] : [], now: this.play.now() }).grade;
+        const crowd = Math.max(1, Math.min(6, this.site.population / 2500));
+        const s = a.need(Skills);
+        const coin = Math.round(crowd * { fine: 6, success: 3, near: 1, fail: 0, fumble: 0 }[g] * (0.7 + 0.6 * s.random()));
+        const inv = a.get(Inventory);
+        if (inv) inv.d.copper += coin;
+        if (g === 'fine') this.mood({ id: 'busk', text: 'Played to a crowd', value: 2, until: now + 6 * 3600 });
+        if (g === 'fumble') this.mood({ id: 'busk', text: 'Played badly in public', value: -1, until: now + 6 * 3600 });
+        const how = { fine: 'A crowd gathers to hear you play', success: 'You play an hour, and people stop to listen', near: 'You play an hour; a few stop', fail: 'You play an hour, but few pay any heed', fumble: 'Your fingers will not do as they are told, and people hurry past' }[g];
+        say(`${how}${coin ? `: ${moneyText(coin)} in your hat.` : '.'}`);
+        break;
+      }
+      case 'lessons':
+        this.manager?.push(new LessonsScreen(this.play, p, this.site));
         break;
       case 'pray':
         this.play.advance(20 * 60);

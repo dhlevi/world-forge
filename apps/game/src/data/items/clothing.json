@@ -11,6 +11,7 @@
       "size": "small",
       "value": 8,
       "wear": { "regions": ["torso"], "layer": "under", "seconds": 15, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -22,6 +23,7 @@
       "size": "small",
       "value": 12,
       "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 15, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -33,6 +35,7 @@
       "size": "small",
       "value": 15,
       "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 15, "warmth": 2 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -44,6 +47,7 @@
       "size": "small",
       "value": 60,
       "wear": { "regions": ["torso", "arms"], "layer": "main", "seconds": 30, "warmth": 2 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["tailor"],
       "about": "Good clothes, fitted and fastened."
     },
@@ -61,6 +65,7 @@
         "seconds": 20,
         "warmth": 2
       },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -77,6 +82,7 @@
         "seconds": 15,
         "warmth": 3
       },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -92,7 +98,8 @@
         "layer": "outer",
         "seconds": 40,
         "warmth": 3
-      }
+      },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" }
     },
     {
       "id": "scholar_gown",
@@ -107,7 +114,8 @@
         "layer": "outer",
         "seconds": 20,
         "warmth": 3
-      }
+      },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" }
     },
     {
       "id": "college_robes",
@@ -122,7 +130,8 @@
         "layer": "outer",
         "seconds": 25,
         "warmth": 3
-      }
+      },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" }
     },
     {
       "id": "costume",
@@ -132,7 +141,8 @@
       "bulk": 3,
       "size": "medium",
       "value": 40,
-      "wear": { "regions": ["torso", "arms"], "layer": "outer", "seconds": 30, "warmth": 1 }
+      "wear": { "regions": ["torso", "arms"], "layer": "outer", "seconds": 30, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" }
     },
     {
       "id": "apron",
@@ -143,6 +153,7 @@
       "size": "small",
       "value": 10,
       "wear": { "regions": ["torso", "legs"], "layer": "outer", "seconds": 10, "armour": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "smithy"]
     },
     {
@@ -155,6 +166,7 @@
       "size": "small",
       "value": 6,
       "wear": { "regions": ["legs"], "layer": "under", "seconds": 15, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"],
       "about": "Linen drawers."
     },
@@ -168,6 +180,7 @@
       "size": "small",
       "value": 14,
       "wear": { "regions": ["legs"], "layer": "main", "seconds": 20, "warmth": 2 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -180,6 +193,7 @@
       "size": "small",
       "value": 18,
       "wear": { "regions": ["legs"], "layer": "main", "seconds": 25, "warmth": 2 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["tailor"]
     },
     {
@@ -191,6 +205,7 @@
       "size": "small",
       "value": 14,
       "wear": { "regions": ["legs"], "layer": "main", "seconds": 15, "warmth": 2 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -203,6 +218,7 @@
       "size": "tiny",
       "value": 3,
       "wear": { "regions": ["feet"], "layer": "under", "seconds": 10, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -215,6 +231,7 @@
       "size": "small",
       "value": 15,
       "wear": { "regions": ["feet"], "layer": "main", "seconds": 15, "warmth": 1 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"]
     },
     {
@@ -227,6 +244,7 @@
       "size": "medium",
       "value": 35,
       "wear": { "regions": ["feet"], "layer": "main", "seconds": 30, "warmth": 2, "armour": 1 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"]
     },
     {
@@ -239,6 +257,7 @@
       "size": "small",
       "value": 8,
       "wear": { "regions": ["feet"], "layer": "main", "seconds": 10 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"]
     },
     {
@@ -250,6 +269,7 @@
       "size": "small",
       "value": 5,
       "wear": { "regions": ["head"], "layer": "main", "seconds": 5, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -261,6 +281,7 @@
       "size": "small",
       "value": 8,
       "wear": { "regions": ["head"], "layer": "outer", "seconds": 5, "warmth": 2 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -272,6 +293,7 @@
       "size": "medium",
       "value": 12,
       "wear": { "regions": ["head"], "layer": "main", "seconds": 5, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -283,6 +305,7 @@
       "size": "tiny",
       "value": 10,
       "wear": { "regions": ["face"], "layer": "main", "seconds": 10 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -294,6 +317,7 @@
       "size": "small",
       "value": 6,
       "wear": { "regions": ["face"], "layer": "outer", "seconds": 5, "warmth": 1 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -306,6 +330,7 @@
       "size": "small",
       "value": 12,
       "wear": { "regions": ["hands"], "layer": "main", "seconds": 10, "warmth": 1 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"]
     },
     {
@@ -318,6 +343,7 @@
       "size": "small",
       "value": 14,
       "wear": { "regions": ["hands"], "layer": "outer", "seconds": 10, "warmth": 3 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market"]
     },
     {
@@ -329,6 +355,7 @@
       "size": "medium",
       "value": 30,
       "wear": { "regions": ["torso", "arms"], "layer": "outer", "seconds": 20, "warmth": 3 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -345,6 +372,7 @@
         "seconds": 25,
         "warmth": 5
       },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -356,6 +384,7 @@
       "size": "medium",
       "value": 25,
       "wear": { "regions": ["torso", "arms"], "layer": "cloak", "seconds": 10, "warmth": 3 },
+      "mend": { "skill": "tailoring", "kit": "sewing_kit" },
       "sold": ["market", "tailor"]
     },
     {
@@ -367,6 +396,7 @@
       "size": "medium",
       "value": 90,
       "wear": { "regions": ["torso", "arms"], "layer": "cloak", "seconds": 10, "warmth": 6 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market"]
     },
     {
@@ -379,6 +409,7 @@
       "value": 6,
       "loops": 3,
       "wear": { "regions": ["waist"], "layer": "main", "seconds": 10 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["market", "tailor"],
       "about": "Three things can hang from it."
     },
@@ -392,6 +423,7 @@
       "value": 20,
       "loops": 4,
       "wear": { "regions": ["waist"], "layer": "main", "seconds": 15 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
       "sold": ["smithy", "market"],
       "about": "A broad belt with a frog for a sword; four things can hang from it."
     }

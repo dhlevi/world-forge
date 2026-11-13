@@ -25,7 +25,7 @@
  */
 import { Component } from './actor';
 import type { Message } from '../engine/messages';
-import { Body, Mood, Pools, type Activity, type TimeCtx } from './components';
+import { Body, Mood, Pools, Skills, type Activity, type TimeCtx } from './components';
 import { Inventory } from './items/inventory';
 import { defOf } from './items/item';
 
@@ -179,9 +179,12 @@ export class Needs extends Component {
     if (P) {
       const day = P.physDay, burst = P.physBurst;
       const heavy = Math.max(0, load - 1);
-      const burstUse = (act === 'swim' ? 40 : 0) + (act === 'walk' || act === 'travel' ? heavy * 40 : 0);
+      // Skill eases the work: a good swimmer tires less in the water, a hardy walker under a load.
+      const sk = this.actor?.get(Skills);
+      const swimEase = 1.4 - (sk?.effective('swimming') ?? 0) / 100, carryEase = 1.2 - (sk?.effective('athletics') ?? 0) / 200;
+      const burstUse = (act === 'swim' ? 40 * swimEase : 0) + (act === 'walk' || act === 'travel' ? heavy * 40 * carryEase : 0);
       const burstBack = act === 'rest' || asleep ? 60 : act === 'walk' || act === 'travel' ? 20 : 0;
-      const dayUse = asleep ? -15 * (ctx.sleepQuality ?? 0.6) : { rest: -0.5, sleep: 0, walk: 4, travel: 5 * load, swim: 25, work: 8 }[act];
+      const dayUse = asleep ? -15 * (ctx.sleepQuality ?? 0.6) : { rest: -0.5, sleep: 0, walk: 4, travel: 5 * (1 + heavy * carryEase), swim: 25 * swimEase, work: 8 }[act];
       day.value = clamp(day.value - dayUse * h, 0, day.max);
       // Burst comes back from the day pool (slowly when it is empty).
       burst.value = clamp(burst.value - burstUse * h + (day.value > 0 ? burstBack : 2) * h, 0, burst.max);
@@ -192,6 +195,11 @@ export class Needs extends Component {
   }
 
   // ---- States in words -----------------------------------------------------------------------
+
+  /** The stamina pools, if the person has them. */
+  pools() {
+    return this.actor?.get(Pools)?.d;
+  }
 
   /** Fatigue with the sleep debt counted in. */
   tiredness(): number {

@@ -23,6 +23,16 @@ const needs = a.get(Needs);
 const mood = a.get(Mood);
 const ui = screen.state;
 const age = computed(() => a.need(Identity).ageAt(screen.now()));
+/** When a skill was last used, and how much more practice will teach today. */
+function skillTip(id: string): string {
+  const s = skills;
+  if (!s) return '';
+  const now = screen.now();
+  const used = s.d.used?.[id];
+  const ago = used === undefined ? 'not used since setting out' : now - used < 3600 ? 'used within the hour' : now - used < 86400 ? 'used today' : `last used ${Math.floor((now - used) / 86400)} days ago`;
+  const fresh = s.freshness(id, now);
+  return `${ago}; ${fresh > 0.9 ? 'fresh to practise' : `practice teaches ${Math.round(fresh * 100)}% today`}${s.rust(id) > 0 ? `; rust ${s.rust(id).toFixed(1)}` : ''}`;
+}
 const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.filter((s) => s.group === g && (skills?.level(s.id) ?? 0) > 0) })).filter((x) => x.list.length));
 </script>
 
@@ -78,7 +88,10 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
       <div>
         <div v-for="g in bySkillGroup" :key="g.g">
           <div class="cc-label">{{ g.g }}</div>
-          <div v-for="s in g.list" :key="s.id" class="kv"><span>{{ s.name }}</span><span>{{ Math.round(skills!.level(s.id)) }} <span class="dim">{{ skillWord(skills!.level(s.id)) }}, cap {{ skills!.cap(s.id) }}</span></span></div>
+          <div v-for="s in g.list" :key="s.id" class="kv" :title="skillTip(s.id)">
+            <span>{{ s.name }}</span>
+            <span>{{ skills!.level(s.id).toFixed(1) }}<span v-if="skills!.rust(s.id) >= 0.5" class="rust"> (rusty: {{ skills!.effective(s.id).toFixed(1) }})</span> <span class="dim">{{ skillWord(skills!.level(s.id)) }}, cap {{ skills!.cap(s.id) }}</span></span>
+          </div>
         </div>
         <div class="cc-label">Languages</div>
         <div v-for="l in Object.values(skills?.d.languages ?? {})" :key="l.name" class="kv"><span>{{ l.name }}</span><span>{{ fluencyWord(l.speak) }}{{ l.read >= 20 ? `, reads (${Math.round(l.read)})` : ', cannot read' }}</span></div>
@@ -107,5 +120,6 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
 .sheet-body p { margin: 2px 0; }
 .sheet-body ul { margin: 0; padding-left: 18px; }
 .cc-label { color: var(--dim); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 8px; }
+.rust { color: #c9935a; }
 .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 0.94em; }
 </style>

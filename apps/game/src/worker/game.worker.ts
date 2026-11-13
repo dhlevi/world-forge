@@ -6,7 +6,7 @@ import { generateWorld, type GeneratedWorld } from '@worldforge/core/gen/world';
 import { LocalWorld } from '@worldforge/core/local/chunk';
 import type { Settlement } from '@worldforge/core/gen/settlements';
 import { TileRenderer } from '@worldforge/core/render/tiles';
-import { TravelGrid } from '@worldforge/core/local/travel';
+import { STEP_M, TravelGrid } from '@worldforge/core/local/travel';
 import { baronyAt } from '@worldforge/core/export/gamedata';
 import { CULTURES } from '@worldforge/core/names/cultures';
 import { personName } from '@worldforge/core/lore/names';
@@ -91,7 +91,10 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       let prev = m.from;
       const steps = r ? r.cells.map(([cx, cy]) => {
         const c = travel!.cell(cx, cy);
-        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, biome: c.biome, sight: travel!.sightM(cx, cy) };
+        const a = travel!.cell(prev[0], prev[1]);
+        const run = STEP_M * (prev[0] !== cx && prev[1] !== cy ? Math.SQRT2 : 1);
+        const slope = Math.round((Math.abs(c.elev - a.elev) / run) * 1000) / 1000;
+        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, biome: c.biome, sight: travel!.sightM(cx, cy), slope };
         prev = [cx, cy];
         return st;
       }) : null;
