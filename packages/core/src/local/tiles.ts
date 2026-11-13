@@ -105,12 +105,6 @@ const GROUND: Def[] = [
   g('floor_boards', '#9b7650', 'a board floor', 'Indoor wooden floorboards.', { variants: 2 }),
   g('floor_earth', '#7f6a4a', 'an earth floor', 'Indoor beaten earth with rushes.', { variants: 2 }),
   // Added after the first release go below.
-  // Camps (apps/game/src/game/camp.ts).
-  o('bedroll', '=', '#8a7a5a', 'a bedroll', 'A blanket laid out to sleep on.', { pass: true }),
-  o('fire_out', '*', '#6a6058', 'a dead fire', 'A ring of stones with cold ashes.', { pass: true }),
-  o('windbreak', '#', '#7a6a45', 'a windbreak', 'A low wall of woven branches against the wind.'),
-  o('lean_to', '^', '#7a6a45', 'a lean-to', 'A slope of branches and bark to lie under.', { pass: true }),
-  o('snare', ',', '#b0a080', 'a snare', 'A wire noose set on an animal run.', { pass: true }),
 ];
 
 const wall = (mat: string, colour: string, look: string, art: string): Def =>
@@ -245,6 +239,8 @@ const oIndex = new Map(OBJECT_TILES.map((d, i) => [d.name, i]));
 if (gIndex.size !== GROUND_TILES.length || oIndex.size !== OBJECT_TILES.length || GROUND_TILES.length > 255 || OBJECT_TILES.length > 255) {
   throw new Error('Tile registry: duplicate names or too many tiles.');
 }
+// A name belongs to one tile in one layer, so that a tileset's frame names say which.
+for (const d of OBJECT_TILES) if (gIndex.has(d.name)) throw new Error(`Tile registry: ${d.name} is both ground and an object.`);
 
 /** Ground tile id by name (throws on a misspelt name, so mistakes show at once). */
 export function G(name: string): number {
@@ -263,6 +259,55 @@ export function O(name: string): number {
 /** Object tile id by name, or undefined. */
 export function objectId(name: string): number | undefined {
   return oIndex.get(name);
+}
+
+// ---- Decorations ----------------------------------------------------------------------------
+
+export type Season = 'spring' | 'summer' | 'autumn' | 'winter';
+
+/**
+ * A decoration: a small thing scattered over the ground (a tuft of grass, pebbles, fallen leaves)
+ * that is drawn only. It is not part of the map, blocks nothing and is not saved: where one lies
+ * is worked out from the position (apps/game/src/game/decor.ts), on tiles with no object.
+ */
+export interface DecorDef {
+  /** Stable name: the key a tileset uses for its frame (distinct from every tile's name). */
+  name: string;
+  /** What the art should show (for TILESET.md). */
+  art: string;
+  /** The ground tiles it lies on. */
+  on: readonly string[];
+  /** The share of those tiles it lies on (0 to 1). */
+  chance: number;
+  /** Only in these seasons (all year if none). */
+  seasons?: readonly Season[];
+  /** Placeholder colour, and the kind of mark drawn for it until there is art. */
+  colour: string;
+  mark: 'tuft' | 'dots' | 'stones' | 'sticks' | 'caps' | 'stalks' | 'crack';
+  /** Suggested number of variants to draw. */
+  variants?: number;
+}
+
+const GRASSES = ['grass', 'grass_lush', 'grass_dry', 'lawn', 'mound'];
+const BARE = ['dirt', 'path', 'track', 'road', 'gravel', 'dry_earth', 'grass_dry', 'rock', 'scree', 'yard'];
+const LITTER = ['forest_floor', 'needle_floor', 'jungle_floor', 'moss'];
+
+export const DECOR: readonly DecorDef[] = [
+  { name: 'grass_tuft', art: 'A small tuft of longer grass, a few blades.', on: [...GRASSES, 'tundra'], chance: 0.14, colour: '#4f7a34', mark: 'tuft', variants: 3 },
+  { name: 'wildflowers', art: 'Two or three small flowers (white, yellow, blue) in the grass.', on: ['grass', 'grass_lush', 'lawn', 'mound'], chance: 0.05, seasons: ['spring', 'summer'], colour: '#f0e070', mark: 'dots', variants: 3 },
+  { name: 'pebbles', art: 'Two or three small stones.', on: [...BARE, 'sand', 'desert_sand'], chance: 0.08, colour: '#8a8478', mark: 'stones', variants: 3 },
+  { name: 'twigs', art: 'Fallen twigs and a stick.', on: LITTER, chance: 0.1, colour: '#6a5232', mark: 'sticks', variants: 2 },
+  { name: 'toadstools', art: 'A small cluster of mushrooms.', on: LITTER, chance: 0.03, seasons: ['autumn'], colour: '#d8a050', mark: 'caps', variants: 2 },
+  { name: 'fronds', art: 'A young fern or a few broad leaves.', on: ['moss', 'jungle_floor', 'forest_floor', 'grass_lush'], chance: 0.06, colour: '#4a8a3a', mark: 'tuft', variants: 2 },
+  { name: 'shells', art: 'A few small shells.', on: ['sand'], chance: 0.03, colour: '#f0e8d8', mark: 'dots', variants: 2 },
+  { name: 'sedge', art: 'Stalks of sedge or rush.', on: ['marsh', 'mud'], chance: 0.12, colour: '#6a7a3a', mark: 'stalks', variants: 2 },
+  { name: 'lichen', art: 'Patches of pale lichen.', on: ['rock', 'tundra', 'scree'], chance: 0.06, colour: '#b8c090', mark: 'dots', variants: 2 },
+  { name: 'cracks', art: 'Cracks in dry ground or ice.', on: ['dry_earth', 'salt', 'ice'], chance: 0.06, colour: '#6a5a40', mark: 'crack', variants: 2 },
+  { name: 'fallen_leaves', art: 'A few fallen leaves (autumn colours).', on: ['grass', 'lawn', 'cobbles', 'flagstones', 'path', 'road', 'forest_floor'], chance: 0.08, seasons: ['autumn'], colour: '#d07a30', mark: 'dots', variants: 3 },
+];
+for (const d of DECOR) {
+  if (gIndex.has(d.name) || oIndex.has(d.name) || DECOR.filter((e) => e.name === d.name).length > 1) throw new Error(`Tile registry: the decoration ${d.name} shares its name.`);
+  for (const n of d.on) if (!gIndex.has(n)) throw new Error(`Tile registry: the decoration ${d.name} lies on unknown ground ${n}.`);
 }
 
 /** Whether a position with these tiles can be walked into. */

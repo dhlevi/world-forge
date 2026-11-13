@@ -134,7 +134,9 @@ onMounted(async () => {
   await renderer.init(el.value!);
   rain.mount(el.value!);
   const n = await tiles.load(import.meta.env.BASE_URL);
-  tilesetNote.value = n ? `Tileset: ${tiles.drawn.size} tiles drawn, the rest placeholders.` : 'Placeholder tiles (no tileset in public/tileset).';
+  tilesetNote.value = n
+    ? `Tileset: ${tiles.drawn.size} drawn${tiles.standIns.size ? `, ${tiles.standIns.size} stood in for` : ''}, the rest placeholders.`
+    : 'Placeholder tiles (no tileset in public/tileset).';
   screen.onKey = (e) => {
     onKey(e);
     return false;

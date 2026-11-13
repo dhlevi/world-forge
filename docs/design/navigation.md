@@ -296,6 +296,73 @@ a city of 50,000 contained, with an artistic city map.
   succession, a plague, a famine) and reach the player as rumours, late and changed.
 - **On arrival**, a place is brought up to date from its summary before it is shown.
 
+## How the local map is drawn: levels, trees and roofs
+
+*Phase 1 built: the tileset format (several sheets, stand-ins, animation, sprites larger than a
+tile) and the decoration layer; see apps/game/TILESET.md. The rest is to come, in the order of the
+plan below.*
+
+**Decided: a top-down map.** The local map stays top-down, as in RimWorld and Dwarf Fortress, which
+suits turn-by-turn play: walls, doors, furniture and floors are drawn straight down, with a darker
+lip on the south side of a wall to give it some body. Characters, animals and small objects may
+rise a few pixels above their tile; nothing is drawn at a three-quarter angle across other tiles.
+
+**Decided: height becomes levels, as in Dwarf Fortress.**
+
+- **A level is 3 m**, one storey, so that cellars and upper floors line up with the levels of the
+  land. The local map already stores the height of every tile (metres); a tile's level is worked out
+  from it, so the world's data and its fingerprint do not change.
+- **Ramps and cliffs** are worked out too: beside a tile one level higher, the ground is a ramp and
+  can be walked up; where the difference is two levels or more, it is a cliff, which blocks the way
+  or calls for a Climbing check. Gentle country becomes wide terraces; mountains, cliffs with ramps
+  between them.
+- **The view is the wanderer's own level.** Ground below, seen past a drop, is drawn darker for
+  each level down (up to three or four); ground above is drawn as solid earth or rock with an edge
+  line. `<` and `>` look up and down a level without moving.
+- **Sight follows height:** from high ground the wanderer sees over lower ground; rising ground
+  blocks sight.
+- **Saves:** the wanderer has a level (filled in from the ground beneath for older saves). Changes
+  made on other levels (digging, upper floors) will need the save to record a level for each
+  change, and an upgrade of older saves, when they come.
+- **Later:** cellars, upper floors, caves and dungeons as levels above and below, joined by the
+  stairs, ladders and openings already in the tile list.
+
+**Decided: trees across levels**, as in Dwarf Fortress's tilesets.
+
+- On the ground level a tree shows its **trunk and roots**; on the levels above, its **branches and
+  leaves**. Old trees may have trunks two tiles across.
+- A tree's shape is **worked out from its kind, its age and its position**, so nothing more is
+  saved.
+- On the ground level, the ground under the leaves is **lightly shaded**, so that a forest still
+  reads as a forest when only its trunks are on the wanderer's level.
+
+**Decided: roofs are an option** (in the game's options): *Always off*, *Always on*, or *On unless
+the wanderer is inside, or can see inside* (the default to try). **To work out when built:**
+buildings of more than one storey. A roof belongs to the top of a building, which may be several
+levels above the wanderer; a roof drawn over a two-storey house while the wanderer walks its
+ground floor, or a lower roof (a lean-to, a wing) under a higher one, need rules of their own, such
+as drawing only roofs on or just above the wanderer's level, and fading a roof by how far above it
+is.
+
+**Proposed: the art.** 16 × 16 tiles, in the manner of the classic pixel-art RPG packs for ground,
+water, crops, decorations, small objects and characters; trees (trunks, branches, leaves) and walls
+need art made for the top-down, level-by-level style, as packs drawn at a three-quarter angle do
+not fit it.
+
+**The plan.**
+
+1. **Tileset foundation:** several sheets, stand-ins for tiles without art, animated frames, the
+   decoration layer, sprites larger than a tile. *(Built.)*
+2. **Levels:** levels, ramps and cliffs from height; moving between levels and climbing; sight
+   across levels; drawing the levels below; looking up and down.
+3. **Ground blending within a level:** soft edges between kinds of ground (corner-based frames by
+   terrain group and drawing order), and an edge line where the level changes.
+4. **Trees across levels**, with the ground shaded under the leaves.
+5. **Top-down walls, doors and furniture.**
+6. **The character sprite**, with the way it faces.
+7. **Seasonal frames** (autumn leaves, snow), preferred to tinting where they exist.
+8. **Roofs**, with the option above.
+
 ## Open questions
 
 - Where cities switch to the city view, and how much of daily city life happens in menus rather

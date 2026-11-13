@@ -36,6 +36,13 @@ export function hash32(text: string): number {
   return h | 0;
 }
 
+/** A hash of a map position (and a salt), for choices that must stay the same at a place: variants, decorations. */
+export function hash2(x: number, y: number, salt = 0): number {
+  let h = Math.imul(x, 0x27d4eb2d) ^ Math.imul(y, 0x165667b1) ^ Math.imul(salt, 0x1b873593);
+  h = Math.imul(h ^ (h >>> 15), 0x2c1b3c6d);
+  return (h ^ (h >>> 12)) >>> 0;
+}
+
 /**
  * A stream of random numbers whose state is kept (and saved), so that a game replays the same:
  * the same save, the same rolls.

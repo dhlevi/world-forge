@@ -11,7 +11,7 @@
  */
 import { reactive } from 'vue';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
-import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
+import { GROUND_TILES, OBJECT_TILES, type Season } from '@worldforge/core/local/tiles';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Weather } from '@worldforge/core/weather/weather';
 import type { MessageDispatcher } from '../engine/messages';
@@ -111,7 +111,7 @@ export class PlaySession {
     weather: null as { when: string; wind: string; air: string; sun: string } | null,
   });
   /** How the local map should look now: the sky's colour, snow lying, the season, the light (game/renderer.ts). */
-  look = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
+  look: { sky: number; snowCm: number; season: Season; light: number } = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
   /** Rain or snow falling where the wanderer can see it (null: none, or indoors). */
   falling: Weather | null = null;
   /** Called when something on screen has changed (set by the view). */
