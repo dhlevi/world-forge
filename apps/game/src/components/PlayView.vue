@@ -256,7 +256,8 @@ onBeforeUnmount(() => {
         <div><b>Wait</b> . or 5</div>
         <div><b>Look</b> x, then move the cursor</div>
         <div><b>Zoom</b> + and -</div>
-        <div><b>Stairs</b> &lt; and &gt; on stairs or a ladder go up and down</div>
+        <div><b>Stairs</b> &lt; and &gt; on stairs or a ladder go up and down (and down a cave mouth, a dungeon's steps, a grate, or a well beside you)</div>
+        <div><b>Light</b> F: light a lantern, torch or candle from your pack, or put it out</div>
         <div><b>Levels</b> &lt; and &gt; elsewhere look up and down; walk into a rock face twice to climb it</div>
         <div><b>Roofs</b> Shift+R: shown unless you are inside, always, or never</div>
         <div><b>Travel map</b> T (and T or Z to come back)</div>

@@ -85,12 +85,15 @@ console.log(`Local hash ${(h >>> 0).toString(16).padStart(8, '0')}`);
   console.log(`Reachable from the start: ${((100 * landR) / land).toFixed(1)}% of open tiles, ${edgeR} of ${edge} open tiles on the area's edge`);
 }
 
-// Floors above and below the ground (buildings' upper storeys and cellars): every stair up met by
-// a stair down on the floor above, on the same tile (and so on down), and how much of the floors
-// can be walked to from their stairs. A stair that leads nowhere fails the run.
+// Floors above and below the ground (buildings' storeys and cellars; caves, dungeons and delves):
+// every way up meets a way down at the same tile on the nearest level above that has one there,
+// however many levels between (and the other way about), and how much of the floors can be walked
+// to from their ways. A way up leading nowhere fails the run (a way down may: a deep cave's way
+// into the Underworld, not laid out yet).
 {
   const S = 2 * R * CHUNK, M = 12;
-  const UP = new Set(['stairs_up', 'ladder_up']), DOWN = new Set(['stairs_down', 'ladder_down']);
+  const UP = new Set(['stairs_up', 'ladder_up', 'stairs_spiral']);
+  const DOWN = new Set(['stairs_down', 'ladder_down', 'stairs_spiral', 'dungeon_entrance', 'mine_entrance', 'cave_mouth', 'grate']);
   const surf = new Uint8Array(S * S), lev = new Int16Array(S * S);
   const floors = new Map<number, { g: Uint8Array; o: Uint8Array }>();
   for (const c of chunks) {
@@ -116,16 +119,28 @@ console.log(`Local hash ${(h >>> 0).toString(16).padStart(8, '0')}`);
     if (f && f.g[q]) return f.o[q];
     return lev[q] === z ? surf[q] : -1;
   };
-  const inner = (q: number) => q % S >= M && Math.floor(q / S) >= M && q % S < S - M && Math.floor(q / S) < S - M;
-  let stairs = 0, lost = 0, tiles = 0, reached = 0;
-  for (const z of new Set([...floors.keys(), ...Array.from(lev)])) for (let q = 0; q < S * S; q++) {
+  const nameAt = (q: number, z: number) => {
     const o = objAt(q, z);
-    if (o <= 0 || !inner(q)) continue;
-    const n = OBJECT_TILES[o].name;
+    return o < 0 ? '' : OBJECT_TILES[o].name;
+  };
+  /** Whether a way at (q, z) leads up (or down) to its way back. */
+  const meets = (q: number, z: number, up: boolean) => {
+    for (let n = 1; n <= 48; n++) if ((up ? DOWN : UP).has(nameAt(q, up ? z + n : z - n))) return true;
+    return false;
+  };
+  const inner = (q: number) => q % S >= M && Math.floor(q / S) >= M && q % S < S - M && Math.floor(q / S) < S - M;
+  let ways = 0, lostUp = 0, lostDown = 0, tiles = 0, reached = 0;
+  const zs = new Set([...floors.keys(), ...Array.from(lev)]);
+  for (const z of zs) for (let q = 0; q < S * S; q++) {
+    if (!inner(q)) continue;
+    const n = nameAt(q, z);
     if (!UP.has(n) && !DOWN.has(n)) continue;
-    stairs++;
-    const other = objAt(q, UP.has(n) ? z + 1 : z - 1);
-    if (other <= 0 || !(UP.has(n) ? DOWN : UP).has(OBJECT_TILES[other].name)) lost++;
+    ways++;
+    // A spiral stair goes both ways: lost only if it meets nothing either way.
+    if (n === 'stairs_spiral') {
+      if (!meets(q, z, true) && !meets(q, z, false)) lostUp++;
+    } else if (UP.has(n) && !meets(q, z, true)) lostUp++;
+    else if (DOWN.has(n) && !meets(q, z, false)) lostDown++;
   }
   for (const f of floors.values()) {
     const pass = (q: number) => f.g[q] > 0 && (OBJECT_TILES[f.o[q]].pass || !!OBJECT_TILES[f.o[q]].toggle);
@@ -141,13 +156,13 @@ console.log(`Local hash ${(h >>> 0).toString(16).padStart(8, '0')}`);
         st.push(n);
       }
     }
-    for (let q = 0; q < S * S; q++) if (inner(q) && f.g[q] && OBJECT_TILES[f.o[q]].pass) {
+    for (let q = 0; q < S * S; q++) if (inner(q) && f.g[q] && OBJECT_TILES[f.o[q]].pass && !GROUND_TILES[f.g[q]].water) {
       tiles++;
       if (seen[q]) reached++;
     }
   }
-  console.log(`Floors above and below the ground: ${floors.size} levels, ${tiles} open floor tiles, ${tiles ? ((100 * reached) / tiles).toFixed(1) : '100.0'}% reached from their stairs; ${stairs} stairs, ${lost} leading nowhere`);
-  if (lost) process.exitCode = 1;
+  console.log(`Floors above and below the ground: ${floors.size} levels, ${tiles} open floor tiles, ${tiles ? ((100 * reached) / tiles).toFixed(1) : '100.0'}% reached from their ways up and down; ${ways} ways up and down, ${lostUp} up and ${lostDown} down leading nowhere`);
+  if (lostUp) process.exitCode = 1;
 }
 
 const count = new Map<string, number>();

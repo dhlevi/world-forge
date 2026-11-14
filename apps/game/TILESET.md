@@ -105,6 +105,7 @@ Fills the whole tile. Variants are picked at random per position, so they should
 | `mud` | Wet dark mud with puddles (mangrove, marsh edge). | walk | 3 variants | #6b5a3e |
 | `marsh` | Waterlogged ground, sedge and standing water. | walk | 3 variants | #5d7451 |
 | `salt` | White salt crust in polygons. | walk | 2 variants | #e8e4d8 |
+| `cave_floor` | Uneven natural rock underfoot, grit in the hollows (caves, mines, grottoes). | walk | 3 variants | #5e574c |
 
 ## Ground: water
 
@@ -174,6 +175,13 @@ Seen from straight above, as in RimWorld: the top of the wall fills the tile. Al
 | `gate` | Heavy gate in a town wall or fence, closed: its leaves across the opening, the way the wall runs. | blocks, hides, opens: gate_open | join (16), group townwall | `+` #8a6a48 |
 | `gate_open` | The gate swung open: its leaves folded back against the posts. | walk, opens: gate | join (16), group townwall | `'` #8a6a48 |
 | `ruin_wall` | A broken stub of old wall. | blocks, hides | join (16), group wall | `#` #7a766c |
+| `door_locked` | A heavy door, iron-bound, a lock plate on it (as a door, closed). | blocks, hides, opens: door_open | join (16), group wall | `+` #8a5a3a |
+| `door_secret` | A hidden door: drawn exactly as the wall round it. | blocks, hides, opens: door_open | join (16), group wall | `#` #8c8780 |
+| `portcullis` | An iron grille across the way, lowered: the way the wall runs, the floor showing between its bars. | blocks, opens: portcullis_up | join (16), group wall | `#` #5a5550 |
+| `portcullis_up` | The grille drawn up: only its lower spikes show in the arch. | walk, opens: portcullis | join (16), group wall | `'` #5a5550 |
+| `bars` | A barred gate in a cell wall, shut. | blocks, opens: bars_open | join (16), group wall | `#` #6a6560 |
+| `bars_open` | The barred gate swung open. | walk, opens: bars | join (16), group wall | `'` #6a6560 |
+| `wall_torch` | A burning torch in an iron sconce on a stone wall (the wall drawn as wall_stone, the flame over it); it lights the room. | blocks, hides | join (16), group wall | `*` #f0a040 |
 
 ## Stairs and ways down
 
@@ -293,6 +301,18 @@ From the floor plans. Over the floor, transparent background, seen from straight
 | `windbreak` | A low wall of woven branches against the wind. | blocks | 1 | `#` #7a6a45 |
 | `lean_to` | A slope of branches and bark to lie under. | walk | 1 | `^` #7a6a45 |
 | `snare` | A wire noose set on an animal run. | walk | 1 | `,` #b0a080 |
+| `rock_wall` | The natural rock face round a cave or a mine gallery, rough and uneven. | blocks, hides | join (16), group rock | `#` #4a443c |
+| `grate` | An iron grate in the street over a ladder down to the sewers (a way down). | walk | 1 | `#` #5a5a5a |
+| `pillar` | A round stone pillar. | blocks, hides | 1 | `O` #9a948a |
+| `statue` | A stone statue on a plinth, seen from above. | blocks | 1 | `&` #b0aca0 |
+| `brazier` | An iron bowl of burning coals on legs. | blocks | 1 | `*` #e08a30 |
+| `bones` | Scattered old bones and a skull. | walk | 2 variants | `%` #d8d0b8 |
+| `urn` | A large clay urn. | blocks | 1 | `u` #a08060 |
+| `throne` | A great carved stone chair. | blocks | 1 | `h` #a0802a |
+| `cart` | A small handcart or mine cart. | blocks | 1 | `n` #8a6a48 |
+| `support` | A timber prop holding up the gallery roof. | walk | 1 | `\|` #8a6a40 |
+| `ore` | Glinting ore in the rock, a pick mark beside it. | blocks | 1 | `*` #c8a050 |
+| `pit` | A dark hole in the floor. | blocks | 1 | `o` #141210 |
 
 ## Ground edges
 
@@ -381,4 +401,4 @@ Small things scattered over open ground with no object on it, drawn only: they b
 
 ## Totals
 
-43 ground tiles, 109 objects and 11 decorations: 1105 frames in all with every variant and join drawn.
+44 ground tiles, 128 objects and 11 decorations: 1248 frames in all with every variant and join drawn.

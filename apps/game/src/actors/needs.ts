@@ -198,7 +198,8 @@ export class Needs extends Component {
       d.reserveKcal = 0;
       d.nourish = Math.max(0, d.nourish - deficit / 120);
     }
-    if (d.reserveKcal > 1000 && d.nourish < 100) d.nourish = Math.min(100, d.nourish + 0.5 * h);
+    // Nourishment mends while the body is well fed (a few points an hour).
+    if (d.reserveKcal > 800 && d.nourish < 100) d.nourish = Math.min(100, d.nourish + 1.5 * h);
 
     // ---- Water.
     const hot = d.heat > 15 ? 1 + (d.heat - 15) / 40 : 1;
@@ -212,7 +213,8 @@ export class Needs extends Component {
       d.hydrationL = 0;
       d.hydrated = Math.max(0, d.hydrated - short * 30);
     }
-    if (d.hydrationL > 1.2 && d.hydrated < 100) d.hydrated = Math.min(100, d.hydrated + 4 * h);
+    // Dehydration mends within an hour or two of drinking enough.
+    if (d.hydrationL > 1.0 && d.hydrated < 100) d.hydrated = Math.min(100, d.hydrated + 12 * h);
 
     // ---- Sleep.
     if (asleep) {
@@ -259,9 +261,15 @@ export class Needs extends Component {
   words(): Record<NeedId, string> {
     const d = this.d;
     const cap = this.stomachCap();
-    const hunger = d.nourish <= 0 ? 'Starving' : d.nourish < 25 ? 'Starving' : d.nourish < 50 ? 'Malnourished' : d.nourish < 75 ? 'Underfed'
-      : d.reserveKcal <= 0 ? 'Ravenous' : d.reserveKcal < 300 ? 'Hungry' : d.stomachKcal > cap.kcal * 0.8 ? 'Full' : '';
-    const thirst = d.hydrated < 40 ? 'Badly dehydrated' : d.hydrated < 75 ? 'Dehydrated' : d.hydrationL <= 0 ? 'Parched' : d.hydrationL < 0.5 ? 'Thirsty' : '';
+    // A full stomach comes first: there is no eating or drinking more until it settles, whatever
+    // the body still lacks (that shows on the bar and the sheet, and mends as the meal is taken up).
+    // Food and water on their way count against hunger and thirst.
+    const food = d.reserveKcal + d.stomachKcal, water = d.hydrationL + d.stomachL;
+    const hunger = d.stomachKcal >= cap.kcal * 0.8 ? 'Full'
+      : d.nourish < 25 ? 'Starving' : d.nourish < 50 ? 'Malnourished' : d.nourish < 75 ? 'Underfed'
+        : food <= 0 ? 'Ravenous' : food < 300 ? 'Hungry' : '';
+    const thirst = d.stomachL >= cap.litres * 0.8 ? 'Slaked'
+      : d.hydrated < 40 ? 'Badly dehydrated' : d.hydrated < 75 ? 'Dehydrated' : water <= 0 ? 'Parched' : water < 0.5 ? 'Thirsty' : '';
     const t = this.tiredness();
     const sleep = t >= 125 ? 'Collapsing' : t >= 100 ? 'Exhausted' : t >= 85 ? 'Very tired' : t >= 65 ? 'Tired' : '';
     const P = this.actor?.get(Pools)?.d;
@@ -299,7 +307,7 @@ export class Needs extends Component {
 
   private static readonly ORDER: Record<NeedId, string[]> = {
     hunger: ['', 'Full', 'Hungry', 'Ravenous', 'Underfed', 'Malnourished', 'Starving'],
-    thirst: ['', 'Thirsty', 'Parched', 'Dehydrated', 'Badly dehydrated'],
+    thirst: ['', 'Slaked', 'Thirsty', 'Parched', 'Dehydrated', 'Badly dehydrated'],
     sleep: ['', 'Tired', 'Very tired', 'Exhausted', 'Collapsing'],
     stamina: ['', 'Winded', 'Weary', 'Spent'],
     heat: ['', 'Warm', 'Chilly', 'Hot', 'Shivering', 'Overheating', 'Hypothermic'],
@@ -307,7 +315,7 @@ export class Needs extends Component {
   };
 
   private static readonly TEXT: Record<string, string> = {
-    Full: 'You are full.', Hungry: 'You are hungry.', Ravenous: 'You are ravenous; your stomach aches.', Underfed: 'You are growing thin from too little food.',
+    Full: 'You are full: no more food for now.', Slaked: 'You have drunk your fill for now.', Hungry: 'You are hungry.', Ravenous: 'You are ravenous; your stomach aches.', Underfed: 'You are growing thin from too little food.',
     Malnourished: 'You are weak from hunger.', Starving: 'You are starving.', Thirsty: 'You are thirsty.', Parched: 'Your mouth is parched.',
     Dehydrated: 'Your head aches with thirst.', 'Badly dehydrated': 'You are dizzy and confused with thirst.', Tired: 'You are tired.', 'Very tired': 'You are very tired.',
     Exhausted: 'You are exhausted; you need sleep.', Collapsing: 'You can barely stay on your feet.', Winded: 'You are out of breath.', Weary: 'Your legs are heavy.',
@@ -325,7 +333,7 @@ export class Needs extends Component {
       // Waking a little less tired is not yet rested: say so only when it is true.
       if (k === 'sleep' && !now && this.d.fatigue > 20) continue;
       const order = Needs.ORDER[k];
-      const worse = order.indexOf(now) > order.indexOf(before) && now !== 'Full' && now !== 'Warm';
+      const worse = order.indexOf(now) > order.indexOf(before) && now !== 'Full' && now !== 'Slaked' && now !== 'Warm';
       this.d.said[k] = now;
       this.notes.push({ need: k, word: now, worse, text: now ? Needs.TEXT[now] ?? now : k === 'heat' ? 'You are comfortable again.' : k === 'sleep' ? 'You feel rested.' : k === 'stamina' ? 'You have your strength back.' : k === 'hunger' ? 'Your hunger is gone.' : k === 'wet' ? 'You are dry again.' : 'Your thirst is gone.' });
       // Warm and dry after a soaking: a small relief.

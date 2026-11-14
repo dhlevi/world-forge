@@ -77,8 +77,8 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
         <div v-if="pools" class="kv"><span>Physical</span><span>{{ Math.round(pools.physBurst.value) }}/{{ pools.physBurst.max }} burst, {{ Math.round(pools.physDay.value) }}/{{ pools.physDay.max }} day</span></div>
         <template v-if="needs">
           <div class="cc-label">Needs</div>
-          <div class="kv"><span>Food</span><span>{{ Math.round(needs.d.stomachKcal) }} kcal eaten, {{ Math.round(needs.d.reserveKcal) }} in reserve; nourishment {{ Math.round(needs.d.nourish) }}</span></div>
-          <div class="kv"><span>Water</span><span>{{ needs.d.stomachL.toFixed(2) }} L drunk, {{ needs.d.hydrationL.toFixed(2) }} L in the body; hydration {{ Math.round(needs.d.hydrated) }}</span></div>
+          <div class="kv"><span>Food</span><span>{{ Math.round(needs.d.stomachKcal) }} kcal in the stomach (room for {{ Math.round(needs.room().kcal) }} more), {{ Math.round(needs.d.reserveKcal) }} taken up; nourishment {{ Math.round(needs.d.nourish) }}/100{{ needs.d.nourish < 100 ? (needs.d.reserveKcal > 800 ? ', mending' : ', mends while well fed') : '' }}</span></div>
+          <div class="kv"><span>Water</span><span>{{ needs.d.stomachL.toFixed(2) }} L in the stomach (room for {{ needs.room().litres.toFixed(2) }} more), {{ needs.d.hydrationL.toFixed(2) }} L taken up; hydration {{ Math.round(needs.d.hydrated) }}/100{{ needs.d.hydrated < 100 ? (needs.d.hydrationL > 1 ? ', mending' : ', mends once you have drunk enough') : '' }}</span></div>
           <div class="kv"><span>Fatigue</span><span>{{ Math.round(needs.d.fatigue) }}<span v-if="needs.d.debt >= 0.5">, {{ needs.d.debt.toFixed(1) }} h of sleep owed</span></span></div>
           <div class="kv"><span>Warmth</span><span>{{ Math.round(needs.d.heat) }} (dressed for {{ Math.round(needs.comfort().low) }} to {{ Math.round(needs.comfort().high) }}°C); air {{ Math.round(needs.d.airC) }}°C</span></div>
           <div class="kv"><span>Slowed</span><span>{{ needs.slow() > 1.001 ? `by ${Math.round((needs.slow() - 1) * 100)}%` : 'not at all' }}</span></div>

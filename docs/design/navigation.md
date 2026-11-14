@@ -443,9 +443,18 @@ not fit it.
     wanderer's floor is drawn as a slice, with the ground below seen darker through the windows
     and the earth all round a cellar; roofs give way to the floor within; floors not explored are
     dark inside their outer walls. Saves keep the floor, and the changes and things on each.)*
-11. **Caves, dungeons and delves on the same layers** (next): the dungeon plans (5 ft squares, the
-    tile's size), caves and dwarven delves placed under the land at their true positions, reached
-    from their entrances by the same stairs, ladders and shafts.
+11. **Caves, dungeons and delves on the same layers** (local-map version 7). *(Built: every
+    dungeon kind and every cave laid out on the tile grid at its true place below the land, two
+    levels under the lowest ground over it (three under a town, clear of the cellars), its levels
+    a level apart. A way in on the surface meets the way up below at the same tile however deep;
+    the game finds the nearest level with the way back. Walls are whole tiles of masonry or rock;
+    doors stand in frames; a piece in the way of a room is taken away. Towers stand on the land as
+    buildings (ground floor, storeys, a walkable roof, a cellar); a wild ruin's ground is drawn as
+    broken walls; prisons and strongholds keep their plans' buildings above, their levels below.
+    Delves are laid out whole: gate halls, a great avenue east, the districts north and south of
+    it joined by tunnels at one depth, the deeps below. Below the land no daylight reaches.)*
+12. **The Underworld** (next): the great caverns that deep caves and delves' deep roads lead down
+    to, with their cities, joined across the world.
 
 ## Open questions
 

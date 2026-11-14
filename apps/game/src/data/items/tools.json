@@ -210,6 +210,19 @@
       "sold": ["market", "store"]
     },
     {
+      "id": "lantern",
+      "name": "lantern",
+      "kind": "light",
+      "weight": 1,
+      "bulk": 1.5,
+      "size": "small",
+      "value": 25,
+      "uses": 10,
+      "useWord": "hours",
+      "sold": ["market", "store"],
+      "about": "A horn-paned lantern with a wick and oil enough for a long night, steadier than a torch and kinder to the hand."
+    },
+    {
       "id": "candle",
       "name": "candle",
       "kind": "light",

@@ -42,8 +42,9 @@ export interface Outcome {
 export function eatPortion(a: Actor, inv: Inventory, it: Item): Outcome {
   const food = defOf(it).food!;
   const n = a.need(Needs);
-  const took = n.eat(food.kcal * (food.raw ? RAW_FACTOR : 1), food.water ?? 0);
-  if (took < 20) return { text: 'You are too full to eat.', seconds: 0, ok: false };
+  const kcal = food.kcal * (food.raw ? RAW_FACTOR : 1);
+  if (n.room().kcal < Math.min(50, kcal)) return { text: 'You are too full to eat; give your stomach time to settle.', seconds: 0, ok: false };
+  n.eat(kcal, food.water ?? 0);
   usePortion(inv, it);
   const meat = it.def === 'rabbit';
   return {

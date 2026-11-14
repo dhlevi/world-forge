@@ -9,6 +9,7 @@ import { makeItem } from '../src/actors/items/item';
 import { Needs } from '../src/actors/needs';
 import { MessageDispatcher } from '../src/engine/messages';
 import { Cast } from '../src/actors/cast';
+import { eatPortion } from '../src/game/tasks';
 
 let failures = 0;
 const ok = (cond: boolean, what: string) => {
@@ -96,6 +97,36 @@ ok(slept.hours[23].fatigue < slept.hours[15].fatigue - 40, 'a night in a bed tak
   ok(rain['with no cloak'].wet > rain['in a wool cloak'].wet && rain['in a wool cloak'].wet > rain['in an oiled cloak'].wet, 'a cloak keeps off rain, an oiled one most of it');
   ok(rain['with no cloak'].felt < rain['in a wool cloak'].felt, 'soaked and in the wind, the cold bites harder');
   ok(Object.values(rain).every((r) => (r.dried ?? 100) < 10), 'a fire indoors dries one out');
+}
+
+// ---- Eating and drinking, as the screen says them --------------------------------------------------
+{
+  const { cast, n, a } = person();
+  // Hungry, with an empty stomach: a handful of raw mushrooms (15 kcal) can be eaten.
+  n.d.stomachKcal = 0;
+  n.d.reserveKcal = 10;
+  ok(n.words().hunger === 'Hungry' && n.room().kcal > 1000, `hungry with an empty stomach ("${n.words().hunger}", room for ${Math.round(n.room().kcal)} kcal)`);
+  const inv = a.get(Inventory)!;
+  const mush = makeItem('mushrooms', { qty: 3 });
+  inv.stow(mush);
+  const o = eatPortion(a, inv, mush);
+  ok(o.ok, `a small raw food can be eaten when hungry ("${o.text}")`);
+  // Eaten to the full while the reserve is empty: full, not ravenous, and the screen agrees with the refusal.
+  n.d.reserveKcal = 0;
+  n.eat(5000);
+  const bread = makeItem('bread');
+  inv.stow(bread);
+  const o2 = eatPortion(a, inv, bread);
+  ok(n.words().hunger === 'Full' && !o2.ok, `eaten to the full: "${n.words().hunger}", and more is refused ("${o2.text}")`);
+  // Dehydrated, then drinking: slaked while the stomach is full, the dehydration gone within a few hours.
+  n.d.hydrated = 60;
+  n.d.hydrationL = 0.4;
+  n.d.stomachL = 0;
+  ok(n.words().thirst === 'Dehydrated' && n.room().litres > 1, 'dehydrated, with room to drink');
+  n.drink(5);
+  ok(n.words().thirst === 'Slaked', `having drunk its fill: "${n.words().thirst}", not dehydrated while unable to drink more`);
+  for (let h = 1; h <= 3; h++) cast.clock(h * 3600, { activity: 'rest', ambientC: 15 });
+  ok(n.d.hydrated >= 75 && n.words().thirst !== 'Dehydrated', `three hours after drinking its fill, no longer dehydrated (hydration ${Math.round(n.d.hydrated)})`);
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll passed');

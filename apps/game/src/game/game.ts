@@ -37,7 +37,7 @@ export interface Climb {
 /** How far the wanderer sees by day, in tiles. */
 export const SIGHT = 30;
 /** Things that give light, and how far it reaches (tiles). */
-export const LIGHTS: Record<string, number> = { campfire: 7, hearth: 6, forge: 6, oven: 3, candle: 3 };
+export const LIGHTS: Record<string, number> = { campfire: 7, hearth: 6, forge: 6, oven: 3, candle: 3, brazier: 5, wall_torch: 5 };
 
 export interface Hud {
   place: string;
@@ -52,9 +52,22 @@ export interface Hud {
 }
 
 const vkey = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);
-/** Stairs and ladders, by the way they lead. */
+/**
+ * Ways up and down, by the way they lead: stairs and ladders, and the ways down into caves,
+ * dungeons and sewers from the surface. A way up always meets a way down at the same tile above
+ * (local/under.ts), however many levels lie between.
+ */
 export const STAIRS_UP = new Set(['stairs_up', 'ladder_up', 'stairs_spiral']);
-export const STAIRS_DOWN = new Set(['stairs_down', 'ladder_down', 'stairs_spiral']);
+export const STAIRS_DOWN = new Set(['stairs_down', 'ladder_down', 'stairs_spiral', 'dungeon_entrance', 'mine_entrance', 'cave_mouth', 'grate', 'well']);
+/** Ways in from the land, pointed out when first seen (and marked on the map). */
+export const WAYS_IN = new Set(['dungeon_entrance', 'mine_entrance', 'cave_mouth']);
+/** How far up or down (levels) a way may lead. */
+const WAY_REACH = 48;
+/** A way down, in words (for "You go down ..."). */
+const WAY_WORDS: Record<string, string> = {
+  stairs_up: 'the stairs', stairs_down: 'the stairs', stairs_spiral: 'the spiral stair', ladder_up: 'the ladder', ladder_down: 'the ladder',
+  dungeon_entrance: 'the steps', mine_entrance: 'the mine shaft', cave_mouth: 'the cave passage', grate: 'the ladder under the grate', well: 'the well rope',
+};
 const DIRS8: [number, number][] = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
 
 export class Game {
@@ -120,6 +133,8 @@ export class Game {
   ambient = { light: 1, range: SIGHT };
   /** How far a light the wanderer carries reaches (tiles; 0 none). */
   carriedLight: () => number = () => 0;
+  /** Ways in (cave mouths, dungeons' steps, mine shafts) already pointed out, by tile. */
+  private noticed = new Set<number>();
   /** Light on each visible tile (negative: firelight). */
   private lit = new Map<number, number>();
 
@@ -189,6 +204,7 @@ export class Game {
       return h;
     };
     const z = this.z;
+    const dark = z !== null && z < this.map.level(this.px, this.py);
     for (const [x, y] of cand) {
       // On the ground, sight follows its height; on a floor, the floor is level.
       if (z === null && !overGround(this.px, this.py, x, y, elevAt)) continue;
@@ -198,9 +214,21 @@ export class Game {
         const e = Math.hypot(x - sx, y - sy);
         if (e <= r) fire = Math.max(fire, 1 - (e / r) * 0.7);
       }
-      const amb = d <= range ? this.ambient.light : 0;
+      // Below the land no daylight reaches: only fires and what the wanderer carries.
+      const amb = d <= range && !dark ? this.ambient.light : 0;
       if (amb <= 0 && fire <= 0 && d > 1.5) continue;
       this.visible.add(vkey(x, y));
+      // A way in seen for the first time is pointed out, with where it lies.
+      if (z === null && !this.noticed.has(vkey(x, y))) {
+        const o = OBJECT_TILES[this.map.objectAt(x, y, null)];
+        if (o && WAYS_IN.has(o.name)) {
+          this.noticed.add(vkey(x, y));
+          const name = this.map.tileAt(x, y, null)?.area ?? '';
+          const m = Math.round(Math.hypot(x - this.px, y - this.py) * TILE_M);
+          const where = m < 1 ? 'at your feet' : `${m} m ${compassWord(bearing(x - this.px, this.py - y))}`;
+          this.say(`You see ${o.look}${name && !name.includes(':') ? ` (${name})` : ''}, ${where}${m < 1 ? '; > to go in' : ''}.`);
+        }
+      }
       // From a floor, past its edge (through a window), the ground below is what is seen.
       this.map.markSeenAt(x, y, z !== null && !this.map.hasFloor(x, y, z) ? null : z);
       this.lit.set(vkey(x, y), fire > amb ? -fire : Math.max(amb, 0.05));
@@ -248,7 +276,9 @@ export class Game {
       if (obj.toggle) return this.toggle(nx, ny, true, quiet);
       if (!quiet) {
         const g = GROUND_TILES[this.map.ground(nx, ny)];
-        this.say(`${cap(obj.name !== 'none' ? obj.look : g.look)} blocks the way.`);
+        // Off the edge of a floor: the earth below the land, the open air above it.
+        if (this.z !== null && !this.map.hasFloor(nx, ny, this.z)) this.say(this.z < this.map.level(nx, ny) ? 'Solid rock blocks the way.' : 'There is only open air there.');
+        else this.say(`${cap(obj.name !== 'none' ? obj.look : g.look)} blocks the way.`);
       }
       return false;
     }
@@ -350,32 +380,66 @@ export class Game {
     return true;
   }
 
-  /** The stairs or ladder underfoot that lead up (or down), if any. */
-  stairsHere(up: boolean): TileDef | null {
+  /** The way up (or down) underfoot, or a well beside the wanderer to climb down: its tile and where. */
+  wayHere(up: boolean): { def: TileDef; x: number; y: number } | null {
+    const ways = up ? STAIRS_UP : STAIRS_DOWN;
     const o = OBJECT_TILES[this.map.object(this.px, this.py)];
-    return o && (up ? STAIRS_UP : STAIRS_DOWN).has(o.name) ? o : null;
+    if (o && ways.has(o.name) && o.name !== 'well') return { def: o, x: this.px, y: this.py };
+    // A well's shaft goes down from the ground only (a well in a cistern below is only a well).
+    if (!up && this.z === null) for (const [dx, dy] of DIRS8) {
+      const w = OBJECT_TILES[this.map.object(this.px + dx, this.py + dy)];
+      if (w?.name === 'well' && !w.pass) return { def: w, x: this.px + dx, y: this.py + dy };
+    }
+    return null;
+  }
+
+  /** The stairs or ladder underfoot (or a well beside) that lead up (or down), if any. */
+  stairsHere(up: boolean): TileDef | null {
+    return this.wayHere(up)?.def ?? null;
   }
 
   /**
-   * Goes up (or down) the stairs or ladder underfoot to the floor above (or below). Coming down
-   * to the ground's own level from a floor puts the wanderer on the ground. Returns whether the
-   * wanderer went (false if there are no such stairs, or they lead nowhere yet).
+   * Goes up (or down) the way underfoot (or the well beside) to the level it leads to: the nearest
+   * above (or below) whose tile there is the way back down (or up), on a floor or on the ground,
+   * however many levels lie between (a deep cave's passage, a sewer's ladder). Returns whether
+   * the wanderer went (false if there is no such way, or it leads nowhere yet).
    */
   climbStairs(up: boolean): boolean {
-    const o = this.stairsHere(up);
-    if (!o) return false;
-    const to = this.level + (up ? 1 : -1);
-    const onGround = this.map.level(this.px, this.py) === to && !this.map.hasFloor(this.px, this.py, to);
-    if (!onGround && !this.map.hasFloor(this.px, this.py, to)) {
-      this.say(this.map.loaded(this.px, this.py) ? `The ${o.name.startsWith('ladder') ? 'ladder' : 'stairs'} lead nowhere.` : 'The way there is still taking shape.');
+    const way = this.wayHere(up);
+    if (!way) return false;
+    const { x, y, def } = way;
+    const back = up ? STAIRS_DOWN : STAIRS_UP;
+    let to: number | null | undefined;
+    for (let n = 1; n <= WAY_REACH && to === undefined; n++) {
+      const t = this.level + (up ? n : -n);
+      const z = this.map.hasFloor(x, y, t) ? t : this.map.level(x, y) === t ? null : undefined;
+      if (z === undefined) continue;
+      const o = OBJECT_TILES[this.map.objectAt(x, y, z)];
+      if (o && back.has(o.name)) to = z;
+    }
+    if (to === undefined) {
+      this.say(this.map.loaded(x, y) ? `${cap(WAY_WORDS[def.name] ?? 'the way')} lead${WAY_WORDS[def.name]?.endsWith('s') ? '' : 's'} nowhere yet.` : 'The way there is still taking shape.');
       return false;
     }
-    this.setFloor(onGround ? null : to);
+    this.setFloor(to);
+    this.px = x;
+    this.py = y;
+    // Arriving on a way that cannot be stood on (a well): beside it.
+    if (!this.map.passable(x, y)) {
+      for (const [dx, dy] of DIRS8) if (this.map.passable(x + dx, y + dy)) {
+        this.px = x + dx;
+        this.py = y + dy;
+        break;
+      }
+    }
     this.time += STAIRS_S * this.loadSlow();
     this.activity = 'walk';
     this.steps++;
-    const what = o.name.startsWith('ladder') ? 'ladder' : 'stairs';
-    this.say(`You ${up ? 'climb' : 'go down'} the ${what} to ${this.floorWords()}.`);
+    // A building's floors by name; a cave's or a dungeon's places by their own.
+    const fw = this.floorWords(), area = this.areaAt(this.px, this.py);
+    const dest = /floor|cellar|basement|attic/.test(fw) ? ` to ${fw}` : '';
+    this.say(`You ${up ? 'climb' : 'go down'} ${WAY_WORDS[def.name] ?? 'the way'}${dest}.`);
+    if (area && !dest) this.say(`${cap(area)}.`);
     return true;
   }
 
@@ -386,7 +450,7 @@ export class Game {
     const m = /, ([^:,]+):/.exec(area) ?? /, ([^:,]+)$/.exec(area);
     if (this.z !== null && m) return `the ${m[1]}`;
     if (this.z === null) return GROUND_TILES[this.map.ground(this.px, this.py)]?.name.startsWith('floor_') ? 'the ground floor' : 'the ground';
-    return this.z > this.map.level(this.px, this.py) ? 'the floor above' : 'the floor below';
+    return '';
   }
 
   /**

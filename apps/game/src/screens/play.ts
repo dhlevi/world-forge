@@ -77,6 +77,11 @@ export class PlayScreen extends Screen {
       this.showCamp();
       return true;
     }
+    // A light: a lantern, torch or candle lit from the pack, or the one held put out.
+    if (e.code === 'KeyF' && !e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
+      this.session.toggleLight();
+      return true;
+    }
     if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player) {
       this.showInventory();
       return true;

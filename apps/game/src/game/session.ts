@@ -85,6 +85,9 @@ const AUTOSAVE_MS = 3 * 60 * 1000;
 
 const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
+/** How far each light held reaches (tiles). */
+const LIGHT_REACH: Record<string, number> = { torch: 7, lantern: 6, candle: 3 };
+
 export class PlaySession {
   readonly cast: Cast;
   readonly map: GameMap;
@@ -172,7 +175,7 @@ export class PlaySession {
     game.loadSlow = () => this.invSlow() * (this.needs()?.slow() ?? 1) * this.groundSlow();
     game.carriedLight = () => {
       const it = this.heldLight();
-      return it ? (it.def === 'torch' ? 7 : 3) : 0;
+      return it ? LIGHT_REACH[it.def] ?? 3 : 0;
     };
     game.onTime = (t) => this.tick(t);
     game.climb = (metres, up) => this.practice.climb(metres, up, this.invSlow());
@@ -282,13 +285,51 @@ export class PlaySession {
 
   private indoors(): boolean {
     const g = this.game;
+    // On a floor above or below the ground (a storey, a cellar, a cave, a dungeon): under cover.
+    if (g.z !== null) return true;
     return GROUND_TILES[g.map.ground(g.px, g.py)]?.name.startsWith('floor_') ?? false;
   }
 
-  /** A torch or candle held, still burning. */
+  /**
+   * Lights a lantern, a torch or a candle from what is carried (into a free hand), or puts out the
+   * one held and puts it away (F).
+   */
+  toggleLight(): void {
+    const g = this.game, inv = this.player?.get(Inventory);
+    if (!inv) return;
+    const held = this.heldLight();
+    if (held) {
+      const why = inv.stow(held);
+      g.say(why ? `You cannot put the ${held.def} away: ${why}.` : `You put out the ${held.def} and put it away.`);
+      g.refresh();
+      return;
+    }
+    const best = ['lantern', 'torch', 'candle'].map((id) => inv.d.items.find((i) => i.def === id && (i.uses ?? 1) > 0 && i.loc?.at !== 'hand')).find(Boolean);
+    if (!best) {
+      g.say('You have nothing to light: no torch, lantern or candle that will burn.');
+      return;
+    }
+    const h = inv.hands();
+    const hand = h.both ? null : !h.right ? 'right' : !h.left ? 'left' : null;
+    if (!hand) {
+      g.say('Your hands are full.');
+      return;
+    }
+    const it = best.qty > 1 ? inv.split(best.uid, 1) ?? best : best;
+    const why = inv.put(it, { at: 'hand', hand });
+    if (why) {
+      g.say(`You cannot take the ${it.def} in hand: ${why}.`);
+      return;
+    }
+    g.time += 10;
+    g.say(`You light ${it.def === 'lantern' ? 'the lantern' : `a ${it.def}`}.`);
+    g.refresh();
+  }
+
+  /** A torch, lantern or candle held, still burning. */
   private heldLight(): Item | undefined {
     const h = this.player?.get(Inventory)?.hands();
-    return [h?.left, h?.right, h?.both].find((i) => i && (i.def === 'torch' || i.def === 'candle') && (i.uses ?? 1) > 0);
+    return [h?.left, h?.right, h?.both].find((i) => i && i.def in LIGHT_REACH && (i.uses ?? 1) > 0);
   }
 
   /** Name, age and needs for the panel, at a game time. */
@@ -416,14 +457,14 @@ export class PlaySession {
       travel.stop();
       game.say(w.kind === 'heavy snow' ? 'The snow is too thick to go on in; you stop.' : 'The storm is too fierce to travel in; you stop and take what shelter you can.');
     }
-    // A torch held by night burns down.
+    // A torch held by night, or below the land, burns down.
     const lamp = this.heldLight();
-    if (lamp && s.light < 0.5) {
+    if (lamp && (s.light < 0.5 || (game.z !== null && game.z < game.map.level(game.px, game.py)))) {
       this.torchS += dt;
       while (this.torchS >= 3600 && (lamp.uses ?? 0) > 0) {
         this.torchS -= 3600;
         lamp.uses = (lamp.uses ?? 1) - 1;
-        if (lamp.uses <= 0) game.say(`Your ${lamp.def === 'torch' ? 'torch gutters out' : 'candle burns down'}.`);
+        if (lamp.uses <= 0) game.say(`Your ${lamp.def === 'torch' ? 'torch gutters out' : lamp.def === 'lantern' ? 'lantern burns dry' : 'candle burns down'}.`);
       }
     }
     // Skills at work: swimming, hard going, wear on the feet (game/practice.ts).

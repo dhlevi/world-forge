@@ -29,7 +29,7 @@
  * Floors above and below the ground (game/map.ts: upper storeys, cellars) are drawn in a slice
  * at their level: the floor the wanderer stands on is always drawn as a slice, with the ground
  * below seen darker through the open air (out of the windows). A floor not yet explored is
- * dark inside its walls.
+ * dark inside its outer walls; below the land (cellars, caves, dungeons), it is only the earth.
  *
  * Trees stand across levels (game/trees.ts): on the surface a tree is its trunk and roots, with
  * the ground under its leaves in shade; in a slice above the ground, its trunk, branches and
@@ -51,7 +51,7 @@ import { levelOf, stepBetween } from './levels';
 import { covers, roofPlane, type Roof } from '@worldforge/core/local/roofs';
 import type { RoofMode } from './roofs-mode';
 import { TERRAIN_OF, blendsAt } from './terrain';
-import type { Game } from './game';
+import { WAYS_IN, type Game } from './game';
 
 const REMEMBERED = 0x6a6e82;
 /** How much of a roof shows over the inside of a building seen through a door or window. */
@@ -124,6 +124,8 @@ export class Renderer {
   /** How the wanderer stands, and where (tile pixels), for the ticker. */
   private me = { x: 0, y: 0, facing: 's' as Facing, flip: false, standing: null as Look | null, walking: null as Look | null };
   private cursor = new Graphics();
+  /** Rings round the ways in from the land (cave mouths, dungeons' steps) seen, so they stand out. */
+  private marks = new Graphics();
   /** Lines where the level changes. */
   private edges = new Graphics();
   /** Shadows cast by walls and other tall things on the ground to their south. */
@@ -148,7 +150,7 @@ export class Renderer {
   async init(el: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: el, background: '#07080b', antialias: false, autoDensity: true, resolution: window.devicePixelRatio || 1 });
     el.appendChild(this.app.canvas);
-    this.app.stage.addChild(this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.cursor);
+    this.app.stage.addChild(this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.marks, this.cursor);
     this.solidTex = this.solidTexture();
     this.objects.addChild(this.player);
     this.app.ticker.add(this.animate);
@@ -188,7 +190,7 @@ export class Renderer {
     }
     // Behind by what is left of the step: the map seems to move under the wanderer.
     const left = this.slide ? 1 - t : 0, ox = (this.slide?.dx ?? 0) * left * T, oy = (this.slide?.dy ?? 0) * left * T;
-    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.cursor]) {
+    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.marks, this.cursor]) {
       c.x = (ox - T) * z;
       c.y = (oy - T) * z;
     }
@@ -455,6 +457,15 @@ export class Renderer {
       g.y = Math.floor(i / this.cols) * TILE_PX;
       g.tint = UNEXPLORED;
       g.visible = true;
+      // Below the land, what has not been found is only the earth round it.
+      if (z < game.map.level(tx, ty)) {
+        g.tint = mul(light, EARTH);
+        o.visible = false;
+        // Not drawn as a level: no line at its edge, no shadow, to give its shape away.
+        levels[i] = NaN;
+        tall[i] = 0;
+        return;
+      }
       const outer = !game.map.hasFloor(tx, ty - 1, z) || !game.map.hasFloor(tx + 1, ty, z) || !game.map.hasFloor(tx, ty + 1, z) || !game.map.hasFloor(tx - 1, ty, z);
       if (oid && standsTall(od) && outer) this.show(o, this.tiles.get('object', od.name, tx, ty, this.mask(od, tx, ty, game, 'object', z), seasons), i, light);
       else o.visible = false;
@@ -552,7 +563,7 @@ export class Renderer {
     this.app.resize();
     this.layout();
     const z = this.zoom;
-    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.cursor]) c.scale.set(z);
+    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.marks, this.cursor]) c.scale.set(z);
     /** Each screen tile: 1 if what stands on it casts a shadow, 2 if it is ground that can take one. */
     const tall = new Uint8Array(this.cols * this.rows);
     /** Each screen tile's terrain (-2 where not drawn as ground), ground and tint, for the edges between kinds of ground. */
@@ -677,6 +688,16 @@ export class Renderer {
     this.me = { x: (game.px + this.ox) * TILE_PX, y: (game.py + this.oy) * TILE_PX, facing: game.facing, flip: stand?.flip ?? false, standing: stand?.look ?? null, walking: walk && walk.flip === stand?.flip ? walk.look : null };
     this.player.zIndex = (game.py + this.oy) * 2 + 1;
     this.place(performance.now());
+    // Ways in from the land, on the surface: a ring round each that has been seen.
+    this.marks.clear();
+    if (!slice) {
+      for (let i = 0; i < this.cols * this.rows; i++) {
+        const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
+        if (Number.isNaN(levels[i]) || !WAYS_IN.has(OBJECT_TILES[game.map.objectAt(tx, ty, null)]?.name ?? '')) continue;
+        const x = (i % this.cols) * TILE_PX, y = Math.floor(i / this.cols) * TILE_PX;
+        this.marks.circle(x + TILE_PX / 2, y + TILE_PX / 2, TILE_PX * 0.8).stroke({ color: 0xffd060, width: 1.5 / z, alpha: vis[i] ? 0.85 : 0.45 });
+      }
+    }
     this.cursor.clear();
     if (game.cursor) {
       this.cursor.rect((game.cursor[0] + this.ox) * TILE_PX, (game.cursor[1] + this.oy) * TILE_PX, TILE_PX, TILE_PX).stroke({ color: 0xffd060, width: 1 / z });

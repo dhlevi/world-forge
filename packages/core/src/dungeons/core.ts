@@ -336,6 +336,36 @@ export function packLines(lines: number[][][]): string {
   return lines.map((l) => l.map(([x, y]) => `${Math.round(x)},${Math.round(y)}`).join(' ')).join('|');
 }
 
+export function unpackLines(s: string): number[][][] {
+  return s.split('|').filter(Boolean).map((l) => l.split(' ').map((p) => p.split(',').map(Number)));
+}
+
+/**
+ * A dungeon from a map feature's properties: a standalone site (kind tower, crypt, ruin, mine and
+ * the like, with its id) or an entrance drawn on a town plan (kind 'dentry', with `did` and
+ * `dkind`), at (lon, lat). Null if the properties name no dungeon.
+ */
+export function dungeonSiteOf(p: Record<string, unknown>, lon: number, lat: number): DungeonSite | null {
+  const kind = p.kind === 'dentry' ? p.dkind : p.kind;
+  if (!DUNGEON_KINDS.includes(kind as DungeonKind)) return null;
+  const id = p.kind === 'dentry' ? p.did : p.id;
+  if (typeof id !== 'string') return null;
+  const site: DungeonSite = {
+    id, kind: kind as DungeonKind, name: String(p.name ?? ''), ...(p.en ? { en: String(p.en) } : {}), seed: Number(p.seed), lon, lat,
+    tags: String(p.tags ?? '').split(',').filter(Boolean), culture: Number(p.culture ?? 0),
+  };
+  if (typeof p.sid === 'string') site.town = p.sid;
+  if (typeof p.story === 'string' && p.story) site.story = p.story;
+  if (typeof p.streets === 'string') site.streets = unpackLines(p.streets);
+  if (typeof p.outfall === 'string' && p.outfall) site.outfall = p.outfall.split(',').map(Number);
+  if (p.scale !== undefined && Number(p.scale) > 0) site.scale = Number(p.scale);
+  if (typeof p.grates === 'string' && p.grates) site.grates = p.grates.split(';').map((g) => g.split(',').map(Number));
+  if (p.thieves) site.thieves = true;
+  if (typeof p.order === 'string' && p.order) site.order = p.order;
+  if (Number(p.thieves) >= 2) site.grandDen = true;
+  return site;
+}
+
 /**
  * What lies under a town (decided from the town alone, so search can list it before the plan is
  * drawn): sewers under cities and towns of 4,000 or more, catacombs under every city and about

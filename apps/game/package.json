@@ -10,7 +10,7 @@
     "tileset:template": "vite --open /?tileset-template",
     "build": "vite build",
     "typecheck": "vue-tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json && tsc --noEmit -p tsconfig.scripts.json",
-    "test": "tsx scripts/save-test.ts && tsx scripts/session-test.ts && tsx scripts/skills-test.ts && tsx scripts/inventory-test.ts && tsx scripts/needs-test.ts && tsx scripts/weather-test.ts && tsx scripts/creation-test.ts && tsx scripts/tileset-test.ts && tsx scripts/levels-test.ts && tsx scripts/trees-test.ts && tsx scripts/roofs-test.ts && tsx scripts/interior-test.ts && tsx scripts/floors-test.ts",
+    "test": "tsx scripts/save-test.ts && tsx scripts/session-test.ts && tsx scripts/skills-test.ts && tsx scripts/inventory-test.ts && tsx scripts/needs-test.ts && tsx scripts/weather-test.ts && tsx scripts/creation-test.ts && tsx scripts/tileset-test.ts && tsx scripts/levels-test.ts && tsx scripts/trees-test.ts && tsx scripts/roofs-test.ts && tsx scripts/interior-test.ts && tsx scripts/floors-test.ts && tsx scripts/under-test.ts",
     "serve": "vite preview"
   },
   "dependencies": {

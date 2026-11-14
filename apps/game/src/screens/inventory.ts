@@ -210,7 +210,7 @@ export class InventoryScreen extends Screen {
         it.uses = (it.uses ?? 1) - 1;
         sips++;
       }
-      msg = sips ? `You ${food.verb}${(it.uses ?? 0) <= 0 ? ', and empty it' : ''}.` : 'You could not drink any more.';
+      msg = sips ? `You ${food.verb}${(it.uses ?? 0) <= 0 ? ', and empty it' : ''}.` : 'You have drunk your fill for now; give it time to settle.';
       this.play.advance(10 + sips * 4);
     } else {
       const o = eatPortion(this.actor, this.inv, it);
@@ -352,7 +352,7 @@ export class InventoryScreen extends Screen {
       const drink = food.kcal === 0;
       const empty = d.uses !== undefined && (it.uses ?? 0) <= 0;
       const room = n?.room();
-      const why = empty ? 'It is empty.' : room && (drink ? room.litres < 0.05 : room.kcal < 50) ? (drink ? 'You could not drink any more.' : 'You are too full to eat.') : null;
+      const why = empty ? 'It is empty.' : room && (drink ? room.litres < (food.water ?? 0.1) * 0.5 : room.kcal < Math.min(50, food.kcal * (food.raw ? 0.5 : 1))) ? (drink ? 'You have drunk your fill for now.' : 'You are too full to eat for now.') : null;
       out.unshift({ label: drink ? 'Drink' : 'Eat', target: 'consume', why });
       if (!drink && this.beside(FIRES)) out.splice(1, 0, { label: 'Cook and eat', target: 'cook', why });
     }

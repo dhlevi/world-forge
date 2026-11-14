@@ -671,4191 +671,4699 @@
    1,
    42
   ],
-  "wall_timber#0": [
+  "cave_floor": [
    0,
    43
+  ],
+  "cave_floor.1": [
+   1,
+   43
+  ],
+  "cave_floor.2": [
+   2,
+   43
+  ],
+  "wall_timber#0": [
+   0,
+   44
   ],
   "wall_timber#1": [
    1,
-   43
+   44
   ],
   "wall_timber#2": [
    2,
-   43
+   44
   ],
   "wall_timber#3": [
    3,
-   43
+   44
   ],
   "wall_timber#4": [
    4,
-   43
+   44
   ],
   "wall_timber#5": [
    5,
-   43
+   44
   ],
   "wall_timber#6": [
    6,
-   43
+   44
   ],
   "wall_timber#7": [
    7,
-   43
+   44
   ],
   "wall_timber#8": [
    8,
-   43
+   44
   ],
   "wall_timber#9": [
    9,
-   43
+   44
   ],
   "wall_timber#10": [
    10,
-   43
+   44
   ],
   "wall_timber#11": [
    11,
-   43
+   44
   ],
   "wall_timber#12": [
    12,
-   43
+   44
   ],
   "wall_timber#13": [
    13,
-   43
+   44
   ],
   "wall_timber#14": [
    14,
-   43
+   44
   ],
   "wall_timber#15": [
    15,
-   43
+   44
   ],
   "wall_stone#0": [
    0,
-   44
+   45
   ],
   "wall_stone#1": [
    1,
-   44
+   45
   ],
   "wall_stone#2": [
    2,
-   44
+   45
   ],
   "wall_stone#3": [
    3,
-   44
+   45
   ],
   "wall_stone#4": [
    4,
-   44
+   45
   ],
   "wall_stone#5": [
    5,
-   44
+   45
   ],
   "wall_stone#6": [
    6,
-   44
+   45
   ],
   "wall_stone#7": [
    7,
-   44
+   45
   ],
   "wall_stone#8": [
    8,
-   44
+   45
   ],
   "wall_stone#9": [
    9,
-   44
+   45
   ],
   "wall_stone#10": [
    10,
-   44
+   45
   ],
   "wall_stone#11": [
    11,
-   44
+   45
   ],
   "wall_stone#12": [
    12,
-   44
+   45
   ],
   "wall_stone#13": [
    13,
-   44
+   45
   ],
   "wall_stone#14": [
    14,
-   44
+   45
   ],
   "wall_stone#15": [
    15,
-   44
+   45
   ],
   "wall_plaster#0": [
    0,
-   45
+   46
   ],
   "wall_plaster#1": [
    1,
-   45
+   46
   ],
   "wall_plaster#2": [
    2,
-   45
+   46
   ],
   "wall_plaster#3": [
    3,
-   45
+   46
   ],
   "wall_plaster#4": [
    4,
-   45
+   46
   ],
   "wall_plaster#5": [
    5,
-   45
+   46
   ],
   "wall_plaster#6": [
    6,
-   45
+   46
   ],
   "wall_plaster#7": [
    7,
-   45
+   46
   ],
   "wall_plaster#8": [
    8,
-   45
+   46
   ],
   "wall_plaster#9": [
    9,
-   45
+   46
   ],
   "wall_plaster#10": [
    10,
-   45
+   46
   ],
   "wall_plaster#11": [
    11,
-   45
+   46
   ],
   "wall_plaster#12": [
    12,
-   45
+   46
   ],
   "wall_plaster#13": [
    13,
-   45
+   46
   ],
   "wall_plaster#14": [
    14,
-   45
+   46
   ],
   "wall_plaster#15": [
    15,
-   45
+   46
   ],
   "wall_whitewash#0": [
    0,
-   46
+   47
   ],
   "wall_whitewash#1": [
    1,
-   46
+   47
   ],
   "wall_whitewash#2": [
    2,
-   46
+   47
   ],
   "wall_whitewash#3": [
    3,
-   46
+   47
   ],
   "wall_whitewash#4": [
    4,
-   46
+   47
   ],
   "wall_whitewash#5": [
    5,
-   46
+   47
   ],
   "wall_whitewash#6": [
    6,
-   46
+   47
   ],
   "wall_whitewash#7": [
    7,
-   46
+   47
   ],
   "wall_whitewash#8": [
    8,
-   46
+   47
   ],
   "wall_whitewash#9": [
    9,
-   46
+   47
   ],
   "wall_whitewash#10": [
    10,
-   46
+   47
   ],
   "wall_whitewash#11": [
    11,
-   46
+   47
   ],
   "wall_whitewash#12": [
    12,
-   46
+   47
   ],
   "wall_whitewash#13": [
    13,
-   46
+   47
   ],
   "wall_whitewash#14": [
    14,
-   46
+   47
   ],
   "wall_whitewash#15": [
    15,
-   46
+   47
   ],
   "wall_adobe#0": [
    0,
-   47
+   48
   ],
   "wall_adobe#1": [
    1,
-   47
+   48
   ],
   "wall_adobe#2": [
    2,
-   47
+   48
   ],
   "wall_adobe#3": [
    3,
-   47
+   48
   ],
   "wall_adobe#4": [
    4,
-   47
+   48
   ],
   "wall_adobe#5": [
    5,
-   47
+   48
   ],
   "wall_adobe#6": [
    6,
-   47
+   48
   ],
   "wall_adobe#7": [
    7,
-   47
+   48
   ],
   "wall_adobe#8": [
    8,
-   47
+   48
   ],
   "wall_adobe#9": [
    9,
-   47
+   48
   ],
   "wall_adobe#10": [
    10,
-   47
+   48
   ],
   "wall_adobe#11": [
    11,
-   47
+   48
   ],
   "wall_adobe#12": [
    12,
-   47
+   48
   ],
   "wall_adobe#13": [
    13,
-   47
+   48
   ],
   "wall_adobe#14": [
    14,
-   47
+   48
   ],
   "wall_adobe#15": [
    15,
-   47
+   48
   ],
   "wall_log#0": [
    0,
-   48
+   49
   ],
   "wall_log#1": [
    1,
-   48
+   49
   ],
   "wall_log#2": [
    2,
-   48
+   49
   ],
   "wall_log#3": [
    3,
-   48
+   49
   ],
   "wall_log#4": [
    4,
-   48
+   49
   ],
   "wall_log#5": [
    5,
-   48
+   49
   ],
   "wall_log#6": [
    6,
-   48
+   49
   ],
   "wall_log#7": [
    7,
-   48
+   49
   ],
   "wall_log#8": [
    8,
-   48
+   49
   ],
   "wall_log#9": [
    9,
-   48
+   49
   ],
   "wall_log#10": [
    10,
-   48
+   49
   ],
   "wall_log#11": [
    11,
-   48
+   49
   ],
   "wall_log#12": [
    12,
-   48
+   49
   ],
   "wall_log#13": [
    13,
-   48
+   49
   ],
   "wall_log#14": [
    14,
-   48
+   49
   ],
   "wall_log#15": [
    15,
-   48
+   49
   ],
   "wall_plank#0": [
    0,
-   49
+   50
   ],
   "wall_plank#1": [
    1,
-   49
+   50
   ],
   "wall_plank#2": [
    2,
-   49
+   50
   ],
   "wall_plank#3": [
    3,
-   49
+   50
   ],
   "wall_plank#4": [
    4,
-   49
+   50
   ],
   "wall_plank#5": [
    5,
-   49
+   50
   ],
   "wall_plank#6": [
    6,
-   49
+   50
   ],
   "wall_plank#7": [
    7,
-   49
+   50
   ],
   "wall_plank#8": [
    8,
-   49
+   50
   ],
   "wall_plank#9": [
    9,
-   49
+   50
   ],
   "wall_plank#10": [
    10,
-   49
+   50
   ],
   "wall_plank#11": [
    11,
-   49
+   50
   ],
   "wall_plank#12": [
    12,
-   49
+   50
   ],
   "wall_plank#13": [
    13,
-   49
+   50
   ],
   "wall_plank#14": [
    14,
-   49
+   50
   ],
   "wall_plank#15": [
    15,
-   49
+   50
   ],
   "wall_turf#0": [
    0,
-   50
+   51
   ],
   "wall_turf#1": [
    1,
-   50
+   51
   ],
   "wall_turf#2": [
    2,
-   50
+   51
   ],
   "wall_turf#3": [
    3,
-   50
+   51
   ],
   "wall_turf#4": [
    4,
-   50
+   51
   ],
   "wall_turf#5": [
    5,
-   50
+   51
   ],
   "wall_turf#6": [
    6,
-   50
+   51
   ],
   "wall_turf#7": [
    7,
-   50
+   51
   ],
   "wall_turf#8": [
    8,
-   50
+   51
   ],
   "wall_turf#9": [
    9,
-   50
+   51
   ],
   "wall_turf#10": [
    10,
-   50
+   51
   ],
   "wall_turf#11": [
    11,
-   50
+   51
   ],
   "wall_turf#12": [
    12,
-   50
+   51
   ],
   "wall_turf#13": [
    13,
-   50
+   51
   ],
   "wall_turf#14": [
    14,
-   50
+   51
   ],
   "wall_turf#15": [
    15,
-   50
+   51
   ],
   "wall_brick#0": [
    0,
-   51
+   52
   ],
   "wall_brick#1": [
    1,
-   51
+   52
   ],
   "wall_brick#2": [
    2,
-   51
+   52
   ],
   "wall_brick#3": [
    3,
-   51
+   52
   ],
   "wall_brick#4": [
    4,
-   51
+   52
   ],
   "wall_brick#5": [
    5,
-   51
+   52
   ],
   "wall_brick#6": [
    6,
-   51
+   52
   ],
   "wall_brick#7": [
    7,
-   51
+   52
   ],
   "wall_brick#8": [
    8,
-   51
+   52
   ],
   "wall_brick#9": [
    9,
-   51
+   52
   ],
   "wall_brick#10": [
    10,
-   51
+   52
   ],
   "wall_brick#11": [
    11,
-   51
+   52
   ],
   "wall_brick#12": [
    12,
-   51
+   52
   ],
   "wall_brick#13": [
    13,
-   51
+   52
   ],
   "wall_brick#14": [
    14,
-   51
+   52
   ],
   "wall_brick#15": [
    15,
-   51
+   52
   ],
   "town_wall#0": [
    0,
-   52
+   53
   ],
   "town_wall#1": [
    1,
-   52
+   53
   ],
   "town_wall#2": [
    2,
-   52
+   53
   ],
   "town_wall#3": [
    3,
-   52
+   53
   ],
   "town_wall#4": [
    4,
-   52
+   53
   ],
   "town_wall#5": [
    5,
-   52
+   53
   ],
   "town_wall#6": [
    6,
-   52
+   53
   ],
   "town_wall#7": [
    7,
-   52
+   53
   ],
   "town_wall#8": [
    8,
-   52
+   53
   ],
   "town_wall#9": [
    9,
-   52
+   53
   ],
   "town_wall#10": [
    10,
-   52
+   53
   ],
   "town_wall#11": [
    11,
-   52
+   53
   ],
   "town_wall#12": [
    12,
-   52
+   53
   ],
   "town_wall#13": [
    13,
-   52
+   53
   ],
   "town_wall#14": [
    14,
-   52
+   53
   ],
   "town_wall#15": [
    15,
-   52
+   53
   ],
   "palisade#0": [
    0,
-   53
+   54
   ],
   "palisade#1": [
    1,
-   53
+   54
   ],
   "palisade#2": [
    2,
-   53
+   54
   ],
   "palisade#3": [
    3,
-   53
+   54
   ],
   "palisade#4": [
    4,
-   53
+   54
   ],
   "palisade#5": [
    5,
-   53
+   54
   ],
   "palisade#6": [
    6,
-   53
+   54
   ],
   "palisade#7": [
    7,
-   53
+   54
   ],
   "palisade#8": [
    8,
-   53
+   54
   ],
   "palisade#9": [
    9,
-   53
+   54
   ],
   "palisade#10": [
    10,
-   53
+   54
   ],
   "palisade#11": [
    11,
-   53
+   54
   ],
   "palisade#12": [
    12,
-   53
+   54
   ],
   "palisade#13": [
    13,
-   53
+   54
   ],
   "palisade#14": [
    14,
-   53
+   54
   ],
   "palisade#15": [
    15,
-   53
+   54
   ],
   "tower#0": [
    0,
-   54
+   55
   ],
   "tower#1": [
    1,
-   54
+   55
   ],
   "tower#2": [
    2,
-   54
+   55
   ],
   "tower#3": [
    3,
-   54
+   55
   ],
   "tower#4": [
    4,
-   54
+   55
   ],
   "tower#5": [
    5,
-   54
+   55
   ],
   "tower#6": [
    6,
-   54
+   55
   ],
   "tower#7": [
    7,
-   54
+   55
   ],
   "tower#8": [
    8,
-   54
+   55
   ],
   "tower#9": [
    9,
-   54
+   55
   ],
   "tower#10": [
    10,
-   54
+   55
   ],
   "tower#11": [
    11,
-   54
+   55
   ],
   "tower#12": [
    12,
-   54
+   55
   ],
   "tower#13": [
    13,
-   54
+   55
   ],
   "tower#14": [
    14,
-   54
+   55
   ],
   "tower#15": [
    15,
-   54
+   55
   ],
   "door#0": [
    0,
-   55
+   56
   ],
   "door#1": [
    1,
-   55
+   56
   ],
   "door#2": [
    2,
-   55
+   56
   ],
   "door#3": [
    3,
-   55
+   56
   ],
   "door#4": [
    4,
-   55
+   56
   ],
   "door#5": [
    5,
-   55
+   56
   ],
   "door#6": [
    6,
-   55
+   56
   ],
   "door#7": [
    7,
-   55
+   56
   ],
   "door#8": [
    8,
-   55
+   56
   ],
   "door#9": [
    9,
-   55
+   56
   ],
   "door#10": [
    10,
-   55
+   56
   ],
   "door#11": [
    11,
-   55
+   56
   ],
   "door#12": [
    12,
-   55
+   56
   ],
   "door#13": [
    13,
-   55
+   56
   ],
   "door#14": [
    14,
-   55
+   56
   ],
   "door#15": [
    15,
-   55
+   56
   ],
   "door_open#0": [
    0,
-   56
+   57
   ],
   "door_open#1": [
    1,
-   56
+   57
   ],
   "door_open#2": [
    2,
-   56
+   57
   ],
   "door_open#3": [
    3,
-   56
+   57
   ],
   "door_open#4": [
    4,
-   56
+   57
   ],
   "door_open#5": [
    5,
-   56
+   57
   ],
   "door_open#6": [
    6,
-   56
+   57
   ],
   "door_open#7": [
    7,
-   56
+   57
   ],
   "door_open#8": [
    8,
-   56
+   57
   ],
   "door_open#9": [
    9,
-   56
+   57
   ],
   "door_open#10": [
    10,
-   56
+   57
   ],
   "door_open#11": [
    11,
-   56
+   57
   ],
   "door_open#12": [
    12,
-   56
+   57
   ],
   "door_open#13": [
    13,
-   56
+   57
   ],
   "door_open#14": [
    14,
-   56
+   57
   ],
   "door_open#15": [
    15,
-   56
+   57
   ],
   "window#0": [
    0,
-   57
+   58
   ],
   "window#1": [
    1,
-   57
+   58
   ],
   "window#2": [
    2,
-   57
+   58
   ],
   "window#3": [
    3,
-   57
+   58
   ],
   "window#4": [
    4,
-   57
+   58
   ],
   "window#5": [
    5,
-   57
+   58
   ],
   "window#6": [
    6,
-   57
+   58
   ],
   "window#7": [
    7,
-   57
+   58
   ],
   "window#8": [
    8,
-   57
+   58
   ],
   "window#9": [
    9,
-   57
+   58
   ],
   "window#10": [
    10,
-   57
+   58
   ],
   "window#11": [
    11,
-   57
+   58
   ],
   "window#12": [
    12,
-   57
+   58
   ],
   "window#13": [
    13,
-   57
+   58
   ],
   "window#14": [
    14,
-   57
+   58
   ],
   "window#15": [
    15,
-   57
+   58
   ],
   "gate#0": [
    0,
-   58
+   59
   ],
   "gate#1": [
    1,
-   58
+   59
   ],
   "gate#2": [
    2,
-   58
+   59
   ],
   "gate#3": [
    3,
-   58
+   59
   ],
   "gate#4": [
    4,
-   58
+   59
   ],
   "gate#5": [
    5,
-   58
+   59
   ],
   "gate#6": [
    6,
-   58
+   59
   ],
   "gate#7": [
    7,
-   58
+   59
   ],
   "gate#8": [
    8,
-   58
+   59
   ],
   "gate#9": [
    9,
-   58
+   59
   ],
   "gate#10": [
    10,
-   58
+   59
   ],
   "gate#11": [
    11,
-   58
+   59
   ],
   "gate#12": [
    12,
-   58
+   59
   ],
   "gate#13": [
    13,
-   58
+   59
   ],
   "gate#14": [
    14,
-   58
+   59
   ],
   "gate#15": [
    15,
-   58
+   59
   ],
   "gate_open#0": [
    0,
-   59
+   60
   ],
   "gate_open#1": [
    1,
-   59
+   60
   ],
   "gate_open#2": [
    2,
-   59
+   60
   ],
   "gate_open#3": [
    3,
-   59
+   60
   ],
   "gate_open#4": [
    4,
-   59
+   60
   ],
   "gate_open#5": [
    5,
-   59
+   60
   ],
   "gate_open#6": [
    6,
-   59
+   60
   ],
   "gate_open#7": [
    7,
-   59
+   60
   ],
   "gate_open#8": [
    8,
-   59
+   60
   ],
   "gate_open#9": [
    9,
-   59
+   60
   ],
   "gate_open#10": [
    10,
-   59
+   60
   ],
   "gate_open#11": [
    11,
-   59
+   60
   ],
   "gate_open#12": [
    12,
-   59
+   60
   ],
   "gate_open#13": [
    13,
-   59
+   60
   ],
   "gate_open#14": [
    14,
-   59
+   60
   ],
   "gate_open#15": [
    15,
-   59
+   60
   ],
   "stairs_up": [
    0,
-   60
+   61
   ],
   "stairs_down": [
    0,
-   61
+   62
   ],
   "ladder_up": [
    0,
-   62
+   63
   ],
   "ladder_down": [
    0,
-   63
+   64
   ],
   "stairs_spiral": [
    0,
-   64
+   65
   ],
   "tree_broadleaf": [
    0,
-   65
+   66
   ],
   "tree_broadleaf.1": [
    1,
-   65
+   66
   ],
   "tree_broadleaf.2": [
    2,
-   65
+   66
   ],
   "tree_broadleaf.3": [
    3,
-   65
+   66
   ],
   "tree_conifer": [
    0,
-   66
+   67
   ],
   "tree_conifer.1": [
    1,
-   66
+   67
   ],
   "tree_conifer.2": [
    2,
-   66
+   67
   ],
   "tree_palm": [
    0,
-   67
+   68
   ],
   "tree_palm.1": [
    1,
-   67
+   68
   ],
   "tree_jungle": [
    0,
-   68
+   69
   ],
   "tree_jungle.1": [
    1,
-   68
+   69
   ],
   "tree_jungle.2": [
    2,
-   68
+   69
   ],
   "tree_dead": [
    0,
-   69
+   70
   ],
   "tree_dead.1": [
    1,
-   69
+   70
   ],
   "tree_mangrove": [
    0,
-   70
+   71
   ],
   "tree_birch": [
    0,
-   71
+   72
   ],
   "tree_birch.1": [
    1,
-   71
+   72
   ],
   "great_trunk#0": [
    0,
-   72
+   73
   ],
   "great_trunk#1": [
    1,
-   72
+   73
   ],
   "great_trunk#2": [
    2,
-   72
+   73
   ],
   "great_trunk#3": [
    3,
-   72
+   73
   ],
   "great_trunk#4": [
    4,
-   72
+   73
   ],
   "great_trunk#5": [
    5,
-   72
+   73
   ],
   "great_trunk#6": [
    6,
-   72
+   73
   ],
   "great_trunk#7": [
    7,
-   72
+   73
   ],
   "great_trunk#8": [
    8,
-   72
+   73
   ],
   "great_trunk#9": [
    9,
-   72
+   73
   ],
   "great_trunk#10": [
    10,
-   72
+   73
   ],
   "great_trunk#11": [
    11,
-   72
+   73
   ],
   "great_trunk#12": [
    12,
-   72
+   73
   ],
   "great_trunk#13": [
    13,
-   72
+   73
   ],
   "great_trunk#14": [
    14,
-   72
+   73
   ],
   "great_trunk#15": [
    15,
-   72
+   73
   ],
   "bush": [
    0,
-   73
+   74
   ],
   "bush.1": [
    1,
-   73
+   74
   ],
   "bush.2": [
    2,
-   73
+   74
   ],
   "scrub": [
    0,
-   74
+   75
   ],
   "scrub.1": [
    1,
-   74
+   75
   ],
   "tall_grass": [
    0,
-   75
+   76
   ],
   "tall_grass.1": [
    1,
-   75
+   76
   ],
   "ferns": [
    0,
-   76
+   77
   ],
   "ferns.1": [
    1,
-   76
+   77
   ],
   "reeds": [
    0,
-   77
+   78
   ],
   "reeds.1": [
    1,
-   77
+   78
   ],
   "flowers": [
    0,
-   78
+   79
   ],
   "flowers.1": [
    1,
-   78
+   79
   ],
   "flowers.2": [
    2,
-   78
+   79
   ],
   "cactus": [
    0,
-   79
+   80
   ],
   "cactus.1": [
    1,
-   79
+   80
   ],
   "mushrooms": [
    0,
-   80
+   81
   ],
   "crops": [
    0,
-   81
+   82
   ],
   "crops.1": [
    1,
-   81
+   82
   ],
   "crops.2": [
    2,
-   81
+   82
   ],
   "vines": [
    0,
-   82
+   83
   ],
   "vines.1": [
    1,
-   82
+   83
   ],
   "hedge#0": [
    0,
-   83
+   84
   ],
   "hedge#1": [
    1,
-   83
+   84
   ],
   "hedge#2": [
    2,
-   83
+   84
   ],
   "hedge#3": [
    3,
-   83
+   84
   ],
   "hedge#4": [
    4,
-   83
+   84
   ],
   "hedge#5": [
    5,
-   83
+   84
   ],
   "hedge#6": [
    6,
-   83
+   84
   ],
   "hedge#7": [
    7,
-   83
+   84
   ],
   "hedge#8": [
    8,
-   83
+   84
   ],
   "hedge#9": [
    9,
-   83
+   84
   ],
   "hedge#10": [
    10,
-   83
+   84
   ],
   "hedge#11": [
    11,
-   83
+   84
   ],
   "hedge#12": [
    12,
-   83
+   84
   ],
   "hedge#13": [
    13,
-   83
+   84
   ],
   "hedge#14": [
    14,
-   83
+   84
   ],
   "hedge#15": [
    15,
-   83
+   84
   ],
   "boulder": [
    0,
-   84
+   85
   ],
   "boulder.1": [
    1,
-   84
+   85
   ],
   "boulder.2": [
    2,
-   84
+   85
   ],
   "stones": [
    0,
-   85
+   86
   ],
   "stones.1": [
    1,
-   85
+   86
   ],
   "menhir": [
    0,
-   86
+   87
   ],
   "totem": [
    0,
-   87
+   88
   ],
   "pyramid#0": [
    0,
-   88
+   89
   ],
   "pyramid#1": [
    1,
-   88
+   89
   ],
   "pyramid#2": [
    2,
-   88
+   89
   ],
   "pyramid#3": [
    3,
-   88
+   89
   ],
   "pyramid#4": [
    4,
-   88
+   89
   ],
   "pyramid#5": [
    5,
-   88
+   89
   ],
   "pyramid#6": [
    6,
-   88
+   89
   ],
   "pyramid#7": [
    7,
-   88
+   89
   ],
   "pyramid#8": [
    8,
-   88
+   89
   ],
   "pyramid#9": [
    9,
-   88
+   89
   ],
   "pyramid#10": [
    10,
-   88
+   89
   ],
   "pyramid#11": [
    11,
-   88
+   89
   ],
   "pyramid#12": [
    12,
-   88
+   89
   ],
   "pyramid#13": [
    13,
-   88
+   89
   ],
   "pyramid#14": [
    14,
-   88
+   89
   ],
   "pyramid#15": [
    15,
-   88
+   89
   ],
   "rubble": [
    0,
-   89
+   90
   ],
   "rubble.1": [
    1,
-   89
+   90
   ],
   "ruin_wall#0": [
    0,
-   90
+   91
   ],
   "ruin_wall#1": [
    1,
-   90
+   91
   ],
   "ruin_wall#2": [
    2,
-   90
+   91
   ],
   "ruin_wall#3": [
    3,
-   90
+   91
   ],
   "ruin_wall#4": [
    4,
-   90
+   91
   ],
   "ruin_wall#5": [
    5,
-   90
+   91
   ],
   "ruin_wall#6": [
    6,
-   90
+   91
   ],
   "ruin_wall#7": [
    7,
-   90
+   91
   ],
   "ruin_wall#8": [
    8,
-   90
+   91
   ],
   "ruin_wall#9": [
    9,
-   90
+   91
   ],
   "ruin_wall#10": [
    10,
-   90
+   91
   ],
   "ruin_wall#11": [
    11,
-   90
+   91
   ],
   "ruin_wall#12": [
    12,
-   90
+   91
   ],
   "ruin_wall#13": [
    13,
-   90
+   91
   ],
   "ruin_wall#14": [
    14,
-   90
+   91
   ],
   "ruin_wall#15": [
    15,
-   90
+   91
   ],
   "fence#0": [
    0,
-   91
+   92
   ],
   "fence#1": [
    1,
-   91
+   92
   ],
   "fence#2": [
    2,
-   91
+   92
   ],
   "fence#3": [
    3,
-   91
+   92
   ],
   "fence#4": [
    4,
-   91
+   92
   ],
   "fence#5": [
    5,
-   91
+   92
   ],
   "fence#6": [
    6,
-   91
+   92
   ],
   "fence#7": [
    7,
-   91
+   92
   ],
   "fence#8": [
    8,
-   91
+   92
   ],
   "fence#9": [
    9,
-   91
+   92
   ],
   "fence#10": [
    10,
-   91
+   92
   ],
   "fence#11": [
    11,
-   91
+   92
   ],
   "fence#12": [
    12,
-   91
+   92
   ],
   "fence#13": [
    13,
-   91
+   92
   ],
   "fence#14": [
    14,
-   91
+   92
   ],
   "fence#15": [
    15,
-   91
+   92
   ],
   "well": [
    0,
-   92
+   93
   ],
   "fountain": [
    0,
-   93
+   94
   ],
   "grave": [
    0,
-   94
+   95
   ],
   "grave.1": [
    1,
-   94
+   95
   ],
   "grave.2": [
    2,
-   94
+   95
   ],
   "tomb": [
    0,
-   95
+   96
   ],
   "stall": [
    0,
-   96
+   97
   ],
   "stall.1": [
    1,
-   96
+   97
   ],
   "stall.2": [
    2,
-   96
+   97
   ],
   "tent": [
    0,
-   97
+   98
   ],
   "tent.1": [
    1,
-   97
+   98
   ],
   "wagon": [
    0,
-   98
+   99
   ],
   "wagon.1": [
    1,
-   98
+   99
   ],
   "boat": [
    0,
-   99
+   100
   ],
   "boat.1": [
    1,
-   99
+   100
   ],
   "horse": [
    0,
-   100
+   101
   ],
   "campfire": [
    0,
-   101
+   102
   ],
   "woodpile": [
    0,
-   102
+   103
   ],
   "millwheel": [
    0,
-   103
+   104
   ],
   "mine_entrance": [
    0,
-   104
+   105
   ],
   "cave_mouth": [
    0,
-   105
+   106
   ],
   "dungeon_entrance": [
    0,
-   106
+   107
   ],
   "signpost": [
    0,
-   107
+   108
   ],
   "altar": [
    0,
-   108
+   109
   ],
   "anvil": [
    0,
-   109
+   110
   ],
   "barrel": [
    0,
-   110
+   111
   ],
   "barrel.1": [
    1,
-   110
+   111
   ],
   "bath": [
    0,
-   111
+   112
   ],
   "bed#0": [
    0,
-   112
+   113
   ],
   "bed#1": [
    1,
-   112
+   113
   ],
   "bed#2": [
    2,
-   112
+   113
   ],
   "bed#3": [
    3,
-   112
+   113
   ],
   "bed#4": [
    4,
-   112
+   113
   ],
   "bed#5": [
    5,
-   112
+   113
   ],
   "bed#6": [
    6,
-   112
+   113
   ],
   "bed#7": [
    7,
-   112
+   113
   ],
   "bed#8": [
    8,
-   112
+   113
   ],
   "bed#9": [
    9,
-   112
+   113
   ],
   "bed#10": [
    10,
-   112
+   113
   ],
   "bed#11": [
    11,
-   112
+   113
   ],
   "bed#12": [
    12,
-   112
+   113
   ],
   "bed#13": [
    13,
-   112
+   113
   ],
   "bed#14": [
    14,
-   112
+   113
   ],
   "bed#15": [
    15,
-   112
+   113
   ],
   "bench#0": [
    0,
-   113
+   114
   ],
   "bench#1": [
    1,
-   113
+   114
   ],
   "bench#2": [
    2,
-   113
+   114
   ],
   "bench#3": [
    3,
-   113
+   114
   ],
   "bench#4": [
    4,
-   113
+   114
   ],
   "bench#5": [
    5,
-   113
+   114
   ],
   "bench#6": [
    6,
-   113
+   114
   ],
   "bench#7": [
    7,
-   113
+   114
   ],
   "bench#8": [
    8,
-   113
+   114
   ],
   "bench#9": [
    9,
-   113
+   114
   ],
   "bench#10": [
    10,
-   113
+   114
   ],
   "bench#11": [
    11,
-   113
+   114
   ],
   "bench#12": [
    12,
-   113
+   114
   ],
   "bench#13": [
    13,
-   113
+   114
   ],
   "bench#14": [
    14,
-   113
+   114
   ],
   "bench#15": [
    15,
-   113
+   114
   ],
   "bin": [
    0,
-   114
+   115
   ],
   "bookcase#0": [
    0,
-   115
+   116
   ],
   "bookcase#1": [
    1,
-   115
+   116
   ],
   "bookcase#2": [
    2,
-   115
+   116
   ],
   "bookcase#3": [
    3,
-   115
+   116
   ],
   "bookcase#4": [
    4,
-   115
+   116
   ],
   "bookcase#5": [
    5,
-   115
+   116
   ],
   "bookcase#6": [
    6,
-   115
+   116
   ],
   "bookcase#7": [
    7,
-   115
+   116
   ],
   "bookcase#8": [
    8,
-   115
+   116
   ],
   "bookcase#9": [
    9,
-   115
+   116
   ],
   "bookcase#10": [
    10,
-   115
+   116
   ],
   "bookcase#11": [
    11,
-   115
+   116
   ],
   "bookcase#12": [
    12,
-   115
+   116
   ],
   "bookcase#13": [
    13,
-   115
+   116
   ],
   "bookcase#14": [
    14,
-   115
+   116
   ],
   "bookcase#15": [
    15,
-   115
+   116
   ],
   "bucket": [
    0,
-   116
+   117
   ],
   "candle": [
    0,
-   117
+   118
   ],
   "cauldron": [
    0,
-   118
+   119
   ],
   "chair": [
    0,
-   119
+   120
   ],
   "chair.1": [
    1,
-   119
+   120
   ],
   "chest": [
    0,
-   120
+   121
   ],
   "counter#0": [
    0,
-   121
+   122
   ],
   "counter#1": [
    1,
-   121
+   122
   ],
   "counter#2": [
    2,
-   121
+   122
   ],
   "counter#3": [
    3,
-   121
+   122
   ],
   "counter#4": [
    4,
-   121
+   122
   ],
   "counter#5": [
    5,
-   121
+   122
   ],
   "counter#6": [
    6,
-   121
+   122
   ],
   "counter#7": [
    7,
-   121
+   122
   ],
   "counter#8": [
    8,
-   121
+   122
   ],
   "counter#9": [
    9,
-   121
+   122
   ],
   "counter#10": [
    10,
-   121
+   122
   ],
   "counter#11": [
    11,
-   121
+   122
   ],
   "counter#12": [
    12,
-   121
+   122
   ],
   "counter#13": [
    13,
-   121
+   122
   ],
   "counter#14": [
    14,
-   121
+   122
   ],
   "counter#15": [
    15,
-   121
+   122
   ],
   "crate": [
    0,
-   122
+   123
   ],
   "crate.1": [
    1,
-   122
+   123
   ],
   "desk": [
    0,
-   123
+   124
   ],
   "font": [
    0,
-   124
+   125
   ],
   "forge": [
    0,
-   125
+   126
   ],
   "furnace": [
    0,
-   126
+   127
   ],
   "hatstand": [
    0,
-   127
+   128
   ],
   "hearth": [
    0,
-   128
+   129
   ],
   "logs": [
    0,
-   129
+   130
   ],
   "millstone": [
    0,
-   130
+   131
   ],
   "oven": [
    0,
-   131
+   132
   ],
   "pew#0": [
    0,
-   132
+   133
   ],
   "pew#1": [
    1,
-   132
+   133
   ],
   "pew#2": [
    2,
-   132
+   133
   ],
   "pew#3": [
    3,
-   132
+   133
   ],
   "pew#4": [
    4,
-   132
+   133
   ],
   "pew#5": [
    5,
-   132
+   133
   ],
   "pew#6": [
    6,
-   132
+   133
   ],
   "pew#7": [
    7,
-   132
+   133
   ],
   "pew#8": [
    8,
-   132
+   133
   ],
   "pew#9": [
    9,
-   132
+   133
   ],
   "pew#10": [
    10,
-   132
+   133
   ],
   "pew#11": [
    11,
-   132
+   133
   ],
   "pew#12": [
    12,
-   132
+   133
   ],
   "pew#13": [
    13,
-   132
+   133
   ],
   "pew#14": [
    14,
-   132
+   133
   ],
   "pew#15": [
    15,
-   132
+   133
   ],
   "privy": [
    0,
-   133
+   134
   ],
   "rack": [
    0,
-   134
+   135
   ],
   "rug#0": [
    0,
-   135
+   136
   ],
   "rug#1": [
    1,
-   135
+   136
   ],
   "rug#2": [
    2,
-   135
+   136
   ],
   "rug#3": [
    3,
-   135
+   136
   ],
   "rug#4": [
    4,
-   135
+   136
   ],
   "rug#5": [
    5,
-   135
+   136
   ],
   "rug#6": [
    6,
-   135
+   136
   ],
   "rug#7": [
    7,
-   135
+   136
   ],
   "rug#8": [
    8,
-   135
+   136
   ],
   "rug#9": [
    9,
-   135
+   136
   ],
   "rug#10": [
    10,
-   135
+   136
   ],
   "rug#11": [
    11,
-   135
+   136
   ],
   "rug#12": [
    12,
-   135
+   136
   ],
   "rug#13": [
    13,
-   135
+   136
   ],
   "rug#14": [
    14,
-   135
+   136
   ],
   "rug#15": [
    15,
-   135
+   136
   ],
   "sack": [
    0,
-   136
+   137
   ],
   "sawbench": [
    0,
-   137
+   138
   ],
   "shelf#0": [
    0,
-   138
+   139
   ],
   "shelf#1": [
    1,
-   138
+   139
   ],
   "shelf#2": [
    2,
-   138
+   139
   ],
   "shelf#3": [
    3,
-   138
+   139
   ],
   "shelf#4": [
    4,
-   138
+   139
   ],
   "shelf#5": [
    5,
-   138
+   139
   ],
   "shelf#6": [
    6,
-   138
+   139
   ],
   "shelf#7": [
    7,
-   138
+   139
   ],
   "shelf#8": [
    8,
-   138
+   139
   ],
   "shelf#9": [
    9,
-   138
+   139
   ],
   "shelf#10": [
    10,
-   138
+   139
   ],
   "shelf#11": [
    11,
-   138
+   139
   ],
   "shelf#12": [
    12,
-   138
+   139
   ],
   "shelf#13": [
    13,
-   138
+   139
   ],
   "shelf#14": [
    14,
-   138
+   139
   ],
   "shelf#15": [
    15,
-   138
+   139
   ],
   "sideboard": [
    0,
-   139
+   140
   ],
   "straw": [
    0,
-   140
+   141
   ],
   "table#0": [
    0,
-   141
+   142
   ],
   "table#1": [
    1,
-   141
+   142
   ],
   "table#2": [
    2,
-   141
+   142
   ],
   "table#3": [
    3,
-   141
+   142
   ],
   "table#4": [
    4,
-   141
+   142
   ],
   "table#5": [
    5,
-   141
+   142
   ],
   "table#6": [
    6,
-   141
+   142
   ],
   "table#7": [
    7,
-   141
+   142
   ],
   "table#8": [
    8,
-   141
+   142
   ],
   "table#9": [
    9,
-   141
+   142
   ],
   "table#10": [
    10,
-   141
+   142
   ],
   "table#11": [
    11,
-   141
+   142
   ],
   "table#12": [
    12,
-   141
+   142
   ],
   "table#13": [
    13,
-   141
+   142
   ],
   "table#14": [
    14,
-   141
+   142
   ],
   "table#15": [
    15,
-   141
+   142
   ],
   "trestle#0": [
    0,
-   142
+   143
   ],
   "trestle#1": [
    1,
-   142
+   143
   ],
   "trestle#2": [
    2,
-   142
+   143
   ],
   "trestle#3": [
    3,
-   142
+   143
   ],
   "trestle#4": [
    4,
-   142
+   143
   ],
   "trestle#5": [
    5,
-   142
+   143
   ],
   "trestle#6": [
    6,
-   142
+   143
   ],
   "trestle#7": [
    7,
-   142
+   143
   ],
   "trestle#8": [
    8,
-   142
+   143
   ],
   "trestle#9": [
    9,
-   142
+   143
   ],
   "trestle#10": [
    10,
-   142
+   143
   ],
   "trestle#11": [
    11,
-   142
+   143
   ],
   "trestle#12": [
    12,
-   142
+   143
   ],
   "trestle#13": [
    13,
-   142
+   143
   ],
   "trestle#14": [
    14,
-   142
+   143
   ],
   "trestle#15": [
    15,
-   142
+   143
   ],
   "wardrobe": [
    0,
-   143
+   144
   ],
   "workbench#0": [
    0,
-   144
+   145
   ],
   "workbench#1": [
    1,
-   144
+   145
   ],
   "workbench#2": [
    2,
-   144
+   145
   ],
   "workbench#3": [
    3,
-   144
+   145
   ],
   "workbench#4": [
    4,
-   144
+   145
   ],
   "workbench#5": [
    5,
-   144
+   145
   ],
   "workbench#6": [
    6,
-   144
+   145
   ],
   "workbench#7": [
    7,
-   144
+   145
   ],
   "workbench#8": [
    8,
-   144
+   145
   ],
   "workbench#9": [
    9,
-   144
+   145
   ],
   "workbench#10": [
    10,
-   144
+   145
   ],
   "workbench#11": [
    11,
-   144
+   145
   ],
   "workbench#12": [
    12,
-   144
+   145
   ],
   "workbench#13": [
    13,
-   144
+   145
   ],
   "workbench#14": [
    14,
-   144
+   145
   ],
   "workbench#15": [
    15,
-   144
+   145
   ],
   "stool": [
    0,
-   145
+   146
   ],
   "bedroll": [
    0,
-   146
+   147
   ],
   "fire_out": [
    0,
-   147
+   148
   ],
   "windbreak": [
    0,
-   148
+   149
   ],
   "lean_to": [
    0,
-   149
+   150
   ],
   "snare": [
    0,
-   150
+   151
   ],
   "tree_trunk": [
    0,
-   151
-  ],
-  "edge_deep#1": [
-   0,
    152
   ],
-  "edge_deep#2": [
-   1,
-   152
-  ],
-  "edge_deep#3": [
-   2,
-   152
-  ],
-  "edge_deep#4": [
-   3,
-   152
-  ],
-  "edge_deep#5": [
-   4,
-   152
-  ],
-  "edge_deep#6": [
-   5,
-   152
-  ],
-  "edge_deep#7": [
-   6,
-   152
-  ],
-  "edge_deep#8": [
-   7,
-   152
-  ],
-  "edge_deep#9": [
-   8,
-   152
-  ],
-  "edge_deep#10": [
-   9,
-   152
-  ],
-  "edge_deep#11": [
-   10,
-   152
-  ],
-  "edge_deep#12": [
-   11,
-   152
-  ],
-  "edge_deep#13": [
-   12,
-   152
-  ],
-  "edge_deep#14": [
-   13,
-   152
-  ],
-  "edge_shallow#1": [
+  "rock_wall#0": [
    0,
    153
   ],
-  "edge_shallow#2": [
+  "rock_wall#1": [
    1,
    153
   ],
-  "edge_shallow#3": [
+  "rock_wall#2": [
    2,
    153
   ],
-  "edge_shallow#4": [
+  "rock_wall#3": [
    3,
    153
   ],
-  "edge_shallow#5": [
+  "rock_wall#4": [
    4,
    153
   ],
-  "edge_shallow#6": [
+  "rock_wall#5": [
    5,
    153
   ],
-  "edge_shallow#7": [
+  "rock_wall#6": [
    6,
    153
   ],
-  "edge_shallow#8": [
+  "rock_wall#7": [
    7,
    153
   ],
-  "edge_shallow#9": [
+  "rock_wall#8": [
    8,
    153
   ],
-  "edge_shallow#10": [
+  "rock_wall#9": [
    9,
    153
   ],
-  "edge_shallow#11": [
+  "rock_wall#10": [
    10,
    153
   ],
-  "edge_shallow#12": [
+  "rock_wall#11": [
    11,
    153
   ],
-  "edge_shallow#13": [
+  "rock_wall#12": [
    12,
    153
   ],
-  "edge_shallow#14": [
+  "rock_wall#13": [
    13,
    153
   ],
-  "edge_mud#1": [
+  "rock_wall#14": [
+   14,
+   153
+  ],
+  "rock_wall#15": [
+   15,
+   153
+  ],
+  "door_locked#0": [
    0,
    154
   ],
-  "edge_mud#2": [
+  "door_locked#1": [
    1,
    154
   ],
-  "edge_mud#3": [
+  "door_locked#2": [
    2,
    154
   ],
-  "edge_mud#4": [
+  "door_locked#3": [
    3,
    154
   ],
-  "edge_mud#5": [
+  "door_locked#4": [
    4,
    154
   ],
-  "edge_mud#6": [
+  "door_locked#5": [
    5,
    154
   ],
-  "edge_mud#7": [
+  "door_locked#6": [
    6,
    154
   ],
-  "edge_mud#8": [
+  "door_locked#7": [
    7,
    154
   ],
-  "edge_mud#9": [
+  "door_locked#8": [
    8,
    154
   ],
-  "edge_mud#10": [
+  "door_locked#9": [
    9,
    154
   ],
-  "edge_mud#11": [
+  "door_locked#10": [
    10,
    154
   ],
-  "edge_mud#12": [
+  "door_locked#11": [
    11,
    154
   ],
-  "edge_mud#13": [
+  "door_locked#12": [
    12,
    154
   ],
-  "edge_mud#14": [
+  "door_locked#13": [
    13,
    154
   ],
-  "edge_sand#1": [
+  "door_locked#14": [
+   14,
+   154
+  ],
+  "door_locked#15": [
+   15,
+   154
+  ],
+  "door_secret#0": [
    0,
    155
   ],
-  "edge_sand#2": [
+  "door_secret#1": [
    1,
    155
   ],
-  "edge_sand#3": [
+  "door_secret#2": [
    2,
    155
   ],
-  "edge_sand#4": [
+  "door_secret#3": [
    3,
    155
   ],
-  "edge_sand#5": [
+  "door_secret#4": [
    4,
    155
   ],
-  "edge_sand#6": [
+  "door_secret#5": [
    5,
    155
   ],
-  "edge_sand#7": [
+  "door_secret#6": [
    6,
    155
   ],
-  "edge_sand#8": [
+  "door_secret#7": [
    7,
    155
   ],
-  "edge_sand#9": [
+  "door_secret#8": [
    8,
    155
   ],
-  "edge_sand#10": [
+  "door_secret#9": [
    9,
    155
   ],
-  "edge_sand#11": [
+  "door_secret#10": [
    10,
    155
   ],
-  "edge_sand#12": [
+  "door_secret#11": [
    11,
    155
   ],
-  "edge_sand#13": [
+  "door_secret#12": [
    12,
    155
   ],
-  "edge_sand#14": [
+  "door_secret#13": [
    13,
    155
   ],
-  "edge_earth#1": [
+  "door_secret#14": [
+   14,
+   155
+  ],
+  "door_secret#15": [
+   15,
+   155
+  ],
+  "portcullis#0": [
    0,
    156
   ],
-  "edge_earth#2": [
+  "portcullis#1": [
    1,
    156
   ],
-  "edge_earth#3": [
+  "portcullis#2": [
    2,
    156
   ],
-  "edge_earth#4": [
+  "portcullis#3": [
    3,
    156
   ],
-  "edge_earth#5": [
+  "portcullis#4": [
    4,
    156
   ],
-  "edge_earth#6": [
+  "portcullis#5": [
    5,
    156
   ],
-  "edge_earth#7": [
+  "portcullis#6": [
    6,
    156
   ],
-  "edge_earth#8": [
+  "portcullis#7": [
    7,
    156
   ],
-  "edge_earth#9": [
+  "portcullis#8": [
    8,
    156
   ],
-  "edge_earth#10": [
+  "portcullis#9": [
    9,
    156
   ],
-  "edge_earth#11": [
+  "portcullis#10": [
    10,
    156
   ],
-  "edge_earth#12": [
+  "portcullis#11": [
    11,
    156
   ],
-  "edge_earth#13": [
+  "portcullis#12": [
    12,
    156
   ],
-  "edge_earth#14": [
+  "portcullis#13": [
    13,
    156
   ],
-  "edge_stone#1": [
+  "portcullis#14": [
+   14,
+   156
+  ],
+  "portcullis#15": [
+   15,
+   156
+  ],
+  "portcullis_up#0": [
    0,
    157
   ],
-  "edge_stone#2": [
+  "portcullis_up#1": [
    1,
    157
   ],
-  "edge_stone#3": [
+  "portcullis_up#2": [
    2,
    157
   ],
-  "edge_stone#4": [
+  "portcullis_up#3": [
    3,
    157
   ],
-  "edge_stone#5": [
+  "portcullis_up#4": [
    4,
    157
   ],
-  "edge_stone#6": [
+  "portcullis_up#5": [
    5,
    157
   ],
-  "edge_stone#7": [
+  "portcullis_up#6": [
    6,
    157
   ],
-  "edge_stone#8": [
+  "portcullis_up#7": [
    7,
    157
   ],
-  "edge_stone#9": [
+  "portcullis_up#8": [
    8,
    157
   ],
-  "edge_stone#10": [
+  "portcullis_up#9": [
    9,
    157
   ],
-  "edge_stone#11": [
+  "portcullis_up#10": [
    10,
    157
   ],
-  "edge_stone#12": [
+  "portcullis_up#11": [
    11,
    157
   ],
-  "edge_stone#13": [
+  "portcullis_up#12": [
    12,
    157
   ],
-  "edge_stone#14": [
+  "portcullis_up#13": [
    13,
    157
   ],
-  "edge_litter#1": [
+  "portcullis_up#14": [
+   14,
+   157
+  ],
+  "portcullis_up#15": [
+   15,
+   157
+  ],
+  "bars#0": [
    0,
    158
   ],
-  "edge_litter#2": [
+  "bars#1": [
    1,
    158
   ],
-  "edge_litter#3": [
+  "bars#2": [
    2,
    158
   ],
-  "edge_litter#4": [
+  "bars#3": [
    3,
    158
   ],
-  "edge_litter#5": [
+  "bars#4": [
    4,
    158
   ],
-  "edge_litter#6": [
+  "bars#5": [
    5,
    158
   ],
-  "edge_litter#7": [
+  "bars#6": [
    6,
    158
   ],
-  "edge_litter#8": [
+  "bars#7": [
    7,
    158
   ],
-  "edge_litter#9": [
+  "bars#8": [
    8,
    158
   ],
-  "edge_litter#10": [
+  "bars#9": [
    9,
    158
   ],
-  "edge_litter#11": [
+  "bars#10": [
    10,
    158
   ],
-  "edge_litter#12": [
+  "bars#11": [
    11,
    158
   ],
-  "edge_litter#13": [
+  "bars#12": [
    12,
    158
   ],
-  "edge_litter#14": [
+  "bars#13": [
    13,
    158
   ],
-  "edge_grass#1": [
+  "bars#14": [
+   14,
+   158
+  ],
+  "bars#15": [
+   15,
+   158
+  ],
+  "bars_open#0": [
    0,
    159
   ],
-  "edge_grass#2": [
+  "bars_open#1": [
    1,
    159
   ],
-  "edge_grass#3": [
+  "bars_open#2": [
    2,
    159
   ],
-  "edge_grass#4": [
+  "bars_open#3": [
    3,
    159
   ],
-  "edge_grass#5": [
+  "bars_open#4": [
    4,
    159
   ],
-  "edge_grass#6": [
+  "bars_open#5": [
    5,
    159
   ],
-  "edge_grass#7": [
+  "bars_open#6": [
    6,
    159
   ],
-  "edge_grass#8": [
+  "bars_open#7": [
    7,
    159
   ],
-  "edge_grass#9": [
+  "bars_open#8": [
    8,
    159
   ],
-  "edge_grass#10": [
+  "bars_open#9": [
    9,
    159
   ],
-  "edge_grass#11": [
+  "bars_open#10": [
    10,
    159
   ],
-  "edge_grass#12": [
+  "bars_open#11": [
    11,
    159
   ],
-  "edge_grass#13": [
+  "bars_open#12": [
    12,
    159
   ],
-  "edge_grass#14": [
+  "bars_open#13": [
    13,
    159
   ],
-  "edge_snow#1": [
+  "bars_open#14": [
+   14,
+   159
+  ],
+  "bars_open#15": [
+   15,
+   159
+  ],
+  "grate": [
    0,
    160
   ],
-  "edge_snow#2": [
-   1,
-   160
-  ],
-  "edge_snow#3": [
-   2,
-   160
-  ],
-  "edge_snow#4": [
-   3,
-   160
-  ],
-  "edge_snow#5": [
-   4,
-   160
-  ],
-  "edge_snow#6": [
-   5,
-   160
-  ],
-  "edge_snow#7": [
-   6,
-   160
-  ],
-  "edge_snow#8": [
-   7,
-   160
-  ],
-  "edge_snow#9": [
-   8,
-   160
-  ],
-  "edge_snow#10": [
-   9,
-   160
-  ],
-  "edge_snow#11": [
-   10,
-   160
-  ],
-  "edge_snow#12": [
-   11,
-   160
-  ],
-  "edge_snow#13": [
-   12,
-   160
-  ],
-  "edge_snow#14": [
-   13,
-   160
-  ],
-  "trunk_broadleaf": [
+  "pillar": [
    0,
    161
   ],
-  "trunk2_broadleaf#1": [
+  "statue": [
    0,
    162
   ],
-  "trunk2_broadleaf#2": [
-   1,
-   162
-  ],
-  "trunk2_broadleaf#4": [
-   2,
-   162
-  ],
-  "trunk2_broadleaf#8": [
-   3,
-   162
-  ],
-  "roots_broadleaf#1": [
+  "brazier": [
    0,
    163
   ],
-  "roots_broadleaf#2": [
-   1,
-   163
-  ],
-  "roots_broadleaf#4": [
-   2,
-   163
-  ],
-  "roots_broadleaf#8": [
-   3,
-   163
-  ],
-  "branch_broadleaf#0": [
+  "bones": [
    0,
    164
   ],
-  "branch_broadleaf#1": [
+  "bones.1": [
    1,
    164
   ],
-  "branch_broadleaf#2": [
-   2,
-   164
-  ],
-  "branch_broadleaf#3": [
-   3,
-   164
-  ],
-  "branch_broadleaf#4": [
-   4,
-   164
-  ],
-  "branch_broadleaf#5": [
-   5,
-   164
-  ],
-  "branch_broadleaf#6": [
-   6,
-   164
-  ],
-  "branch_broadleaf#7": [
-   7,
-   164
-  ],
-  "branch_broadleaf#8": [
-   8,
-   164
-  ],
-  "branch_broadleaf#9": [
-   9,
-   164
-  ],
-  "branch_broadleaf#10": [
-   10,
-   164
-  ],
-  "branch_broadleaf#11": [
-   11,
-   164
-  ],
-  "branch_broadleaf#12": [
-   12,
-   164
-  ],
-  "branch_broadleaf#13": [
-   13,
-   164
-  ],
-  "branch_broadleaf#14": [
-   14,
-   164
-  ],
-  "branch_broadleaf#15": [
-   15,
-   164
-  ],
-  "leaves_broadleaf#0": [
+  "urn": [
    0,
    165
   ],
-  "leaves_broadleaf#1": [
-   1,
-   165
-  ],
-  "leaves_broadleaf#2": [
-   2,
-   165
-  ],
-  "leaves_broadleaf#3": [
-   3,
-   165
-  ],
-  "leaves_broadleaf#4": [
-   4,
-   165
-  ],
-  "leaves_broadleaf#5": [
-   5,
-   165
-  ],
-  "leaves_broadleaf#6": [
-   6,
-   165
-  ],
-  "leaves_broadleaf#7": [
-   7,
-   165
-  ],
-  "leaves_broadleaf#8": [
-   8,
-   165
-  ],
-  "leaves_broadleaf#9": [
-   9,
-   165
-  ],
-  "leaves_broadleaf#10": [
-   10,
-   165
-  ],
-  "leaves_broadleaf#11": [
-   11,
-   165
-  ],
-  "leaves_broadleaf#12": [
-   12,
-   165
-  ],
-  "leaves_broadleaf#13": [
-   13,
-   165
-  ],
-  "leaves_broadleaf#14": [
-   14,
-   165
-  ],
-  "leaves_broadleaf#15": [
-   15,
-   165
-  ],
-  "trunk_conifer": [
+  "throne": [
    0,
    166
   ],
-  "trunk2_conifer#1": [
+  "cart": [
    0,
    167
   ],
-  "trunk2_conifer#2": [
-   1,
-   167
-  ],
-  "trunk2_conifer#4": [
-   2,
-   167
-  ],
-  "trunk2_conifer#8": [
-   3,
-   167
-  ],
-  "roots_conifer#1": [
+  "support": [
    0,
    168
   ],
-  "roots_conifer#2": [
-   1,
-   168
-  ],
-  "roots_conifer#4": [
-   2,
-   168
-  ],
-  "roots_conifer#8": [
-   3,
-   168
-  ],
-  "branch_conifer#0": [
+  "ore": [
    0,
    169
   ],
-  "branch_conifer#1": [
-   1,
-   169
-  ],
-  "branch_conifer#2": [
-   2,
-   169
-  ],
-  "branch_conifer#3": [
-   3,
-   169
-  ],
-  "branch_conifer#4": [
-   4,
-   169
-  ],
-  "branch_conifer#5": [
-   5,
-   169
-  ],
-  "branch_conifer#6": [
-   6,
-   169
-  ],
-  "branch_conifer#7": [
-   7,
-   169
-  ],
-  "branch_conifer#8": [
-   8,
-   169
-  ],
-  "branch_conifer#9": [
-   9,
-   169
-  ],
-  "branch_conifer#10": [
-   10,
-   169
-  ],
-  "branch_conifer#11": [
-   11,
-   169
-  ],
-  "branch_conifer#12": [
-   12,
-   169
-  ],
-  "branch_conifer#13": [
-   13,
-   169
-  ],
-  "branch_conifer#14": [
-   14,
-   169
-  ],
-  "branch_conifer#15": [
-   15,
-   169
-  ],
-  "leaves_conifer#0": [
+  "pit": [
    0,
    170
   ],
-  "leaves_conifer#1": [
-   1,
-   170
-  ],
-  "leaves_conifer#2": [
-   2,
-   170
-  ],
-  "leaves_conifer#3": [
-   3,
-   170
-  ],
-  "leaves_conifer#4": [
-   4,
-   170
-  ],
-  "leaves_conifer#5": [
-   5,
-   170
-  ],
-  "leaves_conifer#6": [
-   6,
-   170
-  ],
-  "leaves_conifer#7": [
-   7,
-   170
-  ],
-  "leaves_conifer#8": [
-   8,
-   170
-  ],
-  "leaves_conifer#9": [
-   9,
-   170
-  ],
-  "leaves_conifer#10": [
-   10,
-   170
-  ],
-  "leaves_conifer#11": [
-   11,
-   170
-  ],
-  "leaves_conifer#12": [
-   12,
-   170
-  ],
-  "leaves_conifer#13": [
-   13,
-   170
-  ],
-  "leaves_conifer#14": [
-   14,
-   170
-  ],
-  "leaves_conifer#15": [
-   15,
-   170
-  ],
-  "trunk_birch": [
+  "edge_deep#1": [
    0,
    171
   ],
-  "trunk2_birch#1": [
+  "edge_deep#2": [
+   1,
+   171
+  ],
+  "edge_deep#3": [
+   2,
+   171
+  ],
+  "edge_deep#4": [
+   3,
+   171
+  ],
+  "edge_deep#5": [
+   4,
+   171
+  ],
+  "edge_deep#6": [
+   5,
+   171
+  ],
+  "edge_deep#7": [
+   6,
+   171
+  ],
+  "edge_deep#8": [
+   7,
+   171
+  ],
+  "edge_deep#9": [
+   8,
+   171
+  ],
+  "edge_deep#10": [
+   9,
+   171
+  ],
+  "edge_deep#11": [
+   10,
+   171
+  ],
+  "edge_deep#12": [
+   11,
+   171
+  ],
+  "edge_deep#13": [
+   12,
+   171
+  ],
+  "edge_deep#14": [
+   13,
+   171
+  ],
+  "edge_shallow#1": [
    0,
    172
   ],
-  "trunk2_birch#2": [
+  "edge_shallow#2": [
    1,
    172
   ],
-  "trunk2_birch#4": [
+  "edge_shallow#3": [
    2,
    172
   ],
-  "trunk2_birch#8": [
+  "edge_shallow#4": [
    3,
    172
   ],
-  "roots_birch#1": [
+  "edge_shallow#5": [
+   4,
+   172
+  ],
+  "edge_shallow#6": [
+   5,
+   172
+  ],
+  "edge_shallow#7": [
+   6,
+   172
+  ],
+  "edge_shallow#8": [
+   7,
+   172
+  ],
+  "edge_shallow#9": [
+   8,
+   172
+  ],
+  "edge_shallow#10": [
+   9,
+   172
+  ],
+  "edge_shallow#11": [
+   10,
+   172
+  ],
+  "edge_shallow#12": [
+   11,
+   172
+  ],
+  "edge_shallow#13": [
+   12,
+   172
+  ],
+  "edge_shallow#14": [
+   13,
+   172
+  ],
+  "edge_mud#1": [
    0,
    173
   ],
-  "roots_birch#2": [
+  "edge_mud#2": [
    1,
    173
   ],
-  "roots_birch#4": [
+  "edge_mud#3": [
    2,
    173
   ],
-  "roots_birch#8": [
+  "edge_mud#4": [
    3,
    173
   ],
-  "branch_birch#0": [
+  "edge_mud#5": [
+   4,
+   173
+  ],
+  "edge_mud#6": [
+   5,
+   173
+  ],
+  "edge_mud#7": [
+   6,
+   173
+  ],
+  "edge_mud#8": [
+   7,
+   173
+  ],
+  "edge_mud#9": [
+   8,
+   173
+  ],
+  "edge_mud#10": [
+   9,
+   173
+  ],
+  "edge_mud#11": [
+   10,
+   173
+  ],
+  "edge_mud#12": [
+   11,
+   173
+  ],
+  "edge_mud#13": [
+   12,
+   173
+  ],
+  "edge_mud#14": [
+   13,
+   173
+  ],
+  "edge_sand#1": [
    0,
    174
   ],
-  "branch_birch#1": [
+  "edge_sand#2": [
    1,
    174
   ],
-  "branch_birch#2": [
+  "edge_sand#3": [
    2,
    174
   ],
-  "branch_birch#3": [
+  "edge_sand#4": [
    3,
    174
   ],
-  "branch_birch#4": [
+  "edge_sand#5": [
    4,
    174
   ],
-  "branch_birch#5": [
+  "edge_sand#6": [
    5,
    174
   ],
-  "branch_birch#6": [
+  "edge_sand#7": [
    6,
    174
   ],
-  "branch_birch#7": [
+  "edge_sand#8": [
    7,
    174
   ],
-  "branch_birch#8": [
+  "edge_sand#9": [
    8,
    174
   ],
-  "branch_birch#9": [
+  "edge_sand#10": [
    9,
    174
   ],
-  "branch_birch#10": [
+  "edge_sand#11": [
    10,
    174
   ],
-  "branch_birch#11": [
+  "edge_sand#12": [
    11,
    174
   ],
-  "branch_birch#12": [
+  "edge_sand#13": [
    12,
    174
   ],
-  "branch_birch#13": [
+  "edge_sand#14": [
    13,
    174
   ],
-  "branch_birch#14": [
-   14,
-   174
-  ],
-  "branch_birch#15": [
-   15,
-   174
-  ],
-  "leaves_birch#0": [
+  "edge_earth#1": [
    0,
    175
   ],
-  "leaves_birch#1": [
+  "edge_earth#2": [
    1,
    175
   ],
-  "leaves_birch#2": [
+  "edge_earth#3": [
    2,
    175
   ],
-  "leaves_birch#3": [
+  "edge_earth#4": [
    3,
    175
   ],
-  "leaves_birch#4": [
+  "edge_earth#5": [
    4,
    175
   ],
-  "leaves_birch#5": [
+  "edge_earth#6": [
    5,
    175
   ],
-  "leaves_birch#6": [
+  "edge_earth#7": [
    6,
    175
   ],
-  "leaves_birch#7": [
+  "edge_earth#8": [
    7,
    175
   ],
-  "leaves_birch#8": [
+  "edge_earth#9": [
    8,
    175
   ],
-  "leaves_birch#9": [
+  "edge_earth#10": [
    9,
    175
   ],
-  "leaves_birch#10": [
+  "edge_earth#11": [
    10,
    175
   ],
-  "leaves_birch#11": [
+  "edge_earth#12": [
    11,
    175
   ],
-  "leaves_birch#12": [
+  "edge_earth#13": [
    12,
    175
   ],
-  "leaves_birch#13": [
+  "edge_earth#14": [
    13,
    175
   ],
-  "leaves_birch#14": [
-   14,
-   175
-  ],
-  "leaves_birch#15": [
-   15,
-   175
-  ],
-  "trunk_palm": [
+  "edge_stone#1": [
    0,
    176
   ],
-  "trunk2_palm#1": [
+  "edge_stone#2": [
+   1,
+   176
+  ],
+  "edge_stone#3": [
+   2,
+   176
+  ],
+  "edge_stone#4": [
+   3,
+   176
+  ],
+  "edge_stone#5": [
+   4,
+   176
+  ],
+  "edge_stone#6": [
+   5,
+   176
+  ],
+  "edge_stone#7": [
+   6,
+   176
+  ],
+  "edge_stone#8": [
+   7,
+   176
+  ],
+  "edge_stone#9": [
+   8,
+   176
+  ],
+  "edge_stone#10": [
+   9,
+   176
+  ],
+  "edge_stone#11": [
+   10,
+   176
+  ],
+  "edge_stone#12": [
+   11,
+   176
+  ],
+  "edge_stone#13": [
+   12,
+   176
+  ],
+  "edge_stone#14": [
+   13,
+   176
+  ],
+  "edge_litter#1": [
    0,
    177
   ],
-  "trunk2_palm#2": [
+  "edge_litter#2": [
    1,
    177
   ],
-  "trunk2_palm#4": [
+  "edge_litter#3": [
    2,
    177
   ],
-  "trunk2_palm#8": [
+  "edge_litter#4": [
    3,
    177
   ],
-  "roots_palm#1": [
+  "edge_litter#5": [
+   4,
+   177
+  ],
+  "edge_litter#6": [
+   5,
+   177
+  ],
+  "edge_litter#7": [
+   6,
+   177
+  ],
+  "edge_litter#8": [
+   7,
+   177
+  ],
+  "edge_litter#9": [
+   8,
+   177
+  ],
+  "edge_litter#10": [
+   9,
+   177
+  ],
+  "edge_litter#11": [
+   10,
+   177
+  ],
+  "edge_litter#12": [
+   11,
+   177
+  ],
+  "edge_litter#13": [
+   12,
+   177
+  ],
+  "edge_litter#14": [
+   13,
+   177
+  ],
+  "edge_grass#1": [
    0,
    178
   ],
-  "roots_palm#2": [
+  "edge_grass#2": [
    1,
    178
   ],
-  "roots_palm#4": [
+  "edge_grass#3": [
    2,
    178
   ],
-  "roots_palm#8": [
+  "edge_grass#4": [
    3,
    178
   ],
-  "branch_palm#0": [
+  "edge_grass#5": [
+   4,
+   178
+  ],
+  "edge_grass#6": [
+   5,
+   178
+  ],
+  "edge_grass#7": [
+   6,
+   178
+  ],
+  "edge_grass#8": [
+   7,
+   178
+  ],
+  "edge_grass#9": [
+   8,
+   178
+  ],
+  "edge_grass#10": [
+   9,
+   178
+  ],
+  "edge_grass#11": [
+   10,
+   178
+  ],
+  "edge_grass#12": [
+   11,
+   178
+  ],
+  "edge_grass#13": [
+   12,
+   178
+  ],
+  "edge_grass#14": [
+   13,
+   178
+  ],
+  "edge_snow#1": [
    0,
    179
   ],
-  "branch_palm#1": [
+  "edge_snow#2": [
    1,
    179
   ],
-  "branch_palm#2": [
+  "edge_snow#3": [
    2,
    179
   ],
-  "branch_palm#3": [
+  "edge_snow#4": [
    3,
    179
   ],
-  "branch_palm#4": [
+  "edge_snow#5": [
    4,
    179
   ],
-  "branch_palm#5": [
+  "edge_snow#6": [
    5,
    179
   ],
-  "branch_palm#6": [
+  "edge_snow#7": [
    6,
    179
   ],
-  "branch_palm#7": [
+  "edge_snow#8": [
    7,
    179
   ],
-  "branch_palm#8": [
+  "edge_snow#9": [
    8,
    179
   ],
-  "branch_palm#9": [
+  "edge_snow#10": [
    9,
    179
   ],
-  "branch_palm#10": [
+  "edge_snow#11": [
    10,
    179
   ],
-  "branch_palm#11": [
+  "edge_snow#12": [
    11,
    179
   ],
-  "branch_palm#12": [
+  "edge_snow#13": [
    12,
    179
   ],
-  "branch_palm#13": [
+  "edge_snow#14": [
    13,
    179
   ],
-  "branch_palm#14": [
-   14,
-   179
-  ],
-  "branch_palm#15": [
-   15,
-   179
-  ],
-  "leaves_palm#0": [
+  "trunk_broadleaf": [
    0,
    180
   ],
-  "leaves_palm#1": [
-   1,
-   180
-  ],
-  "leaves_palm#2": [
-   2,
-   180
-  ],
-  "leaves_palm#3": [
-   3,
-   180
-  ],
-  "leaves_palm#4": [
-   4,
-   180
-  ],
-  "leaves_palm#5": [
-   5,
-   180
-  ],
-  "leaves_palm#6": [
-   6,
-   180
-  ],
-  "leaves_palm#7": [
-   7,
-   180
-  ],
-  "leaves_palm#8": [
-   8,
-   180
-  ],
-  "leaves_palm#9": [
-   9,
-   180
-  ],
-  "leaves_palm#10": [
-   10,
-   180
-  ],
-  "leaves_palm#11": [
-   11,
-   180
-  ],
-  "leaves_palm#12": [
-   12,
-   180
-  ],
-  "leaves_palm#13": [
-   13,
-   180
-  ],
-  "leaves_palm#14": [
-   14,
-   180
-  ],
-  "leaves_palm#15": [
-   15,
-   180
-  ],
-  "trunk_jungle": [
+  "trunk2_broadleaf#1": [
    0,
    181
   ],
-  "trunk2_jungle#1": [
+  "trunk2_broadleaf#2": [
+   1,
+   181
+  ],
+  "trunk2_broadleaf#4": [
+   2,
+   181
+  ],
+  "trunk2_broadleaf#8": [
+   3,
+   181
+  ],
+  "roots_broadleaf#1": [
    0,
    182
   ],
-  "trunk2_jungle#2": [
+  "roots_broadleaf#2": [
    1,
    182
   ],
-  "trunk2_jungle#4": [
+  "roots_broadleaf#4": [
    2,
    182
   ],
-  "trunk2_jungle#8": [
+  "roots_broadleaf#8": [
    3,
    182
   ],
-  "roots_jungle#1": [
+  "branch_broadleaf#0": [
    0,
    183
   ],
-  "roots_jungle#2": [
+  "branch_broadleaf#1": [
    1,
    183
   ],
-  "roots_jungle#4": [
+  "branch_broadleaf#2": [
    2,
    183
   ],
-  "roots_jungle#8": [
+  "branch_broadleaf#3": [
    3,
    183
   ],
-  "branch_jungle#0": [
+  "branch_broadleaf#4": [
+   4,
+   183
+  ],
+  "branch_broadleaf#5": [
+   5,
+   183
+  ],
+  "branch_broadleaf#6": [
+   6,
+   183
+  ],
+  "branch_broadleaf#7": [
+   7,
+   183
+  ],
+  "branch_broadleaf#8": [
+   8,
+   183
+  ],
+  "branch_broadleaf#9": [
+   9,
+   183
+  ],
+  "branch_broadleaf#10": [
+   10,
+   183
+  ],
+  "branch_broadleaf#11": [
+   11,
+   183
+  ],
+  "branch_broadleaf#12": [
+   12,
+   183
+  ],
+  "branch_broadleaf#13": [
+   13,
+   183
+  ],
+  "branch_broadleaf#14": [
+   14,
+   183
+  ],
+  "branch_broadleaf#15": [
+   15,
+   183
+  ],
+  "leaves_broadleaf#0": [
    0,
    184
   ],
-  "branch_jungle#1": [
+  "leaves_broadleaf#1": [
    1,
    184
   ],
-  "branch_jungle#2": [
+  "leaves_broadleaf#2": [
    2,
    184
   ],
-  "branch_jungle#3": [
+  "leaves_broadleaf#3": [
    3,
    184
   ],
-  "branch_jungle#4": [
+  "leaves_broadleaf#4": [
    4,
    184
   ],
-  "branch_jungle#5": [
+  "leaves_broadleaf#5": [
    5,
    184
   ],
-  "branch_jungle#6": [
+  "leaves_broadleaf#6": [
    6,
    184
   ],
-  "branch_jungle#7": [
+  "leaves_broadleaf#7": [
    7,
    184
   ],
-  "branch_jungle#8": [
+  "leaves_broadleaf#8": [
    8,
    184
   ],
-  "branch_jungle#9": [
+  "leaves_broadleaf#9": [
    9,
    184
   ],
-  "branch_jungle#10": [
+  "leaves_broadleaf#10": [
    10,
    184
   ],
-  "branch_jungle#11": [
+  "leaves_broadleaf#11": [
    11,
    184
   ],
-  "branch_jungle#12": [
+  "leaves_broadleaf#12": [
    12,
    184
   ],
-  "branch_jungle#13": [
+  "leaves_broadleaf#13": [
    13,
    184
   ],
-  "branch_jungle#14": [
+  "leaves_broadleaf#14": [
    14,
    184
   ],
-  "branch_jungle#15": [
+  "leaves_broadleaf#15": [
    15,
    184
   ],
-  "leaves_jungle#0": [
+  "trunk_conifer": [
    0,
    185
   ],
-  "leaves_jungle#1": [
-   1,
-   185
-  ],
-  "leaves_jungle#2": [
-   2,
-   185
-  ],
-  "leaves_jungle#3": [
-   3,
-   185
-  ],
-  "leaves_jungle#4": [
-   4,
-   185
-  ],
-  "leaves_jungle#5": [
-   5,
-   185
-  ],
-  "leaves_jungle#6": [
-   6,
-   185
-  ],
-  "leaves_jungle#7": [
-   7,
-   185
-  ],
-  "leaves_jungle#8": [
-   8,
-   185
-  ],
-  "leaves_jungle#9": [
-   9,
-   185
-  ],
-  "leaves_jungle#10": [
-   10,
-   185
-  ],
-  "leaves_jungle#11": [
-   11,
-   185
-  ],
-  "leaves_jungle#12": [
-   12,
-   185
-  ],
-  "leaves_jungle#13": [
-   13,
-   185
-  ],
-  "leaves_jungle#14": [
-   14,
-   185
-  ],
-  "leaves_jungle#15": [
-   15,
-   185
-  ],
-  "trunk_mangrove": [
+  "trunk2_conifer#1": [
    0,
    186
   ],
-  "trunk2_mangrove#1": [
+  "trunk2_conifer#2": [
+   1,
+   186
+  ],
+  "trunk2_conifer#4": [
+   2,
+   186
+  ],
+  "trunk2_conifer#8": [
+   3,
+   186
+  ],
+  "roots_conifer#1": [
    0,
    187
   ],
-  "trunk2_mangrove#2": [
+  "roots_conifer#2": [
    1,
    187
   ],
-  "trunk2_mangrove#4": [
+  "roots_conifer#4": [
    2,
    187
   ],
-  "trunk2_mangrove#8": [
+  "roots_conifer#8": [
    3,
    187
   ],
-  "roots_mangrove#1": [
+  "branch_conifer#0": [
    0,
    188
   ],
-  "roots_mangrove#2": [
+  "branch_conifer#1": [
    1,
    188
   ],
-  "roots_mangrove#4": [
+  "branch_conifer#2": [
    2,
    188
   ],
-  "roots_mangrove#8": [
+  "branch_conifer#3": [
    3,
    188
   ],
-  "branch_mangrove#0": [
+  "branch_conifer#4": [
+   4,
+   188
+  ],
+  "branch_conifer#5": [
+   5,
+   188
+  ],
+  "branch_conifer#6": [
+   6,
+   188
+  ],
+  "branch_conifer#7": [
+   7,
+   188
+  ],
+  "branch_conifer#8": [
+   8,
+   188
+  ],
+  "branch_conifer#9": [
+   9,
+   188
+  ],
+  "branch_conifer#10": [
+   10,
+   188
+  ],
+  "branch_conifer#11": [
+   11,
+   188
+  ],
+  "branch_conifer#12": [
+   12,
+   188
+  ],
+  "branch_conifer#13": [
+   13,
+   188
+  ],
+  "branch_conifer#14": [
+   14,
+   188
+  ],
+  "branch_conifer#15": [
+   15,
+   188
+  ],
+  "leaves_conifer#0": [
    0,
    189
   ],
-  "branch_mangrove#1": [
+  "leaves_conifer#1": [
    1,
    189
   ],
-  "branch_mangrove#2": [
+  "leaves_conifer#2": [
    2,
    189
   ],
-  "branch_mangrove#3": [
+  "leaves_conifer#3": [
    3,
    189
   ],
-  "branch_mangrove#4": [
+  "leaves_conifer#4": [
    4,
    189
   ],
-  "branch_mangrove#5": [
+  "leaves_conifer#5": [
    5,
    189
   ],
-  "branch_mangrove#6": [
+  "leaves_conifer#6": [
    6,
    189
   ],
-  "branch_mangrove#7": [
+  "leaves_conifer#7": [
    7,
    189
   ],
-  "branch_mangrove#8": [
+  "leaves_conifer#8": [
    8,
    189
   ],
-  "branch_mangrove#9": [
+  "leaves_conifer#9": [
    9,
    189
   ],
-  "branch_mangrove#10": [
+  "leaves_conifer#10": [
    10,
    189
   ],
-  "branch_mangrove#11": [
+  "leaves_conifer#11": [
    11,
    189
   ],
-  "branch_mangrove#12": [
+  "leaves_conifer#12": [
    12,
    189
   ],
-  "branch_mangrove#13": [
+  "leaves_conifer#13": [
    13,
    189
   ],
-  "branch_mangrove#14": [
+  "leaves_conifer#14": [
    14,
    189
   ],
-  "branch_mangrove#15": [
+  "leaves_conifer#15": [
    15,
    189
   ],
-  "leaves_mangrove#0": [
+  "trunk_birch": [
    0,
    190
   ],
-  "leaves_mangrove#1": [
-   1,
-   190
-  ],
-  "leaves_mangrove#2": [
-   2,
-   190
-  ],
-  "leaves_mangrove#3": [
-   3,
-   190
-  ],
-  "leaves_mangrove#4": [
-   4,
-   190
-  ],
-  "leaves_mangrove#5": [
-   5,
-   190
-  ],
-  "leaves_mangrove#6": [
-   6,
-   190
-  ],
-  "leaves_mangrove#7": [
-   7,
-   190
-  ],
-  "leaves_mangrove#8": [
-   8,
-   190
-  ],
-  "leaves_mangrove#9": [
-   9,
-   190
-  ],
-  "leaves_mangrove#10": [
-   10,
-   190
-  ],
-  "leaves_mangrove#11": [
-   11,
-   190
-  ],
-  "leaves_mangrove#12": [
-   12,
-   190
-  ],
-  "leaves_mangrove#13": [
-   13,
-   190
-  ],
-  "leaves_mangrove#14": [
-   14,
-   190
-  ],
-  "leaves_mangrove#15": [
-   15,
-   190
-  ],
-  "trunk_dead": [
+  "trunk2_birch#1": [
    0,
    191
   ],
-  "trunk2_dead#1": [
+  "trunk2_birch#2": [
+   1,
+   191
+  ],
+  "trunk2_birch#4": [
+   2,
+   191
+  ],
+  "trunk2_birch#8": [
+   3,
+   191
+  ],
+  "roots_birch#1": [
    0,
    192
+  ],
+  "roots_birch#2": [
+   1,
+   192
+  ],
+  "roots_birch#4": [
+   2,
+   192
+  ],
+  "roots_birch#8": [
+   3,
+   192
+  ],
+  "branch_birch#0": [
+   0,
+   193
+  ],
+  "branch_birch#1": [
+   1,
+   193
+  ],
+  "branch_birch#2": [
+   2,
+   193
+  ],
+  "branch_birch#3": [
+   3,
+   193
+  ],
+  "branch_birch#4": [
+   4,
+   193
+  ],
+  "branch_birch#5": [
+   5,
+   193
+  ],
+  "branch_birch#6": [
+   6,
+   193
+  ],
+  "branch_birch#7": [
+   7,
+   193
+  ],
+  "branch_birch#8": [
+   8,
+   193
+  ],
+  "branch_birch#9": [
+   9,
+   193
+  ],
+  "branch_birch#10": [
+   10,
+   193
+  ],
+  "branch_birch#11": [
+   11,
+   193
+  ],
+  "branch_birch#12": [
+   12,
+   193
+  ],
+  "branch_birch#13": [
+   13,
+   193
+  ],
+  "branch_birch#14": [
+   14,
+   193
+  ],
+  "branch_birch#15": [
+   15,
+   193
+  ],
+  "leaves_birch#0": [
+   0,
+   194
+  ],
+  "leaves_birch#1": [
+   1,
+   194
+  ],
+  "leaves_birch#2": [
+   2,
+   194
+  ],
+  "leaves_birch#3": [
+   3,
+   194
+  ],
+  "leaves_birch#4": [
+   4,
+   194
+  ],
+  "leaves_birch#5": [
+   5,
+   194
+  ],
+  "leaves_birch#6": [
+   6,
+   194
+  ],
+  "leaves_birch#7": [
+   7,
+   194
+  ],
+  "leaves_birch#8": [
+   8,
+   194
+  ],
+  "leaves_birch#9": [
+   9,
+   194
+  ],
+  "leaves_birch#10": [
+   10,
+   194
+  ],
+  "leaves_birch#11": [
+   11,
+   194
+  ],
+  "leaves_birch#12": [
+   12,
+   194
+  ],
+  "leaves_birch#13": [
+   13,
+   194
+  ],
+  "leaves_birch#14": [
+   14,
+   194
+  ],
+  "leaves_birch#15": [
+   15,
+   194
+  ],
+  "trunk_palm": [
+   0,
+   195
+  ],
+  "trunk2_palm#1": [
+   0,
+   196
+  ],
+  "trunk2_palm#2": [
+   1,
+   196
+  ],
+  "trunk2_palm#4": [
+   2,
+   196
+  ],
+  "trunk2_palm#8": [
+   3,
+   196
+  ],
+  "roots_palm#1": [
+   0,
+   197
+  ],
+  "roots_palm#2": [
+   1,
+   197
+  ],
+  "roots_palm#4": [
+   2,
+   197
+  ],
+  "roots_palm#8": [
+   3,
+   197
+  ],
+  "branch_palm#0": [
+   0,
+   198
+  ],
+  "branch_palm#1": [
+   1,
+   198
+  ],
+  "branch_palm#2": [
+   2,
+   198
+  ],
+  "branch_palm#3": [
+   3,
+   198
+  ],
+  "branch_palm#4": [
+   4,
+   198
+  ],
+  "branch_palm#5": [
+   5,
+   198
+  ],
+  "branch_palm#6": [
+   6,
+   198
+  ],
+  "branch_palm#7": [
+   7,
+   198
+  ],
+  "branch_palm#8": [
+   8,
+   198
+  ],
+  "branch_palm#9": [
+   9,
+   198
+  ],
+  "branch_palm#10": [
+   10,
+   198
+  ],
+  "branch_palm#11": [
+   11,
+   198
+  ],
+  "branch_palm#12": [
+   12,
+   198
+  ],
+  "branch_palm#13": [
+   13,
+   198
+  ],
+  "branch_palm#14": [
+   14,
+   198
+  ],
+  "branch_palm#15": [
+   15,
+   198
+  ],
+  "leaves_palm#0": [
+   0,
+   199
+  ],
+  "leaves_palm#1": [
+   1,
+   199
+  ],
+  "leaves_palm#2": [
+   2,
+   199
+  ],
+  "leaves_palm#3": [
+   3,
+   199
+  ],
+  "leaves_palm#4": [
+   4,
+   199
+  ],
+  "leaves_palm#5": [
+   5,
+   199
+  ],
+  "leaves_palm#6": [
+   6,
+   199
+  ],
+  "leaves_palm#7": [
+   7,
+   199
+  ],
+  "leaves_palm#8": [
+   8,
+   199
+  ],
+  "leaves_palm#9": [
+   9,
+   199
+  ],
+  "leaves_palm#10": [
+   10,
+   199
+  ],
+  "leaves_palm#11": [
+   11,
+   199
+  ],
+  "leaves_palm#12": [
+   12,
+   199
+  ],
+  "leaves_palm#13": [
+   13,
+   199
+  ],
+  "leaves_palm#14": [
+   14,
+   199
+  ],
+  "leaves_palm#15": [
+   15,
+   199
+  ],
+  "trunk_jungle": [
+   0,
+   200
+  ],
+  "trunk2_jungle#1": [
+   0,
+   201
+  ],
+  "trunk2_jungle#2": [
+   1,
+   201
+  ],
+  "trunk2_jungle#4": [
+   2,
+   201
+  ],
+  "trunk2_jungle#8": [
+   3,
+   201
+  ],
+  "roots_jungle#1": [
+   0,
+   202
+  ],
+  "roots_jungle#2": [
+   1,
+   202
+  ],
+  "roots_jungle#4": [
+   2,
+   202
+  ],
+  "roots_jungle#8": [
+   3,
+   202
+  ],
+  "branch_jungle#0": [
+   0,
+   203
+  ],
+  "branch_jungle#1": [
+   1,
+   203
+  ],
+  "branch_jungle#2": [
+   2,
+   203
+  ],
+  "branch_jungle#3": [
+   3,
+   203
+  ],
+  "branch_jungle#4": [
+   4,
+   203
+  ],
+  "branch_jungle#5": [
+   5,
+   203
+  ],
+  "branch_jungle#6": [
+   6,
+   203
+  ],
+  "branch_jungle#7": [
+   7,
+   203
+  ],
+  "branch_jungle#8": [
+   8,
+   203
+  ],
+  "branch_jungle#9": [
+   9,
+   203
+  ],
+  "branch_jungle#10": [
+   10,
+   203
+  ],
+  "branch_jungle#11": [
+   11,
+   203
+  ],
+  "branch_jungle#12": [
+   12,
+   203
+  ],
+  "branch_jungle#13": [
+   13,
+   203
+  ],
+  "branch_jungle#14": [
+   14,
+   203
+  ],
+  "branch_jungle#15": [
+   15,
+   203
+  ],
+  "leaves_jungle#0": [
+   0,
+   204
+  ],
+  "leaves_jungle#1": [
+   1,
+   204
+  ],
+  "leaves_jungle#2": [
+   2,
+   204
+  ],
+  "leaves_jungle#3": [
+   3,
+   204
+  ],
+  "leaves_jungle#4": [
+   4,
+   204
+  ],
+  "leaves_jungle#5": [
+   5,
+   204
+  ],
+  "leaves_jungle#6": [
+   6,
+   204
+  ],
+  "leaves_jungle#7": [
+   7,
+   204
+  ],
+  "leaves_jungle#8": [
+   8,
+   204
+  ],
+  "leaves_jungle#9": [
+   9,
+   204
+  ],
+  "leaves_jungle#10": [
+   10,
+   204
+  ],
+  "leaves_jungle#11": [
+   11,
+   204
+  ],
+  "leaves_jungle#12": [
+   12,
+   204
+  ],
+  "leaves_jungle#13": [
+   13,
+   204
+  ],
+  "leaves_jungle#14": [
+   14,
+   204
+  ],
+  "leaves_jungle#15": [
+   15,
+   204
+  ],
+  "trunk_mangrove": [
+   0,
+   205
+  ],
+  "trunk2_mangrove#1": [
+   0,
+   206
+  ],
+  "trunk2_mangrove#2": [
+   1,
+   206
+  ],
+  "trunk2_mangrove#4": [
+   2,
+   206
+  ],
+  "trunk2_mangrove#8": [
+   3,
+   206
+  ],
+  "roots_mangrove#1": [
+   0,
+   207
+  ],
+  "roots_mangrove#2": [
+   1,
+   207
+  ],
+  "roots_mangrove#4": [
+   2,
+   207
+  ],
+  "roots_mangrove#8": [
+   3,
+   207
+  ],
+  "branch_mangrove#0": [
+   0,
+   208
+  ],
+  "branch_mangrove#1": [
+   1,
+   208
+  ],
+  "branch_mangrove#2": [
+   2,
+   208
+  ],
+  "branch_mangrove#3": [
+   3,
+   208
+  ],
+  "branch_mangrove#4": [
+   4,
+   208
+  ],
+  "branch_mangrove#5": [
+   5,
+   208
+  ],
+  "branch_mangrove#6": [
+   6,
+   208
+  ],
+  "branch_mangrove#7": [
+   7,
+   208
+  ],
+  "branch_mangrove#8": [
+   8,
+   208
+  ],
+  "branch_mangrove#9": [
+   9,
+   208
+  ],
+  "branch_mangrove#10": [
+   10,
+   208
+  ],
+  "branch_mangrove#11": [
+   11,
+   208
+  ],
+  "branch_mangrove#12": [
+   12,
+   208
+  ],
+  "branch_mangrove#13": [
+   13,
+   208
+  ],
+  "branch_mangrove#14": [
+   14,
+   208
+  ],
+  "branch_mangrove#15": [
+   15,
+   208
+  ],
+  "leaves_mangrove#0": [
+   0,
+   209
+  ],
+  "leaves_mangrove#1": [
+   1,
+   209
+  ],
+  "leaves_mangrove#2": [
+   2,
+   209
+  ],
+  "leaves_mangrove#3": [
+   3,
+   209
+  ],
+  "leaves_mangrove#4": [
+   4,
+   209
+  ],
+  "leaves_mangrove#5": [
+   5,
+   209
+  ],
+  "leaves_mangrove#6": [
+   6,
+   209
+  ],
+  "leaves_mangrove#7": [
+   7,
+   209
+  ],
+  "leaves_mangrove#8": [
+   8,
+   209
+  ],
+  "leaves_mangrove#9": [
+   9,
+   209
+  ],
+  "leaves_mangrove#10": [
+   10,
+   209
+  ],
+  "leaves_mangrove#11": [
+   11,
+   209
+  ],
+  "leaves_mangrove#12": [
+   12,
+   209
+  ],
+  "leaves_mangrove#13": [
+   13,
+   209
+  ],
+  "leaves_mangrove#14": [
+   14,
+   209
+  ],
+  "leaves_mangrove#15": [
+   15,
+   209
+  ],
+  "trunk_dead": [
+   0,
+   210
+  ],
+  "trunk2_dead#1": [
+   0,
+   211
   ],
   "trunk2_dead#2": [
    1,
-   192
+   211
   ],
   "trunk2_dead#4": [
    2,
-   192
+   211
   ],
   "trunk2_dead#8": [
    3,
-   192
+   211
   ],
   "roots_dead#1": [
    0,
-   193
+   212
   ],
   "roots_dead#2": [
    1,
-   193
+   212
   ],
   "roots_dead#4": [
    2,
-   193
+   212
   ],
   "roots_dead#8": [
    3,
-   193
+   212
   ],
   "branch_dead#0": [
    0,
-   194
+   213
   ],
   "branch_dead#1": [
    1,
-   194
+   213
   ],
   "branch_dead#2": [
    2,
-   194
+   213
   ],
   "branch_dead#3": [
    3,
-   194
+   213
   ],
   "branch_dead#4": [
    4,
-   194
+   213
   ],
   "branch_dead#5": [
    5,
-   194
+   213
   ],
   "branch_dead#6": [
    6,
-   194
+   213
   ],
   "branch_dead#7": [
    7,
-   194
+   213
   ],
   "branch_dead#8": [
    8,
-   194
+   213
   ],
   "branch_dead#9": [
    9,
-   194
+   213
   ],
   "branch_dead#10": [
    10,
-   194
+   213
   ],
   "branch_dead#11": [
    11,
-   194
+   213
   ],
   "branch_dead#12": [
    12,
-   194
+   213
   ],
   "branch_dead#13": [
    13,
-   194
+   213
   ],
   "branch_dead#14": [
    14,
-   194
+   213
   ],
   "branch_dead#15": [
    15,
-   194
+   213
   ],
   "leaves_dead#0": [
    0,
-   195
+   214
   ],
   "leaves_dead#1": [
    1,
-   195
+   214
   ],
   "leaves_dead#2": [
    2,
-   195
+   214
   ],
   "leaves_dead#3": [
    3,
-   195
+   214
   ],
   "leaves_dead#4": [
    4,
-   195
+   214
   ],
   "leaves_dead#5": [
    5,
-   195
+   214
   ],
   "leaves_dead#6": [
    6,
-   195
+   214
   ],
   "leaves_dead#7": [
    7,
-   195
+   214
   ],
   "leaves_dead#8": [
    8,
-   195
+   214
   ],
   "leaves_dead#9": [
    9,
-   195
+   214
   ],
   "leaves_dead#10": [
    10,
-   195
+   214
   ],
   "leaves_dead#11": [
    11,
-   195
+   214
   ],
   "leaves_dead#12": [
    12,
-   195
+   214
   ],
   "leaves_dead#13": [
    13,
-   195
+   214
   ],
   "leaves_dead#14": [
    14,
-   195
+   214
   ],
   "leaves_dead#15": [
    15,
-   195
+   214
   ],
   "person_n": [
    0,
-   196
+   215
   ],
   "person_e": [
    1,
-   196
+   215
   ],
   "person_s": [
    2,
-   196
+   215
   ],
   "person_w": [
    3,
-   196
+   215
   ],
   "person_walk_n": {
    "at": [
     [
      0,
-     197
+     216
     ],
     [
      1,
-     197
+     216
     ],
     [
      2,
-     197
+     216
     ],
     [
      3,
-     197
+     216
     ]
    ],
    "ms": 70
@@ -4864,19 +5372,19 @@
    "at": [
     [
      0,
-     198
+     217
     ],
     [
      1,
-     198
+     217
     ],
     [
      2,
-     198
+     217
     ],
     [
      3,
-     198
+     217
     ]
    ],
    "ms": 70
@@ -4885,19 +5393,19 @@
    "at": [
     [
      0,
-     199
+     218
     ],
     [
      1,
-     199
+     218
     ],
     [
      2,
-     199
+     218
     ],
     [
      3,
-     199
+     218
     ]
    ],
    "ms": 70
@@ -4906,3207 +5414,3334 @@
    "at": [
     [
      0,
-     200
+     219
     ],
     [
      1,
-     200
+     219
     ],
     [
      2,
-     200
+     219
     ],
     [
      3,
-     200
+     219
     ]
    ],
    "ms": 70
   },
   "roof_tile_n#0": [
    0,
-   201
+   220
   ],
   "roof_tile_n#1": [
    1,
-   201
+   220
   ],
   "roof_tile_n#2": [
    2,
-   201
+   220
   ],
   "roof_tile_n#3": [
    3,
-   201
+   220
   ],
   "roof_tile_n#4": [
    4,
-   201
+   220
   ],
   "roof_tile_n#5": [
    5,
-   201
+   220
   ],
   "roof_tile_n#6": [
    6,
-   201
+   220
   ],
   "roof_tile_n#7": [
    7,
-   201
+   220
   ],
   "roof_tile_n#8": [
    8,
-   201
+   220
   ],
   "roof_tile_n#9": [
    9,
-   201
+   220
   ],
   "roof_tile_n#10": [
    10,
-   201
+   220
   ],
   "roof_tile_n#11": [
    11,
-   201
+   220
   ],
   "roof_tile_n#12": [
    12,
-   201
+   220
   ],
   "roof_tile_n#13": [
    13,
-   201
+   220
   ],
   "roof_tile_n#14": [
    14,
-   201
+   220
   ],
   "roof_tile_n#15": [
    15,
-   201
+   220
   ],
   "roof_tile_e#0": [
    0,
-   202
+   221
   ],
   "roof_tile_e#1": [
    1,
-   202
+   221
   ],
   "roof_tile_e#2": [
    2,
-   202
+   221
   ],
   "roof_tile_e#3": [
    3,
-   202
+   221
   ],
   "roof_tile_e#4": [
    4,
-   202
+   221
   ],
   "roof_tile_e#5": [
    5,
-   202
+   221
   ],
   "roof_tile_e#6": [
    6,
-   202
+   221
   ],
   "roof_tile_e#7": [
    7,
-   202
+   221
   ],
   "roof_tile_e#8": [
    8,
-   202
+   221
   ],
   "roof_tile_e#9": [
    9,
-   202
+   221
   ],
   "roof_tile_e#10": [
    10,
-   202
+   221
   ],
   "roof_tile_e#11": [
    11,
-   202
+   221
   ],
   "roof_tile_e#12": [
    12,
-   202
+   221
   ],
   "roof_tile_e#13": [
    13,
-   202
+   221
   ],
   "roof_tile_e#14": [
    14,
-   202
+   221
   ],
   "roof_tile_e#15": [
    15,
-   202
+   221
   ],
   "roof_tile_s#0": [
    0,
-   203
+   222
   ],
   "roof_tile_s#1": [
    1,
-   203
+   222
   ],
   "roof_tile_s#2": [
    2,
-   203
+   222
   ],
   "roof_tile_s#3": [
    3,
-   203
+   222
   ],
   "roof_tile_s#4": [
    4,
-   203
+   222
   ],
   "roof_tile_s#5": [
    5,
-   203
+   222
   ],
   "roof_tile_s#6": [
    6,
-   203
+   222
   ],
   "roof_tile_s#7": [
    7,
-   203
+   222
   ],
   "roof_tile_s#8": [
    8,
-   203
+   222
   ],
   "roof_tile_s#9": [
    9,
-   203
+   222
   ],
   "roof_tile_s#10": [
    10,
-   203
+   222
   ],
   "roof_tile_s#11": [
    11,
-   203
+   222
   ],
   "roof_tile_s#12": [
    12,
-   203
+   222
   ],
   "roof_tile_s#13": [
    13,
-   203
+   222
   ],
   "roof_tile_s#14": [
    14,
-   203
+   222
   ],
   "roof_tile_s#15": [
    15,
-   203
+   222
   ],
   "roof_tile_w#0": [
    0,
-   204
+   223
   ],
   "roof_tile_w#1": [
    1,
-   204
+   223
   ],
   "roof_tile_w#2": [
    2,
-   204
+   223
   ],
   "roof_tile_w#3": [
    3,
-   204
+   223
   ],
   "roof_tile_w#4": [
    4,
-   204
+   223
   ],
   "roof_tile_w#5": [
    5,
-   204
+   223
   ],
   "roof_tile_w#6": [
    6,
-   204
+   223
   ],
   "roof_tile_w#7": [
    7,
-   204
+   223
   ],
   "roof_tile_w#8": [
    8,
-   204
+   223
   ],
   "roof_tile_w#9": [
    9,
-   204
+   223
   ],
   "roof_tile_w#10": [
    10,
-   204
+   223
   ],
   "roof_tile_w#11": [
    11,
-   204
+   223
   ],
   "roof_tile_w#12": [
    12,
-   204
+   223
   ],
   "roof_tile_w#13": [
    13,
-   204
+   223
   ],
   "roof_tile_w#14": [
    14,
-   204
+   223
   ],
   "roof_tile_w#15": [
    15,
-   204
+   223
   ],
   "roof_tile_ridge_ew#0": [
    0,
-   205
+   224
   ],
   "roof_tile_ridge_ew#1": [
    1,
-   205
+   224
   ],
   "roof_tile_ridge_ew#2": [
    2,
-   205
+   224
   ],
   "roof_tile_ridge_ew#3": [
    3,
-   205
+   224
   ],
   "roof_tile_ridge_ew#4": [
    4,
-   205
+   224
   ],
   "roof_tile_ridge_ew#5": [
    5,
-   205
+   224
   ],
   "roof_tile_ridge_ew#6": [
    6,
-   205
+   224
   ],
   "roof_tile_ridge_ew#7": [
    7,
-   205
+   224
   ],
   "roof_tile_ridge_ew#8": [
    8,
-   205
+   224
   ],
   "roof_tile_ridge_ew#9": [
    9,
-   205
+   224
   ],
   "roof_tile_ridge_ew#10": [
    10,
-   205
+   224
   ],
   "roof_tile_ridge_ew#11": [
    11,
-   205
+   224
   ],
   "roof_tile_ridge_ew#12": [
    12,
-   205
+   224
   ],
   "roof_tile_ridge_ew#13": [
    13,
-   205
+   224
   ],
   "roof_tile_ridge_ew#14": [
    14,
-   205
+   224
   ],
   "roof_tile_ridge_ew#15": [
    15,
-   205
+   224
   ],
   "roof_tile_ridge_ns#0": [
    0,
-   206
+   225
   ],
   "roof_tile_ridge_ns#1": [
    1,
-   206
+   225
   ],
   "roof_tile_ridge_ns#2": [
    2,
-   206
+   225
   ],
   "roof_tile_ridge_ns#3": [
    3,
-   206
+   225
   ],
   "roof_tile_ridge_ns#4": [
    4,
-   206
+   225
   ],
   "roof_tile_ridge_ns#5": [
    5,
-   206
+   225
   ],
   "roof_tile_ridge_ns#6": [
    6,
-   206
+   225
   ],
   "roof_tile_ridge_ns#7": [
    7,
-   206
+   225
   ],
   "roof_tile_ridge_ns#8": [
    8,
-   206
+   225
   ],
   "roof_tile_ridge_ns#9": [
    9,
-   206
+   225
   ],
   "roof_tile_ridge_ns#10": [
    10,
-   206
+   225
   ],
   "roof_tile_ridge_ns#11": [
    11,
-   206
+   225
   ],
   "roof_tile_ridge_ns#12": [
    12,
-   206
+   225
   ],
   "roof_tile_ridge_ns#13": [
    13,
-   206
+   225
   ],
   "roof_tile_ridge_ns#14": [
    14,
-   206
+   225
   ],
   "roof_tile_ridge_ns#15": [
    15,
-   206
+   225
   ],
   "roof_tile_flat#0": [
    0,
-   207
+   226
   ],
   "roof_tile_flat#1": [
    1,
-   207
+   226
   ],
   "roof_tile_flat#2": [
    2,
-   207
+   226
   ],
   "roof_tile_flat#3": [
    3,
-   207
+   226
   ],
   "roof_tile_flat#4": [
    4,
-   207
+   226
   ],
   "roof_tile_flat#5": [
    5,
-   207
+   226
   ],
   "roof_tile_flat#6": [
    6,
-   207
+   226
   ],
   "roof_tile_flat#7": [
    7,
-   207
+   226
   ],
   "roof_tile_flat#8": [
    8,
-   207
+   226
   ],
   "roof_tile_flat#9": [
    9,
-   207
+   226
   ],
   "roof_tile_flat#10": [
    10,
-   207
+   226
   ],
   "roof_tile_flat#11": [
    11,
-   207
+   226
   ],
   "roof_tile_flat#12": [
    12,
-   207
+   226
   ],
   "roof_tile_flat#13": [
    13,
-   207
+   226
   ],
   "roof_tile_flat#14": [
    14,
-   207
+   226
   ],
   "roof_tile_flat#15": [
    15,
-   207
+   226
   ],
   "roof_tile_peak#0": [
    0,
-   208
+   227
   ],
   "roof_tile_peak#1": [
    1,
-   208
+   227
   ],
   "roof_tile_peak#2": [
    2,
-   208
+   227
   ],
   "roof_tile_peak#3": [
    3,
-   208
+   227
   ],
   "roof_tile_peak#4": [
    4,
-   208
+   227
   ],
   "roof_tile_peak#5": [
    5,
-   208
+   227
   ],
   "roof_tile_peak#6": [
    6,
-   208
+   227
   ],
   "roof_tile_peak#7": [
    7,
-   208
+   227
   ],
   "roof_tile_peak#8": [
    8,
-   208
+   227
   ],
   "roof_tile_peak#9": [
    9,
-   208
+   227
   ],
   "roof_tile_peak#10": [
    10,
-   208
+   227
   ],
   "roof_tile_peak#11": [
    11,
-   208
+   227
   ],
   "roof_tile_peak#12": [
    12,
-   208
+   227
   ],
   "roof_tile_peak#13": [
    13,
-   208
+   227
   ],
   "roof_tile_peak#14": [
    14,
-   208
+   227
   ],
   "roof_tile_peak#15": [
    15,
-   208
+   227
   ],
   "roof_slate_n#0": [
    0,
-   209
+   228
   ],
   "roof_slate_n#1": [
    1,
-   209
+   228
   ],
   "roof_slate_n#2": [
    2,
-   209
+   228
   ],
   "roof_slate_n#3": [
    3,
-   209
+   228
   ],
   "roof_slate_n#4": [
    4,
-   209
+   228
   ],
   "roof_slate_n#5": [
    5,
-   209
+   228
   ],
   "roof_slate_n#6": [
    6,
-   209
+   228
   ],
   "roof_slate_n#7": [
    7,
-   209
+   228
   ],
   "roof_slate_n#8": [
    8,
-   209
+   228
   ],
   "roof_slate_n#9": [
    9,
-   209
+   228
   ],
   "roof_slate_n#10": [
    10,
-   209
+   228
   ],
   "roof_slate_n#11": [
    11,
-   209
+   228
   ],
   "roof_slate_n#12": [
    12,
-   209
+   228
   ],
   "roof_slate_n#13": [
    13,
-   209
+   228
   ],
   "roof_slate_n#14": [
    14,
-   209
+   228
   ],
   "roof_slate_n#15": [
    15,
-   209
+   228
   ],
   "roof_slate_e#0": [
    0,
-   210
+   229
   ],
   "roof_slate_e#1": [
    1,
-   210
+   229
   ],
   "roof_slate_e#2": [
    2,
-   210
+   229
   ],
   "roof_slate_e#3": [
    3,
-   210
+   229
   ],
   "roof_slate_e#4": [
    4,
-   210
+   229
   ],
   "roof_slate_e#5": [
    5,
-   210
+   229
   ],
   "roof_slate_e#6": [
    6,
-   210
+   229
   ],
   "roof_slate_e#7": [
    7,
-   210
+   229
   ],
   "roof_slate_e#8": [
    8,
-   210
+   229
   ],
   "roof_slate_e#9": [
    9,
-   210
+   229
   ],
   "roof_slate_e#10": [
    10,
-   210
+   229
   ],
   "roof_slate_e#11": [
    11,
-   210
+   229
   ],
   "roof_slate_e#12": [
    12,
-   210
+   229
   ],
   "roof_slate_e#13": [
    13,
-   210
+   229
   ],
   "roof_slate_e#14": [
    14,
-   210
+   229
   ],
   "roof_slate_e#15": [
    15,
-   210
+   229
   ],
   "roof_slate_s#0": [
    0,
-   211
+   230
   ],
   "roof_slate_s#1": [
    1,
-   211
+   230
   ],
   "roof_slate_s#2": [
    2,
-   211
+   230
   ],
   "roof_slate_s#3": [
    3,
-   211
+   230
   ],
   "roof_slate_s#4": [
    4,
-   211
+   230
   ],
   "roof_slate_s#5": [
    5,
-   211
+   230
   ],
   "roof_slate_s#6": [
    6,
-   211
+   230
   ],
   "roof_slate_s#7": [
    7,
-   211
+   230
   ],
   "roof_slate_s#8": [
    8,
-   211
+   230
   ],
   "roof_slate_s#9": [
    9,
-   211
+   230
   ],
   "roof_slate_s#10": [
    10,
-   211
+   230
   ],
   "roof_slate_s#11": [
    11,
-   211
+   230
   ],
   "roof_slate_s#12": [
    12,
-   211
+   230
   ],
   "roof_slate_s#13": [
    13,
-   211
+   230
   ],
   "roof_slate_s#14": [
    14,
-   211
+   230
   ],
   "roof_slate_s#15": [
    15,
-   211
+   230
   ],
   "roof_slate_w#0": [
    0,
-   212
+   231
   ],
   "roof_slate_w#1": [
    1,
-   212
+   231
   ],
   "roof_slate_w#2": [
    2,
-   212
+   231
   ],
   "roof_slate_w#3": [
    3,
-   212
+   231
   ],
   "roof_slate_w#4": [
    4,
-   212
+   231
   ],
   "roof_slate_w#5": [
    5,
-   212
+   231
   ],
   "roof_slate_w#6": [
    6,
-   212
+   231
   ],
   "roof_slate_w#7": [
    7,
-   212
+   231
   ],
   "roof_slate_w#8": [
    8,
-   212
+   231
   ],
   "roof_slate_w#9": [
    9,
-   212
+   231
   ],
   "roof_slate_w#10": [
    10,
-   212
+   231
   ],
   "roof_slate_w#11": [
    11,
-   212
+   231
   ],
   "roof_slate_w#12": [
    12,
-   212
+   231
   ],
   "roof_slate_w#13": [
    13,
-   212
+   231
   ],
   "roof_slate_w#14": [
    14,
-   212
+   231
   ],
   "roof_slate_w#15": [
    15,
-   212
+   231
   ],
   "roof_slate_ridge_ew#0": [
    0,
-   213
+   232
   ],
   "roof_slate_ridge_ew#1": [
    1,
-   213
+   232
   ],
   "roof_slate_ridge_ew#2": [
    2,
-   213
+   232
   ],
   "roof_slate_ridge_ew#3": [
    3,
-   213
+   232
   ],
   "roof_slate_ridge_ew#4": [
    4,
-   213
+   232
   ],
   "roof_slate_ridge_ew#5": [
    5,
-   213
+   232
   ],
   "roof_slate_ridge_ew#6": [
    6,
-   213
+   232
   ],
   "roof_slate_ridge_ew#7": [
    7,
-   213
+   232
   ],
   "roof_slate_ridge_ew#8": [
    8,
-   213
+   232
   ],
   "roof_slate_ridge_ew#9": [
    9,
-   213
+   232
   ],
   "roof_slate_ridge_ew#10": [
    10,
-   213
+   232
   ],
   "roof_slate_ridge_ew#11": [
    11,
-   213
+   232
   ],
   "roof_slate_ridge_ew#12": [
    12,
-   213
+   232
   ],
   "roof_slate_ridge_ew#13": [
    13,
-   213
+   232
   ],
   "roof_slate_ridge_ew#14": [
    14,
-   213
+   232
   ],
   "roof_slate_ridge_ew#15": [
    15,
-   213
+   232
   ],
   "roof_slate_ridge_ns#0": [
    0,
-   214
+   233
   ],
   "roof_slate_ridge_ns#1": [
    1,
-   214
+   233
   ],
   "roof_slate_ridge_ns#2": [
    2,
-   214
+   233
   ],
   "roof_slate_ridge_ns#3": [
    3,
-   214
+   233
   ],
   "roof_slate_ridge_ns#4": [
    4,
-   214
+   233
   ],
   "roof_slate_ridge_ns#5": [
    5,
-   214
+   233
   ],
   "roof_slate_ridge_ns#6": [
    6,
-   214
+   233
   ],
   "roof_slate_ridge_ns#7": [
    7,
-   214
+   233
   ],
   "roof_slate_ridge_ns#8": [
    8,
-   214
+   233
   ],
   "roof_slate_ridge_ns#9": [
    9,
-   214
+   233
   ],
   "roof_slate_ridge_ns#10": [
    10,
-   214
+   233
   ],
   "roof_slate_ridge_ns#11": [
    11,
-   214
+   233
   ],
   "roof_slate_ridge_ns#12": [
    12,
-   214
+   233
   ],
   "roof_slate_ridge_ns#13": [
    13,
-   214
+   233
   ],
   "roof_slate_ridge_ns#14": [
    14,
-   214
+   233
   ],
   "roof_slate_ridge_ns#15": [
    15,
-   214
+   233
   ],
   "roof_slate_flat#0": [
    0,
-   215
+   234
   ],
   "roof_slate_flat#1": [
    1,
-   215
+   234
   ],
   "roof_slate_flat#2": [
    2,
-   215
+   234
   ],
   "roof_slate_flat#3": [
    3,
-   215
+   234
   ],
   "roof_slate_flat#4": [
    4,
-   215
+   234
   ],
   "roof_slate_flat#5": [
    5,
-   215
+   234
   ],
   "roof_slate_flat#6": [
    6,
-   215
+   234
   ],
   "roof_slate_flat#7": [
    7,
-   215
+   234
   ],
   "roof_slate_flat#8": [
    8,
-   215
+   234
   ],
   "roof_slate_flat#9": [
    9,
-   215
+   234
   ],
   "roof_slate_flat#10": [
    10,
-   215
+   234
   ],
   "roof_slate_flat#11": [
    11,
-   215
+   234
   ],
   "roof_slate_flat#12": [
    12,
-   215
+   234
   ],
   "roof_slate_flat#13": [
    13,
-   215
+   234
   ],
   "roof_slate_flat#14": [
    14,
-   215
+   234
   ],
   "roof_slate_flat#15": [
    15,
-   215
+   234
   ],
   "roof_slate_peak#0": [
    0,
-   216
+   235
   ],
   "roof_slate_peak#1": [
    1,
-   216
+   235
   ],
   "roof_slate_peak#2": [
    2,
-   216
+   235
   ],
   "roof_slate_peak#3": [
    3,
-   216
+   235
   ],
   "roof_slate_peak#4": [
    4,
-   216
+   235
   ],
   "roof_slate_peak#5": [
    5,
-   216
+   235
   ],
   "roof_slate_peak#6": [
    6,
-   216
+   235
   ],
   "roof_slate_peak#7": [
    7,
-   216
+   235
   ],
   "roof_slate_peak#8": [
    8,
-   216
+   235
   ],
   "roof_slate_peak#9": [
    9,
-   216
+   235
   ],
   "roof_slate_peak#10": [
    10,
-   216
+   235
   ],
   "roof_slate_peak#11": [
    11,
-   216
+   235
   ],
   "roof_slate_peak#12": [
    12,
-   216
+   235
   ],
   "roof_slate_peak#13": [
    13,
-   216
+   235
   ],
   "roof_slate_peak#14": [
    14,
-   216
+   235
   ],
   "roof_slate_peak#15": [
    15,
-   216
+   235
   ],
   "roof_shingle_n#0": [
    0,
-   217
+   236
   ],
   "roof_shingle_n#1": [
    1,
-   217
+   236
   ],
   "roof_shingle_n#2": [
    2,
-   217
+   236
   ],
   "roof_shingle_n#3": [
    3,
-   217
+   236
   ],
   "roof_shingle_n#4": [
    4,
-   217
+   236
   ],
   "roof_shingle_n#5": [
    5,
-   217
+   236
   ],
   "roof_shingle_n#6": [
    6,
-   217
+   236
   ],
   "roof_shingle_n#7": [
    7,
-   217
+   236
   ],
   "roof_shingle_n#8": [
    8,
-   217
+   236
   ],
   "roof_shingle_n#9": [
    9,
-   217
+   236
   ],
   "roof_shingle_n#10": [
    10,
-   217
+   236
   ],
   "roof_shingle_n#11": [
    11,
-   217
+   236
   ],
   "roof_shingle_n#12": [
    12,
-   217
+   236
   ],
   "roof_shingle_n#13": [
    13,
-   217
+   236
   ],
   "roof_shingle_n#14": [
    14,
-   217
+   236
   ],
   "roof_shingle_n#15": [
    15,
-   217
+   236
   ],
   "roof_shingle_e#0": [
    0,
-   218
+   237
   ],
   "roof_shingle_e#1": [
    1,
-   218
+   237
   ],
   "roof_shingle_e#2": [
    2,
-   218
+   237
   ],
   "roof_shingle_e#3": [
    3,
-   218
+   237
   ],
   "roof_shingle_e#4": [
    4,
-   218
+   237
   ],
   "roof_shingle_e#5": [
    5,
-   218
+   237
   ],
   "roof_shingle_e#6": [
    6,
-   218
+   237
   ],
   "roof_shingle_e#7": [
    7,
-   218
+   237
   ],
   "roof_shingle_e#8": [
    8,
-   218
+   237
   ],
   "roof_shingle_e#9": [
    9,
-   218
+   237
   ],
   "roof_shingle_e#10": [
    10,
-   218
+   237
   ],
   "roof_shingle_e#11": [
    11,
-   218
+   237
   ],
   "roof_shingle_e#12": [
    12,
-   218
+   237
   ],
   "roof_shingle_e#13": [
    13,
-   218
+   237
   ],
   "roof_shingle_e#14": [
    14,
-   218
+   237
   ],
   "roof_shingle_e#15": [
    15,
-   218
+   237
   ],
   "roof_shingle_s#0": [
    0,
-   219
+   238
   ],
   "roof_shingle_s#1": [
    1,
-   219
+   238
   ],
   "roof_shingle_s#2": [
    2,
-   219
+   238
   ],
   "roof_shingle_s#3": [
    3,
-   219
+   238
   ],
   "roof_shingle_s#4": [
    4,
-   219
+   238
   ],
   "roof_shingle_s#5": [
    5,
-   219
+   238
   ],
   "roof_shingle_s#6": [
    6,
-   219
+   238
   ],
   "roof_shingle_s#7": [
    7,
-   219
+   238
   ],
   "roof_shingle_s#8": [
    8,
-   219
+   238
   ],
   "roof_shingle_s#9": [
    9,
-   219
+   238
   ],
   "roof_shingle_s#10": [
    10,
-   219
+   238
   ],
   "roof_shingle_s#11": [
    11,
-   219
+   238
   ],
   "roof_shingle_s#12": [
    12,
-   219
+   238
   ],
   "roof_shingle_s#13": [
    13,
-   219
+   238
   ],
   "roof_shingle_s#14": [
    14,
-   219
+   238
   ],
   "roof_shingle_s#15": [
    15,
-   219
+   238
   ],
   "roof_shingle_w#0": [
    0,
-   220
+   239
   ],
   "roof_shingle_w#1": [
    1,
-   220
+   239
   ],
   "roof_shingle_w#2": [
    2,
-   220
+   239
   ],
   "roof_shingle_w#3": [
    3,
-   220
+   239
   ],
   "roof_shingle_w#4": [
    4,
-   220
+   239
   ],
   "roof_shingle_w#5": [
    5,
-   220
+   239
   ],
   "roof_shingle_w#6": [
    6,
-   220
+   239
   ],
   "roof_shingle_w#7": [
    7,
-   220
+   239
   ],
   "roof_shingle_w#8": [
    8,
-   220
+   239
   ],
   "roof_shingle_w#9": [
    9,
-   220
+   239
   ],
   "roof_shingle_w#10": [
    10,
-   220
+   239
   ],
   "roof_shingle_w#11": [
    11,
-   220
+   239
   ],
   "roof_shingle_w#12": [
    12,
-   220
+   239
   ],
   "roof_shingle_w#13": [
    13,
-   220
+   239
   ],
   "roof_shingle_w#14": [
    14,
-   220
+   239
   ],
   "roof_shingle_w#15": [
    15,
-   220
+   239
   ],
   "roof_shingle_ridge_ew#0": [
    0,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#1": [
    1,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#2": [
    2,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#3": [
    3,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#4": [
    4,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#5": [
    5,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#6": [
    6,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#7": [
    7,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#8": [
    8,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#9": [
    9,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#10": [
    10,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#11": [
    11,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#12": [
    12,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#13": [
    13,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#14": [
    14,
-   221
+   240
   ],
   "roof_shingle_ridge_ew#15": [
    15,
-   221
+   240
   ],
   "roof_shingle_ridge_ns#0": [
    0,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#1": [
    1,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#2": [
    2,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#3": [
    3,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#4": [
    4,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#5": [
    5,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#6": [
    6,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#7": [
    7,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#8": [
    8,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#9": [
    9,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#10": [
    10,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#11": [
    11,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#12": [
    12,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#13": [
    13,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#14": [
    14,
-   222
+   241
   ],
   "roof_shingle_ridge_ns#15": [
    15,
-   222
+   241
   ],
   "roof_shingle_flat#0": [
    0,
-   223
+   242
   ],
   "roof_shingle_flat#1": [
    1,
-   223
+   242
   ],
   "roof_shingle_flat#2": [
    2,
-   223
+   242
   ],
   "roof_shingle_flat#3": [
    3,
-   223
+   242
   ],
   "roof_shingle_flat#4": [
    4,
-   223
+   242
   ],
   "roof_shingle_flat#5": [
    5,
-   223
+   242
   ],
   "roof_shingle_flat#6": [
    6,
-   223
+   242
   ],
   "roof_shingle_flat#7": [
    7,
-   223
+   242
   ],
   "roof_shingle_flat#8": [
    8,
-   223
+   242
   ],
   "roof_shingle_flat#9": [
    9,
-   223
+   242
   ],
   "roof_shingle_flat#10": [
    10,
-   223
+   242
   ],
   "roof_shingle_flat#11": [
    11,
-   223
+   242
   ],
   "roof_shingle_flat#12": [
    12,
-   223
+   242
   ],
   "roof_shingle_flat#13": [
    13,
-   223
+   242
   ],
   "roof_shingle_flat#14": [
    14,
-   223
+   242
   ],
   "roof_shingle_flat#15": [
    15,
-   223
+   242
   ],
   "roof_shingle_peak#0": [
    0,
-   224
+   243
   ],
   "roof_shingle_peak#1": [
    1,
-   224
+   243
   ],
   "roof_shingle_peak#2": [
    2,
-   224
+   243
   ],
   "roof_shingle_peak#3": [
    3,
-   224
+   243
   ],
   "roof_shingle_peak#4": [
    4,
-   224
+   243
   ],
   "roof_shingle_peak#5": [
    5,
-   224
+   243
   ],
   "roof_shingle_peak#6": [
    6,
-   224
+   243
   ],
   "roof_shingle_peak#7": [
    7,
-   224
+   243
   ],
   "roof_shingle_peak#8": [
    8,
-   224
+   243
   ],
   "roof_shingle_peak#9": [
    9,
-   224
+   243
   ],
   "roof_shingle_peak#10": [
    10,
-   224
+   243
   ],
   "roof_shingle_peak#11": [
    11,
-   224
+   243
   ],
   "roof_shingle_peak#12": [
    12,
-   224
+   243
   ],
   "roof_shingle_peak#13": [
    13,
-   224
+   243
   ],
   "roof_shingle_peak#14": [
    14,
-   224
+   243
   ],
   "roof_shingle_peak#15": [
    15,
-   224
+   243
   ],
   "roof_thatch_n#0": [
    0,
-   225
+   244
   ],
   "roof_thatch_n#1": [
    1,
-   225
+   244
   ],
   "roof_thatch_n#2": [
    2,
-   225
+   244
   ],
   "roof_thatch_n#3": [
    3,
-   225
+   244
   ],
   "roof_thatch_n#4": [
    4,
-   225
+   244
   ],
   "roof_thatch_n#5": [
    5,
-   225
+   244
   ],
   "roof_thatch_n#6": [
    6,
-   225
+   244
   ],
   "roof_thatch_n#7": [
    7,
-   225
+   244
   ],
   "roof_thatch_n#8": [
    8,
-   225
+   244
   ],
   "roof_thatch_n#9": [
    9,
-   225
+   244
   ],
   "roof_thatch_n#10": [
    10,
-   225
+   244
   ],
   "roof_thatch_n#11": [
    11,
-   225
+   244
   ],
   "roof_thatch_n#12": [
    12,
-   225
+   244
   ],
   "roof_thatch_n#13": [
    13,
-   225
+   244
   ],
   "roof_thatch_n#14": [
    14,
-   225
+   244
   ],
   "roof_thatch_n#15": [
    15,
-   225
+   244
   ],
   "roof_thatch_e#0": [
    0,
-   226
+   245
   ],
   "roof_thatch_e#1": [
    1,
-   226
+   245
   ],
   "roof_thatch_e#2": [
    2,
-   226
+   245
   ],
   "roof_thatch_e#3": [
    3,
-   226
+   245
   ],
   "roof_thatch_e#4": [
    4,
-   226
+   245
   ],
   "roof_thatch_e#5": [
    5,
-   226
+   245
   ],
   "roof_thatch_e#6": [
    6,
-   226
+   245
   ],
   "roof_thatch_e#7": [
    7,
-   226
+   245
   ],
   "roof_thatch_e#8": [
    8,
-   226
+   245
   ],
   "roof_thatch_e#9": [
    9,
-   226
+   245
   ],
   "roof_thatch_e#10": [
    10,
-   226
+   245
   ],
   "roof_thatch_e#11": [
    11,
-   226
+   245
   ],
   "roof_thatch_e#12": [
    12,
-   226
+   245
   ],
   "roof_thatch_e#13": [
    13,
-   226
+   245
   ],
   "roof_thatch_e#14": [
    14,
-   226
+   245
   ],
   "roof_thatch_e#15": [
    15,
-   226
+   245
   ],
   "roof_thatch_s#0": [
    0,
-   227
+   246
   ],
   "roof_thatch_s#1": [
    1,
-   227
+   246
   ],
   "roof_thatch_s#2": [
    2,
-   227
+   246
   ],
   "roof_thatch_s#3": [
    3,
-   227
+   246
   ],
   "roof_thatch_s#4": [
    4,
-   227
+   246
   ],
   "roof_thatch_s#5": [
    5,
-   227
+   246
   ],
   "roof_thatch_s#6": [
    6,
-   227
+   246
   ],
   "roof_thatch_s#7": [
    7,
-   227
+   246
   ],
   "roof_thatch_s#8": [
    8,
-   227
+   246
   ],
   "roof_thatch_s#9": [
    9,
-   227
+   246
   ],
   "roof_thatch_s#10": [
    10,
-   227
+   246
   ],
   "roof_thatch_s#11": [
    11,
-   227
+   246
   ],
   "roof_thatch_s#12": [
    12,
-   227
+   246
   ],
   "roof_thatch_s#13": [
    13,
-   227
+   246
   ],
   "roof_thatch_s#14": [
    14,
-   227
+   246
   ],
   "roof_thatch_s#15": [
    15,
-   227
+   246
   ],
   "roof_thatch_w#0": [
    0,
-   228
+   247
   ],
   "roof_thatch_w#1": [
    1,
-   228
+   247
   ],
   "roof_thatch_w#2": [
    2,
-   228
+   247
   ],
   "roof_thatch_w#3": [
    3,
-   228
+   247
   ],
   "roof_thatch_w#4": [
    4,
-   228
+   247
   ],
   "roof_thatch_w#5": [
    5,
-   228
+   247
   ],
   "roof_thatch_w#6": [
    6,
-   228
+   247
   ],
   "roof_thatch_w#7": [
    7,
-   228
+   247
   ],
   "roof_thatch_w#8": [
    8,
-   228
+   247
   ],
   "roof_thatch_w#9": [
    9,
-   228
+   247
   ],
   "roof_thatch_w#10": [
    10,
-   228
+   247
   ],
   "roof_thatch_w#11": [
    11,
-   228
+   247
   ],
   "roof_thatch_w#12": [
    12,
-   228
+   247
   ],
   "roof_thatch_w#13": [
    13,
-   228
+   247
   ],
   "roof_thatch_w#14": [
    14,
-   228
+   247
   ],
   "roof_thatch_w#15": [
    15,
-   228
+   247
   ],
   "roof_thatch_ridge_ew#0": [
    0,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#1": [
    1,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#2": [
    2,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#3": [
    3,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#4": [
    4,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#5": [
    5,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#6": [
    6,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#7": [
    7,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#8": [
    8,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#9": [
    9,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#10": [
    10,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#11": [
    11,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#12": [
    12,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#13": [
    13,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#14": [
    14,
-   229
+   248
   ],
   "roof_thatch_ridge_ew#15": [
    15,
-   229
+   248
   ],
   "roof_thatch_ridge_ns#0": [
    0,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#1": [
    1,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#2": [
    2,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#3": [
    3,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#4": [
    4,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#5": [
    5,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#6": [
    6,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#7": [
    7,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#8": [
    8,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#9": [
    9,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#10": [
    10,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#11": [
    11,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#12": [
    12,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#13": [
    13,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#14": [
    14,
-   230
+   249
   ],
   "roof_thatch_ridge_ns#15": [
    15,
-   230
+   249
   ],
   "roof_thatch_flat#0": [
    0,
-   231
+   250
   ],
   "roof_thatch_flat#1": [
    1,
-   231
+   250
   ],
   "roof_thatch_flat#2": [
    2,
-   231
+   250
   ],
   "roof_thatch_flat#3": [
    3,
-   231
+   250
   ],
   "roof_thatch_flat#4": [
    4,
-   231
+   250
   ],
   "roof_thatch_flat#5": [
    5,
-   231
+   250
   ],
   "roof_thatch_flat#6": [
    6,
-   231
+   250
   ],
   "roof_thatch_flat#7": [
    7,
-   231
+   250
   ],
   "roof_thatch_flat#8": [
    8,
-   231
+   250
   ],
   "roof_thatch_flat#9": [
    9,
-   231
+   250
   ],
   "roof_thatch_flat#10": [
    10,
-   231
+   250
   ],
   "roof_thatch_flat#11": [
    11,
-   231
+   250
   ],
   "roof_thatch_flat#12": [
    12,
-   231
+   250
   ],
   "roof_thatch_flat#13": [
    13,
-   231
+   250
   ],
   "roof_thatch_flat#14": [
    14,
-   231
+   250
   ],
   "roof_thatch_flat#15": [
    15,
-   231
+   250
   ],
   "roof_thatch_peak#0": [
    0,
-   232
+   251
   ],
   "roof_thatch_peak#1": [
    1,
-   232
+   251
   ],
   "roof_thatch_peak#2": [
    2,
-   232
+   251
   ],
   "roof_thatch_peak#3": [
    3,
-   232
+   251
   ],
   "roof_thatch_peak#4": [
    4,
-   232
+   251
   ],
   "roof_thatch_peak#5": [
    5,
-   232
+   251
   ],
   "roof_thatch_peak#6": [
    6,
-   232
+   251
   ],
   "roof_thatch_peak#7": [
    7,
-   232
+   251
   ],
   "roof_thatch_peak#8": [
    8,
-   232
+   251
   ],
   "roof_thatch_peak#9": [
    9,
-   232
+   251
   ],
   "roof_thatch_peak#10": [
    10,
-   232
+   251
   ],
   "roof_thatch_peak#11": [
    11,
-   232
+   251
   ],
   "roof_thatch_peak#12": [
    12,
-   232
+   251
   ],
   "roof_thatch_peak#13": [
    13,
-   232
+   251
   ],
   "roof_thatch_peak#14": [
    14,
-   232
+   251
   ],
   "roof_thatch_peak#15": [
    15,
-   232
+   251
   ],
   "roof_flat_n#0": [
    0,
-   233
+   252
   ],
   "roof_flat_n#1": [
    1,
-   233
+   252
   ],
   "roof_flat_n#2": [
    2,
-   233
+   252
   ],
   "roof_flat_n#3": [
    3,
-   233
+   252
   ],
   "roof_flat_n#4": [
    4,
-   233
+   252
   ],
   "roof_flat_n#5": [
    5,
-   233
+   252
   ],
   "roof_flat_n#6": [
    6,
-   233
+   252
   ],
   "roof_flat_n#7": [
    7,
-   233
+   252
   ],
   "roof_flat_n#8": [
    8,
-   233
+   252
   ],
   "roof_flat_n#9": [
    9,
-   233
+   252
   ],
   "roof_flat_n#10": [
    10,
-   233
+   252
   ],
   "roof_flat_n#11": [
    11,
-   233
+   252
   ],
   "roof_flat_n#12": [
    12,
-   233
+   252
   ],
   "roof_flat_n#13": [
    13,
-   233
+   252
   ],
   "roof_flat_n#14": [
    14,
-   233
+   252
   ],
   "roof_flat_n#15": [
    15,
-   233
+   252
   ],
   "roof_flat_e#0": [
    0,
-   234
+   253
   ],
   "roof_flat_e#1": [
    1,
-   234
+   253
   ],
   "roof_flat_e#2": [
    2,
-   234
+   253
   ],
   "roof_flat_e#3": [
    3,
-   234
+   253
   ],
   "roof_flat_e#4": [
    4,
-   234
+   253
   ],
   "roof_flat_e#5": [
    5,
-   234
+   253
   ],
   "roof_flat_e#6": [
    6,
-   234
+   253
   ],
   "roof_flat_e#7": [
    7,
-   234
+   253
   ],
   "roof_flat_e#8": [
    8,
-   234
+   253
   ],
   "roof_flat_e#9": [
    9,
-   234
+   253
   ],
   "roof_flat_e#10": [
    10,
-   234
+   253
   ],
   "roof_flat_e#11": [
    11,
-   234
+   253
   ],
   "roof_flat_e#12": [
    12,
-   234
+   253
   ],
   "roof_flat_e#13": [
    13,
-   234
+   253
   ],
   "roof_flat_e#14": [
    14,
-   234
+   253
   ],
   "roof_flat_e#15": [
    15,
-   234
+   253
   ],
   "roof_flat_s#0": [
    0,
-   235
+   254
   ],
   "roof_flat_s#1": [
    1,
-   235
+   254
   ],
   "roof_flat_s#2": [
    2,
-   235
+   254
   ],
   "roof_flat_s#3": [
    3,
-   235
+   254
   ],
   "roof_flat_s#4": [
    4,
-   235
+   254
   ],
   "roof_flat_s#5": [
    5,
-   235
+   254
   ],
   "roof_flat_s#6": [
    6,
-   235
+   254
   ],
   "roof_flat_s#7": [
    7,
-   235
+   254
   ],
   "roof_flat_s#8": [
    8,
-   235
+   254
   ],
   "roof_flat_s#9": [
    9,
-   235
+   254
   ],
   "roof_flat_s#10": [
    10,
-   235
+   254
   ],
   "roof_flat_s#11": [
    11,
-   235
+   254
   ],
   "roof_flat_s#12": [
    12,
-   235
+   254
   ],
   "roof_flat_s#13": [
    13,
-   235
+   254
   ],
   "roof_flat_s#14": [
    14,
-   235
+   254
   ],
   "roof_flat_s#15": [
    15,
-   235
+   254
   ],
   "roof_flat_w#0": [
    0,
-   236
+   255
   ],
   "roof_flat_w#1": [
    1,
-   236
+   255
   ],
   "roof_flat_w#2": [
    2,
-   236
+   255
   ],
   "roof_flat_w#3": [
    3,
-   236
+   255
   ],
   "roof_flat_w#4": [
    4,
-   236
+   255
   ],
   "roof_flat_w#5": [
    5,
-   236
+   255
   ],
   "roof_flat_w#6": [
    6,
-   236
+   255
   ],
   "roof_flat_w#7": [
    7,
-   236
+   255
   ],
   "roof_flat_w#8": [
    8,
-   236
+   255
   ],
   "roof_flat_w#9": [
    9,
-   236
+   255
   ],
   "roof_flat_w#10": [
    10,
-   236
+   255
   ],
   "roof_flat_w#11": [
    11,
-   236
+   255
   ],
   "roof_flat_w#12": [
    12,
-   236
+   255
   ],
   "roof_flat_w#13": [
    13,
-   236
+   255
   ],
   "roof_flat_w#14": [
    14,
-   236
+   255
   ],
   "roof_flat_w#15": [
    15,
-   236
+   255
   ],
   "roof_flat_ridge_ew#0": [
    0,
-   237
+   256
   ],
   "roof_flat_ridge_ew#1": [
    1,
-   237
+   256
   ],
   "roof_flat_ridge_ew#2": [
    2,
-   237
+   256
   ],
   "roof_flat_ridge_ew#3": [
    3,
-   237
+   256
   ],
   "roof_flat_ridge_ew#4": [
    4,
-   237
+   256
   ],
   "roof_flat_ridge_ew#5": [
    5,
-   237
+   256
   ],
   "roof_flat_ridge_ew#6": [
    6,
-   237
+   256
   ],
   "roof_flat_ridge_ew#7": [
    7,
-   237
+   256
   ],
   "roof_flat_ridge_ew#8": [
    8,
-   237
+   256
   ],
   "roof_flat_ridge_ew#9": [
    9,
-   237
+   256
   ],
   "roof_flat_ridge_ew#10": [
    10,
-   237
+   256
   ],
   "roof_flat_ridge_ew#11": [
    11,
-   237
+   256
   ],
   "roof_flat_ridge_ew#12": [
    12,
-   237
+   256
   ],
   "roof_flat_ridge_ew#13": [
    13,
-   237
+   256
   ],
   "roof_flat_ridge_ew#14": [
    14,
-   237
+   256
   ],
   "roof_flat_ridge_ew#15": [
    15,
-   237
+   256
   ],
   "roof_flat_ridge_ns#0": [
    0,
-   238
+   257
   ],
   "roof_flat_ridge_ns#1": [
    1,
-   238
+   257
   ],
   "roof_flat_ridge_ns#2": [
    2,
-   238
+   257
   ],
   "roof_flat_ridge_ns#3": [
    3,
-   238
+   257
   ],
   "roof_flat_ridge_ns#4": [
    4,
-   238
+   257
   ],
   "roof_flat_ridge_ns#5": [
    5,
-   238
+   257
   ],
   "roof_flat_ridge_ns#6": [
    6,
-   238
+   257
   ],
   "roof_flat_ridge_ns#7": [
    7,
-   238
+   257
   ],
   "roof_flat_ridge_ns#8": [
    8,
-   238
+   257
   ],
   "roof_flat_ridge_ns#9": [
    9,
-   238
+   257
   ],
   "roof_flat_ridge_ns#10": [
    10,
-   238
+   257
   ],
   "roof_flat_ridge_ns#11": [
    11,
-   238
+   257
   ],
   "roof_flat_ridge_ns#12": [
    12,
-   238
+   257
   ],
   "roof_flat_ridge_ns#13": [
    13,
-   238
+   257
   ],
   "roof_flat_ridge_ns#14": [
    14,
-   238
+   257
   ],
   "roof_flat_ridge_ns#15": [
    15,
-   238
+   257
   ],
   "roof_flat_flat#0": [
    0,
-   239
+   258
   ],
   "roof_flat_flat#1": [
    1,
-   239
+   258
   ],
   "roof_flat_flat#2": [
    2,
-   239
+   258
   ],
   "roof_flat_flat#3": [
    3,
-   239
+   258
   ],
   "roof_flat_flat#4": [
    4,
-   239
+   258
   ],
   "roof_flat_flat#5": [
    5,
-   239
+   258
   ],
   "roof_flat_flat#6": [
    6,
-   239
+   258
   ],
   "roof_flat_flat#7": [
    7,
-   239
+   258
   ],
   "roof_flat_flat#8": [
    8,
-   239
+   258
   ],
   "roof_flat_flat#9": [
    9,
-   239
+   258
   ],
   "roof_flat_flat#10": [
    10,
-   239
+   258
   ],
   "roof_flat_flat#11": [
    11,
-   239
+   258
   ],
   "roof_flat_flat#12": [
    12,
-   239
+   258
   ],
   "roof_flat_flat#13": [
    13,
-   239
+   258
   ],
   "roof_flat_flat#14": [
    14,
-   239
+   258
   ],
   "roof_flat_flat#15": [
    15,
-   239
+   258
   ],
   "roof_flat_peak#0": [
    0,
-   240
+   259
   ],
   "roof_flat_peak#1": [
    1,
-   240
+   259
   ],
   "roof_flat_peak#2": [
    2,
-   240
+   259
   ],
   "roof_flat_peak#3": [
    3,
-   240
+   259
   ],
   "roof_flat_peak#4": [
    4,
-   240
+   259
   ],
   "roof_flat_peak#5": [
    5,
-   240
+   259
   ],
   "roof_flat_peak#6": [
    6,
-   240
+   259
   ],
   "roof_flat_peak#7": [
    7,
-   240
+   259
   ],
   "roof_flat_peak#8": [
    8,
-   240
+   259
   ],
   "roof_flat_peak#9": [
    9,
-   240
+   259
   ],
   "roof_flat_peak#10": [
    10,
-   240
+   259
   ],
   "roof_flat_peak#11": [
    11,
-   240
+   259
   ],
   "roof_flat_peak#12": [
    12,
-   240
+   259
   ],
   "roof_flat_peak#13": [
    13,
-   240
+   259
   ],
   "roof_flat_peak#14": [
    14,
-   240
+   259
   ],
   "roof_flat_peak#15": [
    15,
-   240
+   259
   ],
   "roof_turf_n#0": [
    0,
-   241
+   260
   ],
   "roof_turf_n#1": [
    1,
-   241
+   260
   ],
   "roof_turf_n#2": [
    2,
-   241
+   260
   ],
   "roof_turf_n#3": [
    3,
-   241
+   260
   ],
   "roof_turf_n#4": [
    4,
-   241
+   260
   ],
   "roof_turf_n#5": [
    5,
-   241
+   260
   ],
   "roof_turf_n#6": [
    6,
-   241
+   260
   ],
   "roof_turf_n#7": [
    7,
-   241
+   260
   ],
   "roof_turf_n#8": [
    8,
-   241
+   260
   ],
   "roof_turf_n#9": [
    9,
-   241
+   260
   ],
   "roof_turf_n#10": [
    10,
-   241
+   260
   ],
   "roof_turf_n#11": [
    11,
-   241
+   260
   ],
   "roof_turf_n#12": [
    12,
-   241
+   260
   ],
   "roof_turf_n#13": [
    13,
-   241
+   260
   ],
   "roof_turf_n#14": [
    14,
-   241
+   260
   ],
   "roof_turf_n#15": [
    15,
-   241
+   260
   ],
   "roof_turf_e#0": [
    0,
-   242
+   261
   ],
   "roof_turf_e#1": [
    1,
-   242
+   261
   ],
   "roof_turf_e#2": [
    2,
-   242
+   261
   ],
   "roof_turf_e#3": [
    3,
-   242
+   261
   ],
   "roof_turf_e#4": [
    4,
-   242
+   261
   ],
   "roof_turf_e#5": [
    5,
-   242
+   261
   ],
   "roof_turf_e#6": [
    6,
-   242
+   261
   ],
   "roof_turf_e#7": [
    7,
-   242
+   261
   ],
   "roof_turf_e#8": [
    8,
-   242
+   261
   ],
   "roof_turf_e#9": [
    9,
-   242
+   261
   ],
   "roof_turf_e#10": [
    10,
-   242
+   261
   ],
   "roof_turf_e#11": [
    11,
-   242
+   261
   ],
   "roof_turf_e#12": [
    12,
-   242
+   261
   ],
   "roof_turf_e#13": [
    13,
-   242
+   261
   ],
   "roof_turf_e#14": [
    14,
-   242
+   261
   ],
   "roof_turf_e#15": [
    15,
-   242
+   261
   ],
   "roof_turf_s#0": [
    0,
-   243
+   262
   ],
   "roof_turf_s#1": [
    1,
-   243
+   262
   ],
   "roof_turf_s#2": [
    2,
-   243
+   262
   ],
   "roof_turf_s#3": [
    3,
-   243
+   262
   ],
   "roof_turf_s#4": [
    4,
-   243
+   262
   ],
   "roof_turf_s#5": [
    5,
-   243
+   262
   ],
   "roof_turf_s#6": [
    6,
-   243
+   262
   ],
   "roof_turf_s#7": [
    7,
-   243
+   262
   ],
   "roof_turf_s#8": [
    8,
-   243
+   262
   ],
   "roof_turf_s#9": [
    9,
-   243
+   262
   ],
   "roof_turf_s#10": [
    10,
-   243
+   262
   ],
   "roof_turf_s#11": [
    11,
-   243
+   262
   ],
   "roof_turf_s#12": [
    12,
-   243
+   262
   ],
   "roof_turf_s#13": [
    13,
-   243
+   262
   ],
   "roof_turf_s#14": [
    14,
-   243
+   262
   ],
   "roof_turf_s#15": [
    15,
-   243
+   262
   ],
   "roof_turf_w#0": [
    0,
-   244
+   263
   ],
   "roof_turf_w#1": [
    1,
-   244
+   263
   ],
   "roof_turf_w#2": [
    2,
-   244
+   263
   ],
   "roof_turf_w#3": [
    3,
-   244
+   263
   ],
   "roof_turf_w#4": [
    4,
-   244
+   263
   ],
   "roof_turf_w#5": [
    5,
-   244
+   263
   ],
   "roof_turf_w#6": [
    6,
-   244
+   263
   ],
   "roof_turf_w#7": [
    7,
-   244
+   263
   ],
   "roof_turf_w#8": [
    8,
-   244
+   263
   ],
   "roof_turf_w#9": [
    9,
-   244
+   263
   ],
   "roof_turf_w#10": [
    10,
-   244
+   263
   ],
   "roof_turf_w#11": [
    11,
-   244
+   263
   ],
   "roof_turf_w#12": [
    12,
-   244
+   263
   ],
   "roof_turf_w#13": [
    13,
-   244
+   263
   ],
   "roof_turf_w#14": [
    14,
-   244
+   263
   ],
   "roof_turf_w#15": [
    15,
-   244
+   263
   ],
   "roof_turf_ridge_ew#0": [
    0,
-   245
+   264
   ],
   "roof_turf_ridge_ew#1": [
    1,
-   245
+   264
   ],
   "roof_turf_ridge_ew#2": [
    2,
-   245
+   264
   ],
   "roof_turf_ridge_ew#3": [
    3,
-   245
+   264
   ],
   "roof_turf_ridge_ew#4": [
    4,
-   245
+   264
   ],
   "roof_turf_ridge_ew#5": [
    5,
-   245
+   264
   ],
   "roof_turf_ridge_ew#6": [
    6,
-   245
+   264
   ],
   "roof_turf_ridge_ew#7": [
    7,
-   245
+   264
   ],
   "roof_turf_ridge_ew#8": [
    8,
-   245
+   264
   ],
   "roof_turf_ridge_ew#9": [
    9,
-   245
+   264
   ],
   "roof_turf_ridge_ew#10": [
    10,
-   245
+   264
   ],
   "roof_turf_ridge_ew#11": [
    11,
-   245
+   264
   ],
   "roof_turf_ridge_ew#12": [
    12,
-   245
+   264
   ],
   "roof_turf_ridge_ew#13": [
    13,
-   245
+   264
   ],
   "roof_turf_ridge_ew#14": [
    14,
-   245
+   264
   ],
   "roof_turf_ridge_ew#15": [
    15,
-   245
+   264
   ],
   "roof_turf_ridge_ns#0": [
    0,
-   246
+   265
   ],
   "roof_turf_ridge_ns#1": [
    1,
-   246
+   265
   ],
   "roof_turf_ridge_ns#2": [
    2,
-   246
+   265
   ],
   "roof_turf_ridge_ns#3": [
    3,
-   246
+   265
   ],
   "roof_turf_ridge_ns#4": [
    4,
-   246
+   265
   ],
   "roof_turf_ridge_ns#5": [
    5,
-   246
+   265
   ],
   "roof_turf_ridge_ns#6": [
    6,
-   246
+   265
   ],
   "roof_turf_ridge_ns#7": [
    7,
-   246
+   265
   ],
   "roof_turf_ridge_ns#8": [
    8,
-   246
+   265
   ],
   "roof_turf_ridge_ns#9": [
    9,
-   246
+   265
   ],
   "roof_turf_ridge_ns#10": [
    10,
-   246
+   265
   ],
   "roof_turf_ridge_ns#11": [
    11,
-   246
+   265
   ],
   "roof_turf_ridge_ns#12": [
    12,
-   246
+   265
   ],
   "roof_turf_ridge_ns#13": [
    13,
-   246
+   265
   ],
   "roof_turf_ridge_ns#14": [
    14,
-   246
+   265
   ],
   "roof_turf_ridge_ns#15": [
    15,
-   246
+   265
   ],
   "roof_turf_flat#0": [
    0,
-   247
+   266
   ],
   "roof_turf_flat#1": [
    1,
-   247
+   266
   ],
   "roof_turf_flat#2": [
    2,
-   247
+   266
   ],
   "roof_turf_flat#3": [
    3,
-   247
+   266
   ],
   "roof_turf_flat#4": [
    4,
-   247
+   266
   ],
   "roof_turf_flat#5": [
    5,
-   247
+   266
   ],
   "roof_turf_flat#6": [
    6,
-   247
+   266
   ],
   "roof_turf_flat#7": [
    7,
-   247
+   266
   ],
   "roof_turf_flat#8": [
    8,
-   247
+   266
   ],
   "roof_turf_flat#9": [
    9,
-   247
+   266
   ],
   "roof_turf_flat#10": [
    10,
-   247
+   266
   ],
   "roof_turf_flat#11": [
    11,
-   247
+   266
   ],
   "roof_turf_flat#12": [
    12,
-   247
+   266
   ],
   "roof_turf_flat#13": [
    13,
-   247
+   266
   ],
   "roof_turf_flat#14": [
    14,
-   247
+   266
   ],
   "roof_turf_flat#15": [
    15,
-   247
+   266
   ],
   "roof_turf_peak#0": [
    0,
-   248
+   267
   ],
   "roof_turf_peak#1": [
    1,
-   248
+   267
   ],
   "roof_turf_peak#2": [
    2,
-   248
+   267
   ],
   "roof_turf_peak#3": [
    3,
-   248
+   267
   ],
   "roof_turf_peak#4": [
    4,
-   248
+   267
   ],
   "roof_turf_peak#5": [
    5,
-   248
+   267
   ],
   "roof_turf_peak#6": [
    6,
-   248
+   267
   ],
   "roof_turf_peak#7": [
    7,
-   248
+   267
   ],
   "roof_turf_peak#8": [
    8,
-   248
+   267
   ],
   "roof_turf_peak#9": [
    9,
-   248
+   267
   ],
   "roof_turf_peak#10": [
    10,
-   248
+   267
   ],
   "roof_turf_peak#11": [
    11,
-   248
+   267
   ],
   "roof_turf_peak#12": [
    12,
-   248
+   267
   ],
   "roof_turf_peak#13": [
    13,
-   248
+   267
   ],
   "roof_turf_peak#14": [
    14,
-   248
+   267
   ],
   "roof_turf_peak#15": [
    15,
-   248
+   267
   ],
   "grass_tuft": [
    0,
-   249
+   268
   ],
   "grass_tuft.1": [
    1,
-   249
+   268
   ],
   "grass_tuft.2": [
    2,
-   249
+   268
   ],
   "wildflowers": [
    0,
-   250
+   269
   ],
   "wildflowers.1": [
    1,
-   250
+   269
   ],
   "wildflowers.2": [
    2,
-   250
+   269
   ],
   "pebbles": [
    0,
-   251
+   270
   ],
   "pebbles.1": [
    1,
-   251
+   270
   ],
   "pebbles.2": [
    2,
-   251
+   270
   ],
   "twigs": [
    0,
-   252
+   271
   ],
   "twigs.1": [
    1,
-   252
+   271
   ],
   "toadstools": [
    0,
-   253
+   272
   ],
   "toadstools.1": [
    1,
-   253
+   272
   ],
   "fronds": [
    0,
-   254
+   273
   ],
   "fronds.1": [
    1,
-   254
+   273
   ],
   "shells": [
    0,
-   255
+   274
   ],
   "shells.1": [
    1,
-   255
+   274
   ],
   "sedge": [
    0,
-   256
+   275
   ],
   "sedge.1": [
    1,
-   256
+   275
   ],
   "lichen": [
    0,
-   257
+   276
   ],
   "lichen.1": [
    1,
-   257
+   276
   ],
   "cracks": [
    0,
-   258
+   277
   ],
   "cracks.1": [
    1,
-   258
+   277
   ],
   "fallen_leaves": [
    0,
-   259
+   278
   ],
   "fallen_leaves.1": [
    1,
-   259
+   278
   ],
   "fallen_leaves.2": [
    2,
-   259
+   278
   ]
  },
  "placeholders": [
+  "cave_floor",
+  "cave_floor.1",
+  "cave_floor.2",
   "bedroll",
   "fire_out",
   "windbreak",
   "lean_to",
   "snare",
   "tree_trunk",
+  "rock_wall#0",
+  "rock_wall#1",
+  "rock_wall#2",
+  "rock_wall#3",
+  "rock_wall#4",
+  "rock_wall#5",
+  "rock_wall#6",
+  "rock_wall#7",
+  "rock_wall#8",
+  "rock_wall#9",
+  "rock_wall#10",
+  "rock_wall#11",
+  "rock_wall#12",
+  "rock_wall#13",
+  "rock_wall#14",
+  "rock_wall#15",
+  "door_locked#0",
+  "door_locked#1",
+  "door_locked#2",
+  "door_locked#3",
+  "door_locked#4",
+  "door_locked#5",
+  "door_locked#6",
+  "door_locked#7",
+  "door_locked#8",
+  "door_locked#9",
+  "door_locked#10",
+  "door_locked#11",
+  "door_locked#12",
+  "door_locked#13",
+  "door_locked#14",
+  "door_locked#15",
+  "door_secret#0",
+  "door_secret#1",
+  "door_secret#2",
+  "door_secret#3",
+  "door_secret#4",
+  "door_secret#5",
+  "door_secret#6",
+  "door_secret#7",
+  "door_secret#8",
+  "door_secret#9",
+  "door_secret#10",
+  "door_secret#11",
+  "door_secret#12",
+  "door_secret#13",
+  "door_secret#14",
+  "door_secret#15",
+  "portcullis#0",
+  "portcullis#1",
+  "portcullis#2",
+  "portcullis#3",
+  "portcullis#4",
+  "portcullis#5",
+  "portcullis#6",
+  "portcullis#7",
+  "portcullis#8",
+  "portcullis#9",
+  "portcullis#10",
+  "portcullis#11",
+  "portcullis#12",
+  "portcullis#13",
+  "portcullis#14",
+  "portcullis#15",
+  "portcullis_up#0",
+  "portcullis_up#1",
+  "portcullis_up#2",
+  "portcullis_up#3",
+  "portcullis_up#4",
+  "portcullis_up#5",
+  "portcullis_up#6",
+  "portcullis_up#7",
+  "portcullis_up#8",
+  "portcullis_up#9",
+  "portcullis_up#10",
+  "portcullis_up#11",
+  "portcullis_up#12",
+  "portcullis_up#13",
+  "portcullis_up#14",
+  "portcullis_up#15",
+  "bars#0",
+  "bars#1",
+  "bars#2",
+  "bars#3",
+  "bars#4",
+  "bars#5",
+  "bars#6",
+  "bars#7",
+  "bars#8",
+  "bars#9",
+  "bars#10",
+  "bars#11",
+  "bars#12",
+  "bars#13",
+  "bars#14",
+  "bars#15",
+  "bars_open#0",
+  "bars_open#1",
+  "bars_open#2",
+  "bars_open#3",
+  "bars_open#4",
+  "bars_open#5",
+  "bars_open#6",
+  "bars_open#7",
+  "bars_open#8",
+  "bars_open#9",
+  "bars_open#10",
+  "bars_open#11",
+  "bars_open#12",
+  "bars_open#13",
+  "bars_open#14",
+  "bars_open#15",
+  "grate",
+  "pillar",
+  "statue",
+  "brazier",
+  "bones",
+  "bones.1",
+  "urn",
+  "throne",
+  "cart",
+  "support",
+  "ore",
+  "pit",
   "edge_deep#1",
   "edge_deep#2",
   "edge_deep#3",

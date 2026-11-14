@@ -22,12 +22,14 @@ import { DMath } from '../dmath';
 import { widenTrunks } from './trees';
 import { roofKind, type Roof } from './roofs';
 import { layInterior, type PlanOpening, type PlanPiece } from './interior';
+import { planCave, planDungeon, reachOf, type UnderLand, type UnderPlan } from './under';
+import { dungeonSiteOf } from '../dungeons/core';
 
 /**
  * The local map's own version: raised whenever the same world would give different tiles (a game
  * saves its changes over the baseline of one version).
  */
-export const LOCAL_MAP_VERSION = 6;
+export const LOCAL_MAP_VERSION = 8;
 
 /** Metres in a level (a storey): the land's height and the floors of buildings go up in these. */
 export const LEVEL_M = 3;
@@ -701,6 +703,111 @@ export class LocalWorld {
     };
   }
 
+  // ---- Caves, dungeons and delves --------------------------------------------------------------
+
+  /** Places below (and a tower above) the land, laid out once each (local/under.ts). */
+  private unders = new Map<string, UnderPlan | null>();
+
+  private underLand: UnderLand = {
+    lowest: (x0, y0, x1, y1) => {
+      let m = Infinity;
+      for (let y = y0; y <= y1 + 5; y += 6) for (let x = x0; x <= x1 + 5; x += 6) {
+        const ll = this.tileLL(Math.min(x, x1) + 0.5, Math.min(y, y1) + 0.5);
+        m = Math.min(m, this.towns.sampler.height(ll[0], ll[1], 0.004));
+      }
+      return Math.floor(m / LEVEL_M);
+    },
+    heightAt: (x, y) => {
+      const ll = this.tileLL(x + 0.5, y + 0.5);
+      return this.towns.sampler.height(ll[0], ll[1], 0.004);
+    },
+  };
+
+  private underPlan(id: string, make: () => UnderPlan | null): UnderPlan | null {
+    if (!this.unders.has(id)) this.unders.set(id, make());
+    return this.unders.get(id)!;
+  }
+
+  /**
+   * The caves, dungeons and delves that may reach into the chunk at tile (tx0, ty0): those of the
+   * wild (in the 1° blocks given) and those under the towns near it, entered from their plans.
+   */
+  private undersNear(tx0: number, ty0: number, blocks: [number, number][], mx0: number, my0: number, mx1: number, my1: number): UnderPlan[] {
+    const out: UnderPlan[] = [];
+    const near = (x: number, y: number, r: number) => x + r >= tx0 && x - r < tx0 + CHUNK && y + r >= ty0 && y - r < ty0 + CHUNK;
+    for (const [bx, by] of blocks) {
+      const blk = this.towns.blockAt(bx, by);
+      for (const l of blk.lairs) {
+        if (l.kind !== 'cave') continue;
+        const ent = this.tileAt(l.lon, l.lat);
+        if (!near(ent[0], ent[1], reachOf('cave'))) continue;
+        const pl = this.underPlan(l.id, () => planCave(l, ent, this.underLand));
+        if (pl) out.push(pl);
+      }
+      for (const dg of blk.dungeons) {
+        // Prisons, strongholds and the places under towns are entered from their plans.
+        if (dg.town || dg.kind === 'prison' || dg.kind === 'hold' || dg.kind === 'delve') continue;
+        const ent = this.tileAt(dg.lon, dg.lat);
+        if (!near(ent[0], ent[1], reachOf(dg.kind))) continue;
+        const pl = this.underPlan(dg.id, () => planDungeon(dg, ent, false, this.underLand));
+        if (pl) out.push(pl);
+      }
+    }
+    // Under the towns: the plans' ways in ('dentry'), one place for all its ways in (a sewer's grates).
+    const towns = new Map<string, Settlement>();
+    for (const s of this.sitesNear(mx0, my0, mx1, my1, 200)) towns.set(s.id, s);
+    for (const s of this.sitesNear(mx0, my0, mx1, my1, 1400)) if (s.tier !== 'village') towns.set(s.id, s);
+    for (const s of [...towns.values()].sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))) {
+      const lp = this.planOf(s);
+      if (!lp) continue;
+      const seen = new Set<string>();
+      for (const it of lp.items) {
+        if (it.kind !== 'dentry' || it.type !== 'Point') continue;
+        const did = String(it.p.did ?? '');
+        if (!did || seen.has(did)) continue;
+        seen.add(did);
+        const ll = this.frame.toLL([it.xy[0], it.xy[1]]);
+        const site = dungeonSiteOf(it.p as Record<string, unknown>, ll[0], ll[1]);
+        if (!site) continue;
+        const raw: [number, number] = [Math.floor(it.xy[0] / TILE_M), Math.floor(-it.xy[1] / TILE_M)];
+        if (!near(raw[0], raw[1], reachOf(site.kind))) continue;
+        const pl = this.underPlan(did, () => planDungeon(site, this.wayInAt(lp, s, it.xy[0], it.xy[1]) ?? raw, true, this.underLand));
+        if (pl) out.push(pl);
+      }
+    }
+    return out;
+  }
+
+  /**
+   * A way in that lies within a building of a plan (a prison's block, a delve's gate): the floor
+   * tile of the building's ground floor nearest it, clear of furniture and doors. Null if it lies
+   * in no building.
+   */
+  private wayInAt(lp: LocalPlan, s: Settlement, px: number, py: number): [number, number] | null {
+    for (const it of lp.items) {
+      if (it.kind !== 'building' || it.type !== 'Polygon' || it.p.tree === 'top' || !pointInPoly(squared(it).xy, px, py)) continue;
+      const br = this.buildingRaster(it.f, `${s.id}/${String(it.i).padStart(6, '0')}`, lp);
+      if (!br) return null;
+      const wx = px / TILE_M - br.x0, wy = -py / TILE_M - br.y0;
+      let best = -1, bd = Infinity;
+      for (let k = 0; k < br.w * br.h; k++) {
+        if (br.kind[k] !== B_FLOOR || br.obj[k]) continue;
+        const x = k % br.w, y = Math.floor(k / br.w);
+        if ([[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => {
+          const xx = x + dx, yy = y + dy;
+          return xx >= 0 && yy >= 0 && xx < br.w && yy < br.h && (br.kind[yy * br.w + xx] === B_DOOR || br.kind[yy * br.w + xx] === B_DOORWAY);
+        })) continue;
+        const dd = (x + 0.5 - wx) * (x + 0.5 - wx) + (y + 0.5 - wy) * (y + 0.5 - wy);
+        if (dd < bd) {
+          bd = dd;
+          best = k;
+        }
+      }
+      return best >= 0 ? [br.x0 + (best % br.w), br.y0 + Math.floor(best / br.w)] : null;
+    }
+    return null;
+  }
+
   // ---- The chunk ------------------------------------------------------------------------------
 
   private cache = new Map<number, Chunk>();
@@ -1122,9 +1229,7 @@ export class LocalWorld {
             case 'dentry': {
               const tx = Math.floor(x / TILE_M), ty = Math.floor(-y / TILE_M);
               if (tx >= tx0 && ty >= ty0 && tx < tx0 + CHUNK && ty < ty0 + CHUNK) {
-                const k = (ty - ty0) * CHUNK + (tx - tx0);
-                object[k] = O('dungeon_entrance');
-                built[k] = 1;
+                // The way down itself is laid with the place below (local/under.ts).
                 sites.push({ tx, ty, kind: String(p.dkind ?? 'dungeon'), name: String(p.name ?? ''), id: String(p.did ?? '') });
               }
               break;
@@ -1179,7 +1284,7 @@ export class LocalWorld {
       const blk = this.towns.blockAt(bx, by);
       const marks: { lon: number; lat: number; kind: string; name: string; id: string; obj: string }[] = [];
       for (const l of blk.lairs) if (l.kind === 'cave' || l.kind === 'deep') marks.push({ lon: l.lon, lat: l.lat, kind: l.kind, name: l.en ?? l.name, id: l.id, obj: 'cave_mouth' });
-      for (const dg of blk.dungeons) if (!dg.town) marks.push({ lon: dg.lon, lat: dg.lat, kind: dg.kind, name: dg.en ?? dg.name, id: dg.id, obj: dg.kind === 'mine' ? 'mine_entrance' : 'dungeon_entrance' });
+      for (const dg of blk.dungeons) if (!dg.town && dg.kind !== 'prison' && dg.kind !== 'hold' && dg.kind !== 'delve') marks.push({ lon: dg.lon, lat: dg.lat, kind: dg.kind, name: dg.en ?? dg.name, id: dg.id, obj: dg.kind === 'mine' ? 'mine_entrance' : 'dungeon_entrance' });
       for (const m of marks) {
         const [tx, ty] = this.tileAt(m.lon, m.lat);
         // A ring of rock round a cave, broken walls round a ruin's way down.
@@ -1253,6 +1358,20 @@ export class LocalWorld {
       each(br, (k, bk) => {
         if (br.kind[bk] !== B_OUT) elev[k] = br.floorM;
       });
+    }
+
+    // ---- Caves, dungeons and delves (local/under.ts): their ways in and a tower's ground floor on
+    // the surface; their levels below (and a tower's above) are laid with the floors further on.
+    const unders = this.undersNear(tx0, ty0, blocks, mx0, my0, mx1, my1);
+    for (const u of unders) for (const e of u.surface) {
+      const x = e.x - tx0, y = e.y - ty0;
+      if (x < 0 || y < 0 || x >= CHUNK || y >= CHUNK) continue;
+      const k = y * CHUNK + x;
+      if (e.ground !== undefined) ground[k] = e.ground;
+      if (e.object !== undefined) object[k] = e.object;
+      if (e.elevM !== undefined) elev[k] = e.elevM;
+      if (e.area) area[k] = areaOf(e.area);
+      built[k] = 1;
     }
 
     // ---- Wild plants on unmade ground.
@@ -1358,9 +1477,30 @@ export class LocalWorld {
         }
       });
     }
+    // The levels of caves, dungeons and delves, where no building's floor is: a place's open floor
+    // breaks through another's wall (a delve's tunnels into its districts), never the reverse.
+    const wallIds = new Set(['wall_stone', 'wall_brick', 'rock_wall', 'ruin_wall', 'wall_torch'].map((n) => O(n)));
+    const dug = new Map<number, Uint8Array>();
+    for (const u of unders) for (const pl of u.levels) {
+      const xA = Math.max(0, pl.x0 - tx0), xB = Math.min(CHUNK, pl.x0 + pl.w - tx0);
+      const yA = Math.max(0, pl.y0 - ty0), yB = Math.min(CHUNK, pl.y0 + pl.h - ty0);
+      if (xA >= xB || yA >= yB) continue;
+      for (let y = yA; y < yB; y++) for (let x = xA; x < xB; x++) {
+        const q = (y + ty0 - pl.y0) * pl.w + (x + tx0 - pl.x0);
+        if (!pl.ground[q]) continue;
+        const k = y * CHUNK + x, L = layerAt(pl.z);
+        let d = dug.get(pl.z);
+        if (!d) dug.set(pl.z, (d = new Uint8Array(N)));
+        if (L.ground[k] && !(d[k] && wallIds.has(L.object[k]) && !wallIds.has(pl.object[q]))) continue;
+        L.ground[k] = pl.ground[q];
+        L.object[k] = pl.object[q];
+        L.area[k] = pl.area[q] >= 0 ? areaOf(pl.areas[pl.area[q]]) : 0;
+        d[k] = 1;
+      }
+    }
     const layers = [...byZ.values()].sort((a, b) => a.z - b.z);
 
-    const roofs = brs.map((br) => br.roof).filter((r): r is Roof => !!r);
+    const roofs = [...brs.map((br) => br.roof), ...unders.map((u) => u.roof)].filter((r): r is Roof => !!r && r.x0 < tx0 + CHUNK && r.y0 < ty0 + CHUNK && r.x0 + r.w > tx0 && r.y0 + r.h > ty0);
     return { cx, cy, ground, object, area, areas, elev, sites, roofs, layers, ms: performance.now() - t0 };
   }
 

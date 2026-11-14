@@ -260,7 +260,16 @@ export class Travel {
       this.game.py = Math.floor(-p[1] / TILE_M);
       const g = site.gate;
       this.game.say(g.walled ? `You arrive at ${site.name}, at ${g.name}.` : g.road ? `You come into ${site.name} by the ${g.road}.` : `You come to ${site.name}.`);
-    } else this.game.say(this.destName ? `You arrive at ${this.destName}.` : 'You reach the place you were making for.');
+    } else {
+      // A place on the map (a cave, a crypt, a ruin): at the place itself, its way in underfoot or
+      // in sight (the local map then sets the party on open ground beside it if need be).
+      if (this.dest) {
+        const p = this.frame.fromLL(this.dest[0], this.dest[1]);
+        this.game.px = Math.floor(p[0] / TILE_M);
+        this.game.py = Math.floor(-p[1] / TILE_M);
+      }
+      this.game.say(this.destName ? `You arrive at ${this.destName}.` : 'You reach the place you were making for.');
+    }
     this.steps = [];
     this.i = 0;
     this.dest = null;

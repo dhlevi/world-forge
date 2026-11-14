@@ -107,6 +107,8 @@ const GROUND: Def[] = [
   g('floor_boards', '#9b7650', 'a board floor', 'Indoor wooden floorboards.', { variants: 2 }),
   g('floor_earth', '#7f6a4a', 'an earth floor', 'Indoor beaten earth with rushes.', { variants: 2 }),
   // Added after the first release go below.
+  // Underground (local/under.ts): caves, mines and the rougher dungeons.
+  g('cave_floor', '#5e574c', 'a rock floor', 'Uneven natural rock underfoot, grit in the hollows (caves, mines, grottoes).', { variants: 3 }),
 ];
 
 const wall = (mat: string, colour: string, look: string, art: string): Def =>
@@ -233,6 +235,26 @@ const OBJECT: Def[] = [
   o('snare', ',', '#b0a080', 'a snare', 'A wire noose set on an animal run.', { pass: true }),
   // Trees across levels (local/trees.ts).
   o('tree_trunk', 'O', '#6a4c30', 'the trunk of an old tree', 'The rest of a trunk two tiles across (drawn with its tree\'s trunk frames, trunk2_<kind>).', { opaque: true }),
+  // Caves, dungeons and delves (local/under.ts).
+  o('rock_wall', '#', '#4a443c', 'solid rock', 'The natural rock face round a cave or a mine gallery, rough and uneven.', { opaque: true, group: 'rock', join: 'mask4', variants: 2 }),
+  o('door_locked', '+', '#8a5a3a', 'a locked door', 'A heavy door, iron-bound, a lock plate on it (as a door, closed).', { opaque: true, toggle: 'door_open', group: 'wall', join: 'mask4' }),
+  o('door_secret', '#', '#8c8780', 'a stone wall', 'A hidden door: drawn exactly as the wall round it.', { opaque: true, toggle: 'door_open', group: 'wall', join: 'mask4' }),
+  o('portcullis', '#', '#5a5550', 'a portcullis', 'An iron grille across the way, lowered: the way the wall runs, the floor showing between its bars.', { toggle: 'portcullis_up', group: 'wall', join: 'mask4' }),
+  o('portcullis_up', "'", '#5a5550', 'a raised portcullis', 'The grille drawn up: only its lower spikes show in the arch.', { pass: true, toggle: 'portcullis', group: 'wall', join: 'mask4' }),
+  o('bars', '#', '#6a6560', 'iron bars', 'A barred gate in a cell wall, shut.', { toggle: 'bars_open', group: 'wall', join: 'mask4' }),
+  o('bars_open', "'", '#6a6560', 'an open barred gate', 'The barred gate swung open.', { pass: true, toggle: 'bars', group: 'wall', join: 'mask4' }),
+  o('grate', '#', '#5a5a5a', 'a grate over a shaft', 'An iron grate in the street over a ladder down to the sewers (a way down).', { pass: true }),
+  o('pillar', 'O', '#9a948a', 'a pillar', 'A round stone pillar.', { opaque: true }),
+  o('statue', '&', '#b0aca0', 'a statue', 'A stone statue on a plinth, seen from above.'),
+  o('brazier', '*', '#e08a30', 'a brazier', 'An iron bowl of burning coals on legs.'),
+  o('bones', '%', '#d8d0b8', 'bones', 'Scattered old bones and a skull.', { pass: true, variants: 2 }),
+  o('urn', 'u', '#a08060', 'an urn', 'A large clay urn.'),
+  o('throne', 'h', '#a0802a', 'a throne', 'A great carved stone chair.'),
+  o('cart', 'n', '#8a6a48', 'a cart', 'A small handcart or mine cart.'),
+  o('support', '|', '#8a6a40', 'a pit prop', 'A timber prop holding up the gallery roof.', { pass: true }),
+  o('ore', '*', '#c8a050', 'a vein of ore', 'Glinting ore in the rock, a pick mark beside it.'),
+  o('pit', 'o', '#141210', 'a pit', 'A dark hole in the floor.'),
+  o('wall_torch', '*', '#f0a040', 'a torch in a sconce', 'A burning torch in an iron sconce on a stone wall (the wall drawn as wall_stone, the flame over it); it lights the room.', { opaque: true, group: 'wall', join: 'mask4' }),
 ];
 
 export const GROUND_TILES: readonly TileDef[] = GROUND.map((d) => ({ ...d, layer: 'ground' as const }));
