@@ -307,6 +307,12 @@ export class PlaySession {
   // ---- The two maps ---------------------------------------------------------------------------
 
   toTravel(): void {
+    // The road begins out of doors, on the ground.
+    if (this.game.z !== null) {
+      this.game.say('You must go down to the ground first.');
+      this.game.updateHud();
+      return;
+    }
     this.hud.mode = 'play';
     this.game.cursor = null;
     this.state.mode = 'travel';

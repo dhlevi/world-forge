@@ -24,6 +24,7 @@
     "test:core": "tsx packages/core/scripts/headless.ts",
     "test:local": "tsx packages/core/scripts/local.ts",
     "tileset:doc": "tsx packages/core/scripts/tileset-doc.ts",
+    "tileset:template": "npm run tileset:template -w @worldforge/game",
     "preview": "tsx packages/core/scripts/preview.ts",
     "earth:fetch": "tsx packages/core/tuning/climate/fetch-data.ts",
     "earth:eval": "tsx packages/core/tuning/climate/evaluate.ts"

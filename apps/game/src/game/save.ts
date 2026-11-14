@@ -36,12 +36,13 @@ export interface SaveFile {
   start: { siteId: string; siteName: string };
   /** Where the wanderer is now (for the list). */
   place: string;
-  player: { x: number; y: number };
+  /** Where the wanderer stands: the tile, and the floor (a level) if not on the ground. */
+  player: { x: number; y: number; z?: number };
   /** Game time, seconds. */
   time: number;
   /** Objects changed over the baseline: [tx, ty, object id]. */
   changes: [number, number, number][];
-  /** Explored tiles per chunk ("cx,cy"), bit-packed and base64. */
+  /** Explored tiles per chunk ("cx,cy" on the ground, "cx,cy@z" on a floor), bit-packed and base64. */
   seen: Record<string, string>;
   log: { t: string; text: string }[];
   zoom?: number;
@@ -51,6 +52,8 @@ export interface SaveFile {
   discovered?: number[];
   /** Things left on the local map: [tx, ty, items] (game/ground.ts). */
   ground: [number, number, Item[]][];
+  /** On the floors above and below the ground (game/map.ts): objects changed [tx, ty, z, id], and things left [tx, ty, z, items]. */
+  floors: { changes: [number, number, number, number][]; ground: [number, number, number, Item[]][] };
   /** Camps made and kept (game/camp.ts). */
   camps: CampData[];
   /** The state of the game's own stream of chance (game/game.ts); a game saved without it seeds it from its id. */
@@ -96,18 +99,16 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     settings: { ...meta.settings },
     start: { siteId: meta.siteId, siteName: meta.siteName },
     place: game.hud.place || meta.siteName,
-    player: { x: game.px, y: game.py },
+    player: { x: game.px, y: game.py, ...(game.z !== null ? { z: game.z } : {}) },
     time: game.time,
-    changes: [...game.map.changes].map(([k, v]) => {
-      const [x, y] = k.split(',').map(Number);
-      return [x, y, v] as [number, number, number];
-    }),
+    changes: game.map.exportChanges().ground,
     seen: game.map.exportSeen(),
     log: game.hud.log.slice(-40),
     zoom: meta.zoom,
     roofs: meta.roofs,
     discovered: game.discovery.export(),
     ground: game.ground.export(),
+    floors: { changes: game.map.exportChanges().floors, ground: game.ground.exportFloors() },
     camps: game.camps.export(),
     dice: game.dice.state,
     ...(meta.character ? { character: meta.character } : {}),
@@ -118,13 +119,13 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
 export function applySave(game: Game, s: SaveFile): void {
   game.px = s.player.x;
   game.py = s.player.y;
+  game.setFloor(typeof s.player.z === 'number' ? s.player.z : null);
   game.time = s.time;
-  game.map.changes.clear();
-  for (const [x, y, v] of s.changes) game.map.changes.set(`${x},${y}`, v);
+  game.map.importChanges(s.changes, s.floors?.changes);
   game.map.importSeen(s.seen);
   game.hud.log.splice(0, game.hud.log.length, ...s.log);
   if (s.discovered) game.discovery.import(s.discovered);
-  game.ground.import(s.ground);
+  game.ground.import(s.ground, s.floors?.ground);
   game.camps.import(s.camps);
   if (typeof s.dice === 'number') game.dice.state = s.dice;
 }

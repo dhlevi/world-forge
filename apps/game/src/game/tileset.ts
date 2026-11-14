@@ -333,6 +333,11 @@ export class Tileset {
     return out;
   }
 
+  /** Every variant of one frame as it is drawn now, art or placeholder (for the tileset template, dev/tileset-template.ts). */
+  variantsOf(layer: FrameLayer, name: string, mask = -1): Look[] {
+    return this.looks.get(`${layer}:${name}${mask >= 0 ? `#${mask}` : ''}`) ?? [];
+  }
+
   /**
    * How a tile, decoration or part at (tx, ty) is drawn: its join frame, else a variant chosen by
    * position; for the first of `seasons` (such as snow lying, then the season) that has frames of

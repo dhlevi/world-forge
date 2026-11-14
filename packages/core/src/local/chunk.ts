@@ -17,16 +17,20 @@ import { buildingView } from '../interiors/building';
 import type { Settlement, RoadFeature } from '../gen/settlements';
 import { Biome } from '../gen/biomes';
 import { hash32, hashString } from '../gen/rng';
-import { G, O, OBJECT_TILES, GROUND_TILES } from './tiles';
+import { G, O, OBJECT_TILES, GROUND_TILES, objectId } from './tiles';
 import { DMath } from '../dmath';
 import { widenTrunks } from './trees';
 import { roofKind, type Roof } from './roofs';
+import { layInterior, type PlanOpening, type PlanPiece } from './interior';
 
 /**
  * The local map's own version: raised whenever the same world would give different tiles (a game
  * saves its changes over the baseline of one version).
  */
-export const LOCAL_MAP_VERSION = 4;
+export const LOCAL_MAP_VERSION = 6;
+
+/** Metres in a level (a storey): the land's height and the floors of buildings go up in these. */
+export const LEVEL_M = 3;
 
 export const TILE_M = 1.5;
 export const CHUNK = 64;
@@ -59,8 +63,23 @@ export interface Chunk {
   sites: ChunkSite[];
   /** The roofs of the buildings standing (in part) in this chunk (local/roofs.ts). */
   roofs: Roof[];
+  /**
+   * The levels above and below the ground that hold something (buildings' upper floors and
+   * cellars), by level (LEVEL_M steps, as the ground's height): where a layer's ground is 0 there
+   * is nothing at that level (open air above the ground, solid earth below it).
+   */
+  layers: ChunkLayer[];
   /** Milliseconds it took. */
   ms: number;
+}
+
+export interface ChunkLayer {
+  /** The level (absolute: as `Math.floor(elev / LEVEL_M)` of the ground). */
+  z: number;
+  ground: Uint8Array;
+  object: Uint8Array;
+  /** Index into the chunk's `areas`. */
+  area: Uint16Array;
 }
 
 // ---- Deterministic noise ---------------------------------------------------------------------
@@ -190,6 +209,20 @@ interface BuildingRaster {
   floorM: number;
   /** Its roof (none for a house in a tree's crown). */
   roof: Roof | null;
+  /** Its floors above and below the ground floor. */
+  floors: BuildingFloor[];
+}
+
+/** A floor of a building above or below its ground floor, on the building's box. */
+interface BuildingFloor {
+  /** Levels above the ground floor (a cellar -1). */
+  l: number;
+  kind: Uint8Array;
+  obj: Uint8Array;
+  room: Int16Array;
+  /** Its floor's ground tile, and the area label per room (the last: the floor itself). */
+  floor: number;
+  areas: string[];
 }
 
 /** Lines that are ways through (half-widths, m; roads by class). */
@@ -197,8 +230,6 @@ const WAY_HW: Record<string, number> = { street: 3, road: 2.5, trodden: 0.8 };
 /** Hedges and fences have a gap of GAP_M metres every GAP_EVERY metres. */
 const GAP_EVERY = 24, GAP_M = 3;
 
-/** Rooms of fewer tiles than this do not give up a row to a wall. */
-const MIN_ROOM = 6;
 
 const SURFACE: Record<string, string> = { flags: 'floor_flags', boards: 'floor_boards', earth: 'floor_earth' };
 
@@ -384,6 +415,8 @@ export class LocalWorld {
 
     // The plan's buildings near this one (older and newer) and its streets.
     const near: LocalItem[] = [], streets: number[][] = [], ways: { xy: number[]; hw: number }[] = [];
+    /** What else of the plan stands on the open ground and would block a door: town walls, trees, wells, towers. */
+    const blockers: { xy: number[]; r: number }[] = [];
     const seenIt = new Set<number>();
     for (let ky = Math.floor((by0 - 8) / CHUNK); ky <= Math.floor((by0 + h + 8) / CHUNK); ky++) {
       for (let kx = Math.floor((bx0 - 8) / CHUNK); kx <= Math.floor((bx0 + w + 8) / CHUNK); kx++) {
@@ -396,7 +429,8 @@ export class LocalWorld {
           else if (it.type === 'LineString' && WAY_HW[it.kind]) {
             streets.push(it.xy);
             ways.push({ xy: it.xy, hw: it.kind === 'road' ? (ROAD_W[String(it.p.cls ?? '')] ?? 3.5) / 2 : WAY_HW[it.kind] });
-          }
+          } else if (it.type === 'LineString' && it.kind === 'wall') blockers.push({ xy: it.xy, r: (Number(it.p.w ?? 2) / 2) * 1.07 });
+          else if (it.type === 'Point' && (it.kind === 'tree' || it.kind === 'well' || it.kind === 'tower')) blockers.push({ xy: it.xy, r: it.kind === 'tower' ? Math.min(Number(it.p.r ?? 0), 6) : 0 });
         }
       }
     }
@@ -471,214 +505,168 @@ export class LocalWorld {
       const du = u - A[0], dv = v - A[1];
       return [(du * vy - dv * uy) / det, (dv * ux - du * vx) / det];
     };
-    const roomCount = new Map<number, number>();
-    for (let k = 0; k < N; k++) {
-      if (kind[k] !== B_FLOOR) continue;
-      const i = Math.min(d.nx - 1, Math.max(0, Math.floor(P(k)))), j = Math.min(d.ny - 1, Math.max(0, Math.floor(Q(k))));
-      room[k] = d.mask[j * d.nx + i] ? fl.room[j * d.nx + i] : -1;
-      roomCount.set(room[k], (roomCount.get(room[k]) ?? 0) + 1);
-    }
-    // Walls between rooms: the larger room gives up the row of tiles; small rooms stay open.
-    for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
-      const k = y * w + x;
-      if (kind[k] !== B_FLOOR) continue;
-      for (const [dx, dy] of [[1, 0], [0, 1]]) {
-        const xx = x + dx, yy = y + dy;
-        if (xx >= w || yy >= h) continue;
-        const k2 = yy * w + xx;
-        if (kind[k2] !== B_FLOOR || room[k2] === room[k]) continue;
-        const na = roomCount.get(room[k])!, nb = roomCount.get(room[k2])!;
-        if (Math.max(na, nb) < MIN_ROOM) continue;
-        const lose = na > nb || (na === nb && room[k] > room[k2]) ? k : k2;
-        kind[lose] = B_WALL;
-        roomCount.set(room[lose], roomCount.get(room[lose])! - 1);
-      }
-    }
+    // The rest is laid out on the tiles (local/interior.ts), floor by floor: rooms, walls between
+    // them, doors in proper frames, and the plan's furniture placed to fit with clear ways through.
+    const toTile = (p: number, q: number) => tileOfPlan(p, q);
+    const cellOf = (k: number): [number, number] => [Math.min(d.nx - 1, Math.max(0, Math.floor(P(k)))), Math.min(d.ny - 1, Math.max(0, Math.floor(Q(k))))];
+    const footprint = (k: number) => k >= 0 && k < N && who[k] === 1;
 
-    // Doors and windows: the wall tile nearest where the plan has one, between floor and the
-    // open air (outer) or between two rooms (inner).
-    const D4 = [[1, 0], [-1, 0], [0, 1], [0, -1]];
-    const nb4 = (k: number, test: (k2: number) => boolean) => {
-      const x = k % w, y = Math.floor(k / w);
-      for (const [dx, dy] of D4) {
-        const xx = x + dx, yy = y + dy;
-        if (xx < 0 || yy < 0 || xx >= w || yy >= h) {
-          if (test(-1)) return true;
-          continue;
+    // ---- The stairwell: two tiles side by side, the same on every floor. A stair up from a floor
+    // stands on one and the stair down from the floor above on the same tile; the flights take the
+    // two tiles in turn (local-map version 6).
+    const levelsOf = d.floors.map((f) => f.level);
+    let stairA = -1, stairB = -1;
+    if (d.floors.length > 1) {
+      const st = fl.stairs[0] ?? d.floors.find((f) => f.stairs.length)?.stairs[0];
+      const [sx, sy] = st ? toTile(st.i + st.w / 2, st.j + st.h / 2) : toTile(d.nx / 2, d.ny / 2);
+      // Both tiles floor with all their neighbours in the building, so that every floor can wall round them.
+      const roomy = (k: number) => {
+        if (kind[k] !== B_FLOOR) return false;
+        const x = k % w, y = Math.floor(k / w);
+        for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h || !footprint(yy * w + xx)) return false;
         }
-        if (test(yy * w + xx)) return true;
-      }
-      return false;
-    };
-    const isFloor = (k2: number) => k2 >= 0 && kind[k2] === B_FLOOR;
-    const isOpen = (k2: number) => k2 < 0 || who[k2] === 0;
-    const outerOK = (k: number) => kind[k] === B_WALL && nb4(k, isFloor) && nb4(k, isOpen);
-    const innerOK = (k: number, ra: number, rb: number) => kind[k] === B_WALL && nb4(k, (k2) => isFloor(k2) && room[k2] === ra) && nb4(k, (k2) => isFloor(k2) && room[k2] === rb);
-    const nearest = (p: number, q: number, ok: (k: number) => boolean, maxT: number) => {
-      const [fx, fy] = tileOfPlan(p, q);
-      let best = -1, bd = maxT * maxT;
-      for (let y = Math.max(0, Math.floor(fy - maxT)); y <= Math.min(h - 1, Math.ceil(fy + maxT)); y++) {
-        for (let x = Math.max(0, Math.floor(fx - maxT)); x <= Math.min(w - 1, Math.ceil(fx + maxT)); x++) {
-          const dd = (x - fx) * (x - fx) + (y - fy) * (y - fy);
-          if (dd < bd && ok(y * w + x)) {
+        return true;
+      };
+      let bd = Infinity;
+      for (let k = 0; k < N; k++) {
+        if (!roomy(k)) continue;
+        const x = k % w, y = Math.floor(k / w);
+        for (const [dx, dy] of [[1, 0], [0, 1], [-1, 0], [0, -1]]) {
+          const xx = x + dx, yy = y + dy;
+          if (xx < 0 || yy < 0 || xx >= w || yy >= h || !roomy(yy * w + xx)) continue;
+          const dd = (x - sx) * (x - sx) + (y - sy) * (y - sy) + 0.5 * ((xx - sx) * (xx - sx) + (yy - sy) * (yy - sy));
+          if (dd < bd) {
             bd = dd;
-            best = y * w + x;
+            stairA = k;
+            stairB = yy * w + xx;
           }
         }
       }
-      return best;
+    }
+    const ladder = (fl.stairs[0] ?? d.floors.find((f) => f.stairs.length)?.stairs[0])?.kind === 'ladder';
+    const UP = O(ladder ? 'ladder_up' : 'stairs_up'), DOWN = O(ladder ? 'ladder_down' : 'stairs_down');
+    /** A floor's stairs: up from the tile its flights take in turn, down from the other. */
+    const stairsOf = (l: number): { k: number; id: number }[] => {
+      if (stairA < 0) return [];
+      const out: { k: number; id: number }[] = [];
+      const even = ((l % 2) + 2) % 2 === 0;
+      if (levelsOf.includes(l + 1)) out.push({ k: even ? stairA : stairB, id: UP });
+      if (levelsOf.includes(l - 1)) out.push({ k: even ? stairB : stairA, id: DOWN });
+      return out;
     };
-    const inside = (i: number, j: number) => i >= 0 && j >= 0 && i < d.nx && j < d.ny && d.mask[j * d.nx + i] === 1;
-    const sorted = [...fl.openings].sort((a, b) => (a.kind === 'window' || a.kind === 'slit' ? 0 : 1) - (b.kind === 'window' || b.kind === 'slit' ? 0 : 1));
-    let outerDoors = 0;
-    for (const op of sorted) {
-      const i2 = op.side === 'e' ? op.i + 1 : op.i, j2 = op.side === 'e' ? op.j : op.j + 1;
-      const inA = inside(op.i, op.j), inB = inside(i2, j2);
-      if (!inA && !inB) continue;
-      const mp = op.side === 'e' ? op.i + 1 : op.i + 0.5, mq = op.side === 'e' ? op.j + 0.5 : op.j + 1;
-      const door = op.kind === 'door' || op.kind === 'entrance';
-      if (inA && inB) {
-        if (!door) continue;
-        const ra = fl.room[op.j * d.nx + op.i], rb = fl.room[j2 * d.nx + i2];
-        const k = nearest(mp, mq, (k) => innerOK(k, ra, rb), 2.2);
-        if (k >= 0) kind[k] = B_DOOR;
-      } else {
-        const k = nearest(mp, mq, (k) => outerOK(k) && (door || kind[k] === B_WALL), door ? 2.2 : 1.2);
-        if (k < 0) continue;
-        kind[k] = door ? B_DOOR : B_WINDOW;
-        if (door) outerDoors++;
-      }
-    }
-    // No way in where the plan has one (its front faces a neighbour): a door nearest a street.
-    if (!outerDoors) {
-      let best = -1, bestD = Infinity;
-      for (let k = 0; k < N; k++) {
-        if ((kind[k] !== B_WALL && kind[k] !== B_WINDOW) || !nb4(k, isFloor) || !nb4(k, isOpen)) continue;
-        let dd = 0;
-        for (const s of streets) for (let i = 0; i + 3 < s.length; i += 2) dd = Math.min(dd || Infinity, segDist2(cx(k), cy(k), s[i], s[i + 1], s[i + 2], s[i + 3]));
-        if (dd < bestD) {
-          bestD = dd;
-          best = k;
-        }
-      }
-      // Hemmed in on every side: through the wall of the house next door.
-      if (best < 0) for (let k = 0; k < N && best < 0; k++) if (kind[k] === B_WALL && nb4(k, isFloor) && nb4(k, (k2) => k2 >= 0 && who[k2] >= 2)) best = k;
-      if (best >= 0) kind[best] = B_DOOR;
-    }
-    // Rooms with no door at all (the plan's door fell on a merged or eaten wall): one into the next room.
-    const reach = new Uint8Array(N);
-    const stack: number[] = [];
-    for (let k = 0; k < N; k++) if (kind[k] === B_DOOR && nb4(k, isOpen)) {
-      reach[k] = 1;
-      stack.push(k);
-    }
-    const flood = () => {
-      while (stack.length) {
-        const k = stack.pop()!;
-        const x = k % w, y = Math.floor(k / w);
-        for (const [dx, dy] of D4) {
-          const xx = x + dx, yy = y + dy;
-          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-          const k2 = yy * w + xx;
-          if (reach[k2] || (kind[k2] !== B_FLOOR && kind[k2] !== B_DOOR)) continue;
-          reach[k2] = 1;
-          stack.push(k2);
-        }
-      }
-    };
-    flood();
-    for (let guard = 0; guard < 12; guard++) {
-      // A wall tile between a reached floor and an unreached one becomes a door.
-      let made = -1;
-      for (let k = 0; k < N && made < 0; k++) {
-        if (kind[k] !== B_WALL || !nb4(k, (k2) => isFloor(k2) && reach[k2] === 1) || !nb4(k, (k2) => isFloor(k2) && !reach[k2])) continue;
-        made = k;
-      }
-      if (made < 0) break;
-      kind[made] = B_DOOR;
-      reach[made] = 1;
-      stack.push(made);
-      flood();
-    }
 
-    // Furniture and stairs, by plan cell.
-    const place = (p0: number, q0: number, p1: number, q1: number, t: number, under = false) => {
-      let n = 0, best = -1, bestD = Infinity;
-      const pc = (p0 + p1) / 2, qc = (q0 + q1) / 2;
-      for (let k = 0; k < N; k++) {
-        if (kind[k] !== B_FLOOR) continue;
-        const p = P(k), q = Q(k);
-        const dd = (p - pc) * (p - pc) + (q - qc) * (q - qc);
-        if (dd < bestD) {
-          bestD = dd;
-          best = k;
-        }
-        if (p < p0 || p >= p1 || q < q0 || q >= q1 || (under && obj[k])) continue;
-        obj[k] = t;
-        n++;
-      }
-      // Small things between tile centres still show, on the nearest free floor tile.
-      if (!n && best >= 0 && !obj[best] && bestD < 2.5) obj[best] = t;
+    const streetD2 = (k: number) => {
+      let dd = Infinity;
+      for (const st of streets) for (let i = 0; i + 3 < st.length; i += 2) dd = Math.min(dd, segDist2(cx(k), cy(k), st[i], st[i + 1], st[i + 2], st[i + 3]));
+      return dd;
     };
-    const items = [...fl.items].sort((a, b) => (a.type === 'rug' ? 0 : 1) - (b.type === 'rug' ? 0 : 1));
-    for (const it of items) {
-      const name = ITEM_TILE[it.type] ?? it.type;
-      const id = OBJECT_TILES.findIndex((t) => t.name === name);
-      if (id <= 0) continue;
-      place(it.x0, it.y0, it.x1, it.y1, id, it.type === 'rug');
-    }
-    for (const s of fl.stairs) {
-      const t = s.kind === 'ladder' ? (s.up ? 'ladder_up' : 'ladder_down') : s.kind === 'spiral' ? 'stairs_spiral' : s.up ? 'stairs_up' : 'stairs_down';
-      place(s.i, s.j, s.i + s.w, s.j + s.h, O(t));
-    }
-    // Keep the way through: nothing that blocks stands just inside a door.
+    const blocked = (k: number) => {
+      // Within the thing's reach of the tile, or on the tile itself.
+      const px = cx(k), py = cy(k), m = TILE_M * 0.75;
+      for (const b of blockers) {
+        const r = b.r + m;
+        if (b.xy.length === 2) {
+          const dx = b.xy[0] - px, dy = b.xy[1] - py;
+          if (dx * dx + dy * dy < r * r) return true;
+        } else for (let i = 0; i + 3 < b.xy.length; i += 2) if (segDist2(px, py, b.xy[i], b.xy[i + 1], b.xy[i + 2], b.xy[i + 3]) < r * r) return true;
+      }
+      return false;
+    };
+
+    /** Lays out one floor of the plan on its shell (local/interior.ts). */
+    const layFloor = (f: typeof fl, shell: Uint8Array, whoF: Uint8Array, roomF: Int16Array, upper: boolean) => {
+      const inside = (i: number, j: number) => i >= 0 && j >= 0 && i < d.nx && j < d.ny && (upper ? f.room[j * d.nx + i] >= 0 : d.mask[j * d.nx + i] === 1);
+      const openings: PlanOpening[] = [];
+      for (const op of f.openings) {
+        const i2 = op.side === 'e' ? op.i + 1 : op.i, j2 = op.side === 'e' ? op.j : op.j + 1;
+        const inA = inside(op.i, op.j), inB = inside(i2, j2);
+        if (!inA && !inB) continue;
+        const door = op.kind === 'door' || op.kind === 'entrance';
+        const [x, y] = toTile(op.side === 'e' ? op.i + 1 : op.i + 0.5, op.side === 'e' ? op.j + 0.5 : op.j + 1);
+        openings.push({ x, y, door, rooms: inA && inB ? [f.room[op.j * d.nx + op.i], f.room[j2 * d.nx + i2]] : undefined });
+      }
+      const roomAt = (p: number, q: number) => {
+        const i = Math.min(d.nx - 1, Math.max(0, Math.floor(p))), j = Math.min(d.ny - 1, Math.max(0, Math.floor(q)));
+        return f.room[j * d.nx + i];
+      };
+      const pieces: PlanPiece[] = f.items.map((it) => {
+        const p = (it.x0 + it.x1) / 2, q = (it.y0 + it.y1) / 2, [x, y] = toTile(p, q);
+        return { type: ITEM_TILE[it.type] ?? it.type, room: roomAt(p, q), x, y, len: Math.max(1, Math.round(Math.max(it.x1 - it.x0, it.y1 - it.y0))) };
+      });
+      // Stairs only in the stairwell: a building with no room for one keeps to its ground floor.
+      return layInterior({
+        w, h, kind: shell, who: whoF, room: roomF, openings, pieces, stairs: [], pinned: stairsOf(f.level), upper,
+        streetD2, blocked: upper ? undefined : blocked,
+        idOf: (name) => objectId(name) ?? 0,
+        passable: (id) => OBJECT_TILES[id].pass,
+      });
+    };
+
+    // The ground floor.
     for (let k = 0; k < N; k++) {
-      if (kind[k] !== B_DOOR) continue;
-      const x = k % w, y = Math.floor(k / w);
-      for (const [dx, dy] of D4) {
-        const xx = x + dx, yy = y + dy;
-        if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-        const k2 = yy * w + xx;
-        if (kind[k2] === B_FLOOR && obj[k2] && !OBJECT_TILES[obj[k2]].pass) obj[k2] = 0;
-      }
+      if (kind[k] !== B_FLOOR) continue;
+      const [i, j] = cellOf(k);
+      room[k] = d.mask[j * d.nx + i] ? fl.room[j * d.nx + i] : -1;
     }
-    // Nor does furniture shut off part of the floor: clear the piece in the way until every free
-    // floor tile can be walked to from a way in.
-    const free = (k2: number) => (kind[k2] === B_FLOOR && (!obj[k2] || OBJECT_TILES[obj[k2]].pass)) || kind[k2] === B_DOOR;
-    for (let guard = 0; guard < 24; guard++) {
-      reach.fill(0);
-      for (let k = 0; k < N; k++) if (kind[k] === B_DOOR && nb4(k, isOpen)) {
-        reach[k] = 1;
-        stack.push(k);
-      }
-      while (stack.length) {
-        const k = stack.pop()!;
-        const x = k % w, y = Math.floor(k / w);
-        for (const [dx, dy] of D4) {
-          const xx = x + dx, yy = y + dy;
-          if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
-          const k2 = yy * w + xx;
-          if (reach[k2] || !free(k2)) continue;
-          reach[k2] = 1;
-          stack.push(k2);
-        }
-      }
-      let cut = -1;
-      for (let k = 0; k < N && cut < 0; k++) {
-        if (kind[k] !== B_FLOOR || !obj[k] || OBJECT_TILES[obj[k]].pass) continue;
-        if (nb4(k, (k2) => k2 >= 0 && reach[k2] === 1) && nb4(k, (k2) => k2 >= 0 && free(k2) && !reach[k2])) cut = k;
-      }
-      if (cut < 0) break;
-      obj[cut] = 0;
-    }
+    const laid = layFloor(fl, kind, who, room, false);
+    kind.set(laid.kind);
+    obj.set(laid.obj);
+    room.set(laid.room);
+
     const title = d.title ? `${d.title} (${d.label.toLowerCase()})` : cap(d.label);
     const areas = fl.rooms.map((r) => `${title}: ${r.name.toLowerCase()}`);
     areas.push(title);
+
+    // The floors above and below (cellars, upper storeys, the attic), each on its own shell: the
+    // building's tiles that the floor's plan covers, with the stairwell, walled round.
+    const floors: BuildingFloor[] = [];
+    if (stairA >= 0) {
+      for (const f of d.floors) {
+        if (f.level === d.floors[d.ground].level) continue;
+        const region = new Uint8Array(N);
+        for (let k = 0; k < N; k++) {
+          if (!footprint(k)) continue;
+          const [i, j] = cellOf(k);
+          if (f.room[j * d.nx + i] >= 0) region[k] = 1;
+        }
+        for (const st of stairsOf(f.level)) {
+          const x = st.k % w, y = Math.floor(st.k / w);
+          for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) region[(y + dy) * w + x + dx] = 1;
+        }
+        const shell = new Uint8Array(N), whoF = new Uint8Array(N), roomF = new Int16Array(N).fill(-1);
+        for (let k = 0; k < N; k++) {
+          // Beyond the floor but within the building (under the roof's slope), as a neighbour's.
+          whoF[k] = region[k] ? 1 : who[k] === 0 ? 0 : 2;
+          if (!region[k]) continue;
+          const x = k % w, y = Math.floor(k / w);
+          let edge = false;
+          for (let dy = -1; dy <= 1 && !edge; dy++) for (let dx = -1; dx <= 1 && !edge; dx++) {
+            const xx = x + dx, yy = y + dy;
+            if (xx < 0 || yy < 0 || xx >= w || yy >= h || !region[yy * w + xx]) edge = true;
+          }
+          shell[k] = edge ? B_WALL : B_FLOOR;
+          if (!edge) {
+            const [i, j] = cellOf(k);
+            roomF[k] = f.room[j * d.nx + i];
+          }
+        }
+        // A floor whose stairs could not be kept is left out (and those above it with it).
+        if (stairsOf(f.level).some((st) => shell[st.k] !== B_FLOOR)) continue;
+        const out = layFloor(f, shell, whoF, roomF, true);
+        const label = `${title}, ${f.name.toLowerCase()}`;
+        floors.push({
+          l: f.level - d.floors[d.ground].level, kind: out.kind, obj: out.obj, room: out.room,
+          floor: G(SURFACE[f.surface] ?? 'floor_boards'), areas: [...f.rooms.map((r) => `${label}: ${r.name.toLowerCase()}`), label],
+        });
+      }
+    }
     const mat = d.style?.wall ?? 'timber';
     const mid = this.tileLL(bx0 + w / 2, by0 + h / 2);
     const floorM = Math.round(this.towns.sampler.height(mid[0], mid[1], 0.004));
     return {
-      order, x0: bx0, y0: by0, w, h, kind, obj, room,
+      order, x0: bx0, y0: by0, w, h, kind, obj, room, floors,
       floor: G(SURFACE[fl.surface] ?? 'floor_boards'), wall: O(`wall_${mat}`), areas,
       floorM, roof: this.roofOf(f, d.storeys, d.storeyH, floorM, bx0, by0, w, h, kind, mid),
     };
@@ -1301,11 +1289,79 @@ export class LocalWorld {
       }
     }
 
+    // Doorsteps kept clear: nothing that blocks the way on the open ground just outside a door
+    // (from every building near, so that a door at a chunk's edge is kept clear on both sides).
+    const step = new Uint8Array(N);
+    for (const br of brs) {
+      for (let bk = 0; bk < br.kind.length; bk++) {
+        if (br.kind[bk] !== B_DOOR && br.kind[bk] !== B_DOORWAY) continue;
+        const bx = br.x0 + (bk % br.w) - tx0, by = br.y0 + Math.floor(bk / br.w) - ty0;
+        for (const [dx, dy] of [[0, -1], [1, 0], [0, 1], [-1, 0]]) {
+          const x = bx + dx, y = by + dy;
+          if (x < 0 || y < 0 || x >= CHUNK || y >= CHUNK) continue;
+          const k = y * CHUNK + x;
+          if (built[k]) continue;
+          step[k] = 1;
+          if (object[k] && !OBJECT_TILES[object[k]].pass) object[k] = 0;
+        }
+      }
+    }
+
     // Old trees of the broad kinds with room about them get trunks two tiles across (version 4).
-    widenTrunks(object, CHUNK, tx0, ty0, O, (id) => OBJECT_TILES[id].name, (k) => !built[k] && !GROUND_TILES[ground[k]].water && GROUND_TILES[ground[k]].pass && (object[k] === 0 || OBJECT_TILES[object[k]].pass));
+    widenTrunks(object, CHUNK, tx0, ty0, O, (id) => OBJECT_TILES[id].name, (k) => !built[k] && !step[k] && !GROUND_TILES[ground[k]].water && GROUND_TILES[ground[k]].pass && (object[k] === 0 || OBJECT_TILES[object[k]].pass));
+
+    // ---- The floors above and below the ground, level by level, as the ground floors were laid:
+    // interiors first (an older building keeps its rooms where two meet), then walls, then
+    // doors and windows.
+    const byZ = new Map<number, ChunkLayer>();
+    const layerAt = (z: number) => {
+      let l = byZ.get(z);
+      if (!l) byZ.set(z, (l = { z, ground: new Uint8Array(N), object: new Uint8Array(N), area: new Uint16Array(N) }));
+      return l;
+    };
+    const lowner = new Map<number, Int32Array>();
+    const ownerAt = (z: number) => {
+      let o = lowner.get(z);
+      if (!o) lowner.set(z, (o = new Int32Array(N).fill(-1)));
+      return o;
+    };
+    for (const pass of [0, 1, 2]) {
+      brs.forEach((br, bi) => {
+        const z0 = Math.floor(br.floorM / LEVEL_M);
+        for (const f of br.floors) {
+          const z = z0 + f.l;
+          each(br, (k, bk) => {
+            const t = f.kind[bk];
+            if (t === B_OUT) return;
+            const L = layerAt(z), own = ownerAt(z);
+            if (pass === 0) {
+              if (t !== B_FLOOR) return;
+              L.ground[k] = f.floor;
+              L.object[k] = f.obj[bk];
+              L.area[k] = areaOf(f.room[bk] >= 0 ? f.areas[f.room[bk]] : f.areas[f.areas.length - 1]);
+              own[k] = bi;
+            } else if (pass === 1) {
+              if (t === B_FLOOR) return;
+              if (f.room[bk] < 0 && own[k] >= 0 && own[k] < bi) return;
+              if (own[k] < 0) L.area[k] = areaOf(f.areas[f.areas.length - 1]);
+              L.ground[k] = f.floor;
+              L.object[k] = br.wall;
+            } else {
+              if (t === B_FLOOR || t === B_WALL) return;
+              if (f.room[bk] < 0 && own[k] >= 0 && own[k] < bi) return;
+              if (t === B_DOOR) L.object[k] = O('door');
+              else if (t === B_WINDOW) L.object[k] = O('window');
+              else if (t === B_DOORWAY) L.object[k] = 0;
+              L.ground[k] = f.floor;
+            }
+          });
+        }
+      });
+    }
+    const layers = [...byZ.values()].sort((a, b) => a.z - b.z);
 
     const roofs = brs.map((br) => br.roof).filter((r): r is Roof => !!r);
-    return { cx, cy, ground, object, area, areas, elev, sites, roofs, ms: performance.now() - t0 };
+    return { cx, cy, ground, object, area, areas, elev, sites, roofs, layers, ms: performance.now() - t0 };
   }
 
   /**
@@ -1435,6 +1491,11 @@ export function chunkHash(c: Chunk): string {
   for (let i = 0; i < c.elev.length; i++) {
     mix(c.elev[i]);
     mix(c.elev[i] >> 8);
+  }
+  for (const l of c.layers) {
+    mix(l.z);
+    for (const a of [l.ground, l.object]) for (let i = 0; i < a.length; i++) mix(a[i]);
+    for (let i = 0; i < l.area.length; i++) mix(l.area[i]);
   }
   const s = c.areas.join('|') + JSON.stringify(c.sites);
   for (let i = 0; i < s.length; i++) mix(s.charCodeAt(i));

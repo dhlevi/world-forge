@@ -1,5 +1,6 @@
 /** Messages between the game and its worker (worker/game.worker.ts), which holds the world. */
 import type { Roof } from '@worldforge/core/local/roofs';
+import type { ChunkLayer } from '@worldforge/core/local/chunk';
 import type { WorldSettings } from '@worldforge/core/settings';
 
 export interface StartSite {
@@ -111,6 +112,8 @@ export interface ChunkData {
   sites: { tx: number; ty: number; kind: string; name: string; id: string }[];
   /** The roofs of the buildings standing (in part) here (core local/roofs.ts). */
   roofs: Roof[];
+  /** Floors above and below the ground, by level (core local/chunk.ts). */
+  layers: ChunkLayer[];
   ms: number;
 }
 

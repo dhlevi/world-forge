@@ -47,6 +47,17 @@ const redraw = () => {
 };
 session.onRedraw = redraw;
 
+// Clicking the stairs or ladder the wanderer stands on goes up them (or down, if they lead only down).
+renderer.onClick = (tx, ty) => {
+  if (hud.mode !== 'play' || st.mode !== 'local' || tx !== game.px || ty !== game.py) return;
+  const up = !!game.stairsHere(true);
+  if (!up && !game.stairsHere(false)) return;
+  st.view = 0;
+  if (game.climbStairs(up)) game.refresh();
+  else game.updateHud();
+  redraw();
+};
+
 renderer.onHover = (tx, ty) => {
   if (hud.mode === 'look') return;
   hud.look = game.describe(tx, ty);
@@ -81,6 +92,14 @@ function onKey(e: KeyboardEvent): void {
   if (hud.mode === 'play' && e.code === 'KeyR' && e.shiftKey) {
     st.roofs = ROOF_MODES[(ROOF_MODES.indexOf(st.roofs) + 1) % ROOF_MODES.length];
     game.say(ROOF_WORDS[st.roofs]);
+    e.preventDefault();
+    redraw();
+    return;
+  }
+  // On stairs or a ladder, < and > go up and down them (when not already looking up or down).
+  if (hud.mode === 'play' && !st.view && (e.key === '<' || e.key === '>') && game.stairsHere(e.key === '<')) {
+    if (game.climbStairs(e.key === '<')) game.refresh();
+    else game.updateHud();
     e.preventDefault();
     redraw();
     return;
@@ -237,7 +256,8 @@ onBeforeUnmount(() => {
         <div><b>Wait</b> . or 5</div>
         <div><b>Look</b> x, then move the cursor</div>
         <div><b>Zoom</b> + and -</div>
-        <div><b>Levels</b> &lt; and &gt; look up and down; walk into a rock face twice to climb it</div>
+        <div><b>Stairs</b> &lt; and &gt; on stairs or a ladder go up and down</div>
+        <div><b>Levels</b> &lt; and &gt; elsewhere look up and down; walk into a rock face twice to climb it</div>
         <div><b>Roofs</b> Shift+R: shown unless you are inside, always, or never</div>
         <div><b>Travel map</b> T (and T or Z to come back)</div>
         <div><b>Character</b> @</div>

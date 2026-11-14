@@ -77,7 +77,7 @@ for (let cy = -1; cy <= 1; cy++) for (let cx = -1; cx <= 1; cx++) {
     const x = cx * CHUNK + (k % CHUNK), y = cy * CHUNK + Math.floor(k / CHUNK);
     if (x >= 0 && y >= 0 && x < size && y < size) object[k] = plot[y * size + x];
   }
-  const c: ChunkData = { cx, cy, ground: new Uint8Array(N).fill(G('grass')), object, area: new Uint16Array(N), areas: [''], elev: new Int16Array(N).fill(30), sites: [], roofs: [], ms: 0 };
+  const c: ChunkData = { cx, cy, ground: new Uint8Array(N).fill(G('grass')), object, area: new Uint16Array(N), areas: [''], elev: new Int16Array(N).fill(30), sites: [], roofs: [], layers: [], ms: 0 };
   map.add(c);
 }
 const t = treeAt(map, wx + 1, wy + 1)!;

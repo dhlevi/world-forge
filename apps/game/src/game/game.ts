@@ -23,6 +23,8 @@ export const DOOR_S = 2;
 export const WAIT_S = 5;
 /** Seconds to swim a tile of deep water. */
 export const SWIM_S = 4;
+/** Seconds to go up or down a flight of stairs or a ladder (a level). */
+export const STAIRS_S = 4;
 /** Seconds more to go up a ramp (a level), and down one. */
 export const RAMP_UP_S = 1.5;
 export const RAMP_DOWN_S = 0.4;
@@ -50,11 +52,19 @@ export interface Hud {
 }
 
 const vkey = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);
+/** Stairs and ladders, by the way they lead. */
+export const STAIRS_UP = new Set(['stairs_up', 'ladder_up', 'stairs_spiral']);
+export const STAIRS_DOWN = new Set(['stairs_down', 'ladder_down', 'stairs_spiral']);
 const DIRS8: [number, number][] = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
 
 export class Game {
   px: number;
   py: number;
+  /**
+   * The floor the wanderer is on: a level (a building's upper storey or cellar), or null on the
+   * ground (whose level is the ground's own, game/levels.ts). Set with setFloor.
+   */
+  z: number | null = null;
   /** The way the wanderer faces (the last way they moved, or turned to). */
   facing: Facing = 's';
   /** Steps taken (a count, so that the map can show a single step as a walk from tile to tile). */
@@ -92,6 +102,18 @@ export class Game {
     [this.px, this.py] = start;
     this.fov = new FOV.PreciseShadowcasting((x: number, y: number) => (x === this.px && y === this.py) || this.map.transparent(x, y), { topology: 8 });
     this.say(`You stand in ${startName}.`);
+  }
+
+  /** Puts the wanderer on a floor (null: the ground); the map and what lies about are read on it. */
+  setFloor(z: number | null): void {
+    this.z = z;
+    this.map.floor = z;
+    this.ground.floor = z;
+  }
+
+  /** The level the wanderer stands on: their floor's, or the ground's under them. */
+  get level(): number {
+    return this.z ?? this.map.level(this.px, this.py);
   }
 
   /** The light out of doors and how far it lets the wanderer see (tiles); set as the sky changes (game/weather.ts). */
@@ -166,8 +188,10 @@ export class Game {
       if (Number.isNaN(h)) heights[i] = h = this.map.elev(x, y);
       return h;
     };
+    const z = this.z;
     for (const [x, y] of cand) {
-      if (!overGround(this.px, this.py, x, y, elevAt)) continue;
+      // On the ground, sight follows its height; on a floor, the floor is level.
+      if (z === null && !overGround(this.px, this.py, x, y, elevAt)) continue;
       const d = Math.hypot(x - this.px, y - this.py);
       let fire = 0;
       for (const [sx, sy, r] of sources) {
@@ -177,7 +201,8 @@ export class Game {
       const amb = d <= range ? this.ambient.light : 0;
       if (amb <= 0 && fire <= 0 && d > 1.5) continue;
       this.visible.add(vkey(x, y));
-      this.map.markSeen(x, y);
+      // From a floor, past its edge (through a window), the ground below is what is seen.
+      this.map.markSeenAt(x, y, z !== null && !this.map.hasFloor(x, y, z) ? null : z);
       this.lit.set(vkey(x, y), fire > amb ? -fire : Math.max(amb, 0.05));
     }
   }
@@ -234,7 +259,7 @@ export class Game {
     }
     // A rock face: walking into it again climbs it.
     const l0 = this.map.level(this.px, this.py), l1 = this.map.level(nx, ny);
-    const step = stepBetween(l0, l1);
+    const step = this.z === null ? stepBetween(l0, l1) : 'level';
     let extra = step === 'ramp' ? (l1 > l0 ? RAMP_UP_S : RAMP_DOWN_S) : 0;
     if (step === 'cliff') {
       if (quiet) return false;
@@ -291,7 +316,7 @@ export class Game {
       let stop = false;
       for (const [ax, ay] of DIRS8) {
         const o = OBJECT_TILES[this.map.object(this.px + ax, this.py + ay)];
-        if (o.toggle || o.name.endsWith('entrance') || o.name === 'cave_mouth') stop = true;
+        if (o.toggle || o.name.endsWith('entrance') || o.name === 'cave_mouth' || STAIRS_UP.has(o.name) || STAIRS_DOWN.has(o.name)) stop = true;
       }
       if (stop) break;
     }
@@ -325,6 +350,45 @@ export class Game {
     return true;
   }
 
+  /** The stairs or ladder underfoot that lead up (or down), if any. */
+  stairsHere(up: boolean): TileDef | null {
+    const o = OBJECT_TILES[this.map.object(this.px, this.py)];
+    return o && (up ? STAIRS_UP : STAIRS_DOWN).has(o.name) ? o : null;
+  }
+
+  /**
+   * Goes up (or down) the stairs or ladder underfoot to the floor above (or below). Coming down
+   * to the ground's own level from a floor puts the wanderer on the ground. Returns whether the
+   * wanderer went (false if there are no such stairs, or they lead nowhere yet).
+   */
+  climbStairs(up: boolean): boolean {
+    const o = this.stairsHere(up);
+    if (!o) return false;
+    const to = this.level + (up ? 1 : -1);
+    const onGround = this.map.level(this.px, this.py) === to && !this.map.hasFloor(this.px, this.py, to);
+    if (!onGround && !this.map.hasFloor(this.px, this.py, to)) {
+      this.say(this.map.loaded(this.px, this.py) ? `The ${o.name.startsWith('ladder') ? 'ladder' : 'stairs'} lead nowhere.` : 'The way there is still taking shape.');
+      return false;
+    }
+    this.setFloor(onGround ? null : to);
+    this.time += STAIRS_S * this.loadSlow();
+    this.activity = 'walk';
+    this.steps++;
+    const what = o.name.startsWith('ladder') ? 'ladder' : 'stairs';
+    this.say(`You ${up ? 'climb' : 'go down'} the ${what} to ${this.floorWords()}.`);
+    return true;
+  }
+
+  /** The floor the wanderer is on, in words ("the first floor", "the cellar"). */
+  floorWords(): string {
+    const area = this.areaAt(this.px, this.py);
+    // The building's floor names it ("Town house, first floor: bedroom").
+    const m = /, ([^:,]+):/.exec(area) ?? /, ([^:,]+)$/.exec(area);
+    if (this.z !== null && m) return `the ${m[1]}`;
+    if (this.z === null) return GROUND_TILES[this.map.ground(this.px, this.py)]?.name.startsWith('floor_') ? 'the ground floor' : 'the ground';
+    return this.z > this.map.level(this.px, this.py) ? 'the floor above' : 'the floor below';
+  }
+
   /**
    * Sets the wanderer on open ground near where they are, if they stand somewhere they could not
    * (after travelling, the travel map puts them at a chunk's middle). False until the chunks there
@@ -341,6 +405,11 @@ export class Game {
    */
   ensureFooting(): boolean {
     if (!this.map.loaded(this.px, this.py)) return false;
+    // On a floor of a building (a saved game): stay there, if the floor is there to stand on.
+    if (this.z !== null) {
+      if (this.map.passable(this.px, this.py)) return true;
+      this.setFloor(null);
+    }
     if (this.outdoors(this.px, this.py)) return true;
     for (let r = 1; r <= 64; r++) {
       let best: [number, number] | null = null, bd = Infinity;
@@ -402,6 +471,14 @@ export class Game {
 
   /** What can be told of a tile. */
   describe(x: number, y: number): string[] {
+    // From a floor, past its edge: the open air, and the ground below.
+    if (this.z !== null && this.map.loaded(x, y) && !this.map.hasFloor(x, y, this.z)) {
+      const below = this.map.tileAt(x, y, null), dl = this.z - this.map.level(x, y);
+      if (dl <= 0 || !below) return ['Solid earth.'];
+      if (!this.isVisible(x, y) && !this.map.wasSeenAt(x, y, null)) return ['You have not seen that.'];
+      const o = OBJECT_TILES[below.object];
+      return ['Open air.', `Below, ${levelWords(-dl).replace(' below you', ' down')}: ${o && o.name !== 'none' ? `${o.look} on ` : ''}${GROUND_TILES[below.ground].look}.`];
+    }
     const t = this.map.tile(x, y);
     if (!t) return ['Unknown land.'];
     const seen = this.isVisible(x, y);
@@ -414,8 +491,10 @@ export class Game {
     else if (t.object) out.push(cap(o.look) + '.');
     out.push(`${cap(GROUND_TILES[t.ground].look)}.`);
     if (t.area) out.push(cap(t.area) + '.');
-    const dl = this.map.level(x, y) - this.map.level(this.px, this.py);
-    if (dl) out.push(`${cap(levelWords(dl))} (${Math.abs(t.elev - this.map.elev(this.px, this.py))} m ${dl > 0 ? 'higher' : 'lower'}).`);
+    if (this.z === null) {
+      const dl = this.map.level(x, y) - this.map.level(this.px, this.py);
+      if (dl) out.push(`${cap(levelWords(dl))} (${Math.abs(t.elev - this.map.elev(this.px, this.py))} m ${dl > 0 ? 'higher' : 'lower'}).`);
+    }
     const things = this.ground.at(x, y);
     if (things.length && seen) out.push(`${t.object ? 'In it' : 'Lying here'}: ${things.slice(0, 4).map((i) => itemName(i, true)).join(', ')}${things.length > 4 ? ', and more' : ''}.`);
     const d = Math.hypot(x - this.px, y - this.py) * TILE_M;

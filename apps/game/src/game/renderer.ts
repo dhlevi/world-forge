@@ -24,8 +24,12 @@
  *
  * Roofs (core local/roofs.ts) cover buildings as an option: off, on, or (the default) on unless
  * the wanderer is inside, with a roof faded over whatever of the inside is in sight through a
- * door or window. Looking up and down, a roof shows in the slice at its own level, and slices
- * through a building's upper storeys show its outer walls round a dark, unexplored inside.
+ * door or window. Looking up and down, a roof shows in the slice at its own level.
+ *
+ * Floors above and below the ground (game/map.ts: upper storeys, cellars) are drawn in a slice
+ * at their level: the floor the wanderer stands on is always drawn as a slice, with the ground
+ * below seen darker through the open air (out of the windows). A floor not yet explored is
+ * dark inside its walls.
  *
  * Trees stand across levels (game/trees.ts): on the surface a tree is its trunk and roots, with
  * the ground under its leaves in shade; in a slice above the ground, its trunk, branches and
@@ -136,6 +140,8 @@ export class Renderer {
   zoom = 2;
   /** Screen tile under the pointer, as a map tile. */
   onHover: (tx: number, ty: number) => void = () => {};
+  /** A map tile clicked. */
+  onClick: (tx: number, ty: number) => void = () => {};
 
   constructor(private tiles: Tileset) {}
 
@@ -153,6 +159,10 @@ export class Renderer {
       // The map is drawn from a tile above and to the left of the screen's corner.
       const s = TILE_PX * this.zoom;
       this.onHover(Math.floor(e.global.x / s) + 1 - this.ox, Math.floor(e.global.y / s) + 1 - this.oy);
+    });
+    this.app.stage.on('pointertap', (e) => {
+      const s = TILE_PX * this.zoom;
+      this.onClick(Math.floor(e.global.x / s) + 1 - this.ox, Math.floor(e.global.y / s) + 1 - this.oy);
     });
   }
 
@@ -287,11 +297,11 @@ export class Renderer {
     }
   }
 
-  private mask(def: TileDef, x: number, y: number, game: Game, layer: 'ground' | 'object'): number {
+  private mask(def: TileDef, x: number, y: number, game: Game, layer: 'ground' | 'object', z: number | null = null): number {
     if (def.join !== 'mask4') return -1;
     const same = (tx: number, ty: number) => {
       if (!game.map.loaded(tx, ty)) return true;
-      const d = layer === 'ground' ? GROUND_TILES[game.map.ground(tx, ty)] : OBJECT_TILES[game.map.object(tx, ty)];
+      const d = layer === 'ground' ? GROUND_TILES[game.map.groundAt(tx, ty, z)] : OBJECT_TILES[game.map.objectAt(tx, ty, z)];
       return joinsWith(def, d);
     };
     return (same(x, y - 1) ? N : 0) | (same(x + 1, y) ? E : 0) | (same(x, y + 1) ? S : 0) | (same(x - 1, y) ? W : 0);
@@ -374,20 +384,23 @@ export class Renderer {
    * in a slice, a roof at its own level (darker the further below), and between a building's
    * ground floor and its roof, the outer walls round a dark inside.
    */
-  private drawRoofs(game: Game, levels: Float64Array, solid: Uint8Array, vis: Uint8Array, light0: Uint32Array, me: number, at: number, seasons: readonly string[]): void {
+  private drawRoofs(game: Game, levels: Float64Array, solid: Uint8Array, vis: Uint8Array, light0: Uint32Array, me: number, at: number, slice: boolean, seasons: readonly string[]): void {
     for (const r of this.rs) r.visible = false;
     if (this.roofs === 'off') return;
     const cols = this.cols, rows = this.rows, x0 = -this.ox, y0 = -this.oy;
     const inside = (r: Roof) => covers(r, game.px, game.py);
     for (const roof of game.map.roofsIn(x0, y0, x0 + cols - 1, y0 + rows - 1)) {
       const ground = levelOf(roof.floorM), top = levelOf(roof.floorM + roof.heightM);
-      const hidden = this.view === 0 && this.roofs === 'auto' && inside(roof);
+      const hidden = !slice && this.roofs === 'auto' && inside(roof);
       for (let ty = Math.max(roof.y0, y0); ty < Math.min(roof.y0 + roof.h, y0 + rows); ty++) {
         for (let tx = Math.max(roof.x0, x0); tx < Math.min(roof.x0 + roof.w, x0 + cols); tx++) {
           const i = (ty - y0) * cols + (tx - x0);
           if (!covers(roof, tx, ty) || Number.isNaN(levels[i]) || solid[i]) continue;
-          // Between the ground floor and the roof, in a slice: walls round a dark inside.
-          if (this.view !== 0 && at > ground && at < top) {
+          // A floor of the building at the slice's level is drawn as it is (the attic, under the
+          // roof's own level, from within the building only).
+          if (slice && game.map.hasFloor(tx, ty, at) && (at < top || inside(roof))) continue;
+          // Between the ground floor and the roof, in a slice, with no floor known: walls round a dark inside.
+          if (slice && at > ground && at < top) {
             const oid = game.map.object(tx, ty), tallHere = oid && standsTall(OBJECT_TILES[oid]);
             const g = this.gs[i];
             g.texture = this.solidTex;
@@ -399,20 +412,59 @@ export class Renderer {
             else this.os[i].visible = false;
             continue;
           }
-          if (hidden || (this.view !== 0 && at < top)) continue;
+          if (hidden || (slice && at < top)) continue;
           const plane = roofPlane(roof, tx, ty);
           const m = (covers(roof, tx, ty - 1) ? N : 0) | (covers(roof, tx + 1, ty) ? E : 0) | (covers(roof, tx, ty + 1) ? S : 0) | (covers(roof, tx - 1, ty) ? W : 0);
           const look = this.tiles.get('roof', `roof_${roof.material}_${plane}`, tx, ty, m, seasons);
           // As dark as the ground beneath it is below the wanderer (or the slice).
-          const below = this.view === 0 ? me - top : at - top;
-          const tint = below > 0 ? shade(light0[i], this.view === 0 ? Math.max(0.45, 1 - BELOW_SURFACE * below) : Math.max(0.2, BELOW_SLICE ** below)) : light0[i];
+          const below = !slice ? me - top : at - top;
+          const tint = below > 0 ? shade(light0[i], !slice ? Math.max(0.45, 1 - BELOW_SURFACE * below) : Math.max(0.2, BELOW_SLICE ** below)) : light0[i];
           const sp = this.rs[i];
           this.show(sp, look, i, tint);
           // Faded over the inside where it is in sight (through a door or a window).
-          sp.alpha = this.view === 0 && this.roofs === 'auto' && vis[i] && GROUND_TILES[game.map.ground(tx, ty)].name.startsWith('floor_') ? ROOF_SEEN_THROUGH : 1;
+          sp.alpha = !slice && this.roofs === 'auto' && vis[i] && GROUND_TILES[game.map.ground(tx, ty)].name.startsWith('floor_') ? ROOF_SEEN_THROUGH : 1;
         }
       }
     }
+  }
+
+  /**
+   * A tile of a floor above or below the ground, at level `z`: as it is where in sight or
+   * remembered (lit as the ground is, by day or by a fire), and dark inside its walls where not
+   * yet explored.
+   */
+  private drawFloorTile(game: Game, i: number, tx: number, ty: number, z: number, inSight: boolean, levels: Float64Array, vis: Uint8Array, light0: Uint32Array, tall: Uint8Array, seasons: readonly string[]): void {
+    const g = this.gs[i], d = this.ds[i], o = this.os[i];
+    this.ss[i].visible = false;
+    d.visible = false;
+    levels[i] = z;
+    vis[i] = inSight ? 1 : 0;
+    const seen = inSight || game.map.wasSeenAt(tx, ty, z);
+    let light = shade(REMEMBERED, 0.25 + 0.75 * this.look.light);
+    if (inSight) {
+      const l = game.lightAt(tx, ty);
+      light = l.fire ? shade(FIRE, 0.4 + 0.6 * l.level) : shade(this.look.sky, 0.45 + 0.55 * l.level);
+    }
+    light0[i] = light;
+    const oid = game.map.objectAt(tx, ty, z), od = OBJECT_TILES[oid];
+    tall[i] = oid && standsTall(od) ? 1 : 2;
+    if (!seen) {
+      // Not explored: dark inside its outer walls (the walls within are not known).
+      g.texture = this.solidTex;
+      g.x = (i % this.cols) * TILE_PX;
+      g.y = Math.floor(i / this.cols) * TILE_PX;
+      g.tint = UNEXPLORED;
+      g.visible = true;
+      const outer = !game.map.hasFloor(tx, ty - 1, z) || !game.map.hasFloor(tx + 1, ty, z) || !game.map.hasFloor(tx, ty + 1, z) || !game.map.hasFloor(tx - 1, ty, z);
+      if (oid && standsTall(od) && outer) this.show(o, this.tiles.get('object', od.name, tx, ty, this.mask(od, tx, ty, game, 'object', z), seasons), i, light);
+      else o.visible = false;
+      return;
+    }
+    const gd = GROUND_TILES[game.map.groundAt(tx, ty, z)];
+    this.show(g, this.tiles.get('ground', gd.name, tx, ty, this.mask(gd, tx, ty, game, 'ground', z), seasons), i, light);
+    if (oid) this.show(o, this.tiles.get('object', od.name, tx, ty, this.mask(od, tx, ty, game, 'object', z), seasons), i, light);
+    else if (game.ground.hasAt(tx, ty, z)) this.show(o, this.itemLook, i, light);
+    else o.visible = false;
   }
 
   /**
@@ -483,6 +535,19 @@ export class Renderer {
   }
 
   draw(game: Game): void {
+    // The map and what lies about are read on the ground here; floors are named where drawn.
+    const floor = game.z;
+    game.map.floor = null;
+    game.ground.floor = null;
+    try {
+      this.drawAll(game, floor);
+    } finally {
+      game.map.floor = floor;
+      game.ground.floor = floor;
+    }
+  }
+
+  private drawAll(game: Game, floor: number | null): void {
     // Take up the element's size now (Pixi otherwise catches up a frame later).
     this.app.resize();
     this.layout();
@@ -492,7 +557,8 @@ export class Renderer {
     const tall = new Uint8Array(this.cols * this.rows);
     /** Each screen tile's terrain (-2 where not drawn as ground), ground and tint, for the edges between kinds of ground. */
     const terr = new Int8Array(this.cols * this.rows).fill(-2), gnd = new Uint8Array(this.cols * this.rows), gTint = new Uint32Array(this.cols * this.rows);
-    const me = game.map.level(game.px, game.py), at = me + this.view;
+    /** The wanderer's level, the level drawn, and whether as a slice (looking up or down, or on a floor). */
+    const me = floor ?? game.map.level(game.px, game.py), at = me + this.view, slice = this.view !== 0 || floor !== null;
     /** Each screen tile's level, if drawn (NaN if not), for the lines between levels. */
     const levels = new Float64Array(this.cols * this.rows).fill(NaN);
     const solid = new Uint8Array(this.cols * this.rows);
@@ -509,14 +575,20 @@ export class Renderer {
     // Centre the wanderer.
     this.ox = Math.floor(this.cols / 2) - game.px;
     this.oy = Math.floor(this.rows / 2) - game.py;
-    const trees = new TreeView(game.map, -this.ox, -this.oy, this.cols, this.rows, this.view === 0 ? null : at);
+    const trees = new TreeView(game.map, -this.ox, -this.oy, this.cols, this.rows, slice ? at : null);
     /** Each tile's light before it is darkened for depth (the light tree parts are drawn in). */
     const light0 = new Uint32Array(this.cols * this.rows);
     for (let i = 0; i < this.cols * this.rows; i++) {
       const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
       const g = this.gs[i], d = this.ds[i], o = this.os[i];
-      const vis0 = game.isVisible(tx, ty), seen = vis0 || game.map.wasSeen(tx, ty);
       const sn = this.ss[i];
+      // A floor of a building at the level drawn.
+      if (slice && game.map.hasFloor(tx, ty, at)) {
+        this.drawFloorTile(game, i, tx, ty, at, at === floor && game.isVisible(tx, ty), levels, vis, light0, tall, inSeason);
+        continue;
+      }
+      // On a floor, the ground is seen only past the floor's edge.
+      const vis0 = game.isVisible(tx, ty) && (floor === null || !game.map.hasFloor(tx, ty, floor)), seen = vis0 || game.map.wasSeenAt(tx, ty, null);
       if (!seen || !game.map.loaded(tx, ty)) {
         g.visible = d.visible = o.visible = sn.visible = false;
         continue;
@@ -533,10 +605,10 @@ export class Renderer {
       }
       light0[i] = light;
       // In the shade of leaves above, on the surface.
-      if (this.view === 0 && trees.shade[i]) light = shade(light, CANOPY_SHADE);
+      if (!slice && trees.shade[i]) light = shade(light, CANOPY_SHADE);
       // Lower ground darker; in a slice, ground above it solid.
-      if (this.view === 0 ? lv < me : lv < at) light = shade(light, this.view === 0 ? Math.max(0.45, 1 - BELOW_SURFACE * (me - lv)) : Math.max(0.2, BELOW_SLICE ** (at - lv)));
-      if (this.view !== 0 && lv > at) {
+      if (!slice ? lv < me : lv < at) light = shade(light, !slice ? Math.max(0.45, 1 - BELOW_SURFACE * (me - lv)) : Math.max(0.2, BELOW_SLICE ** (at - lv)));
+      if (slice && lv > at) {
         solid[i] = 1;
         g.texture = this.solidTex;
         g.x = (i % this.cols) * TILE_PX;
@@ -566,7 +638,7 @@ export class Renderer {
       // Roots about a tree's foot, else decorations on open ground (none under an object, or where things lie, or under deep snow).
       if (trees.roots[i] && !oid) this.show(d, this.tiles.get('tree', `roots_${TREE_KINDS[trees.rootKind[i]].name}`, tx, ty, rootSide(trees.roots[i]), seasons), i, light);
       else {
-        const dec = !oid && !game.ground.has(tx, ty) && gid !== SNOW_ID ? decorAt(gid, tx, ty, look.season) : null;
+        const dec = !oid && !game.ground.hasAt(tx, ty, null) && gid !== SNOW_ID ? decorAt(gid, tx, ty, look.season) : null;
         this.show(d, dec && this.tiles.get('decor', dec.name, tx, ty, -1, seasons), i, light);
       }
       // Snow lying, drawn over open ground that has no snow of its own to show.
@@ -585,14 +657,14 @@ export class Renderer {
         const od = OBJECT_TILES[oid];
         const ol = this.tiles.get('object', od.name, tx, ty, this.mask(od, tx, ty, game, 'object'), seasons);
         this.show(o, ol, i, SEASON_TREES.has(od.name) && treeTint !== 0xffffff && !ol?.seasonal ? mul(light, treeTint) : light);
-      } else if (game.ground.has(tx, ty)) {
+      } else if (game.ground.hasAt(tx, ty, null)) {
         // Things lying on the ground (not those put away in furniture, which stands over them).
         this.show(o, this.itemLook, i, light);
       } else o.visible = false;
     }
     this.drawCanopy(trees, levels, solid, light0, treeTint, snowA > 0 ? withSnow : inSeason);
     this.drawBlends(terr, gnd, gTint, levels, snowy, this.ox, this.oy, withSnow, inSeason);
-    this.drawRoofs(game, levels, solid, vis, light0, me, at, snowA > 0 ? withSnow : inSeason);
+    this.drawRoofs(game, levels, solid, vis, light0, me, at, slice, snowA > 0 ? withSnow : inSeason);
     this.drawShadows(tall, levels);
     this.drawEdges(levels, solid, vis);
     // The wanderer, in front of the row it stands on and behind the rows below; a single step

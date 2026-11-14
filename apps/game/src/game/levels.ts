@@ -9,8 +9,10 @@
  *   the wanderer's eyes to it (by more than the metre heights are rounded to).
  */
 
-/** Metres in a level. */
-export const LEVEL_M = 3;
+import { LEVEL_M } from '@worldforge/core/local/chunk';
+
+/** Metres in a level (the core's: the floors of buildings go up in the same steps). */
+export { LEVEL_M };
 /** The wanderer's eyes above the ground (m). */
 export const EYE_M = 1.6;
 /** How far above a tile's ground the eye must see to see the tile (m). */

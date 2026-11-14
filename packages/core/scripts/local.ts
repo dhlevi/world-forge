@@ -8,7 +8,7 @@
 import { writeFileSync } from 'node:fs';
 import { generateWorld } from '../src/gen/world';
 import { type WorldSettings, readSettingsQuery } from '../src/settings';
-import { LocalWorld, CHUNK, chunkHash, type Chunk } from '../src/local/chunk';
+import { LocalWorld, CHUNK, LEVEL_M, chunkHash, type Chunk } from '../src/local/chunk';
 import { GROUND_TILES, OBJECT_TILES } from '../src/local/tiles';
 import { encodePng } from './png';
 
@@ -83,6 +83,71 @@ console.log(`Local hash ${(h >>> 0).toString(16).padStart(8, '0')}`);
     }
   }
   console.log(`Reachable from the start: ${((100 * landR) / land).toFixed(1)}% of open tiles, ${edgeR} of ${edge} open tiles on the area's edge`);
+}
+
+// Floors above and below the ground (buildings' upper storeys and cellars): every stair up met by
+// a stair down on the floor above, on the same tile (and so on down), and how much of the floors
+// can be walked to from their stairs. A stair that leads nowhere fails the run.
+{
+  const S = 2 * R * CHUNK, M = 12;
+  const UP = new Set(['stairs_up', 'ladder_up']), DOWN = new Set(['stairs_down', 'ladder_down']);
+  const surf = new Uint8Array(S * S), lev = new Int16Array(S * S);
+  const floors = new Map<number, { g: Uint8Array; o: Uint8Array }>();
+  for (const c of chunks) {
+    for (let k = 0; k < CHUNK * CHUNK; k++) {
+      const q = ((c.cy + R) * CHUNK + Math.floor(k / CHUNK)) * S + (c.cx + R) * CHUNK + (k % CHUNK);
+      surf[q] = c.object[k];
+      lev[q] = Math.floor(c.elev[k] / LEVEL_M);
+    }
+    for (const l of c.layers) {
+      let f = floors.get(l.z);
+      if (!f) floors.set(l.z, (f = { g: new Uint8Array(S * S), o: new Uint8Array(S * S) }));
+      for (let k = 0; k < CHUNK * CHUNK; k++) {
+        if (!l.ground[k]) continue;
+        const q = ((c.cy + R) * CHUNK + Math.floor(k / CHUNK)) * S + (c.cx + R) * CHUNK + (k % CHUNK);
+        f.g[q] = l.ground[k];
+        f.o[q] = l.object[k];
+      }
+    }
+  }
+  /** The object on a tile of a level: its floor's, the ground's at its own level, or -1 (nothing there). */
+  const objAt = (q: number, z: number) => {
+    const f = floors.get(z);
+    if (f && f.g[q]) return f.o[q];
+    return lev[q] === z ? surf[q] : -1;
+  };
+  const inner = (q: number) => q % S >= M && Math.floor(q / S) >= M && q % S < S - M && Math.floor(q / S) < S - M;
+  let stairs = 0, lost = 0, tiles = 0, reached = 0;
+  for (const z of new Set([...floors.keys(), ...Array.from(lev)])) for (let q = 0; q < S * S; q++) {
+    const o = objAt(q, z);
+    if (o <= 0 || !inner(q)) continue;
+    const n = OBJECT_TILES[o].name;
+    if (!UP.has(n) && !DOWN.has(n)) continue;
+    stairs++;
+    const other = objAt(q, UP.has(n) ? z + 1 : z - 1);
+    if (other <= 0 || !(UP.has(n) ? DOWN : UP).has(OBJECT_TILES[other].name)) lost++;
+  }
+  for (const f of floors.values()) {
+    const pass = (q: number) => f.g[q] > 0 && (OBJECT_TILES[f.o[q]].pass || !!OBJECT_TILES[f.o[q]].toggle);
+    const seen = new Uint8Array(S * S), st: number[] = [];
+    for (let q = 0; q < S * S; q++) if (f.g[q] && (UP.has(OBJECT_TILES[f.o[q]].name) || DOWN.has(OBJECT_TILES[f.o[q]].name))) {
+      seen[q] = 1;
+      st.push(q);
+    }
+    while (st.length) {
+      const q = st.pop()!;
+      for (const n of [q - 1, q + 1, q - S, q + S]) if (n >= 0 && n < S * S && !seen[n] && pass(n)) {
+        seen[n] = 1;
+        st.push(n);
+      }
+    }
+    for (let q = 0; q < S * S; q++) if (inner(q) && f.g[q] && OBJECT_TILES[f.o[q]].pass) {
+      tiles++;
+      if (seen[q]) reached++;
+    }
+  }
+  console.log(`Floors above and below the ground: ${floors.size} levels, ${tiles} open floor tiles, ${tiles ? ((100 * reached) / tiles).toFixed(1) : '100.0'}% reached from their stairs; ${stairs} stairs, ${lost} leading nowhere`);
+  if (lost) process.exitCode = 1;
 }
 
 const count = new Map<string, number>();

@@ -37,7 +37,7 @@ const map = new GameMap(() => {});
 for (let cy = -1; cy <= 1; cy++) for (let cx = -1; cx <= 1; cx++) {
   const N = CHUNK * CHUNK, elev = new Int16Array(N);
   for (let k = 0; k < N; k++) elev[k] = heightAt(cx * CHUNK + (k % CHUNK));
-  const c: ChunkData = { cx, cy, ground: new Uint8Array(N).fill(G('grass')), object: new Uint8Array(N), area: new Uint16Array(N), areas: [''], elev, sites: [], roofs: [], ms: 0 };
+  const c: ChunkData = { cx, cy, ground: new Uint8Array(N).fill(G('grass')), object: new Uint8Array(N), area: new Uint16Array(N), areas: [''], elev, sites: [], roofs: [], layers: [], ms: 0 };
   map.add(c);
 }
 const hud: Hud = { place: '', where: '', clock: '', log: [], look: [], mode: 'play', loading: 0 };

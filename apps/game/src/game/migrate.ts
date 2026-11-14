@@ -17,7 +17,7 @@ import { startingInventory } from '../actors/items/inventory';
 import { Needs } from '../actors/needs';
 
 /** The version saves are written at. Raise it with each new upgrade step. */
-export const SAVE_VERSION = 2;
+export const SAVE_VERSION = 3;
 
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -49,6 +49,13 @@ const STEPS: Record<number, (s: Json) => void> = {
     // Characters from before needs were kept begin fed and rested.
     if (!isObj(c.needs)) c.needs = Needs.fresh();
   },
+  /**
+   * 2 to 3: floors above and below the ground (local-map version 6). The wanderer stood on the
+   * ground (no floor), and nothing had been changed or left on another floor.
+   */
+  2: (s) => {
+    s.floors = { changes: [], ground: [] };
+  },
 };
 
 /** Brings a save (plain JSON) up to SAVE_VERSION; returns it, changed in place. */
@@ -73,7 +80,10 @@ export function checkSave(s: Json): string[] {
   need(typeof s.id === 'string' && s.id.length > 0, 'it has no id');
   need(isObj(s.settings) && typeof s.settings.seed === 'string', 'its world settings are missing');
   need(isObj(s.start) && typeof s.start.siteId === 'string', 'where the game began is missing');
-  need(isObj(s.player) && isNum(s.player.x) && isNum(s.player.y), 'where the wanderer stands is missing');
+  need(isObj(s.player) && isNum(s.player.x) && isNum(s.player.y) && (s.player.z === undefined || isNum(s.player.z)), 'where the wanderer stands is missing');
+  const fl = s.floors;
+  need(isObj(fl) && Array.isArray(fl.changes) && fl.changes.every((x) => Array.isArray(x) && x.length === 4 && x.every(isNum))
+    && Array.isArray(fl.ground) && fl.ground.every((x) => Array.isArray(x) && isNum(x[0]) && isNum(x[1]) && isNum(x[2]) && Array.isArray(x[3])), 'the floors above and below the ground are damaged');
   need(isNum(s.time) && s.time >= 0, 'the game time is missing');
   need(Array.isArray(s.changes) && s.changes.every((x) => Array.isArray(x) && x.length === 3 && x.every(isNum)), 'the changes to the map are damaged');
   need(isObj(s.seen) && Object.values(s.seen).every((x) => typeof x === 'string'), 'what has been seen is damaged');
@@ -133,6 +143,9 @@ export function pruneUnknown(s: Json, known: (id: string) => boolean): string[] 
   }
   if (Array.isArray(s.ground)) {
     s.ground = (s.ground as [number, number, Json[]][]).map(([x, y, items]) => [x, y, keep(items)] as [number, number, Json[]]).filter(([, , items]) => items.length);
+  }
+  if (isObj(s.floors) && Array.isArray(s.floors.ground)) {
+    s.floors.ground = (s.floors.ground as [number, number, number, Json[]][]).map(([x, y, z, items]) => [x, y, z, keep(items)] as [number, number, number, Json[]]).filter(([, , , items]) => items.length);
   }
   if (Array.isArray(s.camps)) {
     for (const c of s.camps as Json[]) {

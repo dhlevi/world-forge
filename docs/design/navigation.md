@@ -421,6 +421,31 @@ not fit it.
    before. Snow lying on ground with no snow frame is a white cover, and when it lies deep the
    snow tile itself; edges made from a tile's art use its season's art too.)*
 8. **Roofs**, with the option above. *(Built.)*
+9. **Interiors on the tile grid** (local-map version 5, `packages/core/src/local/interior.ts`).
+   *(Built: a floor plan drawn with thin walls is squeezed onto tiles where a wall is a whole tile
+   thick, which left doors in the middle of rooms, furniture blocking furniture and rooms with no
+   way in. Each building's ground floor is now laid out again on the grid: rooms too small to
+   stand alone join a neighbour; walls between rooms run straight; every door stands in a frame
+   (wall on both sides, floor or open ground across it) with none beside another opening; a way
+   in opens onto clear open ground (not into a neighbour's wall, a town wall or a tree, and the
+   ground outside every door is kept clear); every room is reached from a way in; and furniture
+   is placed from the plan's positions only where it leaves every free tile reachable and has a
+   free side to be used from, no more than two fifths of a room blocked. What does not fit is
+   left out. The atlas still draws each building from its own plan, so its picture of a house
+   may differ from the game's tiles. `apps/game/scripts/interior-test.ts` checks the rules.)*
+10. **Stairs and floors above and below the ground** (local-map version 6). *(Built: every
+    building's cellar, upper storeys and attic, on the same tiles one level up or down, as
+    Dwarf Fortress's z-levels. A chunk keeps them as layers by level, which caves, dungeons and
+    delves will share. A building's stairwell is two tiles, the same on every floor, the flights
+    taking them in turn, so that a stair up always meets a stair down on the same tile above.
+    Upper floors and cellars are walled round their own tiles, reached only by their stairs, and
+    laid out by the interior rules. In the game, `<` and `>` on stairs go up and down; the
+    wanderer's floor is drawn as a slice, with the ground below seen darker through the windows
+    and the earth all round a cellar; roofs give way to the floor within; floors not explored are
+    dark inside their outer walls. Saves keep the floor, and the changes and things on each.)*
+11. **Caves, dungeons and delves on the same layers** (next): the dungeon plans (5 ft squares, the
+    tile's size), caves and dwarven delves placed under the land at their true positions, reached
+    from their entrances by the same stairs, ladders and shafts.
 
 ## Open questions
 
