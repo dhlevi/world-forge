@@ -1,4 +1,5 @@
 /** Messages between the game and its worker (worker/game.worker.ts), which holds the world. */
+import type { Roof } from '@worldforge/core/local/roofs';
 import type { WorldSettings } from '@worldforge/core/settings';
 
 export interface StartSite {
@@ -108,6 +109,8 @@ export interface ChunkData {
   areas: string[];
   elev: Int16Array;
   sites: { tx: number; ty: number; kind: string; name: string; id: string }[];
+  /** The roofs of the buildings standing (in part) here (core local/roofs.ts). */
+  roofs: Roof[];
   ms: number;
 }
 

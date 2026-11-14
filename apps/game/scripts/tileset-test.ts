@@ -3,9 +3,13 @@
  * frame may be given in, animations, stand-ins, what is refused, and where decorations lie.
  * npx tsx apps/game/scripts/tileset-test.ts (exits non-zero on a failure).
  */
-import { DECOR, G, GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
-import { readTileset, type FrameLayer } from '../src/game/tileset-format';
+import { DECOR, FACINGS, FIGURES, G, GROUND_TILES, O, OBJECT_TILES, TERRAINS, joinsWith, standsTall } from '@worldforge/core/local/tiles';
+import { lookKeys, readTileset, type FrameLayer } from '../src/game/tileset-format';
 import { decorAt } from '../src/game/decor';
+import { TERRAIN_OF, blendsAt, edgeInside } from '../src/game/terrain';
+import { TREE_KINDS } from '@worldforge/core/local/trees';
+import { ROOF_MATERIALS, ROOF_PLANES } from '@worldforge/core/local/roofs';
+import { TREE_FRAMES } from '../src/game/tileset';
 
 let failures = 0;
 const ok = (cond: boolean, what: string) => {
@@ -17,12 +21,18 @@ const layers = new Map<string, FrameLayer>([
   ...GROUND_TILES.map((d) => [d.name, 'ground'] as const),
   ...OBJECT_TILES.map((d) => [d.name, 'object'] as const),
   ...DECOR.map((d) => [d.name, 'decor'] as const),
+  ...TERRAINS.map((t) => [`edge_${t.name}`, 'edge'] as const),
+  ...TREE_KINDS.flatMap((k) => TREE_FRAMES.map((f) => [`${f}_${k.name}`, 'tree'] as const)),
+  ...FIGURES.flatMap((f) => FACINGS.flatMap((d) => [[`${f.name}_${d}`, 'figure'] as const, [`${f.name}_walk_${d}`, 'figure'] as const])),
+  ...Object.keys(ROOF_MATERIALS).flatMap((m) => ROOF_PLANES.map((pl) => [`roof_${m}_${pl}`, 'roof'] as const)),
 ]);
 const read = (json: unknown) => readTileset(json, (n) => layers.get(n));
 
 // ---- The registry -------------------------------------------------------------------------------
 const names = [...GROUND_TILES, ...OBJECT_TILES].map((d) => d.name);
-ok(layers.size === names.length + DECOR.length, 'every tile and decoration has a name of its own (one layer each)');
+ok(layers.size === names.length + DECOR.length + TERRAINS.length + TREE_KINDS.length * TREE_FRAMES.length + FIGURES.length * FACINGS.length * 2 + Object.keys(ROOF_MATERIALS).length * ROOF_PLANES.length, 'every tile, decoration, terrain edge, tree part, figure frame and roof plane has a name of its own (one layer each)');
+const walk = read({ tiles: { person_walk_e: { at: [0, 8], frames: 4, ms: 90 }, person_e: [0, 9] } });
+ok(walk.frames.find((f) => f.key === 'figure:person_walk_e')?.pictures.length === 4 && walk.warnings.length === 0, 'a figure\'s walk is an animation like any other');
 
 // ---- The first format: one sheet, [column, row] --------------------------------------------------
 const old = read({ tileSize: 16, image: 'tileset.png', tiles: { grass: [0, 0], 'grass.1': [1, 0], 'wall_stone#5': [2, 3], bedroll: [4, 4] } });
@@ -83,6 +93,50 @@ ok(count(forest, 'autumn', 'toadstools') > 0.02 && count(forest, 'spring', 'toad
 ok(count(deep, 'summer') === 0, 'nothing lies on deep water');
 ok(decorAt(grass, 12, -40, 'summer') === decorAt(grass, 12, -40, 'summer'), 'a place keeps its decoration');
 ok(decorAt(grass, 12, -40, 'winter') === null || decorAt(grass, 12, -40, 'winter') === decorAt(grass, 12, -40, 'summer'), 'and only loses it, never changes it, with the season');
+
+// ---- Seasons ------------------------------------------------------------------------------------------
+const sea = read({ tiles: { grass: [0, 0], 'grass@winter': [1, 0], 'grass@snow.1': [2, 0], 'leaves_broadleaf@autumn#5': [3, 0], 'grass@monsoon': [4, 0] } });
+const keys = sea.frames.map((f) => `${f.key}/${f.variant}`);
+ok(keys.includes('ground:grass@winter/0') && keys.includes('ground:grass@snow/1') && keys.includes('tree:leaves_broadleaf@autumn#5/0'), `frames for a season or snow, with variants and joins (${keys.join(', ')})`);
+ok(sea.warnings.some((w) => w.includes('monsoon')), 'an unknown season is refused');
+ok(lookKeys('ground', 'grass', -1, ['snow', 'winter']).join() === 'ground:grass@snow,ground:grass@winter,ground:grass', 'snow lying first, then the season, then the plain frame');
+ok(lookKeys('tree', 'leaves_birch', 5, ['autumn']).join() === 'tree:leaves_birch@autumn#5,tree:leaves_birch@autumn,tree:leaves_birch#5,tree:leaves_birch', 'a join: the season\'s join frame, its one picture, then the plain ones');
+
+// ---- Walls, doors and furniture (top-down) ---------------------------------------------------------------
+const obj = (n: string) => OBJECT_TILES[O(n)];
+ok(joinsWith(obj('wall_stone'), obj('door')) && joinsWith(obj('window'), obj('wall_timber')), 'doors and windows join the walls they stand in');
+ok(joinsWith(obj('gate'), obj('fence')) && joinsWith(obj('fence'), obj('gate')) && joinsWith(obj('gate_open'), obj('palisade')), 'a gate joins town walls, palisades and fences (either way round)');
+ok(!joinsWith(obj('fence'), obj('wall_stone')) && !joinsWith(obj('bed'), obj('table')), 'other things do not join');
+ok(['bed', 'bench', 'pew', 'table', 'trestle', 'counter', 'workbench', 'shelf', 'rug', 'bookcase'].every((n) => obj(n).join === 'mask4' && joinsWith(obj(n), obj(n))), 'long furniture joins its own kind (a bed two tiles long, a long table)');
+ok(standsTall(obj('wall_brick')) && standsTall(obj('window')) && standsTall(obj('hedge')) && standsTall(obj('wardrobe')), 'walls, windows, hedges and wardrobes stand tall (and cast shadows)');
+ok(!standsTall(obj('table')) && !standsTall(obj('tree_broadleaf')) && !standsTall(obj('tree_trunk')), 'tables and trees do not (trees stand across levels)');
+
+// ---- Ground edges -----------------------------------------------------------------------------------
+const T = (n: string) => TERRAIN_OF[G(n)];
+ok(T('grass') > T('dirt') && T('dirt') > T('sand') && T('sand') > T('water_shallow') && T('snow') > T('grass'), 'grass spreads over earth, earth over sand, sand over water, snow over all');
+ok(T('cobbles') === -1 && T('floor_boards') === -1 && T('road') === T('dirt'), 'paving and floors keep straight edges; roads are earth');
+const unplaced = GROUND_TILES.filter((d) => d.name !== 'void' && TERRAIN_OF[G(d.name)] === -1).map((d) => d.name);
+console.log(`  straight-edged ground: ${unplaced.join(', ')}`);
+const g4 = T('grass'), e4 = T('dirt'), s4 = T('sand');
+ok(blendsAt([e4, e4, e4, e4], [3, 3, 3, 3]).length === 0, 'one kind of ground: no edges');
+const one = blendsAt([g4, e4, e4, e4], [3, 3, 3, 3]);
+ok(one.length === 1 && one[0].terrain === g4 && one[0].mask === 1 && one[0].from === 0, 'grass in one corner: its edge, frame 1 (north-west)');
+const three = blendsAt([g4, e4, s4, s4], [3, 3, 3, 3]);
+ok(three.length === 2 && three[0].terrain === e4 && three[0].mask === 3 && three[1].terrain === g4 && three[1].mask === 1, 'three kinds: earth over sand (north-west and north-east), then grass over both');
+ok(blendsAt([g4, e4, e4, e4], [3, 3, 4, 3]).length === 0, 'no edges across a change of level');
+ok(blendsAt([g4, e4, T('cobbles'), e4], [3, 3, 3, 3]).length === 0, 'none beside paving');
+// Made edges: whole where the terrain has every corner along a side, and meeting their neighbours.
+let seam = 0;
+for (let m = 1; m <= 14; m++) for (let v = 0; v < 3; v++) for (let i = 0; i < 16; i++) {
+  // Along the cell's west side, only the north-west and south-west corners count: the same line
+  // as the east side of the cell beside it, whose north-east and south-east corners they are.
+  const west = edgeInside(m, 0, i, v) > 0, east = edgeInside(((m & 1) << 1) | ((m & 8) >> 1), 15, i, (v + 1) % 3) > 0;
+  if (Math.abs(edgeInside(m, 0, i, v) - edgeInside(((m & 1) << 1) | ((m & 8) >> 1), 15, i, (v + 1) % 3)) > 0.1 && west !== east) seam++;
+}
+ok(seam === 0, `made edges meet the cell beside them, whatever the variants (${seam} mismatches)`);
+let inside = 0;
+for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (edgeInside(1, x, y, 0) > 0) inside++;
+ok(inside > 20 && inside < 110, `frame 1 covers about a quarter of the cell (${inside} of 256 pixels)`);
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll passed');
 if (failures) process.exitCode = 1;

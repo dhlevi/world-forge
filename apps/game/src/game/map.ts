@@ -6,6 +6,8 @@ import { CHUNK } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import type { ChunkData } from '../worker/protocol';
 import { packBits, unpackBits } from './save';
+import { levelOf } from './levels';
+import type { Roof } from '@worldforge/core/local/roofs';
 
 export interface Tile {
   ground: number;
@@ -26,10 +28,21 @@ export class GameMap {
 
   constructor(private request: (cx: number, cy: number) => void) {}
 
+  /** The roofs of the buildings on the map so far, by building (core local/roofs.ts). */
+  readonly roofs = new Map<string, Roof>();
+
   add(c: ChunkData): void {
     const k = key(c.cx, c.cy);
     this.chunks.set(k, c);
     this.pending.delete(k);
+    for (const r of c.roofs ?? []) if (!this.roofs.has(r.id)) this.roofs.set(r.id, r);
+  }
+
+  /** The roofs over any part of a box of tiles. */
+  roofsIn(x0: number, y0: number, x1: number, y1: number): Roof[] {
+    const out: Roof[] = [];
+    for (const r of this.roofs.values()) if (r.x0 <= x1 && r.y0 <= y1 && r.x0 + r.w > x0 && r.y0 + r.h > y0) out.push(r);
+    return out;
   }
 
   /** Asks for the chunks covering a box of tiles that are not here yet. */
@@ -82,6 +95,17 @@ export class GameMap {
     if (!a) return null;
     const [c, k] = a;
     return { ground: c.ground[k], object: this.object(tx, ty), area: c.areas[c.area[k]] ?? '', elev: c.elev[k] };
+  }
+
+  /** The ground's height (m; 0 where the map is not made yet). */
+  elev(tx: number, ty: number): number {
+    const a = this.at(tx, ty);
+    return a ? a[0].elev[a[1]] : 0;
+  }
+
+  /** The ground's level (game/levels.ts). */
+  level(tx: number, ty: number): number {
+    return levelOf(this.elev(tx, ty));
   }
 
   /** Can be walked into (unloaded tiles cannot). */

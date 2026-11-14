@@ -4,7 +4,7 @@
  */
 import { FOV } from 'rot-js';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
-import { GROUND_TILES, OBJECT_TILES, objectId, type TileDef } from '@worldforge/core/local/tiles';
+import { GROUND_TILES, OBJECT_TILES, objectId, type Facing, type TileDef } from '@worldforge/core/local/tiles';
 import { GameMap } from './map';
 import { Ground } from './ground';
 import { Camps } from './camp';
@@ -13,6 +13,8 @@ import { itemName } from '../actors/items/item';
 import { Discovery, FOOT_SIGHT_M } from './discovery';
 import type { LocalSite } from '../worker/protocol';
 import { bearing, compassWord, Dice } from '../util';
+import { levelWords, overGround, stepBetween } from './levels';
+import { treeAt, treeWords } from './trees';
 
 /** Seconds an action takes. */
 export const STEP_S = 1.2;
@@ -21,6 +23,15 @@ export const DOOR_S = 2;
 export const WAIT_S = 5;
 /** Seconds to swim a tile of deep water. */
 export const SWIM_S = 4;
+/** Seconds more to go up a ramp (a level), and down one. */
+export const RAMP_UP_S = 1.5;
+export const RAMP_DOWN_S = 0.4;
+
+/** How a climb went (game/practice.ts): whether the wanderer got there, and the seconds it took. */
+export interface Climb {
+  ok: boolean;
+  seconds: number;
+}
 /** How far the wanderer sees by day, in tiles. */
 export const SIGHT = 30;
 /** Things that give light, and how far it reaches (tiles). */
@@ -44,6 +55,10 @@ const DIRS8: [number, number][] = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1
 export class Game {
   px: number;
   py: number;
+  /** The way the wanderer faces (the last way they moved, or turned to). */
+  facing: Facing = 's';
+  /** Steps taken (a count, so that the map can show a single step as a walk from tile to tile). */
+  steps = 0;
   /** Game time, seconds since the start (day 1, 08:00). */
   time = 8 * 3600;
   readonly visible = new Set<number>();
@@ -68,6 +83,10 @@ export class Game {
   sleepQuality = 0.6;
   /** Called whenever the clock may have moved (after every action and travel step). */
   onTime: (time: number) => void = () => {};
+  /** Climbs a rock face of so many metres, up or down (game/practice.ts); none: it cannot be climbed. */
+  climb: ((metres: number, up: boolean) => Climb) | null = null;
+  /** A rock face the wanderer has walked into once: walking into it again climbs it. */
+  private face: { x: number; y: number } | null = null;
 
   constructor(readonly map: GameMap, start: [number, number], readonly sites: LocalSite[], readonly startName: string, readonly hud: Hud) {
     [this.px, this.py] = start;
@@ -139,7 +158,16 @@ export class Game {
     });
     const carried = this.carriedLight();
     if (carried) sources.push([this.px, this.py, carried]);
+    // Heights about the wanderer, once, for sight over the ground.
+    const R = SIGHT + 1, Wd = 2 * R + 1, heights = new Float64Array(Wd * Wd).fill(NaN);
+    const elevAt = (x: number, y: number) => {
+      const i = (y - this.py + R) * Wd + (x - this.px + R);
+      let h = heights[i];
+      if (Number.isNaN(h)) heights[i] = h = this.map.elev(x, y);
+      return h;
+    };
     for (const [x, y] of cand) {
+      if (!overGround(this.px, this.py, x, y, elevAt)) continue;
       const d = Math.hypot(x - this.px, y - this.py);
       let fire = 0;
       for (const [sx, sy, r] of sources) {
@@ -184,6 +212,8 @@ export class Game {
   /** One step (or a bump: opening a door, or being stopped). Returns whether time passed. */
   move(dx: number, dy: number, quiet = false): boolean {
     const nx = this.px + dx, ny = this.py + dy;
+    // Turn that way, whether or not the step can be taken (east or west on a diagonal).
+    this.facing = dx > 0 ? 'e' : dx < 0 ? 'w' : dy < 0 ? 'n' : 's';
     if (!this.map.loaded(nx, ny)) {
       if (!quiet) this.say('The land there is still taking shape.');
       return false;
@@ -202,13 +232,40 @@ export class Game {
       if (!quiet) this.say('There is no room to slip through.');
       return false;
     }
+    // A rock face: walking into it again climbs it.
+    const l0 = this.map.level(this.px, this.py), l1 = this.map.level(nx, ny);
+    const step = stepBetween(l0, l1);
+    let extra = step === 'ramp' ? (l1 > l0 ? RAMP_UP_S : RAMP_DOWN_S) : 0;
+    if (step === 'cliff') {
+      if (quiet) return false;
+      const up = l1 > l0, m = Math.abs(this.map.elev(nx, ny) - this.map.elev(this.px, this.py));
+      if (!this.climb) {
+        this.say(up ? 'A rock face blocks the way.' : 'The ground drops away sheer.');
+        return false;
+      }
+      if (!this.face || this.face.x !== nx || this.face.y !== ny) {
+        this.face = { x: nx, y: ny };
+        this.say(up ? `A rock face rises ${m} m above you. Walk into it again to climb it.` : `The ground drops away ${m} m below you. Walk on again to climb down.`);
+        return false;
+      }
+      this.face = null;
+      const c = this.climb(m, up);
+      this.activity = 'work';
+      if (!c.ok) {
+        this.time += c.seconds;
+        return true;
+      }
+      extra = c.seconds;
+    }
+    this.face = null;
     const area0 = this.areaAt(this.px, this.py);
     this.px = nx;
     this.py = ny;
+    this.steps++;
     const g = GROUND_TILES[this.map.ground(nx, ny)];
     const wasWet = GROUND_TILES[this.map.ground(this.px - dx, this.py - dy)].water;
-    this.time += (g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) * this.loadSlow();
-    this.activity = g.water === 'deep' ? 'swim' : 'walk';
+    this.time += ((g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) + (step === 'cliff' ? 0 : extra)) * this.loadSlow() + (step === 'cliff' ? extra : 0);
+    if (step !== 'cliff') this.activity = g.water === 'deep' ? 'swim' : 'walk';
     if (g.water !== wasWet && !quiet) {
       if (g.water === 'deep') this.say('You swim out into deep water.');
       else if (g.water === 'shallow') this.say('You wade into the water.');
@@ -352,9 +409,13 @@ export class Game {
     const out: string[] = [];
     if (x === this.px && y === this.py) out.push('You.');
     const o = OBJECT_TILES[t.object];
-    if (t.object) out.push(cap(o.look) + '.');
+    const tree = t.object ? treeAt(this.map, x, y) : null;
+    if (tree) out.push(`${cap(o.name === 'tree_trunk' ? `the trunk of ${treeWords(tree)}` : treeWords(tree))}.`);
+    else if (t.object) out.push(cap(o.look) + '.');
     out.push(`${cap(GROUND_TILES[t.ground].look)}.`);
     if (t.area) out.push(cap(t.area) + '.');
+    const dl = this.map.level(x, y) - this.map.level(this.px, this.py);
+    if (dl) out.push(`${cap(levelWords(dl))} (${Math.abs(t.elev - this.map.elev(this.px, this.py))} m ${dl > 0 ? 'higher' : 'lower'}).`);
     const things = this.ground.at(x, y);
     if (things.length && seen) out.push(`${t.object ? 'In it' : 'Lying here'}: ${things.slice(0, 4).map((i) => itemName(i, true)).join(', ')}${things.length > 4 ? ', and more' : ''}.`);
     const d = Math.hypot(x - this.px, y - this.py) * TILE_M;

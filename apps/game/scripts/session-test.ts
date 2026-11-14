@@ -49,6 +49,7 @@ ok(s.player?.get(Identity)?.d.full === 'Asta Ormsdottir', 'the character comes b
 ok(s.now() === 30 * 3600 && s.game.px === 1200, 'the clock and the place come back');
 ok(s.game.camps.list.length === 1 && s.game.ground.has(1203, -338), 'the camp and the things on the ground come back');
 ok(logText(s).includes('You take up where you left off.'), 'the log says the game is taken up again');
+ok(typeof s.game.climb === 'function', 'rock faces can be climbed (by the Climbing skill)');
 
 // ---- Time passing -------------------------------------------------------------------------------
 const before = { fatigue: n().d.fatigue, reserve: n().d.reserveKcal };
@@ -76,11 +77,13 @@ s.readSky();
 ok(s.now() === readAt, 'reading it again within the hour takes no time and tells the same');
 
 // ---- Saving, and carrying on again ------------------------------------------------------------------
+s.state.roofs = 'on';
 const snap = JSON.stringify(s.snapshot());
 const again = new PlaySession(world(), host, optionsFrom(snap));
 ok(again.now() === s.now() && again.game.px === s.game.px, 'a save of the session carries on at the same time and place');
 ok(JSON.stringify(again.player!.need(Needs).d) === JSON.stringify(n().d), 'and the same needs');
 ok(again.game.camps.list.length === 1, 'and the camp');
+ok(JSON.parse(snap).roofs === 'on' && again.state.roofs === 'on', 'and how roofs are shown');
 ok(JSON.parse(snap).dice === s.game.dice.state, "the game's own dice are saved");
 const twin = new PlaySession(world(), host, optionsFrom(snap));
 ok([1, 2, 3].map(() => again.game.dice.random()).join() === [1, 2, 3].map(() => twin.game.dice.random()).join(), 'two games carried on from one save roll the same (events on the road replay)');

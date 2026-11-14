@@ -45,6 +45,8 @@ export interface SaveFile {
   seen: Record<string, string>;
   log: { t: string; text: string }[];
   zoom?: number;
+  /** Roofs over buildings: never, always, or unless inside (game/renderer.ts). */
+  roofs?: 'off' | 'on' | 'auto';
   /** Discovered cells of the travel map (x0, y0, x1, y1, ...; game/discovery.ts). */
   discovered?: number[];
   /** Things left on the local map: [tx, ty, items] (game/ground.ts). */
@@ -82,7 +84,7 @@ export function unpackBits(b64: string, n: number): Uint8Array {
 }
 
 /** A save of the game as it stands. */
-export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number; character?: ActorData }): SaveFile {
+export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number; roofs?: 'off' | 'on' | 'auto'; character?: ActorData }): SaveFile {
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
@@ -103,6 +105,7 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     seen: game.map.exportSeen(),
     log: game.hud.log.slice(-40),
     zoom: meta.zoom,
+    roofs: meta.roofs,
     discovered: game.discovery.export(),
     ground: game.ground.export(),
     camps: game.camps.export(),

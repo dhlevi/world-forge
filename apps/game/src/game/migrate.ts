@@ -82,6 +82,7 @@ export function checkSave(s: Json): string[] {
   need(Array.isArray(s.ground) && s.ground.every((x) => Array.isArray(x) && isNum(x[0]) && isNum(x[1]) && Array.isArray(x[2])), 'the things left on the ground are damaged');
   need(Array.isArray(s.camps) && s.camps.every((c) => isObj(c) && isNum(c.x) && isNum(c.y) && isObj(c.fire) && Array.isArray(c.placed)), 'the camps are damaged');
   need(s.dice === undefined || isNum(s.dice), "the game's dice are damaged");
+  need(s.roofs === undefined || s.roofs === 'off' || s.roofs === 'on' || s.roofs === 'auto', 'the roofs setting is damaged');
   if (s.character !== undefined) {
     const ch = s.character;
     if (!isObj(ch) || !isObj(ch.components)) bad.push('the character is damaged');

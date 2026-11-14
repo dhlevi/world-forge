@@ -6,7 +6,8 @@
  *   costs breath and strength; a fumble more. (Skill also eases the cost of swimming, needs.ts.)
  * - **Athletics:** every hour of going laden or worn out, and at each ford. A failure tires; a
  *   fine success finds a stride. (Skill also eases the cost of a load, needs.ts.)
- * - **Climbing:** at each steep step of a journey. A failure slows the step; a fumble is a fall.
+ * - **Climbing:** at each steep step of a journey (a failure slows the step; a fumble is a fall),
+ *   and up or down a rock face on the local map (game/levels.ts).
  * - **Survival:** sleeping rough (a better or worse bed of it), and searching for water.
  * - **Wear:** boots and shoes wear with the distance walked (mending them is the inventory's).
  *
@@ -14,7 +15,7 @@
  */
 import type { Actor } from '../actors/actor';
 import type { MessageDispatcher } from '../engine/messages';
-import type { Game } from './game';
+import type { Climb, Game } from './game';
 import type { RouteStep } from '../worker/protocol';
 import { check, DC, type Mod } from '../actors/checks';
 import { Skills, type Activity, type Moodlet } from '../actors/components';
@@ -151,6 +152,42 @@ export class Practice {
       }
     }
     return extra;
+  }
+
+  /**
+   * Climbing a rock face of `metres`, up or down (Climbing, harder for a higher face and a load).
+   * A fine or plain success gets there; a near miss gets there slowly; a failure finds no way
+   * and comes back; a fumble is a fall: back to the foot of the face going up, or the rest of the
+   * way down going down.
+   */
+  climb(metres: number, up: boolean, load: number): Climb {
+    const a = this.actor, n = a?.get(Needs);
+    const s = Math.max(1, metres) * (up ? 20 : 15);
+    if (!a || !n) return { ok: false, seconds: 0 };
+    const r = check(a, 'climbing', { difficulty: DC.easy + Math.round(metres * 3), mods: this.loadMods(load), now: this.game.time });
+    const P = n.pools();
+    if (r.grade === 'fine' || r.grade === 'success') {
+      this.say(up ? `You climb the rock face, ${metres} m.` : `You climb down the rock face, ${metres} m.`);
+      return { ok: true, seconds: Math.round(s * (r.grade === 'fine' ? 0.8 : 1)) };
+    }
+    if (r.grade === 'near') {
+      n.d.fatigue = Math.min(140, n.d.fatigue + 2);
+      this.say(up ? 'You struggle up the rock face, and haul yourself over the top.' : 'You work your way down the rock face, hold by hold.');
+      return { ok: true, seconds: Math.round(s * 1.6) };
+    }
+    if (r.grade === 'fail') {
+      n.d.fatigue = Math.min(140, n.d.fatigue + 2);
+      if (P) P.physBurst.value = Math.max(0, P.physBurst.value - 10);
+      this.say(up ? 'You find no way up the rock, and climb back down.' : 'You find no safe way down, and climb back up.');
+      return { ok: false, seconds: Math.round(s * 0.6) };
+    }
+    // A fall.
+    n.d.fatigue = Math.min(140, n.d.fatigue + 5);
+    if (P) P.physBurst.value = Math.max(0, P.physBurst.value - 30);
+    this.mood({ id: 'fall', text: 'Took a fall', value: -3, until: this.game.time + 24 * 3600 });
+    const torn = this.tear();
+    this.say(up ? `Your hold gives way, and you fall back to the foot of the rock${torn ? `, tearing your ${torn}` : ''}.` : `You slip, and fall the rest of the way down${torn ? `, tearing your ${torn}` : ''}.`);
+    return { ok: !up, seconds: Math.round(s * 0.5) };
   }
 
   /** A fall tears the outermost thing worn on the body or legs. */

@@ -82,7 +82,7 @@ export interface CampData {
 
 // ---- Rating a site ---------------------------------------------------------------------------------
 
-const TREES = new Set(['tree_broadleaf', 'tree_conifer', 'tree_palm', 'tree_jungle', 'tree_dead', 'tree_mangrove', 'tree_birch', 'great_trunk']);
+const TREES = new Set(['tree_broadleaf', 'tree_conifer', 'tree_palm', 'tree_jungle', 'tree_dead', 'tree_mangrove', 'tree_birch', 'great_trunk', 'tree_trunk']);
 const BRUSH = new Set(['bush', 'scrub', 'ferns', 'reeds']);
 const WAYS = new Set(['road', 'track', 'path', 'street']);
 

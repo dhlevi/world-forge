@@ -10,6 +10,8 @@ import { Renderer } from '../game/renderer';
 import { Tileset } from '../game/tileset';
 import { RainLayer } from '../game/rain';
 import TravelView from './TravelView.vue';
+import { Body } from '../actors/components';
+import { ROOF_MODES, ROOF_WORDS } from '../game/roofs-mode';
 import type { PlayScreen } from '../screens/play';
 
 const props = defineProps<{ screen: PlayScreen }>();
@@ -36,6 +38,8 @@ const redraw = () => {
   frame = requestAnimationFrame(() => {
     frame = 0;
     renderer.zoom = st.zoom;
+    renderer.view = st.view;
+    renderer.roofs = st.roofs;
     renderer.look = session.look;
     rain.set(session.falling);
     renderer.draw(game);
@@ -73,6 +77,29 @@ function onKey(e: KeyboardEvent): void {
     return;
   }
   const dir = DIR[e.code];
+  // Roofs: shown unless inside, always, or never (Shift+R, in turn).
+  if (hud.mode === 'play' && e.code === 'KeyR' && e.shiftKey) {
+    st.roofs = ROOF_MODES[(ROOF_MODES.indexOf(st.roofs) + 1) % ROOF_MODES.length];
+    game.say(ROOF_WORDS[st.roofs]);
+    e.preventDefault();
+    redraw();
+    return;
+  }
+  // Looking up and down the levels (a slice of the map); moving, or Esc, comes back.
+  if (hud.mode === 'play' && (e.key === '<' || e.key === '>')) {
+    st.view = Math.max(-4, Math.min(4, st.view + (e.key === '<' ? 1 : -1)));
+    e.preventDefault();
+    redraw();
+    return;
+  }
+  if (st.view && hud.mode === 'play' && (dir || e.code === 'Escape')) {
+    st.view = 0;
+    if (!dir) {
+      e.preventDefault();
+      redraw();
+      return;
+    }
+  }
   if (hud.mode === 'look') {
     if (dir && game.cursor) {
       game.cursor = [game.cursor[0] + dir[0] * (e.shiftKey ? 5 : 1), game.cursor[1] + dir[1] * (e.shiftKey ? 5 : 1)];
@@ -134,6 +161,9 @@ onMounted(async () => {
   await renderer.init(el.value!);
   rain.mount(el.value!);
   const n = await tiles.load(import.meta.env.BASE_URL);
+  // The wanderer's placeholder figure in their own skin and hair.
+  const body = screen.player?.get(Body)?.d;
+  if (body) tiles.setFigureColours({ skin: body.skinHex || undefined, hair: body.hairHex || undefined });
   tilesetNote.value = n
     ? `Tileset: ${tiles.drawn.size} drawn${tiles.standIns.size ? `, ${tiles.standIns.size} stood in for` : ''}, the rest placeholders.`
     : 'Placeholder tiles (no tileset in public/tileset).';
@@ -194,6 +224,7 @@ onBeforeUnmount(() => {
       </div>
       <div class="place">{{ hud.place }}</div>
       <div class="where">{{ hud.where }}</div>
+      <div v-if="st.view" class="clock">Looking {{ Math.abs(st.view) === 1 ? 'a level' : `${Math.abs(st.view)} levels` }} {{ st.view > 0 ? 'up' : 'down' }} (&lt; and &gt;; Esc to come back)</div>
       <div class="clock">{{ hud.clock }}<span v-if="hud.loading"> · making {{ hud.loading }} chunk{{ hud.loading === 1 ? '' : 's' }}</span></div>
       <div class="look">
         <div class="head">{{ hud.mode === 'look' ? 'Looking (Esc to stop)' : 'Under the pointer' }}</div>
@@ -206,6 +237,8 @@ onBeforeUnmount(() => {
         <div><b>Wait</b> . or 5</div>
         <div><b>Look</b> x, then move the cursor</div>
         <div><b>Zoom</b> + and -</div>
+        <div><b>Levels</b> &lt; and &gt; look up and down; walk into a rock face twice to climb it</div>
+        <div><b>Roofs</b> Shift+R: shown unless you are inside, always, or never</div>
         <div><b>Travel map</b> T (and T or Z to come back)</div>
         <div><b>Character</b> @</div>
         <div><b>Inventory</b> I (G to pick up; eat and drink from it)</div>

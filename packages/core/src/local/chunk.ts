@@ -19,12 +19,14 @@ import { Biome } from '../gen/biomes';
 import { hash32, hashString } from '../gen/rng';
 import { G, O, OBJECT_TILES, GROUND_TILES } from './tiles';
 import { DMath } from '../dmath';
+import { widenTrunks } from './trees';
+import { roofKind, type Roof } from './roofs';
 
 /**
  * The local map's own version: raised whenever the same world would give different tiles (a game
  * saves its changes over the baseline of one version).
  */
-export const LOCAL_MAP_VERSION = 2;
+export const LOCAL_MAP_VERSION = 4;
 
 export const TILE_M = 1.5;
 export const CHUNK = 64;
@@ -55,6 +57,8 @@ export interface Chunk {
   elev: Int16Array;
   /** Ways down (caves, crypts, mines) and other marked places in this chunk. */
   sites: ChunkSite[];
+  /** The roofs of the buildings standing (in part) in this chunk (local/roofs.ts). */
+  roofs: Roof[];
   /** Milliseconds it took. */
   ms: number;
 }
@@ -119,6 +123,17 @@ const COVER: Record<number, Cover> = {
   [Biome.SaltFlat]: { ground: 'salt', trees: [], dense: 0, open: 0, wooded: 0, small: [['stones', 0.003]] },
 };
 
+/**
+ * How rugged each biome's land is (0 to 1): how much local relief (scarps, outcrops, banks) it
+ * may have where its country is rough. Above about a half, its steps are cliffs.
+ */
+const RUGGED: Record<number, number> = {
+  [Biome.IceSheet]: 0.2, [Biome.Tundra]: 0.35, [Biome.BorealForest]: 0.35, [Biome.ColdDesert]: 0.55,
+  [Biome.Grassland]: 0.2, [Biome.Shrubland]: 0.4, [Biome.TemperateForest]: 0.35, [Biome.TemperateRainforest]: 0.45,
+  [Biome.HotDesert]: 0.5, [Biome.Savanna]: 0.3, [Biome.TropicalDryForest]: 0.35, [Biome.TropicalRainforest]: 0.35,
+  [Biome.Alpine]: 1, [Biome.MontaneForest]: 0.8, [Biome.Wetland]: 0, [Biome.Mangrove]: 0, [Biome.Riparian]: 0.1, [Biome.SaltFlat]: 0,
+};
+
 /** Biomes cold enough for gravel rather than reeds along rivers. */
 const COLD = new Set<number>([Biome.IceSheet, Biome.Tundra, Biome.Alpine, Biome.ColdDesert]);
 
@@ -171,6 +186,10 @@ interface BuildingRaster {
   wall: number;
   /** Area label per room (and the last: the building itself). */
   areas: string[];
+  /** The height of its one level floor (m): the ground's at its middle. */
+  floorM: number;
+  /** Its roof (none for a house in a tree's crown). */
+  roof: Roof | null;
 }
 
 /** Lines that are ways through (half-widths, m; roads by class). */
@@ -656,9 +675,41 @@ export class LocalWorld {
     const areas = fl.rooms.map((r) => `${title}: ${r.name.toLowerCase()}`);
     areas.push(title);
     const mat = d.style?.wall ?? 'timber';
+    const mid = this.tileLL(bx0 + w / 2, by0 + h / 2);
+    const floorM = Math.round(this.towns.sampler.height(mid[0], mid[1], 0.004));
     return {
       order, x0: bx0, y0: by0, w, h, kind, obj, room,
       floor: G(SURFACE[fl.surface] ?? 'floor_boards'), wall: O(`wall_${mat}`), areas,
+      floorM, roof: this.roofOf(f, d.storeys, d.storeyH, floorM, bx0, by0, w, h, kind, mid),
+    };
+  }
+
+  /** A building's roof over the tiles it stands on (local/roofs.ts). */
+  private roofOf(f: PlanFeature, storeys: number, storeyH: number, floorM: number, bx0: number, by0: number, w: number, h: number, kind: Uint8Array, mid: number[]): Roof | null {
+    const p = f.properties;
+    // The covered tiles' own box.
+    let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    for (let k = 0; k < w * h; k++) {
+      if (kind[k] === B_OUT) continue;
+      const x = k % w, y = Math.floor(k / w);
+      x0 = Math.min(x0, x);
+      x1 = Math.max(x1, x);
+      y0 = Math.min(y0, y);
+      y1 = Math.max(y1, y);
+    }
+    if (x0 > x1) return null;
+    const rw = x1 - x0 + 1, rh = y1 - y0 + 1, cover = new Uint8Array(rw * rh);
+    for (let y = 0; y < rh; y++) for (let x = 0; x < rw; x++) cover[y * rw + x] = kind[(y + y0) * w + x + x0] === B_OUT ? 0 : 1;
+    const { raster } = this.world;
+    const ci = Math.min(raster.H - 1, Math.max(0, Math.floor(((90 - mid[1]) / 180) * raster.H))) * raster.W + ((Math.floor(((mid[0] + 180) / 360) * raster.W) % raster.W) + raster.W) % raster.W;
+    const k = roofKind({
+      id: String(p.bid), use: typeof p.use === 'string' ? p.use : undefined, role: typeof p.role === 'string' ? p.role : undefined,
+      ctx: String(p.ctx ?? ''), tier: String(p.tier ?? ''), koppen: raster.koppen[ci], storeys, storeyH, burrow: !!p.burrow,
+      tree: typeof p.tree === 'string' ? p.tree : undefined,
+    });
+    return {
+      id: String(p.bid), x0: bx0 + x0, y0: by0 + y0, w: rw, h: rh, cover, floorM,
+      heightM: Math.max(2.5, storeys * storeyH), storeys, shape: k.shape, material: k.material, ridge: rw >= rh ? 'ew' : 'ns',
     };
   }
 
@@ -763,6 +814,16 @@ export class LocalWorld {
       acc += (1 - ax) * ay;
       if (v < acc) return raster.biome[jb + ia];
       return raster.biome[jb + ib];
+    };
+
+    // How rugged the land is, blended smoothly over the world's cells (unlike the biome, which
+    // each tile takes from one cell), so that relief does not jump where biomes meet.
+    const ruggedAt = (lon: number, lat: number) => {
+      const fx = ((lon + 180) / 360) * W - 0.5, fy = Math.min(H - 1.001, Math.max(0, ((90 - lat) / 180) * H - 0.5));
+      const i0 = Math.floor(fx), j0 = Math.floor(fy), ax = fx - i0, ay = fy - j0;
+      const ia = ((i0 % W) + W) % W, ib = (ia + 1) % W, ja = j0 * W, jb = Math.min(H - 1, j0 + 1) * W;
+      const r = (c: number) => RUGGED[raster.biome[c]] ?? 0;
+      return (r(ja + ia) * (1 - ax) + r(ja + ib) * ax) * (1 - ay) + (r(jb + ia) * (1 - ax) + r(jb + ib) * ax) * ay;
     };
 
     const covers: Cover[] = new Array(N);
@@ -1149,6 +1210,63 @@ export class LocalWorld {
       }
     }
 
+    // ---- Local relief: scarps, outcrops and banks over the smooth terrain (local-map version 3).
+    // The land rises in terraces with steep risers: in gentle country low banks that can be
+    // walked, in rugged country (mountains, mesas) rock faces a level or more high. It comes in
+    // patches, more where the land is steep, fades out round settlements and near water, and roads
+    // keep an even grade through it (cutting into the risers). Everything here is worked out from
+    // the tile's position, so neighbouring chunks meet.
+    const waterNear = (x: number, y: number) => {
+      for (let r = 1; r <= PAD; r++) {
+        for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
+          if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+          if (water[(y + dy) * P + x + dx]) return r;
+        }
+      }
+      return PAD + 1;
+    };
+    for (let y = 0; y < CHUNK; y++) for (let x = 0; x < CHUNK; x++) {
+      const k = y * CHUNK + x;
+      if (isWaterTile(k)) continue;
+      const tx = tx0 + x, ty = ty0 + y, kp = (y + PAD) * P + x + PAD;
+      const ll = this.tileLL(tx, ty);
+      const rug = ruggedAt(ll[0], ll[1]);
+      if (!rug) continue;
+      const patch = smooth(0.42, 0.62, vnoise(seed, tx, ty, 180, 51));
+      if (!patch) continue;
+      const px = (tx + 0.5) * TILE_M, py = -(ty + 0.5) * TILE_M;
+      let town = 1;
+      for (const st of nearSite) {
+        const d = Math.sqrt((px - st.x) * (px - st.x) + (py - st.y) * (py - st.y));
+        town = Math.min(town, smooth(st.r * 1.1, st.r * 1.1 + 60, d));
+      }
+      if (!town) continue;
+      const gx = (hP[kp + 1] - hP[kp - 1]) / (2 * TILE_M), gy = (hP[kp + P] - hP[kp - P]) / (2 * TILE_M);
+      const steep = 0.55 + 0.45 * smooth(0.0004, 0.012, gx * gx + gy * gy);
+      const wet = Math.min(0.35 + 0.65 * smooth(1, PAD + 1, waterNear(x + PAD, y + PAD)), half[kp] > 0 ? 0.35 + 0.65 * smooth(2, 20, bank[kp]) : 1);
+      const amp = rug * patch * steep * town * wet;
+      if (amp < 0.01) continue;
+      // The terraced field: flat treads 6 m apart and risers between them, broad and gentle where
+      // the country is mild, narrowing to rock faces where it is rugged. Everything changes
+      // smoothly with the ruggedness, so there is no step where it changes.
+      const sharp = smooth(0.25, 0.55, amp);
+      const stepH = 6, w = 0.5 - 0.46 * sharp;
+      const cliffs = sharp > 0.85;
+      const height = 26 * amp * (0.6 * vnoise(seed, tx, ty, 48, 52) + 0.4 * vnoise(seed, tx, ty, 17, 53));
+      const t = height / stepH, f = t - Math.floor(t);
+      const road = built[k] && /^(road|track|path)$/.test(GROUND_TILES[ground[k]].name);
+      const relief = road ? height : (Math.floor(t) + smooth(0.5 - w, 0.5 + w, f)) * stepH;
+      elev[k] = Math.round(hP[kp] + relief);
+      // A rock face, bare (no trees or plants grow on it).
+      if (cliffs && !built[k] && Math.abs(f - 0.5) < w) ground[k] = G(biomes[k] === Biome.Alpine || biomes[k] === Biome.MontaneForest ? 'rock' : 'scree');
+    }
+    // Every building stands on one level floor: the ground's height at its middle.
+    for (const br of brs) {
+      each(br, (k, bk) => {
+        if (br.kind[bk] !== B_OUT) elev[k] = br.floorM;
+      });
+    }
+
     // ---- Wild plants on unmade ground.
     for (let y = 0; y < CHUNK; y++) for (let x = 0; x < CHUNK; x++) {
       const k = y * CHUNK + x;
@@ -1183,7 +1301,11 @@ export class LocalWorld {
       }
     }
 
-    return { cx, cy, ground, object, area, areas, elev, sites, ms: performance.now() - t0 };
+    // Old trees of the broad kinds with room about them get trunks two tiles across (version 4).
+    widenTrunks(object, CHUNK, tx0, ty0, O, (id) => OBJECT_TILES[id].name, (k) => !built[k] && !GROUND_TILES[ground[k]].water && GROUND_TILES[ground[k]].pass && (object[k] === 0 || OBJECT_TILES[object[k]].pass));
+
+    const roofs = brs.map((br) => br.roof).filter((r): r is Roof => !!r);
+    return { cx, cy, ground, object, area, areas, elev, sites, roofs, ms: performance.now() - t0 };
   }
 
   /**

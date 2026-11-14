@@ -39,6 +39,8 @@ export interface TileDef {
   glyph?: string;
   /** Tiles of one group join one another (TileJoin mask4), such as all the walls. */
   group?: string;
+  /** Other groups it joins as well (a gate joins town walls, palisades and fences). */
+  joins?: readonly string[];
   join?: TileJoin;
   /** Suggested number of variants to draw (default 1). */
   variants?: number;
@@ -126,11 +128,11 @@ const OBJECT: Def[] = [
   o('palisade', '#', '#7d5c3a', 'a palisade', 'Sharpened stakes side by side.', { opaque: true, group: 'palisade', join: 'mask4' }),
   o('tower', 'O', '#6e6961', 'a tower', 'Solid round stone tower base from above (one tile of a larger disc).', { opaque: true, group: 'townwall', join: 'mask4' }),
   // ---- Doors and openings
-  o('door', '+', '#b0784a', 'a closed door', 'Wooden door, closed, seen from above in the wall line.', { opaque: true, toggle: 'door_open', group: 'wall', join: 'mask4' }),
-  o('door_open', "'", '#b0784a', 'an open door', 'Wooden door swung open against the jamb.', { pass: true, toggle: 'door', group: 'wall', join: 'mask4' }),
-  o('window', '=', '#9fc3d6', 'a window', 'Wall with glazing or shutters: blocks the way, not the view.', { group: 'wall', join: 'mask4' }),
-  o('gate', '+', '#8a6a48', 'a gate', 'Heavy gate in a town wall or fence, closed.', { opaque: true, toggle: 'gate_open', group: 'townwall', join: 'mask4' }),
-  o('gate_open', "'", '#8a6a48', 'an open gate', 'The gate swung open.', { pass: true, toggle: 'gate', group: 'townwall', join: 'mask4' }),
+  o('door', '+', '#b0784a', 'a closed door', 'Wooden door, closed, seen from above: a plank leaf across the opening, the way the wall runs.', { opaque: true, toggle: 'door_open', group: 'wall', join: 'mask4' }),
+  o('door_open', "'", '#b0784a', 'an open door', 'Wooden door swung open: the leaf turned against one jamb, the floor showing through.', { pass: true, toggle: 'door', group: 'wall', join: 'mask4' }),
+  o('window', '=', '#9fc3d6', 'a window', 'A wall with glazing or shutters along its middle, the way the wall runs: blocks the way, not the view.', { group: 'wall', join: 'mask4' }),
+  o('gate', '+', '#8a6a48', 'a gate', 'Heavy gate in a town wall or fence, closed: its leaves across the opening, the way the wall runs.', { opaque: true, toggle: 'gate_open', group: 'townwall', joins: ['palisade', 'fence'], join: 'mask4' }),
+  o('gate_open', "'", '#8a6a48', 'an open gate', 'The gate swung open: its leaves folded back against the posts.', { pass: true, toggle: 'gate', group: 'townwall', joins: ['palisade', 'fence'], join: 'mask4' }),
   // ---- Stairs
   o('stairs_up', '<', '#d8c8a0', 'stairs leading up', 'Wooden steps rising (arrow up hint).', { pass: true }),
   o('stairs_down', '>', '#d8c8a0', 'stairs leading down', 'Steps going down into darkness.', { pass: true }),
@@ -188,16 +190,16 @@ const OBJECT: Def[] = [
   o('anvil', 'n', '#5a5a60', 'an anvil', 'An iron anvil on a stump.'),
   o('barrel', 'o', '#9a6a3a', 'a barrel', 'A wooden barrel from above.', { variants: 2 }),
   o('bath', 'u', '#a0b0b8', 'a bathtub', 'A wooden or copper tub.'),
-  o('bed', '=', '#c87a6a', 'a bed', 'A bed with blanket and pillow (one tile; long beds use two).', { pass: true, variants: 3 }),
-  o('bench', '-', '#9a7048', 'a bench', 'A wooden bench.', { pass: true }),
+  o('bed', '=', '#c87a6a', 'a bed', 'A bed seen from above: pillow at the head, blanket. Joins other beds: a bed two tiles long has its pillow on the end with no bed to the north (or west).', { pass: true, variants: 3, group: 'bed', join: 'mask4' }),
+  o('bench', '-', '#9a7048', 'a bench', 'A wooden bench.', { pass: true, group: 'bench', join: 'mask4' }),
   o('bin', 'u', '#8a6a48', 'a bin', 'A wooden storage bin.'),
-  o('bookcase', '#', '#7a4a2a', 'a bookcase', 'Shelves of books against a wall.'),
+  o('bookcase', '#', '#7a4a2a', 'a bookcase', 'Shelves of books against a wall.', { group: 'bookcase', join: 'mask4' }),
   o('bucket', 'u', '#8a7a6a', 'a bucket', 'A wooden bucket.', { pass: true }),
   o('candle', '!', '#f0d080', 'a candlestand', 'A tall iron candlestand.', { pass: true }),
   o('cauldron', 'u', '#4a4a4a', 'a cauldron', 'A black iron pot.'),
   o('chair', 'h', '#9a7048', 'a chair', 'A wooden chair.', { pass: true, variants: 2 }),
   o('chest', '=', '#8a5a2a', 'a chest', 'A banded wooden chest.'),
-  o('counter', '=', '#8a6038', 'a counter', 'A shop or tavern counter.'),
+  o('counter', '=', '#8a6038', 'a counter', 'A shop or tavern counter.', { group: 'counter', join: 'mask4' }),
   o('crate', 'x', '#a0804a', 'a crate', 'A wooden crate.', { variants: 2 }),
   o('desk', '=', '#7a5030', 'a desk', 'A writing desk with papers.'),
   o('font', 'o', '#c0bcb0', 'a font', 'A stone font of holy water.'),
@@ -208,19 +210,19 @@ const OBJECT: Def[] = [
   o('logs', '=', '#8a6a48', 'firewood', 'Stacked firewood.'),
   o('millstone', 'O', '#9a948a', 'a millstone', 'A round millstone.'),
   o('oven', '&', '#a05a3a', 'an oven', 'A domed bread oven.'),
-  o('pew', '-', '#8a6038', 'a pew', 'A long church bench.', { pass: true }),
+  o('pew', '-', '#8a6038', 'a pew', 'A long church bench.', { pass: true, group: 'pew', join: 'mask4' }),
   o('privy', 'u', '#8a7a5a', 'a privy', 'A privy seat.', { pass: true }),
   o('rack', '#', '#7a6048', 'a rack', 'A rack of tools or weapons.'),
-  o('rug', '~', '#a04a4a', 'a rug', 'A woven rug (lies under other things).', { pass: true, variants: 2 }),
+  o('rug', '~', '#a04a4a', 'a rug', 'A woven rug (lies under other things).', { pass: true, variants: 2, group: 'rug', join: 'mask4' }),
   o('sack', 'o', '#c0a878', 'sacks', 'Sacks of grain.', { pass: true }),
   o('sawbench', 'n', '#9a7048', 'a sawbench', 'A sawhorse with a log.'),
-  o('shelf', '#', '#8a6038', 'a shelf', 'Shelves with jars against a wall.'),
+  o('shelf', '#', '#8a6038', 'a shelf', 'Shelves with jars against a wall.', { group: 'shelf', join: 'mask4' }),
   o('sideboard', '=', '#7a5030', 'a sideboard', 'A sideboard with plates.'),
   o('straw', '"', '#d8c070', 'straw', 'A heap of straw bedding.', { pass: true }),
-  o('table', '=', '#9a6a3a', 'a table', 'A wooden table.', { variants: 2 }),
-  o('trestle', '=', '#9a7a52', 'a trestle table', 'Boards on trestles.'),
+  o('table', '=', '#9a6a3a', 'a table', 'A wooden table.', { variants: 2, group: 'table', join: 'mask4' }),
+  o('trestle', '=', '#9a7a52', 'a trestle table', 'Boards on trestles.', { group: 'trestle', join: 'mask4' }),
   o('wardrobe', '#', '#6a4020', 'a wardrobe', 'A tall cupboard.', { opaque: true }),
-  o('workbench', '=', '#8a6a48', 'a workbench', 'A bench with tools.'),
+  o('workbench', '=', '#8a6a48', 'a workbench', 'A bench with tools.', { group: 'workbench', join: 'mask4' }),
   o('stool', 'h', '#9a7048', 'a stool', 'A three-legged stool.', { pass: true }),
   // Added after the first release go below.
   // Camps (apps/game/src/game/camp.ts).
@@ -229,6 +231,8 @@ const OBJECT: Def[] = [
   o('windbreak', '#', '#7a6a45', 'a windbreak', 'A low wall of woven branches against the wind.'),
   o('lean_to', '^', '#7a6a45', 'a lean-to', 'A slope of branches and bark to lie under.', { pass: true }),
   o('snare', ',', '#b0a080', 'a snare', 'A wire noose set on an animal run.', { pass: true }),
+  // Trees across levels (local/trees.ts).
+  o('tree_trunk', 'O', '#6a4c30', 'the trunk of an old tree', 'The rest of a trunk two tiles across (drawn with its tree\'s trunk frames, trunk2_<kind>).', { opaque: true }),
 ];
 
 export const GROUND_TILES: readonly TileDef[] = GROUND.map((d) => ({ ...d, layer: 'ground' as const }));
@@ -260,6 +264,52 @@ export function O(name: string): number {
 export function objectId(name: string): number | undefined {
   return oIndex.get(name);
 }
+
+// ---- Terrains: soft edges between kinds of ground --------------------------------------------
+
+/**
+ * A terrain: ground tiles that are one kind of ground for drawing edges (all the grasses, all the
+ * bare earth). Where two terrains meet on one level, the one later in TERRAINS spreads a ragged
+ * edge over the other (grass over earth, earth over sand, sand over water). Tiles in no terrain
+ * (paving, floors, planks) keep straight edges.
+ */
+export interface TerrainDef {
+  name: string;
+  /** Its ground tiles. */
+  tiles: readonly string[];
+  /** What its edge frames should show (for TILESET.md). */
+  art: string;
+}
+
+/** The terrains, in drawing order: each spreads over those before it. */
+export const TERRAINS: readonly TerrainDef[] = [
+  { name: 'deep', tiles: ['water_deep', 'river_deep'], art: 'Deep water reaching into the shallows.' },
+  { name: 'shallow', tiles: ['water_shallow', 'river'], art: 'Shallow water lapping over deep.' },
+  { name: 'mud', tiles: ['mud', 'marsh', 'ditch'], art: 'Wet mud and puddles at the water\'s edge.' },
+  { name: 'sand', tiles: ['sand', 'desert_sand', 'salt'], art: 'Sand spreading over the shallows, with a wet rim.' },
+  { name: 'earth', tiles: ['dirt', 'dry_earth', 'road', 'track', 'path', 'yard', 'field', 'garden_bed', 'vineyard', 'grave_ground', 'spoil'], art: 'Bare earth with a crumbling edge.' },
+  { name: 'stone', tiles: ['gravel', 'rock', 'scree'], art: 'Rock and stones breaking through.' },
+  { name: 'litter', tiles: ['forest_floor', 'needle_floor', 'jungle_floor', 'moss'], art: 'Leaf litter and moss spreading out from under the trees.' },
+  { name: 'grass', tiles: ['grass', 'grass_lush', 'grass_dry', 'lawn', 'mound', 'tundra'], art: 'Grass with a ragged, tufted edge.' },
+  { name: 'snow', tiles: ['snow', 'ice'], art: 'Snow with a soft, drifted edge.' },
+];
+
+// ---- Figures: people and creatures ------------------------------------------------------------
+
+/** The four ways a figure faces. */
+export const FACINGS = ['n', 'e', 's', 'w'] as const;
+export type Facing = (typeof FACINGS)[number];
+
+/** A figure: someone or something that moves about the map, drawn by the way it faces. */
+export interface FigureDef {
+  name: string;
+  /** What the art should show (for TILESET.md). */
+  art: string;
+}
+
+export const FIGURES: readonly FigureDef[] = [
+  { name: 'person', art: 'A person seen from above and a little in front (head, shoulders, arms, legs): the wanderer, and later everyone else.' },
+];
 
 // ---- Decorations ----------------------------------------------------------------------------
 
@@ -305,9 +355,31 @@ export const DECOR: readonly DecorDef[] = [
   { name: 'cracks', art: 'Cracks in dry ground or ice.', on: ['dry_earth', 'salt', 'ice'], chance: 0.06, colour: '#6a5a40', mark: 'crack', variants: 2 },
   { name: 'fallen_leaves', art: 'A few fallen leaves (autumn colours).', on: ['grass', 'lawn', 'cobbles', 'flagstones', 'path', 'road', 'forest_floor'], chance: 0.08, seasons: ['autumn'], colour: '#d07a30', mark: 'dots', variants: 3 },
 ];
+{
+  const inTerrain = new Set<string>();
+  for (const t of TERRAINS) for (const n of t.tiles) {
+    if (!gIndex.has(n)) throw new Error(`Tile registry: the terrain ${t.name} names unknown ground ${n}.`);
+    if (inTerrain.has(n)) throw new Error(`Tile registry: ${n} is in two terrains.`);
+    inTerrain.add(n);
+  }
+}
 for (const d of DECOR) {
   if (gIndex.has(d.name) || oIndex.has(d.name) || DECOR.filter((e) => e.name === d.name).length > 1) throw new Error(`Tile registry: the decoration ${d.name} shares its name.`);
   for (const n of d.on) if (!gIndex.has(n)) throw new Error(`Tile registry: the decoration ${d.name} lies on unknown ground ${n}.`);
+}
+
+/** Whether two joining tiles join each other (the same group, or one joins the other's group too). */
+export function joinsWith(a: TileDef, b: TileDef): boolean {
+  if (!a.group || !b.group) return false;
+  return a.group === b.group || !!a.joins?.includes(b.group) || !!b.joins?.includes(a.group);
+}
+
+/** Groups of things that stand tall enough to cast a shadow (and walls have a face on the south). */
+const TALL_GROUPS = new Set(['wall', 'townwall', 'palisade', 'hedge', 'trunk']);
+
+/** Whether an object stands tall: walls and the like, and anything else that hides what is behind it. */
+export function standsTall(d: TileDef): boolean {
+  return (!!d.group && TALL_GROUPS.has(d.group)) || (d.opaque && !d.name.startsWith('tree_'));
 }
 
 /** Whether a position with these tiles can be walked into. */

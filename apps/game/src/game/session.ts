@@ -35,6 +35,7 @@ import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type SaveFile } from './save';
 import { Travel } from './travel';
 import { WeatherService, type Sky } from './weather';
+import type { RoofMode } from './roofs-mode';
 import { hash32 } from '../util';
 
 /** What a game is begun or carried on from. */
@@ -102,6 +103,13 @@ export class PlaySession {
     saving: false,
     /** The local map's zoom (kept in the save). */
     zoom: 2,
+    /**
+     * Levels looked up (more than 0) or down (less than 0) from the wanderer's own, with < and >:
+     * the map is then drawn as a slice at that level (game/renderer.ts). 0: the surface.
+     */
+    view: 0,
+    /** Roofs over buildings: never, always, or unless the wanderer is inside (kept in the save). */
+    roofs: 'auto' as RoofMode,
     name: '',
     line: '',
     /** The needs as bars and words (actors/needs.ts), and the air. */
@@ -149,6 +157,7 @@ export class PlaySession {
     if (o.restore) {
       applySave(game, o.restore);
       if (o.restore.zoom) this.state.zoom = o.restore.zoom;
+      if (o.restore.roofs) this.state.roofs = o.restore.roofs;
       game.say('You take up where you left off.');
     }
     this.savedAt = o.restore ? game.time : -1;
@@ -166,6 +175,7 @@ export class PlaySession {
       return it ? (it.def === 'torch' ? 7 : 3) : 0;
     };
     game.onTime = (t) => this.tick(t);
+    game.climb = (metres, up) => this.practice.climb(metres, up, this.invSlow());
     game.onChange = () => this.redraw();
 
     // The road: steps take skill (fords, steep ground), weather shortens sight, arriving opens the place.
@@ -607,7 +617,7 @@ export class PlaySession {
   /** The game as a save. */
   snapshot(): SaveFile {
     const o = this.o;
-    return makeSave(this.game, { id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, character: this.player?.toJSON() });
+    return makeSave(this.game, { id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON() });
   }
 
   async save(quiet = false): Promise<void> {

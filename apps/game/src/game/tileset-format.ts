@@ -21,7 +21,7 @@
  *   (200 if left out).
  */
 
-export type FrameLayer = 'ground' | 'object' | 'decor';
+export type FrameLayer = 'ground' | 'object' | 'decor' | 'edge' | 'tree' | 'figure' | 'roof';
 
 /** One picture: a rectangle of a sheet, and where it sits over the tile (pixels). */
 export interface Picture {
@@ -66,7 +66,29 @@ export interface TilesetIndex {
 /** Says which layer a name belongs to (or undefined if it is no tile or decoration). */
 export type LayerOf = (name: string) => FrameLayer | undefined;
 
-const FRAME_NAME = /^([a-z0-9_]+)(?:\.(\d+))?(?:#(\d+))?$/;
+/**
+ * Frames may be drawn for a season, or for snow lying ("grass@winter", "tree_broadleaf@autumn",
+ * "grass@snow"): used in place of the plain frame then, and not tinted for the season.
+ */
+export const SEASON_KEYS = ['spring', 'summer', 'autumn', 'winter', 'snow'] as const;
+export type SeasonKey = (typeof SEASON_KEYS)[number];
+
+/** A frame's name: the tile, a season, a variant, a join ("leaves_broadleaf@autumn.1#5"). */
+const FRAME_NAME = /^([a-z0-9_]+)(?:@(spring|summer|autumn|winter|snow))?(?:\.(\d+))?(?:#(\d+))?$/;
+
+/**
+ * The frames to look for, best first, for a tile with a join (-1: none) in these seasons (best
+ * first, such as snow lying, then the season): each season's join frame, then its plain frame,
+ * then the plain join frame and the plain frame.
+ */
+export function lookKeys(layer: FrameLayer, name: string, mask: number, seasons: readonly string[]): string[] {
+  const out: string[] = [];
+  for (const s of [...seasons.map((x) => `@${x}`), '']) {
+    if (mask >= 0) out.push(`${layer}:${name}${s}#${mask}`);
+    out.push(`${layer}:${name}${s}`);
+  }
+  return out;
+}
 const isPair = (v: unknown): v is [number, number] => Array.isArray(v) && v.length === 2 && v.every((n) => typeof n === 'number' && Number.isFinite(n));
 const isQuad = (v: unknown): v is [number, number, number, number] => Array.isArray(v) && v.length === 4 && v.every((n) => typeof n === 'number' && Number.isFinite(n));
 
@@ -100,7 +122,7 @@ export function readTileset(raw: unknown, layerOf: LayerOf): TilesetIndex {
     const pictures = readPictures(frame, spec, T, sheets, warnings);
     if (!pictures) continue;
     const ms = spec && typeof spec === 'object' && !Array.isArray(spec) && typeof (spec as { ms?: unknown }).ms === 'number' ? Math.max(16, (spec as { ms: number }).ms) : 200;
-    frames.push({ key: `${layer}:${m[1]}${m[3] !== undefined ? `#${m[3]}` : ''}`, variant: m[2] ? Number(m[2]) : 0, pictures, ms });
+    frames.push({ key: `${layer}:${m[1]}${m[2] ? `@${m[2]}` : ''}${m[4] !== undefined ? `#${m[4]}` : ''}`, variant: m[3] ? Number(m[3]) : 0, pictures, ms });
   }
 
   const standIns: StandIn[] = [];

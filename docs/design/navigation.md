@@ -298,9 +298,11 @@ a city of 50,000 contained, with an artistic city map.
 
 ## How the local map is drawn: levels, trees and roofs
 
-*Phase 1 built: the tileset format (several sheets, stand-ins, animation, sprites larger than a
-tile) and the decoration layer; see apps/game/TILESET.md. The rest is to come, in the order of the
-plan below.*
+*Built: phase 1, the tileset format (several sheets, stand-ins, animation, sprites larger than a
+tile) and the decoration layer (see apps/game/TILESET.md); phase 2, levels, with local relief in
+the map generator (see below); phase 3, soft edges between kinds of ground; phase 4, trees across
+levels; phase 5, top-down walls, doors and furniture; phase 6, the character sprite; phase 7,
+seasonal frames; phase 8, roofs.*
 
 **Decided: a top-down map.** The local map stays top-down, as in RimWorld and Dwarf Fortress, which
 suits turn-by-turn play: walls, doors, furniture and floors are drawn straight down, with a darker
@@ -313,17 +315,36 @@ rise a few pixels above their tile; nothing is drawn at a three-quarter angle ac
   land. The local map already stores the height of every tile (metres); a tile's level is worked out
   from it, so the world's data and its fingerprint do not change.
 - **Ramps and cliffs** are worked out too: beside a tile one level higher, the ground is a ramp and
-  can be walked up; where the difference is two levels or more, it is a cliff, which blocks the way
-  or calls for a Climbing check. Gentle country becomes wide terraces; mountains, cliffs with ramps
-  between them.
-- **The view is the wanderer's own level.** Ground below, seen past a drop, is drawn darker for
-  each level down (up to three or four); ground above is drawn as solid earth or rock with an edge
-  line. `<` and `>` look up and down a level without moving.
-- **Sight follows height:** from high ground the wanderer sees over lower ground; rising ground
-  blocks sight.
-- **Saves:** the wanderer has a level (filled in from the ground beneath for older saves). Changes
-  made on other levels (digging, upper floors) will need the save to record a level for each
-  change, and an upgrade of older saves, when they come.
+  can be walked up (a little more slowly); where the difference is two levels or more, it is a
+  cliff, which blocks the way. Walking into a rock face says how high it is; walking into it again
+  climbs it, up or down, by a Climbing check (harder for a higher face and a heavier load): a
+  success gets there, a near miss gets there slowly, a failure finds no way, and a fumble is a
+  fall.
+- **Decided: local relief in the map generator** (local-map version 3). The world's terrain alone
+  is smooth at this scale (neighbouring tiles differ by a metre at most), so the generator adds
+  relief: terraces with risers, gentle banks in mild country, narrowing to rock faces of a level or
+  more where the land is rugged (mountains, mesas). It comes in patches, more where the land is
+  steep and by how rugged the biomes there are (blended smoothly, so it does not jump where biomes
+  meet); it fades out round settlements and near water, roads keep an even grade through it, and
+  every building stands on one level floor. Rock faces are bare rock or scree. *To tune in play:*
+  how much relief, and how often cliffs (about 0.1 to 0.4% of tile edges in alpine country now).
+- **Decided (after measuring the land): the surface view.** The land at tile scale is gentle, so
+  drawn strictly as slices every gentle rise would be a wall of earth hiding the field beyond it.
+  Instead the open land is drawn as **one surface**, whatever its level: ground lower than the
+  wanderer's is darker, a level at a time, and a line marks every change of level (a thin line
+  for a ramp, a heavy one for a rock face).
+- **Slices for looking up and down.** `<` and `>` look up and down a level at a time (up to four)
+  without moving, as in Dwarf Fortress: ground above the slice is drawn as solid earth, ground
+  below it is seen through the open air, darker the further down. Moving, or Esc, comes back to the
+  surface. Upper floors, cellars, caves and the tops of trees will be seen this way.
+- **Sight follows height:** a tile is seen only if no ground between rises above the line from the
+  wanderer's eyes (1.6 m up) to it. From high ground the wanderer sees over lower ground; a ridge
+  or the top of a rock face hides what lies behind it; a low bank hides nothing.
+- **Saves:** while there is only the surface, the wanderer's level is always the ground's, so
+  nothing more is saved. Changes made on other levels (digging, upper floors) will need the save to
+  record a level for the wanderer and for each change, and an upgrade of older saves, when they
+  come. Saves made before local-map version 3 load with a note that places may have changed a
+  little.
 - **Later:** cellars, upper floors, caves and dungeons as levels above and below, joined by the
   stairs, ladders and openings already in the tile list.
 
@@ -336,13 +357,28 @@ rise a few pixels above their tile; nothing is drawn at a three-quarter angle ac
 - On the ground level, the ground under the leaves is **lightly shaded**, so that a forest still
   reads as a forest when only its trunks are on the wanderer's level.
 
-**Decided: roofs are an option** (in the game's options): *Always off*, *Always on*, or *On unless
-the wanderer is inside, or can see inside* (the default to try). **To work out when built:**
-buildings of more than one storey. A roof belongs to the top of a building, which may be several
-levels above the wanderer; a roof drawn over a two-storey house while the wanderer walks its
-ground floor, or a lower roof (a lean-to, a wing) under a higher one, need rules of their own, such
-as drawing only roofs on or just above the wanderer's level, and fading a roof by how far above it
-is.
+**Decided: roofs are an option** (Shift+R in play, kept in the save): *Always off*, *Always on*,
+or (the default) *On unless the wanderer is inside*. *(Built.)*
+
+- **What a roof is.** Every building has one, worked out by the map generator from what the world
+  already holds, so nothing more is saved: its footprint, its ground floor's height and the
+  roof's height above it (the building's storeys), its shape (gable, hip, flat, cone, dome) and
+  material (tile, slate, shingle, thatch, flat, turf), chosen by its climate and use as the atlas's
+  town pictures choose them, and its ridge along the building's longer side.
+- **Drawn from above** by planes: slopes facing north, east, south and west, the ridge, flat, a
+  peak; lit from the north (slopes facing north lighter), with the eaves where the roof ends.
+  Roofs cover the furniture beneath; a figure standing south of a building is in front of its
+  roof's edge. Roofs change neither movement nor sight.
+- **Auto:** the roof of the building the wanderer is in is hidden; another building's roof is
+  faded over any of its inside in sight through a door or window, rather than vanishing.
+  Remembered buildings keep their roofs.
+- **Buildings of more than one storey.** On the surface a roof is drawn at the top of its
+  building, however many storeys. Looking up and down, a roof shows in the slice at its own level
+  (darker below it), and slices between a building's ground floor and its roof show its outer
+  walls round a dark, unexplored inside until upper floors are made. When they are, being on an
+  upper floor hides one's own roof and shows that floor.
+- **Later:** a building's lower wings with roofs of their own (the generator gives one roof per
+  building now).
 
 **Proposed: the art.** 16 × 16 tiles, in the manner of the classic pixel-art RPG packs for ground,
 water, crops, decorations, small objects and characters; trees (trunks, branches, leaves) and walls
@@ -353,15 +389,38 @@ not fit it.
 
 1. **Tileset foundation:** several sheets, stand-ins for tiles without art, animated frames, the
    decoration layer, sprites larger than a tile. *(Built.)*
-2. **Levels:** levels, ramps and cliffs from height; moving between levels and climbing; sight
-   across levels; drawing the levels below; looking up and down.
+2. **Levels:** local relief; levels, ramps and cliffs from height; moving between levels and
+   climbing; sight across levels; the surface view and slices; looking up and down. *(Built.)*
 3. **Ground blending within a level:** soft edges between kinds of ground (corner-based frames by
-   terrain group and drawing order), and an edge line where the level changes.
-4. **Trees across levels**, with the ground shaded under the leaves.
-5. **Top-down walls, doors and furniture.**
-6. **The character sprite**, with the way it faces.
-7. **Seasonal frames** (autumn leaves, snow), preferred to tinting where they exist.
-8. **Roofs**, with the option above.
+   terrain group and drawing order), and an edge line where the level changes. *(Built: nine
+   terrains, from deep water up to snow, each spreading a ragged edge over those before it, on a
+   grid offset by half a tile. Edge frames can be drawn in the tileset (`edge_grass#5`); where
+   they are not, they are made from each tile's own art, so any tileset blends from the start.
+   Paving and floors keep straight edges, and so does a change of level.)*
+4. **Trees across levels**, with the ground shaded under the leaves. *(Built: seven kinds with
+   their own heights and crowns (round, a cone narrowing upward, a tuft of fronds, bare);
+   young, grown and old trees; old broadleaf and jungle trees get trunks two tiles across where
+   there is room (local-map version 4); roots about the foot; trunks, branches and leaves on the
+   levels above, seen with < and >; and a tree's age and height when it is looked at. Until a
+   tileset has trunk art for a kind, its picture of the whole tree is drawn on the ground as
+   before.)*
+5. **Top-down walls, doors and furniture.** *(Built: walls seen from straight above, with a face
+   on the south where nothing joins there; doors, gates and windows lying across the wall the way
+   it runs (gates join palisades and fences too); long furniture (beds, benches, tables, counters,
+   shelves, rugs) joining its own kind, a bed with its pillow at the head; and a short shadow cast
+   south by walls and other tall things. The placeholders are drawn this way, and TILESET.md
+   tells the artist how.)*
+6. **The character sprite**, with the way it faces. *(Built: figures in the tileset by facing,
+   standing and walking (a figure drawn facing east only is turned about for west); the wanderer
+   faces the way they last moved or turned to; a single step is shown as a short walk from tile
+   to tile with the view following; without art, a placeholder person in the wanderer's own skin
+   and hair. Later: other people and creatures as figures, clothes and gear shown on the figure.)*
+7. **Seasonal frames** (autumn leaves, snow), preferred to tinting where they exist. *(Built: any
+   frame may be drawn for a season or for snow lying (`grass@autumn`, `grass@snow`); snow's frames
+   are used first out of doors when it lies, then the season's, then the plain frame tinted as
+   before. Snow lying on ground with no snow frame is a white cover, and when it lies deep the
+   snow tile itself; edges made from a tile's art use its season's art too.)*
+8. **Roofs**, with the option above. *(Built.)*
 
 ## Open questions
 
