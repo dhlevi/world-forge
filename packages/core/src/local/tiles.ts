@@ -48,6 +48,15 @@ export interface TileDef {
   water?: 'shallow' | 'deep';
   /** A door: the name of the tile it turns into when opened or closed. */
   toggle?: string;
+  /** Seconds more it takes to push through (a bush, scrub). */
+  slow?: number;
+  /** The chance, each time it is pushed through, of a scratch (thorns). */
+  hurt?: number;
+  /**
+   * It stands on its own (a tree, a bush, a boulder): one can slip diagonally past it between it
+   * and another such thing, as one cannot between two walls.
+   */
+  gap?: boolean;
 }
 
 type Def = Omit<TileDef, 'layer'>;
@@ -142,16 +151,16 @@ const OBJECT: Def[] = [
   o('ladder_down', '>', '#b89060', 'a ladder down through a hatch', 'A trapdoor with a ladder below.', { pass: true }),
   o('stairs_spiral', '<', '#cfc4aa', 'a spiral stair', 'Stone spiral stair (round).', { pass: true }),
   // ---- Vegetation
-  o('tree_broadleaf', 'T', '#3f7a32', 'a broadleaf tree', 'Oak, beech or ash: round crown from above, trunk at the base. Fits one tile.', { opaque: true, variants: 4 }),
-  o('tree_conifer', 'A', '#2f6a3a', 'a conifer', 'Spruce or pine: pointed dark crown.', { opaque: true, variants: 3 }),
-  o('tree_palm', 'Y', '#5a8a3a', 'a palm', 'Palm with fronds radiating.', { opaque: true, variants: 2 }),
-  o('tree_jungle', 'T', '#2c6a2a', 'a jungle tree', 'Huge buttressed tree with vines.', { opaque: true, variants: 3 }),
-  o('tree_dead', 'T', '#7a6a55', 'a dead tree', 'Bare grey branches.', { opaque: false, variants: 2 }),
-  o('tree_mangrove', 'T', '#3c6c3c', 'a mangrove', 'Tangle of stilt roots under a low crown.', { opaque: true }),
-  o('tree_birch', 'T', '#7fa050', 'a birch', 'White trunk, light airy crown.', { opaque: true, variants: 2 }),
+  o('tree_broadleaf', 'T', '#3f7a32', 'a broadleaf tree', 'Oak, beech or ash: round crown from above, trunk at the base. Fits one tile.', { gap: true, opaque: true, variants: 4 }),
+  o('tree_conifer', 'A', '#2f6a3a', 'a conifer', 'Spruce or pine: pointed dark crown.', { gap: true, opaque: true, variants: 3 }),
+  o('tree_palm', 'Y', '#5a8a3a', 'a palm', 'Palm with fronds radiating.', { gap: true, opaque: true, variants: 2 }),
+  o('tree_jungle', 'T', '#2c6a2a', 'a jungle tree', 'Huge buttressed tree with vines.', { gap: true, opaque: true, variants: 3 }),
+  o('tree_dead', 'T', '#7a6a55', 'a dead tree', 'Bare grey branches.', { gap: true, opaque: false, variants: 2 }),
+  o('tree_mangrove', 'T', '#3c6c3c', 'a mangrove', 'Tangle of stilt roots under a low crown.', { gap: true, opaque: true }),
+  o('tree_birch', 'T', '#7fa050', 'a birch', 'White trunk, light airy crown.', { gap: true, opaque: true, variants: 2 }),
   o('great_trunk', 'O', '#5d4a32', 'the trunk of a great tree', 'Part of a huge trunk (tree towns): bark, several tiles across.', { opaque: true, group: 'trunk', join: 'mask4' }),
-  o('bush', '*', '#4c7a38', 'a bush', 'A round shrub; slows but does not stop sight.', { variants: 3 }),
-  o('scrub', '*', '#8a8a4a', 'scrub', 'Dry thorny scrub.', { pass: true, variants: 2 }),
+  o('bush', '*', '#4c7a38', 'a bush', 'A round shrub; can be pushed through (slowly), does not stop sight.', { pass: true, slow: 2.5, hurt: 0.04, gap: true, variants: 3 }),
+  o('scrub', '*', '#8a8a4a', 'scrub', 'Dry thorny scrub.', { pass: true, slow: 1, hurt: 0.03, variants: 2 }),
   o('tall_grass', '"', '#8aa64e', 'tall grass', 'Waist-high grass stems.', { pass: true, variants: 2 }),
   o('ferns', '"', '#4a8a44', 'ferns', 'Clump of ferns.', { pass: true, variants: 2 }),
   o('reeds', '"', '#8a9a52', 'reeds', 'Reeds and bulrushes (marsh, water edges).', { pass: true, variants: 2 }),
@@ -162,7 +171,7 @@ const OBJECT: Def[] = [
   o('vines', '%', '#6a8a3a', 'vines', 'A row of vines on stakes.', { variants: 2 }),
   o('hedge', '%', '#3f6a30', 'a hedge', 'Clipped hedge.', { opaque: true, group: 'hedge', join: 'mask4' }),
   // ---- Stones and earthworks
-  o('boulder', 'o', '#8c8680', 'a boulder', 'A large rounded stone.', { variants: 3 }),
+  o('boulder', 'o', '#8c8680', 'a boulder', 'A large rounded stone.', { gap: true, variants: 3 }),
   o('stones', '.', '#9a948a', 'loose stones', 'A few small stones on the ground.', { pass: true, variants: 2 }),
   o('menhir', 'I', '#8c8a84', 'a standing stone', 'A tall rough standing stone with lichen.'),
   o('totem', 'I', '#a06a3a', 'a carved totem pole', 'A painted carved pole.'),
@@ -234,7 +243,7 @@ const OBJECT: Def[] = [
   o('lean_to', '^', '#7a6a45', 'a lean-to', 'A slope of branches and bark to lie under.', { pass: true }),
   o('snare', ',', '#b0a080', 'a snare', 'A wire noose set on an animal run.', { pass: true }),
   // Trees across levels (local/trees.ts).
-  o('tree_trunk', 'O', '#6a4c30', 'the trunk of an old tree', 'The rest of a trunk two tiles across (drawn with its tree\'s trunk frames, trunk2_<kind>).', { opaque: true }),
+  o('tree_trunk', 'O', '#6a4c30', 'the trunk of an old tree', 'The rest of a trunk two tiles across (drawn with its tree\'s trunk frames, trunk2_<kind>).', { opaque: true, gap: true }),
   // Caves, dungeons and delves (local/under.ts).
   o('rock_wall', '#', '#4a443c', 'solid rock', 'The natural rock face round a cave or a mine gallery, rough and uneven.', { opaque: true, group: 'rock', join: 'mask4', variants: 2 }),
   o('door_locked', '+', '#8a5a3a', 'a locked door', 'A heavy door, iron-bound, a lock plate on it (as a door, closed).', { opaque: true, toggle: 'door_open', group: 'wall', join: 'mask4' }),

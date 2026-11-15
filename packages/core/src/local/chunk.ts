@@ -29,7 +29,7 @@ import { dungeonSiteOf } from '../dungeons/core';
  * The local map's own version: raised whenever the same world would give different tiles (a game
  * saves its changes over the baseline of one version).
  */
-export const LOCAL_MAP_VERSION = 8;
+export const LOCAL_MAP_VERSION = 9;
 
 /** Metres in a level (a storey): the land's height and the floors of buildings go up in these. */
 export const LEVEL_M = 3;
@@ -226,6 +226,9 @@ interface BuildingFloor {
   floor: number;
   areas: string[];
 }
+
+/** How much thinner dense woods grow than the biome table's density. */
+const TREE_THINNING = 0.85;
 
 /** Lines that are ways through (half-widths, m; roads by class). */
 const WAY_HW: Record<string, number> = { street: 3, road: 2.5, trodden: 0.8 };
@@ -1390,7 +1393,9 @@ export class LocalWorld {
         if (dx * dx + dy * dy < r * r) near = 0.12;
       }
       const r1 = rnd01(seed, tx, ty, 11);
-      const pTree = (cv.open + (cv.dense - cv.open) * forest[k]) * near;
+      // Dense woods a little thinner than the biome's table (local-map version 9): with bushes to push
+      // through and room to slip between trees, there is always a way through.
+      const pTree = (cv.open + (cv.dense * TREE_THINNING - cv.open) * forest[k]) * near;
       if (cv.trees.length && r1 < pTree && gd.name !== 'rock' && gd.name !== 'scree' && gd.name !== 'snow') {
         object[k] = O(pick(cv.trees, rnd01(seed, tx, ty, 12)));
         continue;

@@ -25,6 +25,8 @@ export const WAIT_S = 5;
 export const SWIM_S = 4;
 /** Seconds to go up or down a flight of stairs or a ladder (a level). */
 export const STAIRS_S = 4;
+/** Seconds more to slip diagonally between two trees (or bushes, or boulders). */
+export const SQUEEZE_S = 2;
 /** Seconds more to go up a ramp (a level), and down one. */
 export const RAMP_UP_S = 1.5;
 export const RAMP_DOWN_S = 0.4;
@@ -45,7 +47,7 @@ export interface Hud {
   clock: string;
   log: { t: string; text: string }[];
   look: string[];
-  mode: 'play' | 'look' | 'open' | 'close';
+  mode: 'play' | 'look' | 'open' | 'close' | 'cut';
   loading: number;
   /** The town or city the wanderer is in (for its city view), if any. */
   town?: { id: string; name: string; tier: string } | null;
@@ -108,6 +110,8 @@ export class Game {
   onTime: (time: number) => void = () => {};
   /** Climbs a rock face of so many metres, up or down (game/practice.ts); none: it cannot be climbed. */
   climb: ((metres: number, up: boolean) => Climb) | null = null;
+  /** Called when thorns scratch the wanderer (a small hurt, for the mood). */
+  onScratch: () => void = () => {};
   /** A rock face the wanderer has walked into once: walking into it again climbs it. */
   private face: { x: number; y: number } | null = null;
 
@@ -282,10 +286,16 @@ export class Game {
       }
       return false;
     }
-    // No squeezing diagonally between two things that block.
+    // Diagonally between two things that block: no room between two walls, but one can slip
+    // past a tree, a bush or a boulder (more slowly).
+    let squeeze = 0;
     if (dx && dy && !this.pass(this.px + dx, this.py) && !this.pass(this.px, this.py + dy)) {
-      if (!quiet) this.say('There is no room to slip through.');
-      return false;
+      const a = OBJECT_TILES[this.map.object(this.px + dx, this.py)], b = OBJECT_TILES[this.map.object(this.px, this.py + dy)];
+      if (!a?.gap && !b?.gap) {
+        if (!quiet) this.say('There is no room to slip through.');
+        return false;
+      }
+      squeeze = SQUEEZE_S;
     }
     // A rock face: walking into it again climbs it.
     const l0 = this.map.level(this.px, this.py), l1 = this.map.level(nx, ny);
@@ -319,7 +329,13 @@ export class Game {
     this.steps++;
     const g = GROUND_TILES[this.map.ground(nx, ny)];
     const wasWet = GROUND_TILES[this.map.ground(this.px - dx, this.py - dy)].water;
-    this.time += ((g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) + (step === 'cliff' ? 0 : extra)) * this.loadSlow() + (step === 'cliff' ? extra : 0);
+    // Pushing through a bush or scrub takes longer, and thorns may scratch.
+    const through = OBJECT_TILES[this.map.object(nx, ny)];
+    this.time += ((g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) + (step === 'cliff' ? 0 : extra) + squeeze + (through?.slow ?? 0)) * this.loadSlow() + (step === 'cliff' ? extra : 0);
+    if (through?.hurt && this.dice.random() < through.hurt) {
+      this.say(`The ${through.name === 'scrub' ? 'thorny scrub' : through.name} scratches you.`);
+      this.onScratch();
+    }
     if (step !== 'cliff') this.activity = g.water === 'deep' ? 'swim' : 'walk';
     if (g.water !== wasWet && !quiet) {
       if (g.water === 'deep') this.say('You swim out into deep water.');

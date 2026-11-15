@@ -40,6 +40,19 @@
       "sold": ["smithy"]
     },
     {
+      "id": "machete",
+      "name": "machete",
+      "kind": "weapon",
+      "weight": 0.8,
+      "bulk": 0.8,
+      "size": "small",
+      "value": 12,
+      "belt": true,
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
+      "sold": ["smithy", "market"],
+      "about": "A long, heavy, single-edged blade for cutting a way through brush and undergrowth; a poor weapon, a fine tool."
+    },
+    {
       "id": "hatchet",
       "name": "hatchet",
       "kind": "weapon",

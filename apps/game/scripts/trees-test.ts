@@ -7,7 +7,7 @@ import { CHUNK } from '@worldforge/core/local/chunk';
 import { G, O, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import { TREE_KINDS, treeKind, treePartAt, treeShape, widenTrunks } from '@worldforge/core/local/trees';
 import { GameMap } from '../src/game/map';
-import { Game, type Hud } from '../src/game/game';
+import { DIAG_S, Game, SQUEEZE_S, STEP_S, type Hud } from '../src/game/game';
 import { TreeView, treeAt, treeWords } from '../src/game/trees';
 import type { ChunkData } from '../src/worker/protocol';
 
@@ -105,6 +105,30 @@ ok(/^An old broadleaf tree, about \d+ m tall/.test(g.describe(wx, wy)[0]), `look
 g.px = wx + 2;
 g.refresh();
 ok(/^The trunk of an old broadleaf tree/.test(g.describe(wx + 1, wy)[0]), `and at the rest of its trunk: "${g.describe(wx + 1, wy)[0]}"`);
+
+// ---- Getting through the woods ---------------------------------------------------------------------
+{
+  // A small plot off by itself: trees to the east and south of the wanderer, walls further on, a bush.
+  const map2 = new GameMap(() => {});
+  const N = CHUNK * CHUNK, object = new Uint8Array(N);
+  const put = (x: number, y: number, name: string) => (object[y * CHUNK + x] = O(name));
+  put(11, 10, 'tree_conifer');
+  put(10, 11, 'tree_broadleaf');
+  put(21, 10, 'wall_stone');
+  put(20, 11, 'wall_stone');
+  put(31, 10, 'bush');
+  map2.add({ cx: 0, cy: 0, ground: new Uint8Array(N).fill(G('grass')), object, area: new Uint16Array(N), areas: [''], elev: new Int16Array(N).fill(30), sites: [], roofs: [], layers: [], ms: 0 });
+  const hud2: Hud = { place: '', where: '', clock: '', log: [], look: [], mode: 'play', loading: 0 };
+  const w = new Game(map2, [10, 10], [], 'the test', hud2);
+  let t0 = w.time;
+  ok(w.move(1, 1) && w.px === 11 && w.py === 11 && Math.abs(w.time - t0 - DIAG_S - SQUEEZE_S) < 1e-9, 'one can slip diagonally between two trees, a little more slowly');
+  w.px = 20;
+  w.py = 10;
+  ok(!w.move(1, 1) && w.px === 20, `but not between two walls ("${hud2.log.at(-1)?.text}")`);
+  w.px = 30;
+  t0 = w.time;
+  ok(w.move(1, 0) && w.px === 31 && w.time - t0 > STEP_S + 2, 'a bush can be pushed through, slowly');
+}
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll passed');
 if (failures) process.exitCode = 1;

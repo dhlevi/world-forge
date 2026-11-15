@@ -212,7 +212,7 @@ Over the ground, transparent background. Trees fill most of the tile (a crown se
 | `tree_mangrove` | Tangle of stilt roots under a low crown. | blocks, hides | 1 | `T` #3c6c3c |
 | `tree_birch` | White trunk, light airy crown. | blocks, hides | 2 variants | `T` #7fa050 |
 | `great_trunk` | Part of a huge trunk (tree towns): bark, several tiles across. | blocks, hides | join (16), group trunk | `O` #5d4a32 |
-| `bush` | A round shrub; slows but does not stop sight. | blocks | 3 variants | `*` #4c7a38 |
+| `bush` | A round shrub; can be pushed through (slowly), does not stop sight. | walk | 3 variants | `*` #4c7a38 |
 | `scrub` | Dry thorny scrub. | walk | 2 variants | `*` #8a8a4a |
 | `tall_grass` | Waist-high grass stems. | walk | 2 variants | `"` #8aa64e |
 | `ferns` | Clump of ferns. | walk | 2 variants | `"` #4a8a44 |

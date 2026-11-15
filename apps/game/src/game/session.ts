@@ -12,6 +12,8 @@
 import { reactive } from 'vue';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, type Season } from '@worldforge/core/local/tiles';
+import { BRUSH_TOOLS, clearBrush } from './tasks';
+import { makeItem } from '../actors/items/item';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Weather } from '@worldforge/core/weather/weather';
 import type { MessageDispatcher } from '../engine/messages';
@@ -22,7 +24,7 @@ import { desktop } from '../desktop';
 import { Actor } from '../actors/actor';
 import { Cast } from '../actors/cast';
 import { check, DC } from '../actors/checks';
-import { Identity, Knowledge, Skills, type Moodlet } from '../actors/components';
+import { Identity, Knowledge, Mood, Skills, type Moodlet } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
 import { defOf, type Item } from '../actors/items/item';
 import { Needs, type NeedId } from '../actors/needs';
@@ -179,6 +181,7 @@ export class PlaySession {
     };
     game.onTime = (t) => this.tick(t);
     game.climb = (metres, up) => this.practice.climb(metres, up, this.invSlow());
+    game.onScratch = () => this.player?.get(Mood)?.add({ id: 'scratched', text: 'Scratched by thorns', value: -1, until: game.time + 2 * 3600 });
     game.onChange = () => this.redraw();
 
     // The road: steps take skill (fords, steep ground), weather shortens sight, arriving opens the place.
@@ -601,6 +604,45 @@ export class PlaySession {
   }
 
   /** Drinking from water beside (a river, a lake, a well, a fountain), and filling waterskins. */
+  /** Asks which way to cut brush (A), if there is a blade to cut with. */
+  startCut(): void {
+    const g = this.game, inv = this.player?.get(Inventory);
+    if (!inv || !BRUSH_TOOLS.some(([id]) => inv.d.items.some((i) => i.def === id))) {
+      g.say('You have no blade to cut brush with: a machete, an axe, a hatchet, a sword or a knife.');
+      return;
+    }
+    this.hud.mode = 'cut';
+    g.say('Cut brush in which direction?');
+  }
+
+  /** Cuts away the bush or scrub beside the wanderer (game/tasks.ts, clearBrush). */
+  cutBrush(dx: number, dy: number): void {
+    const g = this.game, a = this.player, inv = a?.get(Inventory);
+    if (!a || !inv) return;
+    const x = g.px + dx, y = g.py + dy;
+    const o = OBJECT_TILES[g.map.object(x, y)];
+    if (o?.name !== 'bush' && o?.name !== 'scrub') {
+      g.say(o && o.name !== 'none' && (o.name.startsWith('tree') || o.name === 'tree_trunk') ? 'A tree wants an axe and an afternoon, not a few strokes.' : 'There is no brush there to cut.');
+      return;
+    }
+    const r = clearBrush(a, inv, o.name, g.time);
+    if (!r) {
+      g.say('You have no blade to cut brush with.');
+      return;
+    }
+    g.map.setObject(x, y, 0);
+    g.time += r.seconds;
+    g.activity = 'work';
+    g.say(r.text);
+    if (r.mood) a.get(Mood)?.add(r.mood);
+    if (r.wood) {
+      const wood = makeItem('firewood');
+      if (inv.stow(wood)) g.ground.put(g.px, g.py, [wood]);
+    }
+    this.practice.flush();
+    g.refresh();
+  }
+
   drinkHere(): void {
     const n = this.needs(), game = this.game;
     const inv = this.player?.get(Inventory);

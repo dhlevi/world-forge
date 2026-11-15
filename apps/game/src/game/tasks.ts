@@ -110,3 +110,39 @@ export function mendThing(a: Actor, inv: Inventory, it: Item, now: number, kit?:
     : it.condition < before ? `You make your ${name} worse; ${skill} is harder than it looks.` : `Your work on the ${name} comes to nothing.`;
   return { text, seconds: 45 * 60, ok: it.condition > before };
 }
+
+/**
+ * Blades for cutting brush, best first, and the seconds each takes to clear a bush (a machete is
+ * made for it; an axe or a hatchet does well; a sword or a sickle less so; a knife slowly).
+ */
+export const BRUSH_TOOLS: [string, number][] = [['machete', 30], ['axe', 40], ['hatchet', 45], ['sickle', 50], ['sword', 60], ['dagger', 110], ['knife', 120]];
+
+/** How clearing goes, by grade: a share of the time it takes, firewood got, and a cut to the hand. */
+const CLEARED: Record<Grade, { time: number; wood: boolean; text: string; mood?: Moodlet }> = {
+  fine: { time: 0.6, wood: true, text: 'With a few sure strokes of your $ you clear the $b, and gather the wood.' },
+  success: { time: 0.8, wood: true, text: 'You hack through the $b with your $, and gather the wood.' },
+  near: { time: 1, wood: false, text: 'You hack through the $b with your $.' },
+  fail: { time: 1.4, wood: false, text: 'It is slow, tangled work, but you clear the $b with your $.' },
+  fumble: { time: 1.6, wood: false, text: 'Your $ glances off a stem and nicks your hand; at last the $b is cleared.', mood: { id: 'cut-hand', text: 'Nicked my hand clearing brush', value: -2 } },
+};
+
+/**
+ * Cuts away a bush or scrub (Survival, with the best blade carried): how long it took, and what
+ * came of it. Null if there is no blade to cut with.
+ */
+export function clearBrush(a: Actor, inv: Inventory, what: 'bush' | 'scrub', now: number): (Outcome & { tool: string; wood: boolean }) | null {
+  const carried = new Set(inv.d.items.map((i) => i.def));
+  const tool = BRUSH_TOOLS.find(([id]) => carried.has(id));
+  if (!tool) return null;
+  const g = check(a, 'survival', { difficulty: what === 'scrub' ? DC.easy : DC.easy + 5, now }).grade;
+  const c = CLEARED[g];
+  const base = tool[1] * (what === 'scrub' ? 0.5 : 1);
+  return {
+    text: c.text.replace('$b', what === 'scrub' ? 'scrub' : 'bush').replace('$', ITEM.get(tool[0])?.name ?? tool[0]),
+    mood: c.mood ? { ...c.mood, until: now + 4 * 3600 } : undefined,
+    seconds: Math.round(base * c.time),
+    ok: true,
+    tool: tool[0],
+    wood: c.wood && what === 'bush',
+  };
+}

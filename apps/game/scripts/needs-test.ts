@@ -3,13 +3,13 @@
  * (npx tsx apps/game/scripts/needs-test.ts; exits non-zero on a failure).
  */
 import { Actor } from '../src/actors/actor';
-import { Body, Mood, Pools, Traits, type TimeCtx } from '../src/actors/components';
+import { Body, Mood, Pools, Skills, Traits, type TimeCtx } from '../src/actors/components';
 import { Inventory, startingInventory } from '../src/actors/items/inventory';
 import { makeItem } from '../src/actors/items/item';
 import { Needs } from '../src/actors/needs';
 import { MessageDispatcher } from '../src/engine/messages';
 import { Cast } from '../src/actors/cast';
-import { eatPortion } from '../src/game/tasks';
+import { clearBrush, eatPortion } from '../src/game/tasks';
 
 let failures = 0;
 const ok = (cond: boolean, what: string) => {
@@ -127,6 +127,29 @@ ok(slept.hours[23].fatigue < slept.hours[15].fatigue - 40, 'a night in a bed tak
   ok(n.words().thirst === 'Slaked', `having drunk its fill: "${n.words().thirst}", not dehydrated while unable to drink more`);
   for (let h = 1; h <= 3; h++) cast.clock(h * 3600, { activity: 'rest', ambientC: 15 });
   ok(n.d.hydrated >= 75 && n.words().thirst !== 'Dehydrated', `three hours after drinking its fill, no longer dehydrated (hydration ${Math.round(n.d.hydrated)})`);
+}
+
+// ---- Cutting brush (game/tasks.ts) ------------------------------------------------------------------
+{
+  const { a } = person();
+  a.add(new Skills(Skills.empty()));
+  const inv = a.get(Inventory)!;
+  for (const i of [...inv.d.items]) if (i.def === 'knife') inv.drop(i.uid);
+  ok(clearBrush(a, inv, 'bush', 0) === null, 'with no blade, no cutting brush');
+  inv.stow(makeItem('knife'));
+  const knife = clearBrush(a, inv, 'bush', 0)!;
+  inv.stow(makeItem('machete'));
+  const times: number[] = [];
+  let wood = 0;
+  for (let k = 0; k < 40; k++) {
+    const r = clearBrush(a, inv, 'bush', k * 60)!;
+    times.push(r.seconds);
+    if (r.wood) wood++;
+  }
+  const mean = times.reduce((s2, x) => s2 + x, 0) / times.length;
+  console.log(`  a bush: with a knife ${knife.seconds} s; with a machete ${mean.toFixed(0)} s on average, firewood ${wood} times in 40`);
+  ok(knife.tool === 'knife' && mean < knife.seconds * 0.6, 'a machete clears a bush far faster than a knife');
+  ok(wood > 0, 'clearing well gives firewood');
 }
 
 console.log(failures ? `\n${failures} FAILED` : '\nAll passed');
