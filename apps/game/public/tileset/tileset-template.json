@@ -3679,5069 +3679,9520 @@
    0,
    170
   ],
-  "edge_deep#1": [
+  "wall_torch#0": [
    0,
    171
+  ],
+  "wall_torch#1": [
+   1,
+   171
+  ],
+  "wall_torch#2": [
+   2,
+   171
+  ],
+  "wall_torch#3": [
+   3,
+   171
+  ],
+  "wall_torch#4": [
+   4,
+   171
+  ],
+  "wall_torch#5": [
+   5,
+   171
+  ],
+  "wall_torch#6": [
+   6,
+   171
+  ],
+  "wall_torch#7": [
+   7,
+   171
+  ],
+  "wall_torch#8": [
+   8,
+   171
+  ],
+  "wall_torch#9": [
+   9,
+   171
+  ],
+  "wall_torch#10": [
+   10,
+   171
+  ],
+  "wall_torch#11": [
+   11,
+   171
+  ],
+  "wall_torch#12": [
+   12,
+   171
+  ],
+  "wall_torch#13": [
+   13,
+   171
+  ],
+  "wall_torch#14": [
+   14,
+   171
+  ],
+  "wall_torch#15": [
+   15,
+   171
+  ],
+  "edge_deep#1": [
+   0,
+   172
   ],
   "edge_deep#2": [
    1,
-   171
+   172
   ],
   "edge_deep#3": [
    2,
-   171
+   172
   ],
   "edge_deep#4": [
    3,
-   171
+   172
   ],
   "edge_deep#5": [
    4,
-   171
+   172
   ],
   "edge_deep#6": [
    5,
-   171
+   172
   ],
   "edge_deep#7": [
    6,
-   171
+   172
   ],
   "edge_deep#8": [
    7,
-   171
+   172
   ],
   "edge_deep#9": [
    8,
-   171
+   172
   ],
   "edge_deep#10": [
    9,
-   171
+   172
   ],
   "edge_deep#11": [
    10,
-   171
+   172
   ],
   "edge_deep#12": [
    11,
-   171
+   172
   ],
   "edge_deep#13": [
    12,
-   171
+   172
   ],
   "edge_deep#14": [
    13,
-   171
+   172
   ],
   "edge_shallow#1": [
    0,
-   172
+   173
   ],
   "edge_shallow#2": [
    1,
-   172
+   173
   ],
   "edge_shallow#3": [
    2,
-   172
+   173
   ],
   "edge_shallow#4": [
    3,
-   172
+   173
   ],
   "edge_shallow#5": [
    4,
-   172
+   173
   ],
   "edge_shallow#6": [
    5,
-   172
+   173
   ],
   "edge_shallow#7": [
    6,
-   172
+   173
   ],
   "edge_shallow#8": [
    7,
-   172
+   173
   ],
   "edge_shallow#9": [
    8,
-   172
+   173
   ],
   "edge_shallow#10": [
    9,
-   172
+   173
   ],
   "edge_shallow#11": [
    10,
-   172
+   173
   ],
   "edge_shallow#12": [
    11,
-   172
+   173
   ],
   "edge_shallow#13": [
    12,
-   172
+   173
   ],
   "edge_shallow#14": [
    13,
-   172
+   173
   ],
   "edge_mud#1": [
    0,
-   173
+   174
   ],
   "edge_mud#2": [
    1,
-   173
+   174
   ],
   "edge_mud#3": [
    2,
-   173
+   174
   ],
   "edge_mud#4": [
    3,
-   173
+   174
   ],
   "edge_mud#5": [
    4,
-   173
+   174
   ],
   "edge_mud#6": [
    5,
-   173
+   174
   ],
   "edge_mud#7": [
    6,
-   173
+   174
   ],
   "edge_mud#8": [
    7,
-   173
+   174
   ],
   "edge_mud#9": [
    8,
-   173
+   174
   ],
   "edge_mud#10": [
    9,
-   173
+   174
   ],
   "edge_mud#11": [
    10,
-   173
+   174
   ],
   "edge_mud#12": [
    11,
-   173
+   174
   ],
   "edge_mud#13": [
    12,
-   173
+   174
   ],
   "edge_mud#14": [
    13,
-   173
+   174
   ],
   "edge_sand#1": [
    0,
-   174
+   175
   ],
   "edge_sand#2": [
    1,
-   174
+   175
   ],
   "edge_sand#3": [
    2,
-   174
+   175
   ],
   "edge_sand#4": [
    3,
-   174
+   175
   ],
   "edge_sand#5": [
    4,
-   174
+   175
   ],
   "edge_sand#6": [
    5,
-   174
+   175
   ],
   "edge_sand#7": [
    6,
-   174
+   175
   ],
   "edge_sand#8": [
    7,
-   174
+   175
   ],
   "edge_sand#9": [
    8,
-   174
+   175
   ],
   "edge_sand#10": [
    9,
-   174
+   175
   ],
   "edge_sand#11": [
    10,
-   174
+   175
   ],
   "edge_sand#12": [
    11,
-   174
+   175
   ],
   "edge_sand#13": [
    12,
-   174
+   175
   ],
   "edge_sand#14": [
    13,
-   174
+   175
   ],
   "edge_earth#1": [
    0,
-   175
+   176
   ],
   "edge_earth#2": [
    1,
-   175
+   176
   ],
   "edge_earth#3": [
    2,
-   175
+   176
   ],
   "edge_earth#4": [
    3,
-   175
+   176
   ],
   "edge_earth#5": [
    4,
-   175
+   176
   ],
   "edge_earth#6": [
    5,
-   175
+   176
   ],
   "edge_earth#7": [
    6,
-   175
+   176
   ],
   "edge_earth#8": [
    7,
-   175
+   176
   ],
   "edge_earth#9": [
    8,
-   175
+   176
   ],
   "edge_earth#10": [
    9,
-   175
+   176
   ],
   "edge_earth#11": [
    10,
-   175
+   176
   ],
   "edge_earth#12": [
    11,
-   175
+   176
   ],
   "edge_earth#13": [
    12,
-   175
+   176
   ],
   "edge_earth#14": [
    13,
-   175
+   176
   ],
   "edge_stone#1": [
    0,
-   176
+   177
   ],
   "edge_stone#2": [
    1,
-   176
+   177
   ],
   "edge_stone#3": [
    2,
-   176
+   177
   ],
   "edge_stone#4": [
    3,
-   176
+   177
   ],
   "edge_stone#5": [
    4,
-   176
+   177
   ],
   "edge_stone#6": [
    5,
-   176
+   177
   ],
   "edge_stone#7": [
    6,
-   176
+   177
   ],
   "edge_stone#8": [
    7,
-   176
+   177
   ],
   "edge_stone#9": [
    8,
-   176
+   177
   ],
   "edge_stone#10": [
    9,
-   176
+   177
   ],
   "edge_stone#11": [
    10,
-   176
+   177
   ],
   "edge_stone#12": [
    11,
-   176
+   177
   ],
   "edge_stone#13": [
    12,
-   176
+   177
   ],
   "edge_stone#14": [
    13,
-   176
+   177
   ],
   "edge_litter#1": [
    0,
-   177
+   178
   ],
   "edge_litter#2": [
    1,
-   177
+   178
   ],
   "edge_litter#3": [
    2,
-   177
+   178
   ],
   "edge_litter#4": [
    3,
-   177
+   178
   ],
   "edge_litter#5": [
    4,
-   177
+   178
   ],
   "edge_litter#6": [
    5,
-   177
+   178
   ],
   "edge_litter#7": [
    6,
-   177
+   178
   ],
   "edge_litter#8": [
    7,
-   177
+   178
   ],
   "edge_litter#9": [
    8,
-   177
+   178
   ],
   "edge_litter#10": [
    9,
-   177
+   178
   ],
   "edge_litter#11": [
    10,
-   177
+   178
   ],
   "edge_litter#12": [
    11,
-   177
+   178
   ],
   "edge_litter#13": [
    12,
-   177
+   178
   ],
   "edge_litter#14": [
    13,
-   177
+   178
   ],
   "edge_grass#1": [
    0,
-   178
+   179
   ],
   "edge_grass#2": [
    1,
-   178
+   179
   ],
   "edge_grass#3": [
    2,
-   178
+   179
   ],
   "edge_grass#4": [
    3,
-   178
+   179
   ],
   "edge_grass#5": [
    4,
-   178
+   179
   ],
   "edge_grass#6": [
    5,
-   178
+   179
   ],
   "edge_grass#7": [
    6,
-   178
+   179
   ],
   "edge_grass#8": [
    7,
-   178
+   179
   ],
   "edge_grass#9": [
    8,
-   178
+   179
   ],
   "edge_grass#10": [
    9,
-   178
+   179
   ],
   "edge_grass#11": [
    10,
-   178
+   179
   ],
   "edge_grass#12": [
    11,
-   178
+   179
   ],
   "edge_grass#13": [
    12,
-   178
+   179
   ],
   "edge_grass#14": [
    13,
-   178
+   179
   ],
   "edge_snow#1": [
    0,
-   179
+   180
   ],
   "edge_snow#2": [
    1,
-   179
+   180
   ],
   "edge_snow#3": [
    2,
-   179
+   180
   ],
   "edge_snow#4": [
    3,
-   179
+   180
   ],
   "edge_snow#5": [
    4,
-   179
+   180
   ],
   "edge_snow#6": [
    5,
-   179
+   180
   ],
   "edge_snow#7": [
    6,
-   179
+   180
   ],
   "edge_snow#8": [
    7,
-   179
+   180
   ],
   "edge_snow#9": [
    8,
-   179
+   180
   ],
   "edge_snow#10": [
    9,
-   179
+   180
   ],
   "edge_snow#11": [
    10,
-   179
+   180
   ],
   "edge_snow#12": [
    11,
-   179
+   180
   ],
   "edge_snow#13": [
    12,
-   179
+   180
   ],
   "edge_snow#14": [
    13,
-   179
+   180
   ],
   "trunk_broadleaf": [
    0,
-   180
+   181
   ],
   "trunk2_broadleaf#1": [
    0,
-   181
+   182
   ],
   "trunk2_broadleaf#2": [
    1,
-   181
+   182
   ],
   "trunk2_broadleaf#4": [
    2,
-   181
+   182
   ],
   "trunk2_broadleaf#8": [
    3,
-   181
+   182
   ],
   "roots_broadleaf#1": [
    0,
-   182
+   183
   ],
   "roots_broadleaf#2": [
    1,
-   182
+   183
   ],
   "roots_broadleaf#4": [
    2,
-   182
+   183
   ],
   "roots_broadleaf#8": [
    3,
-   182
+   183
   ],
   "branch_broadleaf#0": [
    0,
-   183
+   184
   ],
   "branch_broadleaf#1": [
    1,
-   183
+   184
   ],
   "branch_broadleaf#2": [
    2,
-   183
+   184
   ],
   "branch_broadleaf#3": [
    3,
-   183
+   184
   ],
   "branch_broadleaf#4": [
    4,
-   183
+   184
   ],
   "branch_broadleaf#5": [
    5,
-   183
+   184
   ],
   "branch_broadleaf#6": [
    6,
-   183
+   184
   ],
   "branch_broadleaf#7": [
    7,
-   183
+   184
   ],
   "branch_broadleaf#8": [
    8,
-   183
+   184
   ],
   "branch_broadleaf#9": [
    9,
-   183
+   184
   ],
   "branch_broadleaf#10": [
    10,
-   183
+   184
   ],
   "branch_broadleaf#11": [
    11,
-   183
+   184
   ],
   "branch_broadleaf#12": [
    12,
-   183
+   184
   ],
   "branch_broadleaf#13": [
    13,
-   183
+   184
   ],
   "branch_broadleaf#14": [
    14,
-   183
+   184
   ],
   "branch_broadleaf#15": [
    15,
-   183
+   184
   ],
   "leaves_broadleaf#0": [
    0,
-   184
+   185
   ],
   "leaves_broadleaf#1": [
    1,
-   184
+   185
   ],
   "leaves_broadleaf#2": [
    2,
-   184
+   185
   ],
   "leaves_broadleaf#3": [
    3,
-   184
+   185
   ],
   "leaves_broadleaf#4": [
    4,
-   184
+   185
   ],
   "leaves_broadleaf#5": [
    5,
-   184
+   185
   ],
   "leaves_broadleaf#6": [
    6,
-   184
+   185
   ],
   "leaves_broadleaf#7": [
    7,
-   184
+   185
   ],
   "leaves_broadleaf#8": [
    8,
-   184
+   185
   ],
   "leaves_broadleaf#9": [
    9,
-   184
+   185
   ],
   "leaves_broadleaf#10": [
    10,
-   184
+   185
   ],
   "leaves_broadleaf#11": [
    11,
-   184
+   185
   ],
   "leaves_broadleaf#12": [
    12,
-   184
+   185
   ],
   "leaves_broadleaf#13": [
    13,
-   184
+   185
   ],
   "leaves_broadleaf#14": [
    14,
-   184
+   185
   ],
   "leaves_broadleaf#15": [
    15,
-   184
+   185
   ],
   "trunk_conifer": [
    0,
-   185
+   186
   ],
   "trunk2_conifer#1": [
    0,
-   186
+   187
   ],
   "trunk2_conifer#2": [
    1,
-   186
+   187
   ],
   "trunk2_conifer#4": [
    2,
-   186
+   187
   ],
   "trunk2_conifer#8": [
    3,
-   186
+   187
   ],
   "roots_conifer#1": [
    0,
-   187
+   188
   ],
   "roots_conifer#2": [
    1,
-   187
+   188
   ],
   "roots_conifer#4": [
    2,
-   187
+   188
   ],
   "roots_conifer#8": [
    3,
-   187
+   188
   ],
   "branch_conifer#0": [
    0,
-   188
+   189
   ],
   "branch_conifer#1": [
    1,
-   188
+   189
   ],
   "branch_conifer#2": [
    2,
-   188
+   189
   ],
   "branch_conifer#3": [
    3,
-   188
+   189
   ],
   "branch_conifer#4": [
    4,
-   188
+   189
   ],
   "branch_conifer#5": [
    5,
-   188
+   189
   ],
   "branch_conifer#6": [
    6,
-   188
+   189
   ],
   "branch_conifer#7": [
    7,
-   188
+   189
   ],
   "branch_conifer#8": [
    8,
-   188
+   189
   ],
   "branch_conifer#9": [
    9,
-   188
+   189
   ],
   "branch_conifer#10": [
    10,
-   188
+   189
   ],
   "branch_conifer#11": [
    11,
-   188
+   189
   ],
   "branch_conifer#12": [
    12,
-   188
+   189
   ],
   "branch_conifer#13": [
    13,
-   188
+   189
   ],
   "branch_conifer#14": [
    14,
-   188
+   189
   ],
   "branch_conifer#15": [
    15,
-   188
+   189
   ],
   "leaves_conifer#0": [
    0,
-   189
+   190
   ],
   "leaves_conifer#1": [
    1,
-   189
+   190
   ],
   "leaves_conifer#2": [
    2,
-   189
+   190
   ],
   "leaves_conifer#3": [
    3,
-   189
+   190
   ],
   "leaves_conifer#4": [
    4,
-   189
+   190
   ],
   "leaves_conifer#5": [
    5,
-   189
+   190
   ],
   "leaves_conifer#6": [
    6,
-   189
+   190
   ],
   "leaves_conifer#7": [
    7,
-   189
+   190
   ],
   "leaves_conifer#8": [
    8,
-   189
+   190
   ],
   "leaves_conifer#9": [
    9,
-   189
+   190
   ],
   "leaves_conifer#10": [
    10,
-   189
+   190
   ],
   "leaves_conifer#11": [
    11,
-   189
+   190
   ],
   "leaves_conifer#12": [
    12,
-   189
+   190
   ],
   "leaves_conifer#13": [
    13,
-   189
+   190
   ],
   "leaves_conifer#14": [
    14,
-   189
+   190
   ],
   "leaves_conifer#15": [
    15,
-   189
+   190
   ],
   "trunk_birch": [
    0,
-   190
+   191
   ],
   "trunk2_birch#1": [
    0,
-   191
+   192
   ],
   "trunk2_birch#2": [
    1,
-   191
+   192
   ],
   "trunk2_birch#4": [
    2,
-   191
+   192
   ],
   "trunk2_birch#8": [
    3,
-   191
+   192
   ],
   "roots_birch#1": [
    0,
-   192
+   193
   ],
   "roots_birch#2": [
    1,
-   192
+   193
   ],
   "roots_birch#4": [
    2,
-   192
+   193
   ],
   "roots_birch#8": [
    3,
-   192
+   193
   ],
   "branch_birch#0": [
    0,
-   193
+   194
   ],
   "branch_birch#1": [
    1,
-   193
+   194
   ],
   "branch_birch#2": [
    2,
-   193
+   194
   ],
   "branch_birch#3": [
    3,
-   193
+   194
   ],
   "branch_birch#4": [
    4,
-   193
+   194
   ],
   "branch_birch#5": [
    5,
-   193
+   194
   ],
   "branch_birch#6": [
    6,
-   193
+   194
   ],
   "branch_birch#7": [
    7,
-   193
+   194
   ],
   "branch_birch#8": [
    8,
-   193
+   194
   ],
   "branch_birch#9": [
    9,
-   193
+   194
   ],
   "branch_birch#10": [
    10,
-   193
+   194
   ],
   "branch_birch#11": [
    11,
-   193
+   194
   ],
   "branch_birch#12": [
    12,
-   193
+   194
   ],
   "branch_birch#13": [
    13,
-   193
+   194
   ],
   "branch_birch#14": [
    14,
-   193
+   194
   ],
   "branch_birch#15": [
    15,
-   193
+   194
   ],
   "leaves_birch#0": [
    0,
-   194
+   195
   ],
   "leaves_birch#1": [
    1,
-   194
+   195
   ],
   "leaves_birch#2": [
    2,
-   194
+   195
   ],
   "leaves_birch#3": [
    3,
-   194
+   195
   ],
   "leaves_birch#4": [
    4,
-   194
+   195
   ],
   "leaves_birch#5": [
    5,
-   194
+   195
   ],
   "leaves_birch#6": [
    6,
-   194
+   195
   ],
   "leaves_birch#7": [
    7,
-   194
+   195
   ],
   "leaves_birch#8": [
    8,
-   194
+   195
   ],
   "leaves_birch#9": [
    9,
-   194
+   195
   ],
   "leaves_birch#10": [
    10,
-   194
+   195
   ],
   "leaves_birch#11": [
    11,
-   194
+   195
   ],
   "leaves_birch#12": [
    12,
-   194
+   195
   ],
   "leaves_birch#13": [
    13,
-   194
+   195
   ],
   "leaves_birch#14": [
    14,
-   194
+   195
   ],
   "leaves_birch#15": [
    15,
-   194
+   195
   ],
   "trunk_palm": [
    0,
-   195
+   196
   ],
   "trunk2_palm#1": [
    0,
-   196
+   197
   ],
   "trunk2_palm#2": [
    1,
-   196
+   197
   ],
   "trunk2_palm#4": [
    2,
-   196
+   197
   ],
   "trunk2_palm#8": [
    3,
-   196
+   197
   ],
   "roots_palm#1": [
    0,
-   197
+   198
   ],
   "roots_palm#2": [
    1,
-   197
+   198
   ],
   "roots_palm#4": [
    2,
-   197
+   198
   ],
   "roots_palm#8": [
    3,
-   197
+   198
   ],
   "branch_palm#0": [
    0,
-   198
+   199
   ],
   "branch_palm#1": [
    1,
-   198
+   199
   ],
   "branch_palm#2": [
    2,
-   198
+   199
   ],
   "branch_palm#3": [
    3,
-   198
+   199
   ],
   "branch_palm#4": [
    4,
-   198
+   199
   ],
   "branch_palm#5": [
    5,
-   198
+   199
   ],
   "branch_palm#6": [
    6,
-   198
+   199
   ],
   "branch_palm#7": [
    7,
-   198
+   199
   ],
   "branch_palm#8": [
    8,
-   198
+   199
   ],
   "branch_palm#9": [
    9,
-   198
+   199
   ],
   "branch_palm#10": [
    10,
-   198
+   199
   ],
   "branch_palm#11": [
    11,
-   198
+   199
   ],
   "branch_palm#12": [
    12,
-   198
+   199
   ],
   "branch_palm#13": [
    13,
-   198
+   199
   ],
   "branch_palm#14": [
    14,
-   198
+   199
   ],
   "branch_palm#15": [
    15,
-   198
+   199
   ],
   "leaves_palm#0": [
    0,
-   199
+   200
   ],
   "leaves_palm#1": [
    1,
-   199
+   200
   ],
   "leaves_palm#2": [
    2,
-   199
+   200
   ],
   "leaves_palm#3": [
    3,
-   199
+   200
   ],
   "leaves_palm#4": [
    4,
-   199
+   200
   ],
   "leaves_palm#5": [
    5,
-   199
+   200
   ],
   "leaves_palm#6": [
    6,
-   199
+   200
   ],
   "leaves_palm#7": [
    7,
-   199
+   200
   ],
   "leaves_palm#8": [
    8,
-   199
+   200
   ],
   "leaves_palm#9": [
    9,
-   199
+   200
   ],
   "leaves_palm#10": [
    10,
-   199
+   200
   ],
   "leaves_palm#11": [
    11,
-   199
+   200
   ],
   "leaves_palm#12": [
    12,
-   199
+   200
   ],
   "leaves_palm#13": [
    13,
-   199
+   200
   ],
   "leaves_palm#14": [
    14,
-   199
+   200
   ],
   "leaves_palm#15": [
    15,
-   199
+   200
   ],
   "trunk_jungle": [
    0,
-   200
+   201
   ],
   "trunk2_jungle#1": [
    0,
-   201
+   202
   ],
   "trunk2_jungle#2": [
    1,
-   201
+   202
   ],
   "trunk2_jungle#4": [
    2,
-   201
+   202
   ],
   "trunk2_jungle#8": [
    3,
-   201
+   202
   ],
   "roots_jungle#1": [
    0,
-   202
+   203
   ],
   "roots_jungle#2": [
    1,
-   202
+   203
   ],
   "roots_jungle#4": [
    2,
-   202
+   203
   ],
   "roots_jungle#8": [
    3,
-   202
+   203
   ],
   "branch_jungle#0": [
    0,
-   203
+   204
   ],
   "branch_jungle#1": [
    1,
-   203
+   204
   ],
   "branch_jungle#2": [
    2,
-   203
+   204
   ],
   "branch_jungle#3": [
    3,
-   203
+   204
   ],
   "branch_jungle#4": [
    4,
-   203
+   204
   ],
   "branch_jungle#5": [
    5,
-   203
+   204
   ],
   "branch_jungle#6": [
    6,
-   203
+   204
   ],
   "branch_jungle#7": [
    7,
-   203
+   204
   ],
   "branch_jungle#8": [
    8,
-   203
+   204
   ],
   "branch_jungle#9": [
    9,
-   203
+   204
   ],
   "branch_jungle#10": [
    10,
-   203
+   204
   ],
   "branch_jungle#11": [
    11,
-   203
+   204
   ],
   "branch_jungle#12": [
    12,
-   203
+   204
   ],
   "branch_jungle#13": [
    13,
-   203
+   204
   ],
   "branch_jungle#14": [
    14,
-   203
+   204
   ],
   "branch_jungle#15": [
    15,
-   203
+   204
   ],
   "leaves_jungle#0": [
    0,
-   204
+   205
   ],
   "leaves_jungle#1": [
    1,
-   204
+   205
   ],
   "leaves_jungle#2": [
    2,
-   204
+   205
   ],
   "leaves_jungle#3": [
    3,
-   204
+   205
   ],
   "leaves_jungle#4": [
    4,
-   204
+   205
   ],
   "leaves_jungle#5": [
    5,
-   204
+   205
   ],
   "leaves_jungle#6": [
    6,
-   204
+   205
   ],
   "leaves_jungle#7": [
    7,
-   204
+   205
   ],
   "leaves_jungle#8": [
    8,
-   204
+   205
   ],
   "leaves_jungle#9": [
    9,
-   204
+   205
   ],
   "leaves_jungle#10": [
    10,
-   204
+   205
   ],
   "leaves_jungle#11": [
    11,
-   204
+   205
   ],
   "leaves_jungle#12": [
    12,
-   204
+   205
   ],
   "leaves_jungle#13": [
    13,
-   204
+   205
   ],
   "leaves_jungle#14": [
    14,
-   204
+   205
   ],
   "leaves_jungle#15": [
    15,
-   204
+   205
   ],
   "trunk_mangrove": [
    0,
-   205
+   206
   ],
   "trunk2_mangrove#1": [
    0,
-   206
+   207
   ],
   "trunk2_mangrove#2": [
    1,
-   206
+   207
   ],
   "trunk2_mangrove#4": [
    2,
-   206
+   207
   ],
   "trunk2_mangrove#8": [
    3,
-   206
+   207
   ],
   "roots_mangrove#1": [
    0,
-   207
+   208
   ],
   "roots_mangrove#2": [
    1,
-   207
+   208
   ],
   "roots_mangrove#4": [
    2,
-   207
+   208
   ],
   "roots_mangrove#8": [
    3,
-   207
+   208
   ],
   "branch_mangrove#0": [
    0,
-   208
+   209
   ],
   "branch_mangrove#1": [
    1,
-   208
+   209
   ],
   "branch_mangrove#2": [
    2,
-   208
+   209
   ],
   "branch_mangrove#3": [
    3,
-   208
+   209
   ],
   "branch_mangrove#4": [
    4,
-   208
+   209
   ],
   "branch_mangrove#5": [
    5,
-   208
+   209
   ],
   "branch_mangrove#6": [
    6,
-   208
+   209
   ],
   "branch_mangrove#7": [
    7,
-   208
+   209
   ],
   "branch_mangrove#8": [
    8,
-   208
+   209
   ],
   "branch_mangrove#9": [
    9,
-   208
+   209
   ],
   "branch_mangrove#10": [
    10,
-   208
+   209
   ],
   "branch_mangrove#11": [
    11,
-   208
+   209
   ],
   "branch_mangrove#12": [
    12,
-   208
+   209
   ],
   "branch_mangrove#13": [
    13,
-   208
+   209
   ],
   "branch_mangrove#14": [
    14,
-   208
+   209
   ],
   "branch_mangrove#15": [
    15,
-   208
+   209
   ],
   "leaves_mangrove#0": [
    0,
-   209
+   210
   ],
   "leaves_mangrove#1": [
    1,
-   209
+   210
   ],
   "leaves_mangrove#2": [
    2,
-   209
+   210
   ],
   "leaves_mangrove#3": [
    3,
-   209
+   210
   ],
   "leaves_mangrove#4": [
    4,
-   209
+   210
   ],
   "leaves_mangrove#5": [
    5,
-   209
+   210
   ],
   "leaves_mangrove#6": [
    6,
-   209
+   210
   ],
   "leaves_mangrove#7": [
    7,
-   209
+   210
   ],
   "leaves_mangrove#8": [
    8,
-   209
+   210
   ],
   "leaves_mangrove#9": [
    9,
-   209
+   210
   ],
   "leaves_mangrove#10": [
    10,
-   209
+   210
   ],
   "leaves_mangrove#11": [
    11,
-   209
+   210
   ],
   "leaves_mangrove#12": [
    12,
-   209
+   210
   ],
   "leaves_mangrove#13": [
    13,
-   209
+   210
   ],
   "leaves_mangrove#14": [
    14,
-   209
+   210
   ],
   "leaves_mangrove#15": [
    15,
-   209
+   210
   ],
   "trunk_dead": [
    0,
-   210
+   211
   ],
   "trunk2_dead#1": [
    0,
-   211
+   212
   ],
   "trunk2_dead#2": [
    1,
-   211
+   212
   ],
   "trunk2_dead#4": [
    2,
-   211
+   212
   ],
   "trunk2_dead#8": [
    3,
-   211
+   212
   ],
   "roots_dead#1": [
    0,
-   212
+   213
   ],
   "roots_dead#2": [
    1,
-   212
+   213
   ],
   "roots_dead#4": [
    2,
-   212
+   213
   ],
   "roots_dead#8": [
    3,
-   212
+   213
   ],
   "branch_dead#0": [
    0,
-   213
+   214
   ],
   "branch_dead#1": [
    1,
-   213
+   214
   ],
   "branch_dead#2": [
    2,
-   213
+   214
   ],
   "branch_dead#3": [
    3,
-   213
+   214
   ],
   "branch_dead#4": [
    4,
-   213
+   214
   ],
   "branch_dead#5": [
    5,
-   213
+   214
   ],
   "branch_dead#6": [
    6,
-   213
+   214
   ],
   "branch_dead#7": [
    7,
-   213
+   214
   ],
   "branch_dead#8": [
    8,
-   213
+   214
   ],
   "branch_dead#9": [
    9,
-   213
+   214
   ],
   "branch_dead#10": [
    10,
-   213
+   214
   ],
   "branch_dead#11": [
    11,
-   213
+   214
   ],
   "branch_dead#12": [
    12,
-   213
+   214
   ],
   "branch_dead#13": [
    13,
-   213
+   214
   ],
   "branch_dead#14": [
    14,
-   213
+   214
   ],
   "branch_dead#15": [
    15,
-   213
+   214
   ],
   "leaves_dead#0": [
    0,
-   214
+   215
   ],
   "leaves_dead#1": [
    1,
-   214
+   215
   ],
   "leaves_dead#2": [
    2,
-   214
+   215
   ],
   "leaves_dead#3": [
    3,
-   214
+   215
   ],
   "leaves_dead#4": [
    4,
-   214
+   215
   ],
   "leaves_dead#5": [
    5,
-   214
+   215
   ],
   "leaves_dead#6": [
    6,
-   214
+   215
   ],
   "leaves_dead#7": [
    7,
-   214
+   215
   ],
   "leaves_dead#8": [
    8,
-   214
+   215
   ],
   "leaves_dead#9": [
    9,
-   214
+   215
   ],
   "leaves_dead#10": [
    10,
-   214
+   215
   ],
   "leaves_dead#11": [
    11,
-   214
+   215
   ],
   "leaves_dead#12": [
    12,
-   214
+   215
   ],
   "leaves_dead#13": [
    13,
-   214
+   215
   ],
   "leaves_dead#14": [
    14,
-   214
+   215
   ],
   "leaves_dead#15": [
    15,
-   214
+   215
   ],
-  "person_n": [
+  "body_human_m_n": [
    0,
-   215
+   216
   ],
-  "person_e": [
+  "body_human_m_e": [
    1,
-   215
+   216
   ],
-  "person_s": [
+  "body_human_m_s": [
    2,
-   215
+   216
   ],
-  "person_w": [
+  "body_human_m_w": [
    3,
-   215
+   216
   ],
-  "person_walk_n": {
+  "body_human_m_walk_n": {
    "at": [
     [
-     0,
+     4,
      216
     ],
     [
-     1,
+     5,
      216
     ],
     [
-     2,
-     216
-    ],
-    [
-     3,
+     6,
      216
     ]
    ],
    "ms": 70
   },
-  "person_walk_e": {
+  "body_human_m_walk_e": {
    "at": [
     [
-     0,
+     7,
+     216
+    ],
+    [
+     8,
+     216
+    ],
+    [
+     9,
+     216
+    ]
+   ],
+   "ms": 70
+  },
+  "body_human_m_walk_s": {
+   "at": [
+    [
+     10,
+     216
+    ],
+    [
+     11,
+     216
+    ],
+    [
+     12,
+     216
+    ]
+   ],
+   "ms": 70
+  },
+  "body_human_m_walk_w": {
+   "at": [
+    [
+     13,
+     216
+    ],
+    [
+     14,
+     216
+    ],
+    [
+     15,
+     216
+    ]
+   ],
+   "ms": 70
+  },
+  "body_human_f_n": [
+   0,
+   217
+  ],
+  "body_human_f_e": [
+   1,
+   217
+  ],
+  "body_human_f_s": [
+   2,
+   217
+  ],
+  "body_human_f_w": [
+   3,
+   217
+  ],
+  "body_human_f_walk_n": {
+   "at": [
+    [
+     4,
      217
     ],
     [
-     1,
+     5,
      217
     ],
     [
-     2,
-     217
-    ],
-    [
-     3,
+     6,
      217
     ]
    ],
    "ms": 70
   },
-  "person_walk_s": {
+  "body_human_f_walk_e": {
    "at": [
     [
-     0,
+     7,
+     217
+    ],
+    [
+     8,
+     217
+    ],
+    [
+     9,
+     217
+    ]
+   ],
+   "ms": 70
+  },
+  "body_human_f_walk_s": {
+   "at": [
+    [
+     10,
+     217
+    ],
+    [
+     11,
+     217
+    ],
+    [
+     12,
+     217
+    ]
+   ],
+   "ms": 70
+  },
+  "body_human_f_walk_w": {
+   "at": [
+    [
+     13,
+     217
+    ],
+    [
+     14,
+     217
+    ],
+    [
+     15,
+     217
+    ]
+   ],
+   "ms": 70
+  },
+  "body_elf_m_n": [
+   0,
+   218
+  ],
+  "body_elf_m_e": [
+   1,
+   218
+  ],
+  "body_elf_m_s": [
+   2,
+   218
+  ],
+  "body_elf_m_w": [
+   3,
+   218
+  ],
+  "body_elf_m_walk_n": {
+   "at": [
+    [
+     4,
      218
     ],
     [
-     1,
+     5,
      218
     ],
     [
-     2,
-     218
-    ],
-    [
-     3,
+     6,
      218
     ]
    ],
    "ms": 70
   },
-  "person_walk_w": {
+  "body_elf_m_walk_e": {
    "at": [
     [
-     0,
+     7,
+     218
+    ],
+    [
+     8,
+     218
+    ],
+    [
+     9,
+     218
+    ]
+   ],
+   "ms": 70
+  },
+  "body_elf_m_walk_s": {
+   "at": [
+    [
+     10,
+     218
+    ],
+    [
+     11,
+     218
+    ],
+    [
+     12,
+     218
+    ]
+   ],
+   "ms": 70
+  },
+  "body_elf_m_walk_w": {
+   "at": [
+    [
+     13,
+     218
+    ],
+    [
+     14,
+     218
+    ],
+    [
+     15,
+     218
+    ]
+   ],
+   "ms": 70
+  },
+  "body_elf_f_n": [
+   0,
+   219
+  ],
+  "body_elf_f_e": [
+   1,
+   219
+  ],
+  "body_elf_f_s": [
+   2,
+   219
+  ],
+  "body_elf_f_w": [
+   3,
+   219
+  ],
+  "body_elf_f_walk_n": {
+   "at": [
+    [
+     4,
      219
     ],
     [
-     1,
+     5,
      219
     ],
     [
-     2,
+     6,
+     219
+    ]
+   ],
+   "ms": 70
+  },
+  "body_elf_f_walk_e": {
+   "at": [
+    [
+     7,
      219
     ],
     [
-     3,
+     8,
      219
+    ],
+    [
+     9,
+     219
+    ]
+   ],
+   "ms": 70
+  },
+  "body_elf_f_walk_s": {
+   "at": [
+    [
+     10,
+     219
+    ],
+    [
+     11,
+     219
+    ],
+    [
+     12,
+     219
+    ]
+   ],
+   "ms": 70
+  },
+  "body_elf_f_walk_w": {
+   "at": [
+    [
+     13,
+     219
+    ],
+    [
+     14,
+     219
+    ],
+    [
+     15,
+     219
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_m_n": [
+   0,
+   220
+  ],
+  "body_dwarf_m_e": [
+   1,
+   220
+  ],
+  "body_dwarf_m_s": [
+   2,
+   220
+  ],
+  "body_dwarf_m_w": [
+   3,
+   220
+  ],
+  "body_dwarf_m_walk_n": {
+   "at": [
+    [
+     4,
+     220
+    ],
+    [
+     5,
+     220
+    ],
+    [
+     6,
+     220
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_m_walk_e": {
+   "at": [
+    [
+     7,
+     220
+    ],
+    [
+     8,
+     220
+    ],
+    [
+     9,
+     220
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_m_walk_s": {
+   "at": [
+    [
+     10,
+     220
+    ],
+    [
+     11,
+     220
+    ],
+    [
+     12,
+     220
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_m_walk_w": {
+   "at": [
+    [
+     13,
+     220
+    ],
+    [
+     14,
+     220
+    ],
+    [
+     15,
+     220
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_f_n": [
+   0,
+   221
+  ],
+  "body_dwarf_f_e": [
+   1,
+   221
+  ],
+  "body_dwarf_f_s": [
+   2,
+   221
+  ],
+  "body_dwarf_f_w": [
+   3,
+   221
+  ],
+  "body_dwarf_f_walk_n": {
+   "at": [
+    [
+     4,
+     221
+    ],
+    [
+     5,
+     221
+    ],
+    [
+     6,
+     221
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_f_walk_e": {
+   "at": [
+    [
+     7,
+     221
+    ],
+    [
+     8,
+     221
+    ],
+    [
+     9,
+     221
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_f_walk_s": {
+   "at": [
+    [
+     10,
+     221
+    ],
+    [
+     11,
+     221
+    ],
+    [
+     12,
+     221
+    ]
+   ],
+   "ms": 70
+  },
+  "body_dwarf_f_walk_w": {
+   "at": [
+    [
+     13,
+     221
+    ],
+    [
+     14,
+     221
+    ],
+    [
+     15,
+     221
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_m_n": [
+   0,
+   222
+  ],
+  "body_halfling_m_e": [
+   1,
+   222
+  ],
+  "body_halfling_m_s": [
+   2,
+   222
+  ],
+  "body_halfling_m_w": [
+   3,
+   222
+  ],
+  "body_halfling_m_walk_n": {
+   "at": [
+    [
+     4,
+     222
+    ],
+    [
+     5,
+     222
+    ],
+    [
+     6,
+     222
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_m_walk_e": {
+   "at": [
+    [
+     7,
+     222
+    ],
+    [
+     8,
+     222
+    ],
+    [
+     9,
+     222
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_m_walk_s": {
+   "at": [
+    [
+     10,
+     222
+    ],
+    [
+     11,
+     222
+    ],
+    [
+     12,
+     222
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_m_walk_w": {
+   "at": [
+    [
+     13,
+     222
+    ],
+    [
+     14,
+     222
+    ],
+    [
+     15,
+     222
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_f_n": [
+   0,
+   223
+  ],
+  "body_halfling_f_e": [
+   1,
+   223
+  ],
+  "body_halfling_f_s": [
+   2,
+   223
+  ],
+  "body_halfling_f_w": [
+   3,
+   223
+  ],
+  "body_halfling_f_walk_n": {
+   "at": [
+    [
+     4,
+     223
+    ],
+    [
+     5,
+     223
+    ],
+    [
+     6,
+     223
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_f_walk_e": {
+   "at": [
+    [
+     7,
+     223
+    ],
+    [
+     8,
+     223
+    ],
+    [
+     9,
+     223
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_f_walk_s": {
+   "at": [
+    [
+     10,
+     223
+    ],
+    [
+     11,
+     223
+    ],
+    [
+     12,
+     223
+    ]
+   ],
+   "ms": 70
+  },
+  "body_halfling_f_walk_w": {
+   "at": [
+    [
+     13,
+     223
+    ],
+    [
+     14,
+     223
+    ],
+    [
+     15,
+     223
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_m_n": [
+   0,
+   224
+  ],
+  "body_orc_m_e": [
+   1,
+   224
+  ],
+  "body_orc_m_s": [
+   2,
+   224
+  ],
+  "body_orc_m_w": [
+   3,
+   224
+  ],
+  "body_orc_m_walk_n": {
+   "at": [
+    [
+     4,
+     224
+    ],
+    [
+     5,
+     224
+    ],
+    [
+     6,
+     224
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_m_walk_e": {
+   "at": [
+    [
+     7,
+     224
+    ],
+    [
+     8,
+     224
+    ],
+    [
+     9,
+     224
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_m_walk_s": {
+   "at": [
+    [
+     10,
+     224
+    ],
+    [
+     11,
+     224
+    ],
+    [
+     12,
+     224
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_m_walk_w": {
+   "at": [
+    [
+     13,
+     224
+    ],
+    [
+     14,
+     224
+    ],
+    [
+     15,
+     224
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_f_n": [
+   0,
+   225
+  ],
+  "body_orc_f_e": [
+   1,
+   225
+  ],
+  "body_orc_f_s": [
+   2,
+   225
+  ],
+  "body_orc_f_w": [
+   3,
+   225
+  ],
+  "body_orc_f_walk_n": {
+   "at": [
+    [
+     4,
+     225
+    ],
+    [
+     5,
+     225
+    ],
+    [
+     6,
+     225
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_f_walk_e": {
+   "at": [
+    [
+     7,
+     225
+    ],
+    [
+     8,
+     225
+    ],
+    [
+     9,
+     225
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_f_walk_s": {
+   "at": [
+    [
+     10,
+     225
+    ],
+    [
+     11,
+     225
+    ],
+    [
+     12,
+     225
+    ]
+   ],
+   "ms": 70
+  },
+  "body_orc_f_walk_w": {
+   "at": [
+    [
+     13,
+     225
+    ],
+    [
+     14,
+     225
+    ],
+    [
+     15,
+     225
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_m_n": [
+   0,
+   226
+  ],
+  "body_lizard_m_e": [
+   1,
+   226
+  ],
+  "body_lizard_m_s": [
+   2,
+   226
+  ],
+  "body_lizard_m_w": [
+   3,
+   226
+  ],
+  "body_lizard_m_walk_n": {
+   "at": [
+    [
+     4,
+     226
+    ],
+    [
+     5,
+     226
+    ],
+    [
+     6,
+     226
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_m_walk_e": {
+   "at": [
+    [
+     7,
+     226
+    ],
+    [
+     8,
+     226
+    ],
+    [
+     9,
+     226
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_m_walk_s": {
+   "at": [
+    [
+     10,
+     226
+    ],
+    [
+     11,
+     226
+    ],
+    [
+     12,
+     226
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_m_walk_w": {
+   "at": [
+    [
+     13,
+     226
+    ],
+    [
+     14,
+     226
+    ],
+    [
+     15,
+     226
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_f_n": [
+   0,
+   227
+  ],
+  "body_lizard_f_e": [
+   1,
+   227
+  ],
+  "body_lizard_f_s": [
+   2,
+   227
+  ],
+  "body_lizard_f_w": [
+   3,
+   227
+  ],
+  "body_lizard_f_walk_n": {
+   "at": [
+    [
+     4,
+     227
+    ],
+    [
+     5,
+     227
+    ],
+    [
+     6,
+     227
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_f_walk_e": {
+   "at": [
+    [
+     7,
+     227
+    ],
+    [
+     8,
+     227
+    ],
+    [
+     9,
+     227
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_f_walk_s": {
+   "at": [
+    [
+     10,
+     227
+    ],
+    [
+     11,
+     227
+    ],
+    [
+     12,
+     227
+    ]
+   ],
+   "ms": 70
+  },
+  "body_lizard_f_walk_w": {
+   "at": [
+    [
+     13,
+     227
+    ],
+    [
+     14,
+     227
+    ],
+    [
+     15,
+     227
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_m_n": [
+   0,
+   228
+  ],
+  "body_gnome_m_e": [
+   1,
+   228
+  ],
+  "body_gnome_m_s": [
+   2,
+   228
+  ],
+  "body_gnome_m_w": [
+   3,
+   228
+  ],
+  "body_gnome_m_walk_n": {
+   "at": [
+    [
+     4,
+     228
+    ],
+    [
+     5,
+     228
+    ],
+    [
+     6,
+     228
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_m_walk_e": {
+   "at": [
+    [
+     7,
+     228
+    ],
+    [
+     8,
+     228
+    ],
+    [
+     9,
+     228
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_m_walk_s": {
+   "at": [
+    [
+     10,
+     228
+    ],
+    [
+     11,
+     228
+    ],
+    [
+     12,
+     228
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_m_walk_w": {
+   "at": [
+    [
+     13,
+     228
+    ],
+    [
+     14,
+     228
+    ],
+    [
+     15,
+     228
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_f_n": [
+   0,
+   229
+  ],
+  "body_gnome_f_e": [
+   1,
+   229
+  ],
+  "body_gnome_f_s": [
+   2,
+   229
+  ],
+  "body_gnome_f_w": [
+   3,
+   229
+  ],
+  "body_gnome_f_walk_n": {
+   "at": [
+    [
+     4,
+     229
+    ],
+    [
+     5,
+     229
+    ],
+    [
+     6,
+     229
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_f_walk_e": {
+   "at": [
+    [
+     7,
+     229
+    ],
+    [
+     8,
+     229
+    ],
+    [
+     9,
+     229
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_f_walk_s": {
+   "at": [
+    [
+     10,
+     229
+    ],
+    [
+     11,
+     229
+    ],
+    [
+     12,
+     229
+    ]
+   ],
+   "ms": 70
+  },
+  "body_gnome_f_walk_w": {
+   "at": [
+    [
+     13,
+     229
+    ],
+    [
+     14,
+     229
+    ],
+    [
+     15,
+     229
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_m_n": [
+   0,
+   230
+  ],
+  "body_fungus_m_e": [
+   1,
+   230
+  ],
+  "body_fungus_m_s": [
+   2,
+   230
+  ],
+  "body_fungus_m_w": [
+   3,
+   230
+  ],
+  "body_fungus_m_walk_n": {
+   "at": [
+    [
+     4,
+     230
+    ],
+    [
+     5,
+     230
+    ],
+    [
+     6,
+     230
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_m_walk_e": {
+   "at": [
+    [
+     7,
+     230
+    ],
+    [
+     8,
+     230
+    ],
+    [
+     9,
+     230
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_m_walk_s": {
+   "at": [
+    [
+     10,
+     230
+    ],
+    [
+     11,
+     230
+    ],
+    [
+     12,
+     230
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_m_walk_w": {
+   "at": [
+    [
+     13,
+     230
+    ],
+    [
+     14,
+     230
+    ],
+    [
+     15,
+     230
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_f_n": [
+   0,
+   231
+  ],
+  "body_fungus_f_e": [
+   1,
+   231
+  ],
+  "body_fungus_f_s": [
+   2,
+   231
+  ],
+  "body_fungus_f_w": [
+   3,
+   231
+  ],
+  "body_fungus_f_walk_n": {
+   "at": [
+    [
+     4,
+     231
+    ],
+    [
+     5,
+     231
+    ],
+    [
+     6,
+     231
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_f_walk_e": {
+   "at": [
+    [
+     7,
+     231
+    ],
+    [
+     8,
+     231
+    ],
+    [
+     9,
+     231
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_f_walk_s": {
+   "at": [
+    [
+     10,
+     231
+    ],
+    [
+     11,
+     231
+    ],
+    [
+     12,
+     231
+    ]
+   ],
+   "ms": 70
+  },
+  "body_fungus_f_walk_w": {
+   "at": [
+    [
+     13,
+     231
+    ],
+    [
+     14,
+     231
+    ],
+    [
+     15,
+     231
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_short_n": [
+   0,
+   232
+  ],
+  "hair_short_e": [
+   1,
+   232
+  ],
+  "hair_short_s": [
+   2,
+   232
+  ],
+  "hair_short_w": [
+   3,
+   232
+  ],
+  "hair_short_walk_n": {
+   "at": [
+    [
+     4,
+     232
+    ],
+    [
+     5,
+     232
+    ],
+    [
+     6,
+     232
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_short_walk_e": {
+   "at": [
+    [
+     7,
+     232
+    ],
+    [
+     8,
+     232
+    ],
+    [
+     9,
+     232
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_short_walk_s": {
+   "at": [
+    [
+     10,
+     232
+    ],
+    [
+     11,
+     232
+    ],
+    [
+     12,
+     232
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_short_walk_w": {
+   "at": [
+    [
+     13,
+     232
+    ],
+    [
+     14,
+     232
+    ],
+    [
+     15,
+     232
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_long_n": [
+   0,
+   233
+  ],
+  "hair_long_e": [
+   1,
+   233
+  ],
+  "hair_long_s": [
+   2,
+   233
+  ],
+  "hair_long_w": [
+   3,
+   233
+  ],
+  "hair_long_walk_n": {
+   "at": [
+    [
+     4,
+     233
+    ],
+    [
+     5,
+     233
+    ],
+    [
+     6,
+     233
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_long_walk_e": {
+   "at": [
+    [
+     7,
+     233
+    ],
+    [
+     8,
+     233
+    ],
+    [
+     9,
+     233
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_long_walk_s": {
+   "at": [
+    [
+     10,
+     233
+    ],
+    [
+     11,
+     233
+    ],
+    [
+     12,
+     233
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_long_walk_w": {
+   "at": [
+    [
+     13,
+     233
+    ],
+    [
+     14,
+     233
+    ],
+    [
+     15,
+     233
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_braids_n": [
+   0,
+   234
+  ],
+  "hair_braids_e": [
+   1,
+   234
+  ],
+  "hair_braids_s": [
+   2,
+   234
+  ],
+  "hair_braids_w": [
+   3,
+   234
+  ],
+  "hair_braids_walk_n": {
+   "at": [
+    [
+     4,
+     234
+    ],
+    [
+     5,
+     234
+    ],
+    [
+     6,
+     234
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_braids_walk_e": {
+   "at": [
+    [
+     7,
+     234
+    ],
+    [
+     8,
+     234
+    ],
+    [
+     9,
+     234
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_braids_walk_s": {
+   "at": [
+    [
+     10,
+     234
+    ],
+    [
+     11,
+     234
+    ],
+    [
+     12,
+     234
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_braids_walk_w": {
+   "at": [
+    [
+     13,
+     234
+    ],
+    [
+     14,
+     234
+    ],
+    [
+     15,
+     234
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_topknot_n": [
+   0,
+   235
+  ],
+  "hair_topknot_e": [
+   1,
+   235
+  ],
+  "hair_topknot_s": [
+   2,
+   235
+  ],
+  "hair_topknot_w": [
+   3,
+   235
+  ],
+  "hair_topknot_walk_n": {
+   "at": [
+    [
+     4,
+     235
+    ],
+    [
+     5,
+     235
+    ],
+    [
+     6,
+     235
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_topknot_walk_e": {
+   "at": [
+    [
+     7,
+     235
+    ],
+    [
+     8,
+     235
+    ],
+    [
+     9,
+     235
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_topknot_walk_s": {
+   "at": [
+    [
+     10,
+     235
+    ],
+    [
+     11,
+     235
+    ],
+    [
+     12,
+     235
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_topknot_walk_w": {
+   "at": [
+    [
+     13,
+     235
+    ],
+    [
+     14,
+     235
+    ],
+    [
+     15,
+     235
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_shaved_n": [
+   0,
+   236
+  ],
+  "hair_shaved_e": [
+   1,
+   236
+  ],
+  "hair_shaved_s": [
+   2,
+   236
+  ],
+  "hair_shaved_w": [
+   3,
+   236
+  ],
+  "hair_shaved_walk_n": {
+   "at": [
+    [
+     4,
+     236
+    ],
+    [
+     5,
+     236
+    ],
+    [
+     6,
+     236
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_shaved_walk_e": {
+   "at": [
+    [
+     7,
+     236
+    ],
+    [
+     8,
+     236
+    ],
+    [
+     9,
+     236
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_shaved_walk_s": {
+   "at": [
+    [
+     10,
+     236
+    ],
+    [
+     11,
+     236
+    ],
+    [
+     12,
+     236
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_shaved_walk_w": {
+   "at": [
+    [
+     13,
+     236
+    ],
+    [
+     14,
+     236
+    ],
+    [
+     15,
+     236
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_crest_n": [
+   0,
+   237
+  ],
+  "hair_crest_e": [
+   1,
+   237
+  ],
+  "hair_crest_s": [
+   2,
+   237
+  ],
+  "hair_crest_w": [
+   3,
+   237
+  ],
+  "hair_crest_walk_n": {
+   "at": [
+    [
+     4,
+     237
+    ],
+    [
+     5,
+     237
+    ],
+    [
+     6,
+     237
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_crest_walk_e": {
+   "at": [
+    [
+     7,
+     237
+    ],
+    [
+     8,
+     237
+    ],
+    [
+     9,
+     237
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_crest_walk_s": {
+   "at": [
+    [
+     10,
+     237
+    ],
+    [
+     11,
+     237
+    ],
+    [
+     12,
+     237
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_crest_walk_w": {
+   "at": [
+    [
+     13,
+     237
+    ],
+    [
+     14,
+     237
+    ],
+    [
+     15,
+     237
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_bun_n": [
+   0,
+   238
+  ],
+  "hair_bun_e": [
+   1,
+   238
+  ],
+  "hair_bun_s": [
+   2,
+   238
+  ],
+  "hair_bun_w": [
+   3,
+   238
+  ],
+  "hair_bun_walk_n": {
+   "at": [
+    [
+     4,
+     238
+    ],
+    [
+     5,
+     238
+    ],
+    [
+     6,
+     238
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_bun_walk_e": {
+   "at": [
+    [
+     7,
+     238
+    ],
+    [
+     8,
+     238
+    ],
+    [
+     9,
+     238
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_bun_walk_s": {
+   "at": [
+    [
+     10,
+     238
+    ],
+    [
+     11,
+     238
+    ],
+    [
+     12,
+     238
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_bun_walk_w": {
+   "at": [
+    [
+     13,
+     238
+    ],
+    [
+     14,
+     238
+    ],
+    [
+     15,
+     238
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_curly_n": [
+   0,
+   239
+  ],
+  "hair_curly_e": [
+   1,
+   239
+  ],
+  "hair_curly_s": [
+   2,
+   239
+  ],
+  "hair_curly_w": [
+   3,
+   239
+  ],
+  "hair_curly_walk_n": {
+   "at": [
+    [
+     4,
+     239
+    ],
+    [
+     5,
+     239
+    ],
+    [
+     6,
+     239
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_curly_walk_e": {
+   "at": [
+    [
+     7,
+     239
+    ],
+    [
+     8,
+     239
+    ],
+    [
+     9,
+     239
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_curly_walk_s": {
+   "at": [
+    [
+     10,
+     239
+    ],
+    [
+     11,
+     239
+    ],
+    [
+     12,
+     239
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_curly_walk_w": {
+   "at": [
+    [
+     13,
+     239
+    ],
+    [
+     14,
+     239
+    ],
+    [
+     15,
+     239
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_tied_n": [
+   0,
+   240
+  ],
+  "hair_tied_e": [
+   1,
+   240
+  ],
+  "hair_tied_s": [
+   2,
+   240
+  ],
+  "hair_tied_w": [
+   3,
+   240
+  ],
+  "hair_tied_walk_n": {
+   "at": [
+    [
+     4,
+     240
+    ],
+    [
+     5,
+     240
+    ],
+    [
+     6,
+     240
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_tied_walk_e": {
+   "at": [
+    [
+     7,
+     240
+    ],
+    [
+     8,
+     240
+    ],
+    [
+     9,
+     240
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_tied_walk_s": {
+   "at": [
+    [
+     10,
+     240
+    ],
+    [
+     11,
+     240
+    ],
+    [
+     12,
+     240
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_tied_walk_w": {
+   "at": [
+    [
+     13,
+     240
+    ],
+    [
+     14,
+     240
+    ],
+    [
+     15,
+     240
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_loose_n": [
+   0,
+   241
+  ],
+  "hair_loose_e": [
+   1,
+   241
+  ],
+  "hair_loose_s": [
+   2,
+   241
+  ],
+  "hair_loose_w": [
+   3,
+   241
+  ],
+  "hair_loose_walk_n": {
+   "at": [
+    [
+     4,
+     241
+    ],
+    [
+     5,
+     241
+    ],
+    [
+     6,
+     241
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_loose_walk_e": {
+   "at": [
+    [
+     7,
+     241
+    ],
+    [
+     8,
+     241
+    ],
+    [
+     9,
+     241
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_loose_walk_s": {
+   "at": [
+    [
+     10,
+     241
+    ],
+    [
+     11,
+     241
+    ],
+    [
+     12,
+     241
+    ]
+   ],
+   "ms": 70
+  },
+  "hair_loose_walk_w": {
+   "at": [
+    [
+     13,
+     241
+    ],
+    [
+     14,
+     241
+    ],
+    [
+     15,
+     241
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_short_n": [
+   0,
+   242
+  ],
+  "beard_short_e": [
+   1,
+   242
+  ],
+  "beard_short_s": [
+   2,
+   242
+  ],
+  "beard_short_w": [
+   3,
+   242
+  ],
+  "beard_short_walk_n": {
+   "at": [
+    [
+     4,
+     242
+    ],
+    [
+     5,
+     242
+    ],
+    [
+     6,
+     242
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_short_walk_e": {
+   "at": [
+    [
+     7,
+     242
+    ],
+    [
+     8,
+     242
+    ],
+    [
+     9,
+     242
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_short_walk_s": {
+   "at": [
+    [
+     10,
+     242
+    ],
+    [
+     11,
+     242
+    ],
+    [
+     12,
+     242
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_short_walk_w": {
+   "at": [
+    [
+     13,
+     242
+    ],
+    [
+     14,
+     242
+    ],
+    [
+     15,
+     242
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_full_n": [
+   0,
+   243
+  ],
+  "beard_full_e": [
+   1,
+   243
+  ],
+  "beard_full_s": [
+   2,
+   243
+  ],
+  "beard_full_w": [
+   3,
+   243
+  ],
+  "beard_full_walk_n": {
+   "at": [
+    [
+     4,
+     243
+    ],
+    [
+     5,
+     243
+    ],
+    [
+     6,
+     243
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_full_walk_e": {
+   "at": [
+    [
+     7,
+     243
+    ],
+    [
+     8,
+     243
+    ],
+    [
+     9,
+     243
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_full_walk_s": {
+   "at": [
+    [
+     10,
+     243
+    ],
+    [
+     11,
+     243
+    ],
+    [
+     12,
+     243
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_full_walk_w": {
+   "at": [
+    [
+     13,
+     243
+    ],
+    [
+     14,
+     243
+    ],
+    [
+     15,
+     243
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_long_n": [
+   0,
+   244
+  ],
+  "beard_long_e": [
+   1,
+   244
+  ],
+  "beard_long_s": [
+   2,
+   244
+  ],
+  "beard_long_w": [
+   3,
+   244
+  ],
+  "beard_long_walk_n": {
+   "at": [
+    [
+     4,
+     244
+    ],
+    [
+     5,
+     244
+    ],
+    [
+     6,
+     244
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_long_walk_e": {
+   "at": [
+    [
+     7,
+     244
+    ],
+    [
+     8,
+     244
+    ],
+    [
+     9,
+     244
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_long_walk_s": {
+   "at": [
+    [
+     10,
+     244
+    ],
+    [
+     11,
+     244
+    ],
+    [
+     12,
+     244
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_long_walk_w": {
+   "at": [
+    [
+     13,
+     244
+    ],
+    [
+     14,
+     244
+    ],
+    [
+     15,
+     244
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_braided_n": [
+   0,
+   245
+  ],
+  "beard_braided_e": [
+   1,
+   245
+  ],
+  "beard_braided_s": [
+   2,
+   245
+  ],
+  "beard_braided_w": [
+   3,
+   245
+  ],
+  "beard_braided_walk_n": {
+   "at": [
+    [
+     4,
+     245
+    ],
+    [
+     5,
+     245
+    ],
+    [
+     6,
+     245
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_braided_walk_e": {
+   "at": [
+    [
+     7,
+     245
+    ],
+    [
+     8,
+     245
+    ],
+    [
+     9,
+     245
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_braided_walk_s": {
+   "at": [
+    [
+     10,
+     245
+    ],
+    [
+     11,
+     245
+    ],
+    [
+     12,
+     245
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_braided_walk_w": {
+   "at": [
+    [
+     13,
+     245
+    ],
+    [
+     14,
+     245
+    ],
+    [
+     15,
+     245
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_moustache_n": [
+   0,
+   246
+  ],
+  "beard_moustache_e": [
+   1,
+   246
+  ],
+  "beard_moustache_s": [
+   2,
+   246
+  ],
+  "beard_moustache_w": [
+   3,
+   246
+  ],
+  "beard_moustache_walk_n": {
+   "at": [
+    [
+     4,
+     246
+    ],
+    [
+     5,
+     246
+    ],
+    [
+     6,
+     246
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_moustache_walk_e": {
+   "at": [
+    [
+     7,
+     246
+    ],
+    [
+     8,
+     246
+    ],
+    [
+     9,
+     246
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_moustache_walk_s": {
+   "at": [
+    [
+     10,
+     246
+    ],
+    [
+     11,
+     246
+    ],
+    [
+     12,
+     246
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_moustache_walk_w": {
+   "at": [
+    [
+     13,
+     246
+    ],
+    [
+     14,
+     246
+    ],
+    [
+     15,
+     246
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_forked_n": [
+   0,
+   247
+  ],
+  "beard_forked_e": [
+   1,
+   247
+  ],
+  "beard_forked_s": [
+   2,
+   247
+  ],
+  "beard_forked_w": [
+   3,
+   247
+  ],
+  "beard_forked_walk_n": {
+   "at": [
+    [
+     4,
+     247
+    ],
+    [
+     5,
+     247
+    ],
+    [
+     6,
+     247
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_forked_walk_e": {
+   "at": [
+    [
+     7,
+     247
+    ],
+    [
+     8,
+     247
+    ],
+    [
+     9,
+     247
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_forked_walk_s": {
+   "at": [
+    [
+     10,
+     247
+    ],
+    [
+     11,
+     247
+    ],
+    [
+     12,
+     247
+    ]
+   ],
+   "ms": 70
+  },
+  "beard_forked_walk_w": {
+   "at": [
+    [
+     13,
+     247
+    ],
+    [
+     14,
+     247
+    ],
+    [
+     15,
+     247
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_trousers_n": [
+   0,
+   248
+  ],
+  "wear_trousers_e": [
+   1,
+   248
+  ],
+  "wear_trousers_s": [
+   2,
+   248
+  ],
+  "wear_trousers_w": [
+   3,
+   248
+  ],
+  "wear_trousers_walk_n": {
+   "at": [
+    [
+     4,
+     248
+    ],
+    [
+     5,
+     248
+    ],
+    [
+     6,
+     248
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_trousers_walk_e": {
+   "at": [
+    [
+     7,
+     248
+    ],
+    [
+     8,
+     248
+    ],
+    [
+     9,
+     248
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_trousers_walk_s": {
+   "at": [
+    [
+     10,
+     248
+    ],
+    [
+     11,
+     248
+    ],
+    [
+     12,
+     248
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_trousers_walk_w": {
+   "at": [
+    [
+     13,
+     248
+    ],
+    [
+     14,
+     248
+    ],
+    [
+     15,
+     248
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hose_n": [
+   0,
+   249
+  ],
+  "wear_hose_e": [
+   1,
+   249
+  ],
+  "wear_hose_s": [
+   2,
+   249
+  ],
+  "wear_hose_w": [
+   3,
+   249
+  ],
+  "wear_hose_walk_n": {
+   "at": [
+    [
+     4,
+     249
+    ],
+    [
+     5,
+     249
+    ],
+    [
+     6,
+     249
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hose_walk_e": {
+   "at": [
+    [
+     7,
+     249
+    ],
+    [
+     8,
+     249
+    ],
+    [
+     9,
+     249
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hose_walk_s": {
+   "at": [
+    [
+     10,
+     249
+    ],
+    [
+     11,
+     249
+    ],
+    [
+     12,
+     249
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hose_walk_w": {
+   "at": [
+    [
+     13,
+     249
+    ],
+    [
+     14,
+     249
+    ],
+    [
+     15,
+     249
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_skirt_n": [
+   0,
+   250
+  ],
+  "wear_skirt_e": [
+   1,
+   250
+  ],
+  "wear_skirt_s": [
+   2,
+   250
+  ],
+  "wear_skirt_w": [
+   3,
+   250
+  ],
+  "wear_skirt_walk_n": {
+   "at": [
+    [
+     4,
+     250
+    ],
+    [
+     5,
+     250
+    ],
+    [
+     6,
+     250
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_skirt_walk_e": {
+   "at": [
+    [
+     7,
+     250
+    ],
+    [
+     8,
+     250
+    ],
+    [
+     9,
+     250
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_skirt_walk_s": {
+   "at": [
+    [
+     10,
+     250
+    ],
+    [
+     11,
+     250
+    ],
+    [
+     12,
+     250
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_skirt_walk_w": {
+   "at": [
+    [
+     13,
+     250
+    ],
+    [
+     14,
+     250
+    ],
+    [
+     15,
+     250
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_shoes_n": [
+   0,
+   251
+  ],
+  "wear_shoes_e": [
+   1,
+   251
+  ],
+  "wear_shoes_s": [
+   2,
+   251
+  ],
+  "wear_shoes_w": [
+   3,
+   251
+  ],
+  "wear_shoes_walk_n": {
+   "at": [
+    [
+     4,
+     251
+    ],
+    [
+     5,
+     251
+    ],
+    [
+     6,
+     251
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_shoes_walk_e": {
+   "at": [
+    [
+     7,
+     251
+    ],
+    [
+     8,
+     251
+    ],
+    [
+     9,
+     251
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_shoes_walk_s": {
+   "at": [
+    [
+     10,
+     251
+    ],
+    [
+     11,
+     251
+    ],
+    [
+     12,
+     251
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_shoes_walk_w": {
+   "at": [
+    [
+     13,
+     251
+    ],
+    [
+     14,
+     251
+    ],
+    [
+     15,
+     251
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_boots_n": [
+   0,
+   252
+  ],
+  "wear_boots_e": [
+   1,
+   252
+  ],
+  "wear_boots_s": [
+   2,
+   252
+  ],
+  "wear_boots_w": [
+   3,
+   252
+  ],
+  "wear_boots_walk_n": {
+   "at": [
+    [
+     4,
+     252
+    ],
+    [
+     5,
+     252
+    ],
+    [
+     6,
+     252
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_boots_walk_e": {
+   "at": [
+    [
+     7,
+     252
+    ],
+    [
+     8,
+     252
+    ],
+    [
+     9,
+     252
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_boots_walk_s": {
+   "at": [
+    [
+     10,
+     252
+    ],
+    [
+     11,
+     252
+    ],
+    [
+     12,
+     252
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_boots_walk_w": {
+   "at": [
+    [
+     13,
+     252
+    ],
+    [
+     14,
+     252
+    ],
+    [
+     15,
+     252
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_sandals_n": [
+   0,
+   253
+  ],
+  "wear_sandals_e": [
+   1,
+   253
+  ],
+  "wear_sandals_s": [
+   2,
+   253
+  ],
+  "wear_sandals_w": [
+   3,
+   253
+  ],
+  "wear_sandals_walk_n": {
+   "at": [
+    [
+     4,
+     253
+    ],
+    [
+     5,
+     253
+    ],
+    [
+     6,
+     253
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_sandals_walk_e": {
+   "at": [
+    [
+     7,
+     253
+    ],
+    [
+     8,
+     253
+    ],
+    [
+     9,
+     253
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_sandals_walk_s": {
+   "at": [
+    [
+     10,
+     253
+    ],
+    [
+     11,
+     253
+    ],
+    [
+     12,
+     253
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_sandals_walk_w": {
+   "at": [
+    [
+     13,
+     253
+    ],
+    [
+     14,
+     253
+    ],
+    [
+     15,
+     253
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_gloves_n": [
+   0,
+   254
+  ],
+  "wear_gloves_e": [
+   1,
+   254
+  ],
+  "wear_gloves_s": [
+   2,
+   254
+  ],
+  "wear_gloves_w": [
+   3,
+   254
+  ],
+  "wear_gloves_walk_n": {
+   "at": [
+    [
+     4,
+     254
+    ],
+    [
+     5,
+     254
+    ],
+    [
+     6,
+     254
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_gloves_walk_e": {
+   "at": [
+    [
+     7,
+     254
+    ],
+    [
+     8,
+     254
+    ],
+    [
+     9,
+     254
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_gloves_walk_s": {
+   "at": [
+    [
+     10,
+     254
+    ],
+    [
+     11,
+     254
+    ],
+    [
+     12,
+     254
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_gloves_walk_w": {
+   "at": [
+    [
+     13,
+     254
+    ],
+    [
+     14,
+     254
+    ],
+    [
+     15,
+     254
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_tunic_n": [
+   0,
+   255
+  ],
+  "wear_tunic_e": [
+   1,
+   255
+  ],
+  "wear_tunic_s": [
+   2,
+   255
+  ],
+  "wear_tunic_w": [
+   3,
+   255
+  ],
+  "wear_tunic_walk_n": {
+   "at": [
+    [
+     4,
+     255
+    ],
+    [
+     5,
+     255
+    ],
+    [
+     6,
+     255
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_tunic_walk_e": {
+   "at": [
+    [
+     7,
+     255
+    ],
+    [
+     8,
+     255
+    ],
+    [
+     9,
+     255
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_tunic_walk_s": {
+   "at": [
+    [
+     10,
+     255
+    ],
+    [
+     11,
+     255
+    ],
+    [
+     12,
+     255
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_tunic_walk_w": {
+   "at": [
+    [
+     13,
+     255
+    ],
+    [
+     14,
+     255
+    ],
+    [
+     15,
+     255
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_dress_n": [
+   0,
+   256
+  ],
+  "wear_dress_e": [
+   1,
+   256
+  ],
+  "wear_dress_s": [
+   2,
+   256
+  ],
+  "wear_dress_w": [
+   3,
+   256
+  ],
+  "wear_dress_walk_n": {
+   "at": [
+    [
+     4,
+     256
+    ],
+    [
+     5,
+     256
+    ],
+    [
+     6,
+     256
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_dress_walk_e": {
+   "at": [
+    [
+     7,
+     256
+    ],
+    [
+     8,
+     256
+    ],
+    [
+     9,
+     256
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_dress_walk_s": {
+   "at": [
+    [
+     10,
+     256
+    ],
+    [
+     11,
+     256
+    ],
+    [
+     12,
+     256
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_dress_walk_w": {
+   "at": [
+    [
+     13,
+     256
+    ],
+    [
+     14,
+     256
+    ],
+    [
+     15,
+     256
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_robe_n": [
+   0,
+   257
+  ],
+  "wear_robe_e": [
+   1,
+   257
+  ],
+  "wear_robe_s": [
+   2,
+   257
+  ],
+  "wear_robe_w": [
+   3,
+   257
+  ],
+  "wear_robe_walk_n": {
+   "at": [
+    [
+     4,
+     257
+    ],
+    [
+     5,
+     257
+    ],
+    [
+     6,
+     257
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_robe_walk_e": {
+   "at": [
+    [
+     7,
+     257
+    ],
+    [
+     8,
+     257
+    ],
+    [
+     9,
+     257
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_robe_walk_s": {
+   "at": [
+    [
+     10,
+     257
+    ],
+    [
+     11,
+     257
+    ],
+    [
+     12,
+     257
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_robe_walk_w": {
+   "at": [
+    [
+     13,
+     257
+    ],
+    [
+     14,
+     257
+    ],
+    [
+     15,
+     257
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jerkin_n": [
+   0,
+   258
+  ],
+  "wear_jerkin_e": [
+   1,
+   258
+  ],
+  "wear_jerkin_s": [
+   2,
+   258
+  ],
+  "wear_jerkin_w": [
+   3,
+   258
+  ],
+  "wear_jerkin_walk_n": {
+   "at": [
+    [
+     4,
+     258
+    ],
+    [
+     5,
+     258
+    ],
+    [
+     6,
+     258
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jerkin_walk_e": {
+   "at": [
+    [
+     7,
+     258
+    ],
+    [
+     8,
+     258
+    ],
+    [
+     9,
+     258
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jerkin_walk_s": {
+   "at": [
+    [
+     10,
+     258
+    ],
+    [
+     11,
+     258
+    ],
+    [
+     12,
+     258
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jerkin_walk_w": {
+   "at": [
+    [
+     13,
+     258
+    ],
+    [
+     14,
+     258
+    ],
+    [
+     15,
+     258
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_mail_n": [
+   0,
+   259
+  ],
+  "wear_mail_e": [
+   1,
+   259
+  ],
+  "wear_mail_s": [
+   2,
+   259
+  ],
+  "wear_mail_w": [
+   3,
+   259
+  ],
+  "wear_mail_walk_n": {
+   "at": [
+    [
+     4,
+     259
+    ],
+    [
+     5,
+     259
+    ],
+    [
+     6,
+     259
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_mail_walk_e": {
+   "at": [
+    [
+     7,
+     259
+    ],
+    [
+     8,
+     259
+    ],
+    [
+     9,
+     259
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_mail_walk_s": {
+   "at": [
+    [
+     10,
+     259
+    ],
+    [
+     11,
+     259
+    ],
+    [
+     12,
+     259
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_mail_walk_w": {
+   "at": [
+    [
+     13,
+     259
+    ],
+    [
+     14,
+     259
+    ],
+    [
+     15,
+     259
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_belt_n": [
+   0,
+   260
+  ],
+  "wear_belt_e": [
+   1,
+   260
+  ],
+  "wear_belt_s": [
+   2,
+   260
+  ],
+  "wear_belt_w": [
+   3,
+   260
+  ],
+  "wear_belt_walk_n": {
+   "at": [
+    [
+     4,
+     260
+    ],
+    [
+     5,
+     260
+    ],
+    [
+     6,
+     260
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_belt_walk_e": {
+   "at": [
+    [
+     7,
+     260
+    ],
+    [
+     8,
+     260
+    ],
+    [
+     9,
+     260
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_belt_walk_s": {
+   "at": [
+    [
+     10,
+     260
+    ],
+    [
+     11,
+     260
+    ],
+    [
+     12,
+     260
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_belt_walk_w": {
+   "at": [
+    [
+     13,
+     260
+    ],
+    [
+     14,
+     260
+    ],
+    [
+     15,
+     260
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_apron_n": [
+   0,
+   261
+  ],
+  "wear_apron_e": [
+   1,
+   261
+  ],
+  "wear_apron_s": [
+   2,
+   261
+  ],
+  "wear_apron_w": [
+   3,
+   261
+  ],
+  "wear_apron_walk_n": {
+   "at": [
+    [
+     4,
+     261
+    ],
+    [
+     5,
+     261
+    ],
+    [
+     6,
+     261
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_apron_walk_e": {
+   "at": [
+    [
+     7,
+     261
+    ],
+    [
+     8,
+     261
+    ],
+    [
+     9,
+     261
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_apron_walk_s": {
+   "at": [
+    [
+     10,
+     261
+    ],
+    [
+     11,
+     261
+    ],
+    [
+     12,
+     261
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_apron_walk_w": {
+   "at": [
+    [
+     13,
+     261
+    ],
+    [
+     14,
+     261
+    ],
+    [
+     15,
+     261
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jacket_n": [
+   0,
+   262
+  ],
+  "wear_jacket_e": [
+   1,
+   262
+  ],
+  "wear_jacket_s": [
+   2,
+   262
+  ],
+  "wear_jacket_w": [
+   3,
+   262
+  ],
+  "wear_jacket_walk_n": {
+   "at": [
+    [
+     4,
+     262
+    ],
+    [
+     5,
+     262
+    ],
+    [
+     6,
+     262
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jacket_walk_e": {
+   "at": [
+    [
+     7,
+     262
+    ],
+    [
+     8,
+     262
+    ],
+    [
+     9,
+     262
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jacket_walk_s": {
+   "at": [
+    [
+     10,
+     262
+    ],
+    [
+     11,
+     262
+    ],
+    [
+     12,
+     262
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_jacket_walk_w": {
+   "at": [
+    [
+     13,
+     262
+    ],
+    [
+     14,
+     262
+    ],
+    [
+     15,
+     262
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_coat_n": [
+   0,
+   263
+  ],
+  "wear_coat_e": [
+   1,
+   263
+  ],
+  "wear_coat_s": [
+   2,
+   263
+  ],
+  "wear_coat_w": [
+   3,
+   263
+  ],
+  "wear_coat_walk_n": {
+   "at": [
+    [
+     4,
+     263
+    ],
+    [
+     5,
+     263
+    ],
+    [
+     6,
+     263
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_coat_walk_e": {
+   "at": [
+    [
+     7,
+     263
+    ],
+    [
+     8,
+     263
+    ],
+    [
+     9,
+     263
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_coat_walk_s": {
+   "at": [
+    [
+     10,
+     263
+    ],
+    [
+     11,
+     263
+    ],
+    [
+     12,
+     263
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_coat_walk_w": {
+   "at": [
+    [
+     13,
+     263
+    ],
+    [
+     14,
+     263
+    ],
+    [
+     15,
+     263
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cloak_n": [
+   0,
+   264
+  ],
+  "wear_cloak_e": [
+   1,
+   264
+  ],
+  "wear_cloak_s": [
+   2,
+   264
+  ],
+  "wear_cloak_w": [
+   3,
+   264
+  ],
+  "wear_cloak_walk_n": {
+   "at": [
+    [
+     4,
+     264
+    ],
+    [
+     5,
+     264
+    ],
+    [
+     6,
+     264
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cloak_walk_e": {
+   "at": [
+    [
+     7,
+     264
+    ],
+    [
+     8,
+     264
+    ],
+    [
+     9,
+     264
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cloak_walk_s": {
+   "at": [
+    [
+     10,
+     264
+    ],
+    [
+     11,
+     264
+    ],
+    [
+     12,
+     264
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cloak_walk_w": {
+   "at": [
+    [
+     13,
+     264
+    ],
+    [
+     14,
+     264
+    ],
+    [
+     15,
+     264
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_veil_n": [
+   0,
+   265
+  ],
+  "wear_veil_e": [
+   1,
+   265
+  ],
+  "wear_veil_s": [
+   2,
+   265
+  ],
+  "wear_veil_w": [
+   3,
+   265
+  ],
+  "wear_veil_walk_n": {
+   "at": [
+    [
+     4,
+     265
+    ],
+    [
+     5,
+     265
+    ],
+    [
+     6,
+     265
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_veil_walk_e": {
+   "at": [
+    [
+     7,
+     265
+    ],
+    [
+     8,
+     265
+    ],
+    [
+     9,
+     265
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_veil_walk_s": {
+   "at": [
+    [
+     10,
+     265
+    ],
+    [
+     11,
+     265
+    ],
+    [
+     12,
+     265
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_veil_walk_w": {
+   "at": [
+    [
+     13,
+     265
+    ],
+    [
+     14,
+     265
+    ],
+    [
+     15,
+     265
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_scarf_n": [
+   0,
+   266
+  ],
+  "wear_scarf_e": [
+   1,
+   266
+  ],
+  "wear_scarf_s": [
+   2,
+   266
+  ],
+  "wear_scarf_w": [
+   3,
+   266
+  ],
+  "wear_scarf_walk_n": {
+   "at": [
+    [
+     4,
+     266
+    ],
+    [
+     5,
+     266
+    ],
+    [
+     6,
+     266
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_scarf_walk_e": {
+   "at": [
+    [
+     7,
+     266
+    ],
+    [
+     8,
+     266
+    ],
+    [
+     9,
+     266
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_scarf_walk_s": {
+   "at": [
+    [
+     10,
+     266
+    ],
+    [
+     11,
+     266
+    ],
+    [
+     12,
+     266
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_scarf_walk_w": {
+   "at": [
+    [
+     13,
+     266
+    ],
+    [
+     14,
+     266
+    ],
+    [
+     15,
+     266
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cap_n": [
+   0,
+   267
+  ],
+  "wear_cap_e": [
+   1,
+   267
+  ],
+  "wear_cap_s": [
+   2,
+   267
+  ],
+  "wear_cap_w": [
+   3,
+   267
+  ],
+  "wear_cap_walk_n": {
+   "at": [
+    [
+     4,
+     267
+    ],
+    [
+     5,
+     267
+    ],
+    [
+     6,
+     267
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cap_walk_e": {
+   "at": [
+    [
+     7,
+     267
+    ],
+    [
+     8,
+     267
+    ],
+    [
+     9,
+     267
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cap_walk_s": {
+   "at": [
+    [
+     10,
+     267
+    ],
+    [
+     11,
+     267
+    ],
+    [
+     12,
+     267
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_cap_walk_w": {
+   "at": [
+    [
+     13,
+     267
+    ],
+    [
+     14,
+     267
+    ],
+    [
+     15,
+     267
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hood_n": [
+   0,
+   268
+  ],
+  "wear_hood_e": [
+   1,
+   268
+  ],
+  "wear_hood_s": [
+   2,
+   268
+  ],
+  "wear_hood_w": [
+   3,
+   268
+  ],
+  "wear_hood_walk_n": {
+   "at": [
+    [
+     4,
+     268
+    ],
+    [
+     5,
+     268
+    ],
+    [
+     6,
+     268
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hood_walk_e": {
+   "at": [
+    [
+     7,
+     268
+    ],
+    [
+     8,
+     268
+    ],
+    [
+     9,
+     268
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hood_walk_s": {
+   "at": [
+    [
+     10,
+     268
+    ],
+    [
+     11,
+     268
+    ],
+    [
+     12,
+     268
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hood_walk_w": {
+   "at": [
+    [
+     13,
+     268
+    ],
+    [
+     14,
+     268
+    ],
+    [
+     15,
+     268
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hat_n": [
+   0,
+   269
+  ],
+  "wear_hat_e": [
+   1,
+   269
+  ],
+  "wear_hat_s": [
+   2,
+   269
+  ],
+  "wear_hat_w": [
+   3,
+   269
+  ],
+  "wear_hat_walk_n": {
+   "at": [
+    [
+     4,
+     269
+    ],
+    [
+     5,
+     269
+    ],
+    [
+     6,
+     269
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hat_walk_e": {
+   "at": [
+    [
+     7,
+     269
+    ],
+    [
+     8,
+     269
+    ],
+    [
+     9,
+     269
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hat_walk_s": {
+   "at": [
+    [
+     10,
+     269
+    ],
+    [
+     11,
+     269
+    ],
+    [
+     12,
+     269
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_hat_walk_w": {
+   "at": [
+    [
+     13,
+     269
+    ],
+    [
+     14,
+     269
+    ],
+    [
+     15,
+     269
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_helm_n": [
+   0,
+   270
+  ],
+  "wear_helm_e": [
+   1,
+   270
+  ],
+  "wear_helm_s": [
+   2,
+   270
+  ],
+  "wear_helm_w": [
+   3,
+   270
+  ],
+  "wear_helm_walk_n": {
+   "at": [
+    [
+     4,
+     270
+    ],
+    [
+     5,
+     270
+    ],
+    [
+     6,
+     270
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_helm_walk_e": {
+   "at": [
+    [
+     7,
+     270
+    ],
+    [
+     8,
+     270
+    ],
+    [
+     9,
+     270
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_helm_walk_s": {
+   "at": [
+    [
+     10,
+     270
+    ],
+    [
+     11,
+     270
+    ],
+    [
+     12,
+     270
+    ]
+   ],
+   "ms": 70
+  },
+  "wear_helm_walk_w": {
+   "at": [
+    [
+     13,
+     270
+    ],
+    [
+     14,
+     270
+    ],
+    [
+     15,
+     270
     ]
    ],
    "ms": 70
   },
   "roof_tile_n#0": [
    0,
-   220
+   271
   ],
   "roof_tile_n#1": [
    1,
-   220
+   271
   ],
   "roof_tile_n#2": [
    2,
-   220
+   271
   ],
   "roof_tile_n#3": [
    3,
-   220
+   271
   ],
   "roof_tile_n#4": [
    4,
-   220
+   271
   ],
   "roof_tile_n#5": [
    5,
-   220
+   271
   ],
   "roof_tile_n#6": [
    6,
-   220
+   271
   ],
   "roof_tile_n#7": [
    7,
-   220
+   271
   ],
   "roof_tile_n#8": [
    8,
-   220
+   271
   ],
   "roof_tile_n#9": [
    9,
-   220
+   271
   ],
   "roof_tile_n#10": [
    10,
-   220
+   271
   ],
   "roof_tile_n#11": [
    11,
-   220
+   271
   ],
   "roof_tile_n#12": [
    12,
-   220
+   271
   ],
   "roof_tile_n#13": [
    13,
-   220
+   271
   ],
   "roof_tile_n#14": [
    14,
-   220
+   271
   ],
   "roof_tile_n#15": [
    15,
-   220
+   271
   ],
   "roof_tile_e#0": [
    0,
-   221
+   272
   ],
   "roof_tile_e#1": [
    1,
-   221
+   272
   ],
   "roof_tile_e#2": [
    2,
-   221
+   272
   ],
   "roof_tile_e#3": [
    3,
-   221
+   272
   ],
   "roof_tile_e#4": [
    4,
-   221
+   272
   ],
   "roof_tile_e#5": [
    5,
-   221
+   272
   ],
   "roof_tile_e#6": [
    6,
-   221
+   272
   ],
   "roof_tile_e#7": [
    7,
-   221
+   272
   ],
   "roof_tile_e#8": [
    8,
-   221
+   272
   ],
   "roof_tile_e#9": [
    9,
-   221
+   272
   ],
   "roof_tile_e#10": [
    10,
-   221
+   272
   ],
   "roof_tile_e#11": [
    11,
-   221
+   272
   ],
   "roof_tile_e#12": [
    12,
-   221
+   272
   ],
   "roof_tile_e#13": [
    13,
-   221
+   272
   ],
   "roof_tile_e#14": [
    14,
-   221
+   272
   ],
   "roof_tile_e#15": [
    15,
-   221
+   272
   ],
   "roof_tile_s#0": [
    0,
-   222
+   273
   ],
   "roof_tile_s#1": [
    1,
-   222
+   273
   ],
   "roof_tile_s#2": [
    2,
-   222
+   273
   ],
   "roof_tile_s#3": [
    3,
-   222
+   273
   ],
   "roof_tile_s#4": [
    4,
-   222
+   273
   ],
   "roof_tile_s#5": [
    5,
-   222
+   273
   ],
   "roof_tile_s#6": [
    6,
-   222
+   273
   ],
   "roof_tile_s#7": [
    7,
-   222
+   273
   ],
   "roof_tile_s#8": [
    8,
-   222
+   273
   ],
   "roof_tile_s#9": [
    9,
-   222
+   273
   ],
   "roof_tile_s#10": [
    10,
-   222
+   273
   ],
   "roof_tile_s#11": [
    11,
-   222
+   273
   ],
   "roof_tile_s#12": [
    12,
-   222
+   273
   ],
   "roof_tile_s#13": [
    13,
-   222
+   273
   ],
   "roof_tile_s#14": [
    14,
-   222
+   273
   ],
   "roof_tile_s#15": [
    15,
-   222
+   273
   ],
   "roof_tile_w#0": [
    0,
-   223
+   274
   ],
   "roof_tile_w#1": [
    1,
-   223
+   274
   ],
   "roof_tile_w#2": [
    2,
-   223
+   274
   ],
   "roof_tile_w#3": [
    3,
-   223
+   274
   ],
   "roof_tile_w#4": [
    4,
-   223
+   274
   ],
   "roof_tile_w#5": [
    5,
-   223
+   274
   ],
   "roof_tile_w#6": [
    6,
-   223
+   274
   ],
   "roof_tile_w#7": [
    7,
-   223
+   274
   ],
   "roof_tile_w#8": [
    8,
-   223
+   274
   ],
   "roof_tile_w#9": [
    9,
-   223
+   274
   ],
   "roof_tile_w#10": [
    10,
-   223
+   274
   ],
   "roof_tile_w#11": [
    11,
-   223
+   274
   ],
   "roof_tile_w#12": [
    12,
-   223
+   274
   ],
   "roof_tile_w#13": [
    13,
-   223
+   274
   ],
   "roof_tile_w#14": [
    14,
-   223
+   274
   ],
   "roof_tile_w#15": [
    15,
-   223
+   274
   ],
   "roof_tile_ridge_ew#0": [
    0,
-   224
+   275
   ],
   "roof_tile_ridge_ew#1": [
    1,
-   224
+   275
   ],
   "roof_tile_ridge_ew#2": [
    2,
-   224
+   275
   ],
   "roof_tile_ridge_ew#3": [
    3,
-   224
+   275
   ],
   "roof_tile_ridge_ew#4": [
    4,
-   224
+   275
   ],
   "roof_tile_ridge_ew#5": [
    5,
-   224
+   275
   ],
   "roof_tile_ridge_ew#6": [
    6,
-   224
+   275
   ],
   "roof_tile_ridge_ew#7": [
    7,
-   224
+   275
   ],
   "roof_tile_ridge_ew#8": [
    8,
-   224
+   275
   ],
   "roof_tile_ridge_ew#9": [
    9,
-   224
+   275
   ],
   "roof_tile_ridge_ew#10": [
    10,
-   224
+   275
   ],
   "roof_tile_ridge_ew#11": [
    11,
-   224
+   275
   ],
   "roof_tile_ridge_ew#12": [
    12,
-   224
+   275
   ],
   "roof_tile_ridge_ew#13": [
    13,
-   224
+   275
   ],
   "roof_tile_ridge_ew#14": [
    14,
-   224
+   275
   ],
   "roof_tile_ridge_ew#15": [
    15,
-   224
+   275
   ],
   "roof_tile_ridge_ns#0": [
    0,
-   225
+   276
   ],
   "roof_tile_ridge_ns#1": [
    1,
-   225
+   276
   ],
   "roof_tile_ridge_ns#2": [
    2,
-   225
+   276
   ],
   "roof_tile_ridge_ns#3": [
    3,
-   225
+   276
   ],
   "roof_tile_ridge_ns#4": [
    4,
-   225
+   276
   ],
   "roof_tile_ridge_ns#5": [
    5,
-   225
+   276
   ],
   "roof_tile_ridge_ns#6": [
    6,
-   225
+   276
   ],
   "roof_tile_ridge_ns#7": [
    7,
-   225
+   276
   ],
   "roof_tile_ridge_ns#8": [
    8,
-   225
+   276
   ],
   "roof_tile_ridge_ns#9": [
    9,
-   225
+   276
   ],
   "roof_tile_ridge_ns#10": [
    10,
-   225
+   276
   ],
   "roof_tile_ridge_ns#11": [
    11,
-   225
+   276
   ],
   "roof_tile_ridge_ns#12": [
    12,
-   225
+   276
   ],
   "roof_tile_ridge_ns#13": [
    13,
-   225
+   276
   ],
   "roof_tile_ridge_ns#14": [
    14,
-   225
+   276
   ],
   "roof_tile_ridge_ns#15": [
    15,
-   225
+   276
   ],
   "roof_tile_flat#0": [
    0,
-   226
+   277
   ],
   "roof_tile_flat#1": [
    1,
-   226
+   277
   ],
   "roof_tile_flat#2": [
    2,
-   226
+   277
   ],
   "roof_tile_flat#3": [
    3,
-   226
+   277
   ],
   "roof_tile_flat#4": [
    4,
-   226
+   277
   ],
   "roof_tile_flat#5": [
    5,
-   226
+   277
   ],
   "roof_tile_flat#6": [
    6,
-   226
+   277
   ],
   "roof_tile_flat#7": [
    7,
-   226
+   277
   ],
   "roof_tile_flat#8": [
    8,
-   226
+   277
   ],
   "roof_tile_flat#9": [
    9,
-   226
+   277
   ],
   "roof_tile_flat#10": [
    10,
-   226
+   277
   ],
   "roof_tile_flat#11": [
    11,
-   226
+   277
   ],
   "roof_tile_flat#12": [
    12,
-   226
+   277
   ],
   "roof_tile_flat#13": [
    13,
-   226
+   277
   ],
   "roof_tile_flat#14": [
    14,
-   226
+   277
   ],
   "roof_tile_flat#15": [
    15,
-   226
+   277
   ],
   "roof_tile_peak#0": [
    0,
-   227
+   278
   ],
   "roof_tile_peak#1": [
    1,
-   227
+   278
   ],
   "roof_tile_peak#2": [
    2,
-   227
+   278
   ],
   "roof_tile_peak#3": [
    3,
-   227
+   278
   ],
   "roof_tile_peak#4": [
    4,
-   227
+   278
   ],
   "roof_tile_peak#5": [
    5,
-   227
+   278
   ],
   "roof_tile_peak#6": [
    6,
-   227
+   278
   ],
   "roof_tile_peak#7": [
    7,
-   227
+   278
   ],
   "roof_tile_peak#8": [
    8,
-   227
+   278
   ],
   "roof_tile_peak#9": [
    9,
-   227
+   278
   ],
   "roof_tile_peak#10": [
    10,
-   227
+   278
   ],
   "roof_tile_peak#11": [
    11,
-   227
+   278
   ],
   "roof_tile_peak#12": [
    12,
-   227
+   278
   ],
   "roof_tile_peak#13": [
    13,
-   227
+   278
   ],
   "roof_tile_peak#14": [
    14,
-   227
+   278
   ],
   "roof_tile_peak#15": [
    15,
-   227
+   278
   ],
   "roof_slate_n#0": [
    0,
-   228
+   279
   ],
   "roof_slate_n#1": [
    1,
-   228
+   279
   ],
   "roof_slate_n#2": [
    2,
-   228
+   279
   ],
   "roof_slate_n#3": [
    3,
-   228
+   279
   ],
   "roof_slate_n#4": [
    4,
-   228
+   279
   ],
   "roof_slate_n#5": [
    5,
-   228
+   279
   ],
   "roof_slate_n#6": [
    6,
-   228
+   279
   ],
   "roof_slate_n#7": [
    7,
-   228
+   279
   ],
   "roof_slate_n#8": [
    8,
-   228
+   279
   ],
   "roof_slate_n#9": [
    9,
-   228
+   279
   ],
   "roof_slate_n#10": [
    10,
-   228
+   279
   ],
   "roof_slate_n#11": [
    11,
-   228
+   279
   ],
   "roof_slate_n#12": [
    12,
-   228
+   279
   ],
   "roof_slate_n#13": [
    13,
-   228
+   279
   ],
   "roof_slate_n#14": [
    14,
-   228
+   279
   ],
   "roof_slate_n#15": [
    15,
-   228
+   279
   ],
   "roof_slate_e#0": [
    0,
-   229
+   280
   ],
   "roof_slate_e#1": [
    1,
-   229
+   280
   ],
   "roof_slate_e#2": [
    2,
-   229
+   280
   ],
   "roof_slate_e#3": [
    3,
-   229
+   280
   ],
   "roof_slate_e#4": [
    4,
-   229
+   280
   ],
   "roof_slate_e#5": [
    5,
-   229
+   280
   ],
   "roof_slate_e#6": [
    6,
-   229
+   280
   ],
   "roof_slate_e#7": [
    7,
-   229
+   280
   ],
   "roof_slate_e#8": [
    8,
-   229
+   280
   ],
   "roof_slate_e#9": [
    9,
-   229
+   280
   ],
   "roof_slate_e#10": [
    10,
-   229
+   280
   ],
   "roof_slate_e#11": [
    11,
-   229
+   280
   ],
   "roof_slate_e#12": [
    12,
-   229
+   280
   ],
   "roof_slate_e#13": [
    13,
-   229
+   280
   ],
   "roof_slate_e#14": [
    14,
-   229
+   280
   ],
   "roof_slate_e#15": [
    15,
-   229
+   280
   ],
   "roof_slate_s#0": [
    0,
-   230
+   281
   ],
   "roof_slate_s#1": [
    1,
-   230
+   281
   ],
   "roof_slate_s#2": [
    2,
-   230
+   281
   ],
   "roof_slate_s#3": [
    3,
-   230
+   281
   ],
   "roof_slate_s#4": [
    4,
-   230
+   281
   ],
   "roof_slate_s#5": [
    5,
-   230
+   281
   ],
   "roof_slate_s#6": [
    6,
-   230
+   281
   ],
   "roof_slate_s#7": [
    7,
-   230
+   281
   ],
   "roof_slate_s#8": [
    8,
-   230
+   281
   ],
   "roof_slate_s#9": [
    9,
-   230
+   281
   ],
   "roof_slate_s#10": [
    10,
-   230
+   281
   ],
   "roof_slate_s#11": [
    11,
-   230
+   281
   ],
   "roof_slate_s#12": [
    12,
-   230
+   281
   ],
   "roof_slate_s#13": [
    13,
-   230
+   281
   ],
   "roof_slate_s#14": [
    14,
-   230
+   281
   ],
   "roof_slate_s#15": [
    15,
-   230
+   281
   ],
   "roof_slate_w#0": [
    0,
-   231
+   282
   ],
   "roof_slate_w#1": [
    1,
-   231
+   282
   ],
   "roof_slate_w#2": [
    2,
-   231
+   282
   ],
   "roof_slate_w#3": [
    3,
-   231
+   282
   ],
   "roof_slate_w#4": [
    4,
-   231
+   282
   ],
   "roof_slate_w#5": [
    5,
-   231
+   282
   ],
   "roof_slate_w#6": [
    6,
-   231
+   282
   ],
   "roof_slate_w#7": [
    7,
-   231
+   282
   ],
   "roof_slate_w#8": [
    8,
-   231
+   282
   ],
   "roof_slate_w#9": [
    9,
-   231
+   282
   ],
   "roof_slate_w#10": [
    10,
-   231
+   282
   ],
   "roof_slate_w#11": [
    11,
-   231
+   282
   ],
   "roof_slate_w#12": [
    12,
-   231
+   282
   ],
   "roof_slate_w#13": [
    13,
-   231
+   282
   ],
   "roof_slate_w#14": [
    14,
-   231
+   282
   ],
   "roof_slate_w#15": [
    15,
-   231
+   282
   ],
   "roof_slate_ridge_ew#0": [
    0,
-   232
+   283
   ],
   "roof_slate_ridge_ew#1": [
    1,
-   232
+   283
   ],
   "roof_slate_ridge_ew#2": [
    2,
-   232
+   283
   ],
   "roof_slate_ridge_ew#3": [
    3,
-   232
+   283
   ],
   "roof_slate_ridge_ew#4": [
    4,
-   232
+   283
   ],
   "roof_slate_ridge_ew#5": [
    5,
-   232
+   283
   ],
   "roof_slate_ridge_ew#6": [
    6,
-   232
+   283
   ],
   "roof_slate_ridge_ew#7": [
    7,
-   232
+   283
   ],
   "roof_slate_ridge_ew#8": [
    8,
-   232
+   283
   ],
   "roof_slate_ridge_ew#9": [
    9,
-   232
+   283
   ],
   "roof_slate_ridge_ew#10": [
    10,
-   232
+   283
   ],
   "roof_slate_ridge_ew#11": [
    11,
-   232
+   283
   ],
   "roof_slate_ridge_ew#12": [
    12,
-   232
+   283
   ],
   "roof_slate_ridge_ew#13": [
    13,
-   232
+   283
   ],
   "roof_slate_ridge_ew#14": [
    14,
-   232
+   283
   ],
   "roof_slate_ridge_ew#15": [
    15,
-   232
+   283
   ],
   "roof_slate_ridge_ns#0": [
    0,
-   233
+   284
   ],
   "roof_slate_ridge_ns#1": [
    1,
-   233
+   284
   ],
   "roof_slate_ridge_ns#2": [
    2,
-   233
+   284
   ],
   "roof_slate_ridge_ns#3": [
    3,
-   233
+   284
   ],
   "roof_slate_ridge_ns#4": [
    4,
-   233
+   284
   ],
   "roof_slate_ridge_ns#5": [
    5,
-   233
+   284
   ],
   "roof_slate_ridge_ns#6": [
    6,
-   233
+   284
   ],
   "roof_slate_ridge_ns#7": [
    7,
-   233
+   284
   ],
   "roof_slate_ridge_ns#8": [
    8,
-   233
+   284
   ],
   "roof_slate_ridge_ns#9": [
    9,
-   233
+   284
   ],
   "roof_slate_ridge_ns#10": [
    10,
-   233
+   284
   ],
   "roof_slate_ridge_ns#11": [
    11,
-   233
+   284
   ],
   "roof_slate_ridge_ns#12": [
    12,
-   233
+   284
   ],
   "roof_slate_ridge_ns#13": [
    13,
-   233
+   284
   ],
   "roof_slate_ridge_ns#14": [
    14,
-   233
+   284
   ],
   "roof_slate_ridge_ns#15": [
    15,
-   233
+   284
   ],
   "roof_slate_flat#0": [
    0,
-   234
+   285
   ],
   "roof_slate_flat#1": [
    1,
-   234
+   285
   ],
   "roof_slate_flat#2": [
    2,
-   234
+   285
   ],
   "roof_slate_flat#3": [
    3,
-   234
+   285
   ],
   "roof_slate_flat#4": [
    4,
-   234
+   285
   ],
   "roof_slate_flat#5": [
    5,
-   234
+   285
   ],
   "roof_slate_flat#6": [
    6,
-   234
+   285
   ],
   "roof_slate_flat#7": [
    7,
-   234
+   285
   ],
   "roof_slate_flat#8": [
    8,
-   234
+   285
   ],
   "roof_slate_flat#9": [
    9,
-   234
+   285
   ],
   "roof_slate_flat#10": [
    10,
-   234
+   285
   ],
   "roof_slate_flat#11": [
    11,
-   234
+   285
   ],
   "roof_slate_flat#12": [
    12,
-   234
+   285
   ],
   "roof_slate_flat#13": [
    13,
-   234
+   285
   ],
   "roof_slate_flat#14": [
    14,
-   234
+   285
   ],
   "roof_slate_flat#15": [
    15,
-   234
+   285
   ],
   "roof_slate_peak#0": [
    0,
-   235
+   286
   ],
   "roof_slate_peak#1": [
    1,
-   235
+   286
   ],
   "roof_slate_peak#2": [
    2,
-   235
+   286
   ],
   "roof_slate_peak#3": [
    3,
-   235
+   286
   ],
   "roof_slate_peak#4": [
    4,
-   235
+   286
   ],
   "roof_slate_peak#5": [
    5,
-   235
+   286
   ],
   "roof_slate_peak#6": [
    6,
-   235
+   286
   ],
   "roof_slate_peak#7": [
    7,
-   235
+   286
   ],
   "roof_slate_peak#8": [
    8,
-   235
+   286
   ],
   "roof_slate_peak#9": [
    9,
-   235
+   286
   ],
   "roof_slate_peak#10": [
    10,
-   235
+   286
   ],
   "roof_slate_peak#11": [
    11,
-   235
+   286
   ],
   "roof_slate_peak#12": [
    12,
-   235
+   286
   ],
   "roof_slate_peak#13": [
    13,
-   235
+   286
   ],
   "roof_slate_peak#14": [
    14,
-   235
+   286
   ],
   "roof_slate_peak#15": [
    15,
-   235
+   286
   ],
   "roof_shingle_n#0": [
    0,
-   236
+   287
   ],
   "roof_shingle_n#1": [
    1,
-   236
+   287
   ],
   "roof_shingle_n#2": [
    2,
-   236
+   287
   ],
   "roof_shingle_n#3": [
    3,
-   236
+   287
   ],
   "roof_shingle_n#4": [
    4,
-   236
+   287
   ],
   "roof_shingle_n#5": [
    5,
-   236
+   287
   ],
   "roof_shingle_n#6": [
    6,
-   236
+   287
   ],
   "roof_shingle_n#7": [
    7,
-   236
+   287
   ],
   "roof_shingle_n#8": [
    8,
-   236
+   287
   ],
   "roof_shingle_n#9": [
    9,
-   236
+   287
   ],
   "roof_shingle_n#10": [
    10,
-   236
+   287
   ],
   "roof_shingle_n#11": [
    11,
-   236
+   287
   ],
   "roof_shingle_n#12": [
    12,
-   236
+   287
   ],
   "roof_shingle_n#13": [
    13,
-   236
+   287
   ],
   "roof_shingle_n#14": [
    14,
-   236
+   287
   ],
   "roof_shingle_n#15": [
    15,
-   236
+   287
   ],
   "roof_shingle_e#0": [
    0,
-   237
+   288
   ],
   "roof_shingle_e#1": [
    1,
-   237
+   288
   ],
   "roof_shingle_e#2": [
    2,
-   237
+   288
   ],
   "roof_shingle_e#3": [
    3,
-   237
+   288
   ],
   "roof_shingle_e#4": [
    4,
-   237
+   288
   ],
   "roof_shingle_e#5": [
    5,
-   237
+   288
   ],
   "roof_shingle_e#6": [
    6,
-   237
+   288
   ],
   "roof_shingle_e#7": [
    7,
-   237
+   288
   ],
   "roof_shingle_e#8": [
    8,
-   237
+   288
   ],
   "roof_shingle_e#9": [
    9,
-   237
+   288
   ],
   "roof_shingle_e#10": [
    10,
-   237
+   288
   ],
   "roof_shingle_e#11": [
    11,
-   237
+   288
   ],
   "roof_shingle_e#12": [
    12,
-   237
+   288
   ],
   "roof_shingle_e#13": [
    13,
-   237
+   288
   ],
   "roof_shingle_e#14": [
    14,
-   237
+   288
   ],
   "roof_shingle_e#15": [
    15,
-   237
+   288
   ],
   "roof_shingle_s#0": [
    0,
-   238
+   289
   ],
   "roof_shingle_s#1": [
    1,
-   238
+   289
   ],
   "roof_shingle_s#2": [
    2,
-   238
+   289
   ],
   "roof_shingle_s#3": [
    3,
-   238
+   289
   ],
   "roof_shingle_s#4": [
    4,
-   238
+   289
   ],
   "roof_shingle_s#5": [
    5,
-   238
+   289
   ],
   "roof_shingle_s#6": [
    6,
-   238
+   289
   ],
   "roof_shingle_s#7": [
    7,
-   238
+   289
   ],
   "roof_shingle_s#8": [
    8,
-   238
+   289
   ],
   "roof_shingle_s#9": [
    9,
-   238
+   289
   ],
   "roof_shingle_s#10": [
    10,
-   238
+   289
   ],
   "roof_shingle_s#11": [
    11,
-   238
+   289
   ],
   "roof_shingle_s#12": [
    12,
-   238
+   289
   ],
   "roof_shingle_s#13": [
    13,
-   238
+   289
   ],
   "roof_shingle_s#14": [
    14,
-   238
+   289
   ],
   "roof_shingle_s#15": [
    15,
-   238
+   289
   ],
   "roof_shingle_w#0": [
    0,
-   239
+   290
   ],
   "roof_shingle_w#1": [
    1,
-   239
+   290
   ],
   "roof_shingle_w#2": [
    2,
-   239
+   290
   ],
   "roof_shingle_w#3": [
    3,
-   239
+   290
   ],
   "roof_shingle_w#4": [
    4,
-   239
+   290
   ],
   "roof_shingle_w#5": [
    5,
-   239
+   290
   ],
   "roof_shingle_w#6": [
    6,
-   239
+   290
   ],
   "roof_shingle_w#7": [
    7,
-   239
+   290
   ],
   "roof_shingle_w#8": [
    8,
-   239
+   290
   ],
   "roof_shingle_w#9": [
    9,
-   239
+   290
   ],
   "roof_shingle_w#10": [
    10,
-   239
+   290
   ],
   "roof_shingle_w#11": [
    11,
-   239
+   290
   ],
   "roof_shingle_w#12": [
    12,
-   239
+   290
   ],
   "roof_shingle_w#13": [
    13,
-   239
+   290
   ],
   "roof_shingle_w#14": [
    14,
-   239
+   290
   ],
   "roof_shingle_w#15": [
    15,
-   239
+   290
   ],
   "roof_shingle_ridge_ew#0": [
    0,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#1": [
    1,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#2": [
    2,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#3": [
    3,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#4": [
    4,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#5": [
    5,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#6": [
    6,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#7": [
    7,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#8": [
    8,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#9": [
    9,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#10": [
    10,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#11": [
    11,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#12": [
    12,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#13": [
    13,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#14": [
    14,
-   240
+   291
   ],
   "roof_shingle_ridge_ew#15": [
    15,
-   240
+   291
   ],
   "roof_shingle_ridge_ns#0": [
    0,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#1": [
    1,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#2": [
    2,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#3": [
    3,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#4": [
    4,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#5": [
    5,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#6": [
    6,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#7": [
    7,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#8": [
    8,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#9": [
    9,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#10": [
    10,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#11": [
    11,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#12": [
    12,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#13": [
    13,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#14": [
    14,
-   241
+   292
   ],
   "roof_shingle_ridge_ns#15": [
    15,
-   241
+   292
   ],
   "roof_shingle_flat#0": [
    0,
-   242
+   293
   ],
   "roof_shingle_flat#1": [
    1,
-   242
+   293
   ],
   "roof_shingle_flat#2": [
    2,
-   242
+   293
   ],
   "roof_shingle_flat#3": [
    3,
-   242
+   293
   ],
   "roof_shingle_flat#4": [
    4,
-   242
+   293
   ],
   "roof_shingle_flat#5": [
    5,
-   242
+   293
   ],
   "roof_shingle_flat#6": [
    6,
-   242
+   293
   ],
   "roof_shingle_flat#7": [
    7,
-   242
+   293
   ],
   "roof_shingle_flat#8": [
    8,
-   242
+   293
   ],
   "roof_shingle_flat#9": [
    9,
-   242
+   293
   ],
   "roof_shingle_flat#10": [
    10,
-   242
+   293
   ],
   "roof_shingle_flat#11": [
    11,
-   242
+   293
   ],
   "roof_shingle_flat#12": [
    12,
-   242
+   293
   ],
   "roof_shingle_flat#13": [
    13,
-   242
+   293
   ],
   "roof_shingle_flat#14": [
    14,
-   242
+   293
   ],
   "roof_shingle_flat#15": [
    15,
-   242
+   293
   ],
   "roof_shingle_peak#0": [
    0,
-   243
+   294
   ],
   "roof_shingle_peak#1": [
    1,
-   243
+   294
   ],
   "roof_shingle_peak#2": [
    2,
-   243
+   294
   ],
   "roof_shingle_peak#3": [
    3,
-   243
+   294
   ],
   "roof_shingle_peak#4": [
    4,
-   243
+   294
   ],
   "roof_shingle_peak#5": [
    5,
-   243
+   294
   ],
   "roof_shingle_peak#6": [
    6,
-   243
+   294
   ],
   "roof_shingle_peak#7": [
    7,
-   243
+   294
   ],
   "roof_shingle_peak#8": [
    8,
-   243
+   294
   ],
   "roof_shingle_peak#9": [
    9,
-   243
+   294
   ],
   "roof_shingle_peak#10": [
    10,
-   243
+   294
   ],
   "roof_shingle_peak#11": [
    11,
-   243
+   294
   ],
   "roof_shingle_peak#12": [
    12,
-   243
+   294
   ],
   "roof_shingle_peak#13": [
    13,
-   243
+   294
   ],
   "roof_shingle_peak#14": [
    14,
-   243
+   294
   ],
   "roof_shingle_peak#15": [
    15,
-   243
+   294
   ],
   "roof_thatch_n#0": [
    0,
-   244
+   295
   ],
   "roof_thatch_n#1": [
    1,
-   244
+   295
   ],
   "roof_thatch_n#2": [
    2,
-   244
+   295
   ],
   "roof_thatch_n#3": [
    3,
-   244
+   295
   ],
   "roof_thatch_n#4": [
    4,
-   244
+   295
   ],
   "roof_thatch_n#5": [
    5,
-   244
+   295
   ],
   "roof_thatch_n#6": [
    6,
-   244
+   295
   ],
   "roof_thatch_n#7": [
    7,
-   244
+   295
   ],
   "roof_thatch_n#8": [
    8,
-   244
+   295
   ],
   "roof_thatch_n#9": [
    9,
-   244
+   295
   ],
   "roof_thatch_n#10": [
    10,
-   244
+   295
   ],
   "roof_thatch_n#11": [
    11,
-   244
+   295
   ],
   "roof_thatch_n#12": [
    12,
-   244
+   295
   ],
   "roof_thatch_n#13": [
    13,
-   244
+   295
   ],
   "roof_thatch_n#14": [
    14,
-   244
+   295
   ],
   "roof_thatch_n#15": [
    15,
-   244
+   295
   ],
   "roof_thatch_e#0": [
    0,
-   245
+   296
   ],
   "roof_thatch_e#1": [
    1,
-   245
+   296
   ],
   "roof_thatch_e#2": [
    2,
-   245
+   296
   ],
   "roof_thatch_e#3": [
    3,
-   245
+   296
   ],
   "roof_thatch_e#4": [
    4,
-   245
+   296
   ],
   "roof_thatch_e#5": [
    5,
-   245
+   296
   ],
   "roof_thatch_e#6": [
    6,
-   245
+   296
   ],
   "roof_thatch_e#7": [
    7,
-   245
+   296
   ],
   "roof_thatch_e#8": [
    8,
-   245
+   296
   ],
   "roof_thatch_e#9": [
    9,
-   245
+   296
   ],
   "roof_thatch_e#10": [
    10,
-   245
+   296
   ],
   "roof_thatch_e#11": [
    11,
-   245
+   296
   ],
   "roof_thatch_e#12": [
    12,
-   245
+   296
   ],
   "roof_thatch_e#13": [
    13,
-   245
+   296
   ],
   "roof_thatch_e#14": [
    14,
-   245
+   296
   ],
   "roof_thatch_e#15": [
    15,
-   245
+   296
   ],
   "roof_thatch_s#0": [
    0,
-   246
+   297
   ],
   "roof_thatch_s#1": [
    1,
-   246
+   297
   ],
   "roof_thatch_s#2": [
    2,
-   246
+   297
   ],
   "roof_thatch_s#3": [
    3,
-   246
+   297
   ],
   "roof_thatch_s#4": [
    4,
-   246
+   297
   ],
   "roof_thatch_s#5": [
    5,
-   246
+   297
   ],
   "roof_thatch_s#6": [
    6,
-   246
+   297
   ],
   "roof_thatch_s#7": [
    7,
-   246
+   297
   ],
   "roof_thatch_s#8": [
    8,
-   246
+   297
   ],
   "roof_thatch_s#9": [
    9,
-   246
+   297
   ],
   "roof_thatch_s#10": [
    10,
-   246
+   297
   ],
   "roof_thatch_s#11": [
    11,
-   246
+   297
   ],
   "roof_thatch_s#12": [
    12,
-   246
+   297
   ],
   "roof_thatch_s#13": [
    13,
-   246
+   297
   ],
   "roof_thatch_s#14": [
    14,
-   246
+   297
   ],
   "roof_thatch_s#15": [
    15,
-   246
+   297
   ],
   "roof_thatch_w#0": [
    0,
-   247
+   298
   ],
   "roof_thatch_w#1": [
    1,
-   247
+   298
   ],
   "roof_thatch_w#2": [
    2,
-   247
+   298
   ],
   "roof_thatch_w#3": [
    3,
-   247
+   298
   ],
   "roof_thatch_w#4": [
    4,
-   247
+   298
   ],
   "roof_thatch_w#5": [
    5,
-   247
+   298
   ],
   "roof_thatch_w#6": [
    6,
-   247
+   298
   ],
   "roof_thatch_w#7": [
    7,
-   247
+   298
   ],
   "roof_thatch_w#8": [
    8,
-   247
+   298
   ],
   "roof_thatch_w#9": [
    9,
-   247
+   298
   ],
   "roof_thatch_w#10": [
    10,
-   247
+   298
   ],
   "roof_thatch_w#11": [
    11,
-   247
+   298
   ],
   "roof_thatch_w#12": [
    12,
-   247
+   298
   ],
   "roof_thatch_w#13": [
    13,
-   247
+   298
   ],
   "roof_thatch_w#14": [
    14,
-   247
+   298
   ],
   "roof_thatch_w#15": [
    15,
-   247
+   298
   ],
   "roof_thatch_ridge_ew#0": [
    0,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#1": [
    1,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#2": [
    2,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#3": [
    3,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#4": [
    4,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#5": [
    5,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#6": [
    6,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#7": [
    7,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#8": [
    8,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#9": [
    9,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#10": [
    10,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#11": [
    11,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#12": [
    12,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#13": [
    13,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#14": [
    14,
-   248
+   299
   ],
   "roof_thatch_ridge_ew#15": [
    15,
-   248
+   299
   ],
   "roof_thatch_ridge_ns#0": [
    0,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#1": [
    1,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#2": [
    2,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#3": [
    3,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#4": [
    4,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#5": [
    5,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#6": [
    6,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#7": [
    7,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#8": [
    8,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#9": [
    9,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#10": [
    10,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#11": [
    11,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#12": [
    12,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#13": [
    13,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#14": [
    14,
-   249
+   300
   ],
   "roof_thatch_ridge_ns#15": [
    15,
-   249
+   300
   ],
   "roof_thatch_flat#0": [
    0,
-   250
+   301
   ],
   "roof_thatch_flat#1": [
    1,
-   250
+   301
   ],
   "roof_thatch_flat#2": [
    2,
-   250
+   301
   ],
   "roof_thatch_flat#3": [
    3,
-   250
+   301
   ],
   "roof_thatch_flat#4": [
    4,
-   250
+   301
   ],
   "roof_thatch_flat#5": [
    5,
-   250
+   301
   ],
   "roof_thatch_flat#6": [
    6,
-   250
+   301
   ],
   "roof_thatch_flat#7": [
    7,
-   250
+   301
   ],
   "roof_thatch_flat#8": [
    8,
-   250
+   301
   ],
   "roof_thatch_flat#9": [
    9,
-   250
+   301
   ],
   "roof_thatch_flat#10": [
    10,
-   250
+   301
   ],
   "roof_thatch_flat#11": [
    11,
-   250
+   301
   ],
   "roof_thatch_flat#12": [
    12,
-   250
+   301
   ],
   "roof_thatch_flat#13": [
    13,
-   250
+   301
   ],
   "roof_thatch_flat#14": [
    14,
-   250
+   301
   ],
   "roof_thatch_flat#15": [
    15,
-   250
+   301
   ],
   "roof_thatch_peak#0": [
    0,
-   251
+   302
   ],
   "roof_thatch_peak#1": [
    1,
-   251
+   302
   ],
   "roof_thatch_peak#2": [
    2,
-   251
+   302
   ],
   "roof_thatch_peak#3": [
    3,
-   251
+   302
   ],
   "roof_thatch_peak#4": [
    4,
-   251
+   302
   ],
   "roof_thatch_peak#5": [
    5,
-   251
+   302
   ],
   "roof_thatch_peak#6": [
    6,
-   251
+   302
   ],
   "roof_thatch_peak#7": [
    7,
-   251
+   302
   ],
   "roof_thatch_peak#8": [
    8,
-   251
+   302
   ],
   "roof_thatch_peak#9": [
    9,
-   251
+   302
   ],
   "roof_thatch_peak#10": [
    10,
-   251
+   302
   ],
   "roof_thatch_peak#11": [
    11,
-   251
+   302
   ],
   "roof_thatch_peak#12": [
    12,
-   251
+   302
   ],
   "roof_thatch_peak#13": [
    13,
-   251
+   302
   ],
   "roof_thatch_peak#14": [
    14,
-   251
+   302
   ],
   "roof_thatch_peak#15": [
    15,
-   251
+   302
   ],
   "roof_flat_n#0": [
    0,
-   252
+   303
   ],
   "roof_flat_n#1": [
    1,
-   252
+   303
   ],
   "roof_flat_n#2": [
    2,
-   252
+   303
   ],
   "roof_flat_n#3": [
    3,
-   252
+   303
   ],
   "roof_flat_n#4": [
    4,
-   252
+   303
   ],
   "roof_flat_n#5": [
    5,
-   252
+   303
   ],
   "roof_flat_n#6": [
    6,
-   252
+   303
   ],
   "roof_flat_n#7": [
    7,
-   252
+   303
   ],
   "roof_flat_n#8": [
    8,
-   252
+   303
   ],
   "roof_flat_n#9": [
    9,
-   252
+   303
   ],
   "roof_flat_n#10": [
    10,
-   252
+   303
   ],
   "roof_flat_n#11": [
    11,
-   252
+   303
   ],
   "roof_flat_n#12": [
    12,
-   252
+   303
   ],
   "roof_flat_n#13": [
    13,
-   252
+   303
   ],
   "roof_flat_n#14": [
    14,
-   252
+   303
   ],
   "roof_flat_n#15": [
    15,
-   252
+   303
   ],
   "roof_flat_e#0": [
    0,
-   253
+   304
   ],
   "roof_flat_e#1": [
    1,
-   253
+   304
   ],
   "roof_flat_e#2": [
    2,
-   253
+   304
   ],
   "roof_flat_e#3": [
    3,
-   253
+   304
   ],
   "roof_flat_e#4": [
    4,
-   253
+   304
   ],
   "roof_flat_e#5": [
    5,
-   253
+   304
   ],
   "roof_flat_e#6": [
    6,
-   253
+   304
   ],
   "roof_flat_e#7": [
    7,
-   253
+   304
   ],
   "roof_flat_e#8": [
    8,
-   253
+   304
   ],
   "roof_flat_e#9": [
    9,
-   253
+   304
   ],
   "roof_flat_e#10": [
    10,
-   253
+   304
   ],
   "roof_flat_e#11": [
    11,
-   253
+   304
   ],
   "roof_flat_e#12": [
    12,
-   253
+   304
   ],
   "roof_flat_e#13": [
    13,
-   253
+   304
   ],
   "roof_flat_e#14": [
    14,
-   253
+   304
   ],
   "roof_flat_e#15": [
    15,
-   253
+   304
   ],
   "roof_flat_s#0": [
    0,
-   254
+   305
   ],
   "roof_flat_s#1": [
    1,
-   254
+   305
   ],
   "roof_flat_s#2": [
    2,
-   254
+   305
   ],
   "roof_flat_s#3": [
    3,
-   254
+   305
   ],
   "roof_flat_s#4": [
    4,
-   254
+   305
   ],
   "roof_flat_s#5": [
    5,
-   254
+   305
   ],
   "roof_flat_s#6": [
    6,
-   254
+   305
   ],
   "roof_flat_s#7": [
    7,
-   254
+   305
   ],
   "roof_flat_s#8": [
    8,
-   254
+   305
   ],
   "roof_flat_s#9": [
    9,
-   254
+   305
   ],
   "roof_flat_s#10": [
    10,
-   254
+   305
   ],
   "roof_flat_s#11": [
    11,
-   254
+   305
   ],
   "roof_flat_s#12": [
    12,
-   254
+   305
   ],
   "roof_flat_s#13": [
    13,
-   254
+   305
   ],
   "roof_flat_s#14": [
    14,
-   254
+   305
   ],
   "roof_flat_s#15": [
    15,
-   254
+   305
   ],
   "roof_flat_w#0": [
    0,
-   255
+   306
   ],
   "roof_flat_w#1": [
    1,
-   255
+   306
   ],
   "roof_flat_w#2": [
    2,
-   255
+   306
   ],
   "roof_flat_w#3": [
    3,
-   255
+   306
   ],
   "roof_flat_w#4": [
    4,
-   255
+   306
   ],
   "roof_flat_w#5": [
    5,
-   255
+   306
   ],
   "roof_flat_w#6": [
    6,
-   255
+   306
   ],
   "roof_flat_w#7": [
    7,
-   255
+   306
   ],
   "roof_flat_w#8": [
    8,
-   255
+   306
   ],
   "roof_flat_w#9": [
    9,
-   255
+   306
   ],
   "roof_flat_w#10": [
    10,
-   255
+   306
   ],
   "roof_flat_w#11": [
    11,
-   255
+   306
   ],
   "roof_flat_w#12": [
    12,
-   255
+   306
   ],
   "roof_flat_w#13": [
    13,
-   255
+   306
   ],
   "roof_flat_w#14": [
    14,
-   255
+   306
   ],
   "roof_flat_w#15": [
    15,
-   255
+   306
   ],
   "roof_flat_ridge_ew#0": [
    0,
-   256
+   307
   ],
   "roof_flat_ridge_ew#1": [
    1,
-   256
+   307
   ],
   "roof_flat_ridge_ew#2": [
    2,
-   256
+   307
   ],
   "roof_flat_ridge_ew#3": [
    3,
-   256
+   307
   ],
   "roof_flat_ridge_ew#4": [
    4,
-   256
+   307
   ],
   "roof_flat_ridge_ew#5": [
    5,
-   256
+   307
   ],
   "roof_flat_ridge_ew#6": [
    6,
-   256
+   307
   ],
   "roof_flat_ridge_ew#7": [
    7,
-   256
+   307
   ],
   "roof_flat_ridge_ew#8": [
    8,
-   256
+   307
   ],
   "roof_flat_ridge_ew#9": [
    9,
-   256
+   307
   ],
   "roof_flat_ridge_ew#10": [
    10,
-   256
+   307
   ],
   "roof_flat_ridge_ew#11": [
    11,
-   256
+   307
   ],
   "roof_flat_ridge_ew#12": [
    12,
-   256
+   307
   ],
   "roof_flat_ridge_ew#13": [
    13,
-   256
+   307
   ],
   "roof_flat_ridge_ew#14": [
    14,
-   256
+   307
   ],
   "roof_flat_ridge_ew#15": [
    15,
-   256
+   307
   ],
   "roof_flat_ridge_ns#0": [
    0,
-   257
+   308
   ],
   "roof_flat_ridge_ns#1": [
    1,
-   257
+   308
   ],
   "roof_flat_ridge_ns#2": [
    2,
-   257
+   308
   ],
   "roof_flat_ridge_ns#3": [
    3,
-   257
+   308
   ],
   "roof_flat_ridge_ns#4": [
    4,
-   257
+   308
   ],
   "roof_flat_ridge_ns#5": [
    5,
-   257
+   308
   ],
   "roof_flat_ridge_ns#6": [
    6,
-   257
+   308
   ],
   "roof_flat_ridge_ns#7": [
    7,
-   257
+   308
   ],
   "roof_flat_ridge_ns#8": [
    8,
-   257
+   308
   ],
   "roof_flat_ridge_ns#9": [
    9,
-   257
+   308
   ],
   "roof_flat_ridge_ns#10": [
    10,
-   257
+   308
   ],
   "roof_flat_ridge_ns#11": [
    11,
-   257
+   308
   ],
   "roof_flat_ridge_ns#12": [
    12,
-   257
+   308
   ],
   "roof_flat_ridge_ns#13": [
    13,
-   257
+   308
   ],
   "roof_flat_ridge_ns#14": [
    14,
-   257
+   308
   ],
   "roof_flat_ridge_ns#15": [
    15,
-   257
+   308
   ],
   "roof_flat_flat#0": [
    0,
-   258
+   309
   ],
   "roof_flat_flat#1": [
    1,
-   258
+   309
   ],
   "roof_flat_flat#2": [
    2,
-   258
+   309
   ],
   "roof_flat_flat#3": [
    3,
-   258
+   309
   ],
   "roof_flat_flat#4": [
    4,
-   258
+   309
   ],
   "roof_flat_flat#5": [
    5,
-   258
+   309
   ],
   "roof_flat_flat#6": [
    6,
-   258
+   309
   ],
   "roof_flat_flat#7": [
    7,
-   258
+   309
   ],
   "roof_flat_flat#8": [
    8,
-   258
+   309
   ],
   "roof_flat_flat#9": [
    9,
-   258
+   309
   ],
   "roof_flat_flat#10": [
    10,
-   258
+   309
   ],
   "roof_flat_flat#11": [
    11,
-   258
+   309
   ],
   "roof_flat_flat#12": [
    12,
-   258
+   309
   ],
   "roof_flat_flat#13": [
    13,
-   258
+   309
   ],
   "roof_flat_flat#14": [
    14,
-   258
+   309
   ],
   "roof_flat_flat#15": [
    15,
-   258
+   309
   ],
   "roof_flat_peak#0": [
    0,
-   259
+   310
   ],
   "roof_flat_peak#1": [
    1,
-   259
+   310
   ],
   "roof_flat_peak#2": [
    2,
-   259
+   310
   ],
   "roof_flat_peak#3": [
    3,
-   259
+   310
   ],
   "roof_flat_peak#4": [
    4,
-   259
+   310
   ],
   "roof_flat_peak#5": [
    5,
-   259
+   310
   ],
   "roof_flat_peak#6": [
    6,
-   259
+   310
   ],
   "roof_flat_peak#7": [
    7,
-   259
+   310
   ],
   "roof_flat_peak#8": [
    8,
-   259
+   310
   ],
   "roof_flat_peak#9": [
    9,
-   259
+   310
   ],
   "roof_flat_peak#10": [
    10,
-   259
+   310
   ],
   "roof_flat_peak#11": [
    11,
-   259
+   310
   ],
   "roof_flat_peak#12": [
    12,
-   259
+   310
   ],
   "roof_flat_peak#13": [
    13,
-   259
+   310
   ],
   "roof_flat_peak#14": [
    14,
-   259
+   310
   ],
   "roof_flat_peak#15": [
    15,
-   259
+   310
   ],
   "roof_turf_n#0": [
    0,
-   260
+   311
   ],
   "roof_turf_n#1": [
    1,
-   260
+   311
   ],
   "roof_turf_n#2": [
    2,
-   260
+   311
   ],
   "roof_turf_n#3": [
    3,
-   260
+   311
   ],
   "roof_turf_n#4": [
    4,
-   260
+   311
   ],
   "roof_turf_n#5": [
    5,
-   260
+   311
   ],
   "roof_turf_n#6": [
    6,
-   260
+   311
   ],
   "roof_turf_n#7": [
    7,
-   260
+   311
   ],
   "roof_turf_n#8": [
    8,
-   260
+   311
   ],
   "roof_turf_n#9": [
    9,
-   260
+   311
   ],
   "roof_turf_n#10": [
    10,
-   260
+   311
   ],
   "roof_turf_n#11": [
    11,
-   260
+   311
   ],
   "roof_turf_n#12": [
    12,
-   260
+   311
   ],
   "roof_turf_n#13": [
    13,
-   260
+   311
   ],
   "roof_turf_n#14": [
    14,
-   260
+   311
   ],
   "roof_turf_n#15": [
    15,
-   260
+   311
   ],
   "roof_turf_e#0": [
    0,
-   261
+   312
   ],
   "roof_turf_e#1": [
    1,
-   261
+   312
   ],
   "roof_turf_e#2": [
    2,
-   261
+   312
   ],
   "roof_turf_e#3": [
    3,
-   261
+   312
   ],
   "roof_turf_e#4": [
    4,
-   261
+   312
   ],
   "roof_turf_e#5": [
    5,
-   261
+   312
   ],
   "roof_turf_e#6": [
    6,
-   261
+   312
   ],
   "roof_turf_e#7": [
    7,
-   261
+   312
   ],
   "roof_turf_e#8": [
    8,
-   261
+   312
   ],
   "roof_turf_e#9": [
    9,
-   261
+   312
   ],
   "roof_turf_e#10": [
    10,
-   261
+   312
   ],
   "roof_turf_e#11": [
    11,
-   261
+   312
   ],
   "roof_turf_e#12": [
    12,
-   261
+   312
   ],
   "roof_turf_e#13": [
    13,
-   261
+   312
   ],
   "roof_turf_e#14": [
    14,
-   261
+   312
   ],
   "roof_turf_e#15": [
    15,
-   261
+   312
   ],
   "roof_turf_s#0": [
    0,
-   262
+   313
   ],
   "roof_turf_s#1": [
    1,
-   262
+   313
   ],
   "roof_turf_s#2": [
    2,
-   262
+   313
   ],
   "roof_turf_s#3": [
    3,
-   262
+   313
   ],
   "roof_turf_s#4": [
    4,
-   262
+   313
   ],
   "roof_turf_s#5": [
    5,
-   262
+   313
   ],
   "roof_turf_s#6": [
    6,
-   262
+   313
   ],
   "roof_turf_s#7": [
    7,
-   262
+   313
   ],
   "roof_turf_s#8": [
    8,
-   262
+   313
   ],
   "roof_turf_s#9": [
    9,
-   262
+   313
   ],
   "roof_turf_s#10": [
    10,
-   262
+   313
   ],
   "roof_turf_s#11": [
    11,
-   262
+   313
   ],
   "roof_turf_s#12": [
    12,
-   262
+   313
   ],
   "roof_turf_s#13": [
    13,
-   262
+   313
   ],
   "roof_turf_s#14": [
    14,
-   262
+   313
   ],
   "roof_turf_s#15": [
    15,
-   262
+   313
   ],
   "roof_turf_w#0": [
    0,
-   263
+   314
   ],
   "roof_turf_w#1": [
    1,
-   263
+   314
   ],
   "roof_turf_w#2": [
    2,
-   263
+   314
   ],
   "roof_turf_w#3": [
    3,
-   263
+   314
   ],
   "roof_turf_w#4": [
    4,
-   263
+   314
   ],
   "roof_turf_w#5": [
    5,
-   263
+   314
   ],
   "roof_turf_w#6": [
    6,
-   263
+   314
   ],
   "roof_turf_w#7": [
    7,
-   263
+   314
   ],
   "roof_turf_w#8": [
    8,
-   263
+   314
   ],
   "roof_turf_w#9": [
    9,
-   263
+   314
   ],
   "roof_turf_w#10": [
    10,
-   263
+   314
   ],
   "roof_turf_w#11": [
    11,
-   263
+   314
   ],
   "roof_turf_w#12": [
    12,
-   263
+   314
   ],
   "roof_turf_w#13": [
    13,
-   263
+   314
   ],
   "roof_turf_w#14": [
    14,
-   263
+   314
   ],
   "roof_turf_w#15": [
    15,
-   263
+   314
   ],
   "roof_turf_ridge_ew#0": [
    0,
-   264
+   315
   ],
   "roof_turf_ridge_ew#1": [
    1,
-   264
+   315
   ],
   "roof_turf_ridge_ew#2": [
    2,
-   264
+   315
   ],
   "roof_turf_ridge_ew#3": [
    3,
-   264
+   315
   ],
   "roof_turf_ridge_ew#4": [
    4,
-   264
+   315
   ],
   "roof_turf_ridge_ew#5": [
    5,
-   264
+   315
   ],
   "roof_turf_ridge_ew#6": [
    6,
-   264
+   315
   ],
   "roof_turf_ridge_ew#7": [
    7,
-   264
+   315
   ],
   "roof_turf_ridge_ew#8": [
    8,
-   264
+   315
   ],
   "roof_turf_ridge_ew#9": [
    9,
-   264
+   315
   ],
   "roof_turf_ridge_ew#10": [
    10,
-   264
+   315
   ],
   "roof_turf_ridge_ew#11": [
    11,
-   264
+   315
   ],
   "roof_turf_ridge_ew#12": [
    12,
-   264
+   315
   ],
   "roof_turf_ridge_ew#13": [
    13,
-   264
+   315
   ],
   "roof_turf_ridge_ew#14": [
    14,
-   264
+   315
   ],
   "roof_turf_ridge_ew#15": [
    15,
-   264
+   315
   ],
   "roof_turf_ridge_ns#0": [
    0,
-   265
+   316
   ],
   "roof_turf_ridge_ns#1": [
    1,
-   265
+   316
   ],
   "roof_turf_ridge_ns#2": [
    2,
-   265
+   316
   ],
   "roof_turf_ridge_ns#3": [
    3,
-   265
+   316
   ],
   "roof_turf_ridge_ns#4": [
    4,
-   265
+   316
   ],
   "roof_turf_ridge_ns#5": [
    5,
-   265
+   316
   ],
   "roof_turf_ridge_ns#6": [
    6,
-   265
+   316
   ],
   "roof_turf_ridge_ns#7": [
    7,
-   265
+   316
   ],
   "roof_turf_ridge_ns#8": [
    8,
-   265
+   316
   ],
   "roof_turf_ridge_ns#9": [
    9,
-   265
+   316
   ],
   "roof_turf_ridge_ns#10": [
    10,
-   265
+   316
   ],
   "roof_turf_ridge_ns#11": [
    11,
-   265
+   316
   ],
   "roof_turf_ridge_ns#12": [
    12,
-   265
+   316
   ],
   "roof_turf_ridge_ns#13": [
    13,
-   265
+   316
   ],
   "roof_turf_ridge_ns#14": [
    14,
-   265
+   316
   ],
   "roof_turf_ridge_ns#15": [
    15,
-   265
+   316
   ],
   "roof_turf_flat#0": [
    0,
-   266
+   317
   ],
   "roof_turf_flat#1": [
    1,
-   266
+   317
   ],
   "roof_turf_flat#2": [
    2,
-   266
+   317
   ],
   "roof_turf_flat#3": [
    3,
-   266
+   317
   ],
   "roof_turf_flat#4": [
    4,
-   266
+   317
   ],
   "roof_turf_flat#5": [
    5,
-   266
+   317
   ],
   "roof_turf_flat#6": [
    6,
-   266
+   317
   ],
   "roof_turf_flat#7": [
    7,
-   266
+   317
   ],
   "roof_turf_flat#8": [
    8,
-   266
+   317
   ],
   "roof_turf_flat#9": [
    9,
-   266
+   317
   ],
   "roof_turf_flat#10": [
    10,
-   266
+   317
   ],
   "roof_turf_flat#11": [
    11,
-   266
+   317
   ],
   "roof_turf_flat#12": [
    12,
-   266
+   317
   ],
   "roof_turf_flat#13": [
    13,
-   266
+   317
   ],
   "roof_turf_flat#14": [
    14,
-   266
+   317
   ],
   "roof_turf_flat#15": [
    15,
-   266
+   317
   ],
   "roof_turf_peak#0": [
    0,
-   267
+   318
   ],
   "roof_turf_peak#1": [
    1,
-   267
+   318
   ],
   "roof_turf_peak#2": [
    2,
-   267
+   318
   ],
   "roof_turf_peak#3": [
    3,
-   267
+   318
   ],
   "roof_turf_peak#4": [
    4,
-   267
+   318
   ],
   "roof_turf_peak#5": [
    5,
-   267
+   318
   ],
   "roof_turf_peak#6": [
    6,
-   267
+   318
   ],
   "roof_turf_peak#7": [
    7,
-   267
+   318
   ],
   "roof_turf_peak#8": [
    8,
-   267
+   318
   ],
   "roof_turf_peak#9": [
    9,
-   267
+   318
   ],
   "roof_turf_peak#10": [
    10,
-   267
+   318
   ],
   "roof_turf_peak#11": [
    11,
-   267
+   318
   ],
   "roof_turf_peak#12": [
    12,
-   267
+   318
   ],
   "roof_turf_peak#13": [
    13,
-   267
+   318
   ],
   "roof_turf_peak#14": [
    14,
-   267
+   318
   ],
   "roof_turf_peak#15": [
    15,
-   267
+   318
   ],
   "grass_tuft": [
    0,
-   268
+   319
   ],
   "grass_tuft.1": [
    1,
-   268
+   319
   ],
   "grass_tuft.2": [
    2,
-   268
+   319
   ],
   "wildflowers": [
    0,
-   269
+   320
   ],
   "wildflowers.1": [
    1,
-   269
+   320
   ],
   "wildflowers.2": [
    2,
-   269
+   320
   ],
   "pebbles": [
    0,
-   270
+   321
   ],
   "pebbles.1": [
    1,
-   270
+   321
   ],
   "pebbles.2": [
    2,
-   270
+   321
   ],
   "twigs": [
    0,
-   271
+   322
   ],
   "twigs.1": [
    1,
-   271
+   322
   ],
   "toadstools": [
    0,
-   272
+   323
   ],
   "toadstools.1": [
    1,
-   272
+   323
   ],
   "fronds": [
    0,
-   273
+   324
   ],
   "fronds.1": [
    1,
-   273
+   324
   ],
   "shells": [
    0,
-   274
+   325
   ],
   "shells.1": [
    1,
-   274
+   325
   ],
   "sedge": [
    0,
-   275
+   326
   ],
   "sedge.1": [
    1,
-   275
+   326
   ],
   "lichen": [
    0,
-   276
+   327
   ],
   "lichen.1": [
    1,
-   276
+   327
   ],
   "cracks": [
    0,
-   277
+   328
   ],
   "cracks.1": [
    1,
-   277
+   328
   ],
   "fallen_leaves": [
    0,
-   278
+   329
   ],
   "fallen_leaves.1": [
    1,
-   278
+   329
   ],
   "fallen_leaves.2": [
    2,
-   278
+   329
   ]
  },
  "placeholders": [
-  "cave_floor",
-  "cave_floor.1",
-  "cave_floor.2",
-  "bedroll",
-  "fire_out",
-  "windbreak",
-  "lean_to",
-  "snare",
-  "tree_trunk",
-  "rock_wall#0",
-  "rock_wall#1",
-  "rock_wall#2",
-  "rock_wall#3",
-  "rock_wall#4",
-  "rock_wall#5",
-  "rock_wall#6",
-  "rock_wall#7",
-  "rock_wall#8",
-  "rock_wall#9",
-  "rock_wall#10",
-  "rock_wall#11",
-  "rock_wall#12",
-  "rock_wall#13",
-  "rock_wall#14",
-  "rock_wall#15",
-  "door_locked#0",
-  "door_locked#1",
-  "door_locked#2",
-  "door_locked#3",
-  "door_locked#4",
-  "door_locked#5",
-  "door_locked#6",
-  "door_locked#7",
-  "door_locked#8",
-  "door_locked#9",
-  "door_locked#10",
-  "door_locked#11",
-  "door_locked#12",
-  "door_locked#13",
-  "door_locked#14",
-  "door_locked#15",
-  "door_secret#0",
-  "door_secret#1",
-  "door_secret#2",
-  "door_secret#3",
-  "door_secret#4",
-  "door_secret#5",
-  "door_secret#6",
-  "door_secret#7",
-  "door_secret#8",
-  "door_secret#9",
-  "door_secret#10",
-  "door_secret#11",
-  "door_secret#12",
-  "door_secret#13",
-  "door_secret#14",
-  "door_secret#15",
-  "portcullis#0",
-  "portcullis#1",
-  "portcullis#2",
-  "portcullis#3",
-  "portcullis#4",
-  "portcullis#5",
-  "portcullis#6",
-  "portcullis#7",
-  "portcullis#8",
-  "portcullis#9",
-  "portcullis#10",
-  "portcullis#11",
-  "portcullis#12",
-  "portcullis#13",
-  "portcullis#14",
-  "portcullis#15",
-  "portcullis_up#0",
-  "portcullis_up#1",
-  "portcullis_up#2",
-  "portcullis_up#3",
-  "portcullis_up#4",
-  "portcullis_up#5",
-  "portcullis_up#6",
-  "portcullis_up#7",
-  "portcullis_up#8",
-  "portcullis_up#9",
-  "portcullis_up#10",
-  "portcullis_up#11",
-  "portcullis_up#12",
-  "portcullis_up#13",
-  "portcullis_up#14",
-  "portcullis_up#15",
-  "bars#0",
-  "bars#1",
-  "bars#2",
-  "bars#3",
-  "bars#4",
-  "bars#5",
-  "bars#6",
-  "bars#7",
-  "bars#8",
-  "bars#9",
-  "bars#10",
-  "bars#11",
-  "bars#12",
-  "bars#13",
-  "bars#14",
-  "bars#15",
-  "bars_open#0",
-  "bars_open#1",
-  "bars_open#2",
-  "bars_open#3",
-  "bars_open#4",
-  "bars_open#5",
-  "bars_open#6",
-  "bars_open#7",
-  "bars_open#8",
-  "bars_open#9",
-  "bars_open#10",
-  "bars_open#11",
-  "bars_open#12",
-  "bars_open#13",
-  "bars_open#14",
-  "bars_open#15",
-  "grate",
-  "pillar",
-  "statue",
-  "brazier",
-  "bones",
-  "bones.1",
-  "urn",
-  "throne",
-  "cart",
-  "support",
-  "ore",
-  "pit",
   "edge_deep#1",
   "edge_deep#2",
   "edge_deep#3",
@@ -8868,1094 +13319,445 @@
   "edge_snow#12",
   "edge_snow#13",
   "edge_snow#14",
-  "trunk_broadleaf",
-  "trunk2_broadleaf#1",
-  "trunk2_broadleaf#2",
-  "trunk2_broadleaf#4",
-  "trunk2_broadleaf#8",
-  "roots_broadleaf#1",
-  "roots_broadleaf#2",
-  "roots_broadleaf#4",
-  "roots_broadleaf#8",
-  "branch_broadleaf#0",
-  "branch_broadleaf#1",
-  "branch_broadleaf#2",
-  "branch_broadleaf#3",
-  "branch_broadleaf#4",
-  "branch_broadleaf#5",
-  "branch_broadleaf#6",
-  "branch_broadleaf#7",
-  "branch_broadleaf#8",
-  "branch_broadleaf#9",
-  "branch_broadleaf#10",
-  "branch_broadleaf#11",
-  "branch_broadleaf#12",
-  "branch_broadleaf#13",
-  "branch_broadleaf#14",
-  "branch_broadleaf#15",
-  "leaves_broadleaf#0",
-  "leaves_broadleaf#1",
-  "leaves_broadleaf#2",
-  "leaves_broadleaf#3",
-  "leaves_broadleaf#4",
-  "leaves_broadleaf#5",
-  "leaves_broadleaf#6",
-  "leaves_broadleaf#7",
-  "leaves_broadleaf#8",
-  "leaves_broadleaf#9",
-  "leaves_broadleaf#10",
-  "leaves_broadleaf#11",
-  "leaves_broadleaf#12",
-  "leaves_broadleaf#13",
-  "leaves_broadleaf#14",
-  "leaves_broadleaf#15",
-  "trunk_conifer",
-  "trunk2_conifer#1",
-  "trunk2_conifer#2",
-  "trunk2_conifer#4",
-  "trunk2_conifer#8",
-  "roots_conifer#1",
-  "roots_conifer#2",
-  "roots_conifer#4",
-  "roots_conifer#8",
-  "branch_conifer#0",
-  "branch_conifer#1",
-  "branch_conifer#2",
-  "branch_conifer#3",
-  "branch_conifer#4",
-  "branch_conifer#5",
-  "branch_conifer#6",
-  "branch_conifer#7",
-  "branch_conifer#8",
-  "branch_conifer#9",
-  "branch_conifer#10",
-  "branch_conifer#11",
-  "branch_conifer#12",
-  "branch_conifer#13",
-  "branch_conifer#14",
-  "branch_conifer#15",
-  "leaves_conifer#0",
-  "leaves_conifer#1",
-  "leaves_conifer#2",
-  "leaves_conifer#3",
-  "leaves_conifer#4",
-  "leaves_conifer#5",
-  "leaves_conifer#6",
-  "leaves_conifer#7",
-  "leaves_conifer#8",
-  "leaves_conifer#9",
-  "leaves_conifer#10",
-  "leaves_conifer#11",
-  "leaves_conifer#12",
-  "leaves_conifer#13",
-  "leaves_conifer#14",
-  "leaves_conifer#15",
-  "trunk_birch",
-  "trunk2_birch#1",
-  "trunk2_birch#2",
-  "trunk2_birch#4",
-  "trunk2_birch#8",
-  "roots_birch#1",
-  "roots_birch#2",
-  "roots_birch#4",
-  "roots_birch#8",
-  "branch_birch#0",
-  "branch_birch#1",
-  "branch_birch#2",
-  "branch_birch#3",
-  "branch_birch#4",
-  "branch_birch#5",
-  "branch_birch#6",
-  "branch_birch#7",
-  "branch_birch#8",
-  "branch_birch#9",
-  "branch_birch#10",
-  "branch_birch#11",
-  "branch_birch#12",
-  "branch_birch#13",
-  "branch_birch#14",
-  "branch_birch#15",
-  "leaves_birch#0",
-  "leaves_birch#1",
-  "leaves_birch#2",
-  "leaves_birch#3",
-  "leaves_birch#4",
-  "leaves_birch#5",
-  "leaves_birch#6",
-  "leaves_birch#7",
-  "leaves_birch#8",
-  "leaves_birch#9",
-  "leaves_birch#10",
-  "leaves_birch#11",
-  "leaves_birch#12",
-  "leaves_birch#13",
-  "leaves_birch#14",
-  "leaves_birch#15",
-  "trunk_palm",
-  "trunk2_palm#1",
-  "trunk2_palm#2",
-  "trunk2_palm#4",
-  "trunk2_palm#8",
-  "roots_palm#1",
-  "roots_palm#2",
-  "roots_palm#4",
-  "roots_palm#8",
-  "branch_palm#0",
-  "branch_palm#1",
-  "branch_palm#2",
-  "branch_palm#3",
-  "branch_palm#4",
-  "branch_palm#5",
-  "branch_palm#6",
-  "branch_palm#7",
-  "branch_palm#8",
-  "branch_palm#9",
-  "branch_palm#10",
-  "branch_palm#11",
-  "branch_palm#12",
-  "branch_palm#13",
-  "branch_palm#14",
-  "branch_palm#15",
-  "leaves_palm#0",
-  "leaves_palm#1",
-  "leaves_palm#2",
-  "leaves_palm#3",
-  "leaves_palm#4",
-  "leaves_palm#5",
-  "leaves_palm#6",
-  "leaves_palm#7",
-  "leaves_palm#8",
-  "leaves_palm#9",
-  "leaves_palm#10",
-  "leaves_palm#11",
-  "leaves_palm#12",
-  "leaves_palm#13",
-  "leaves_palm#14",
-  "leaves_palm#15",
-  "trunk_jungle",
-  "trunk2_jungle#1",
-  "trunk2_jungle#2",
-  "trunk2_jungle#4",
-  "trunk2_jungle#8",
-  "roots_jungle#1",
-  "roots_jungle#2",
-  "roots_jungle#4",
-  "roots_jungle#8",
-  "branch_jungle#0",
-  "branch_jungle#1",
-  "branch_jungle#2",
-  "branch_jungle#3",
-  "branch_jungle#4",
-  "branch_jungle#5",
-  "branch_jungle#6",
-  "branch_jungle#7",
-  "branch_jungle#8",
-  "branch_jungle#9",
-  "branch_jungle#10",
-  "branch_jungle#11",
-  "branch_jungle#12",
-  "branch_jungle#13",
-  "branch_jungle#14",
-  "branch_jungle#15",
-  "leaves_jungle#0",
-  "leaves_jungle#1",
-  "leaves_jungle#2",
-  "leaves_jungle#3",
-  "leaves_jungle#4",
-  "leaves_jungle#5",
-  "leaves_jungle#6",
-  "leaves_jungle#7",
-  "leaves_jungle#8",
-  "leaves_jungle#9",
-  "leaves_jungle#10",
-  "leaves_jungle#11",
-  "leaves_jungle#12",
-  "leaves_jungle#13",
-  "leaves_jungle#14",
-  "leaves_jungle#15",
-  "trunk_mangrove",
-  "trunk2_mangrove#1",
-  "trunk2_mangrove#2",
-  "trunk2_mangrove#4",
-  "trunk2_mangrove#8",
-  "roots_mangrove#1",
-  "roots_mangrove#2",
-  "roots_mangrove#4",
-  "roots_mangrove#8",
-  "branch_mangrove#0",
-  "branch_mangrove#1",
-  "branch_mangrove#2",
-  "branch_mangrove#3",
-  "branch_mangrove#4",
-  "branch_mangrove#5",
-  "branch_mangrove#6",
-  "branch_mangrove#7",
-  "branch_mangrove#8",
-  "branch_mangrove#9",
-  "branch_mangrove#10",
-  "branch_mangrove#11",
-  "branch_mangrove#12",
-  "branch_mangrove#13",
-  "branch_mangrove#14",
-  "branch_mangrove#15",
-  "leaves_mangrove#0",
-  "leaves_mangrove#1",
-  "leaves_mangrove#2",
-  "leaves_mangrove#3",
-  "leaves_mangrove#4",
-  "leaves_mangrove#5",
-  "leaves_mangrove#6",
-  "leaves_mangrove#7",
-  "leaves_mangrove#8",
-  "leaves_mangrove#9",
-  "leaves_mangrove#10",
-  "leaves_mangrove#11",
-  "leaves_mangrove#12",
-  "leaves_mangrove#13",
-  "leaves_mangrove#14",
-  "leaves_mangrove#15",
-  "trunk_dead",
-  "trunk2_dead#1",
-  "trunk2_dead#2",
-  "trunk2_dead#4",
-  "trunk2_dead#8",
-  "roots_dead#1",
-  "roots_dead#2",
-  "roots_dead#4",
-  "roots_dead#8",
-  "branch_dead#0",
-  "branch_dead#1",
-  "branch_dead#2",
-  "branch_dead#3",
-  "branch_dead#4",
-  "branch_dead#5",
-  "branch_dead#6",
-  "branch_dead#7",
-  "branch_dead#8",
-  "branch_dead#9",
-  "branch_dead#10",
-  "branch_dead#11",
-  "branch_dead#12",
-  "branch_dead#13",
-  "branch_dead#14",
-  "branch_dead#15",
-  "leaves_dead#0",
-  "leaves_dead#1",
-  "leaves_dead#2",
-  "leaves_dead#3",
-  "leaves_dead#4",
-  "leaves_dead#5",
-  "leaves_dead#6",
-  "leaves_dead#7",
-  "leaves_dead#8",
-  "leaves_dead#9",
-  "leaves_dead#10",
-  "leaves_dead#11",
-  "leaves_dead#12",
-  "leaves_dead#13",
-  "leaves_dead#14",
-  "leaves_dead#15",
-  "person_n",
-  "person_e",
-  "person_s",
-  "person_w",
-  "person_walk_n",
-  "person_walk_e",
-  "person_walk_s",
-  "person_walk_w",
-  "roof_tile_n#0",
-  "roof_tile_n#1",
-  "roof_tile_n#2",
-  "roof_tile_n#3",
-  "roof_tile_n#4",
-  "roof_tile_n#5",
-  "roof_tile_n#6",
-  "roof_tile_n#7",
-  "roof_tile_n#8",
-  "roof_tile_n#9",
-  "roof_tile_n#10",
-  "roof_tile_n#11",
-  "roof_tile_n#12",
-  "roof_tile_n#13",
-  "roof_tile_n#14",
-  "roof_tile_n#15",
-  "roof_tile_e#0",
-  "roof_tile_e#1",
-  "roof_tile_e#2",
-  "roof_tile_e#3",
-  "roof_tile_e#4",
-  "roof_tile_e#5",
-  "roof_tile_e#6",
-  "roof_tile_e#7",
-  "roof_tile_e#8",
-  "roof_tile_e#9",
-  "roof_tile_e#10",
-  "roof_tile_e#11",
-  "roof_tile_e#12",
-  "roof_tile_e#13",
-  "roof_tile_e#14",
-  "roof_tile_e#15",
-  "roof_tile_s#0",
-  "roof_tile_s#1",
-  "roof_tile_s#2",
-  "roof_tile_s#3",
-  "roof_tile_s#4",
-  "roof_tile_s#5",
-  "roof_tile_s#6",
-  "roof_tile_s#7",
-  "roof_tile_s#8",
-  "roof_tile_s#9",
-  "roof_tile_s#10",
-  "roof_tile_s#11",
-  "roof_tile_s#12",
-  "roof_tile_s#13",
-  "roof_tile_s#14",
-  "roof_tile_s#15",
-  "roof_tile_w#0",
-  "roof_tile_w#1",
-  "roof_tile_w#2",
-  "roof_tile_w#3",
-  "roof_tile_w#4",
-  "roof_tile_w#5",
-  "roof_tile_w#6",
-  "roof_tile_w#7",
-  "roof_tile_w#8",
-  "roof_tile_w#9",
-  "roof_tile_w#10",
-  "roof_tile_w#11",
-  "roof_tile_w#12",
-  "roof_tile_w#13",
-  "roof_tile_w#14",
-  "roof_tile_w#15",
-  "roof_tile_ridge_ew#0",
-  "roof_tile_ridge_ew#1",
-  "roof_tile_ridge_ew#2",
-  "roof_tile_ridge_ew#3",
-  "roof_tile_ridge_ew#4",
-  "roof_tile_ridge_ew#5",
-  "roof_tile_ridge_ew#6",
-  "roof_tile_ridge_ew#7",
-  "roof_tile_ridge_ew#8",
-  "roof_tile_ridge_ew#9",
-  "roof_tile_ridge_ew#10",
-  "roof_tile_ridge_ew#11",
-  "roof_tile_ridge_ew#12",
-  "roof_tile_ridge_ew#13",
-  "roof_tile_ridge_ew#14",
-  "roof_tile_ridge_ew#15",
-  "roof_tile_ridge_ns#0",
-  "roof_tile_ridge_ns#1",
-  "roof_tile_ridge_ns#2",
-  "roof_tile_ridge_ns#3",
-  "roof_tile_ridge_ns#4",
-  "roof_tile_ridge_ns#5",
-  "roof_tile_ridge_ns#6",
-  "roof_tile_ridge_ns#7",
-  "roof_tile_ridge_ns#8",
-  "roof_tile_ridge_ns#9",
-  "roof_tile_ridge_ns#10",
-  "roof_tile_ridge_ns#11",
-  "roof_tile_ridge_ns#12",
-  "roof_tile_ridge_ns#13",
-  "roof_tile_ridge_ns#14",
-  "roof_tile_ridge_ns#15",
-  "roof_tile_flat#0",
-  "roof_tile_flat#1",
-  "roof_tile_flat#2",
-  "roof_tile_flat#3",
-  "roof_tile_flat#4",
-  "roof_tile_flat#5",
-  "roof_tile_flat#6",
-  "roof_tile_flat#7",
-  "roof_tile_flat#8",
-  "roof_tile_flat#9",
-  "roof_tile_flat#10",
-  "roof_tile_flat#11",
-  "roof_tile_flat#12",
-  "roof_tile_flat#13",
-  "roof_tile_flat#14",
-  "roof_tile_flat#15",
-  "roof_tile_peak#0",
-  "roof_tile_peak#1",
-  "roof_tile_peak#2",
-  "roof_tile_peak#3",
-  "roof_tile_peak#4",
-  "roof_tile_peak#5",
-  "roof_tile_peak#6",
-  "roof_tile_peak#7",
-  "roof_tile_peak#8",
-  "roof_tile_peak#9",
-  "roof_tile_peak#10",
-  "roof_tile_peak#11",
-  "roof_tile_peak#12",
-  "roof_tile_peak#13",
-  "roof_tile_peak#14",
-  "roof_tile_peak#15",
-  "roof_slate_n#0",
-  "roof_slate_n#1",
-  "roof_slate_n#2",
-  "roof_slate_n#3",
-  "roof_slate_n#4",
-  "roof_slate_n#5",
-  "roof_slate_n#6",
-  "roof_slate_n#7",
-  "roof_slate_n#8",
-  "roof_slate_n#9",
-  "roof_slate_n#10",
-  "roof_slate_n#11",
-  "roof_slate_n#12",
-  "roof_slate_n#13",
-  "roof_slate_n#14",
-  "roof_slate_n#15",
-  "roof_slate_e#0",
-  "roof_slate_e#1",
-  "roof_slate_e#2",
-  "roof_slate_e#3",
-  "roof_slate_e#4",
-  "roof_slate_e#5",
-  "roof_slate_e#6",
-  "roof_slate_e#7",
-  "roof_slate_e#8",
-  "roof_slate_e#9",
-  "roof_slate_e#10",
-  "roof_slate_e#11",
-  "roof_slate_e#12",
-  "roof_slate_e#13",
-  "roof_slate_e#14",
-  "roof_slate_e#15",
-  "roof_slate_s#0",
-  "roof_slate_s#1",
-  "roof_slate_s#2",
-  "roof_slate_s#3",
-  "roof_slate_s#4",
-  "roof_slate_s#5",
-  "roof_slate_s#6",
-  "roof_slate_s#7",
-  "roof_slate_s#8",
-  "roof_slate_s#9",
-  "roof_slate_s#10",
-  "roof_slate_s#11",
-  "roof_slate_s#12",
-  "roof_slate_s#13",
-  "roof_slate_s#14",
-  "roof_slate_s#15",
-  "roof_slate_w#0",
-  "roof_slate_w#1",
-  "roof_slate_w#2",
-  "roof_slate_w#3",
-  "roof_slate_w#4",
-  "roof_slate_w#5",
-  "roof_slate_w#6",
-  "roof_slate_w#7",
-  "roof_slate_w#8",
-  "roof_slate_w#9",
-  "roof_slate_w#10",
-  "roof_slate_w#11",
-  "roof_slate_w#12",
-  "roof_slate_w#13",
-  "roof_slate_w#14",
-  "roof_slate_w#15",
-  "roof_slate_ridge_ew#0",
-  "roof_slate_ridge_ew#1",
-  "roof_slate_ridge_ew#2",
-  "roof_slate_ridge_ew#3",
-  "roof_slate_ridge_ew#4",
-  "roof_slate_ridge_ew#5",
-  "roof_slate_ridge_ew#6",
-  "roof_slate_ridge_ew#7",
-  "roof_slate_ridge_ew#8",
-  "roof_slate_ridge_ew#9",
-  "roof_slate_ridge_ew#10",
-  "roof_slate_ridge_ew#11",
-  "roof_slate_ridge_ew#12",
-  "roof_slate_ridge_ew#13",
-  "roof_slate_ridge_ew#14",
-  "roof_slate_ridge_ew#15",
-  "roof_slate_ridge_ns#0",
-  "roof_slate_ridge_ns#1",
-  "roof_slate_ridge_ns#2",
-  "roof_slate_ridge_ns#3",
-  "roof_slate_ridge_ns#4",
-  "roof_slate_ridge_ns#5",
-  "roof_slate_ridge_ns#6",
-  "roof_slate_ridge_ns#7",
-  "roof_slate_ridge_ns#8",
-  "roof_slate_ridge_ns#9",
-  "roof_slate_ridge_ns#10",
-  "roof_slate_ridge_ns#11",
-  "roof_slate_ridge_ns#12",
-  "roof_slate_ridge_ns#13",
-  "roof_slate_ridge_ns#14",
-  "roof_slate_ridge_ns#15",
-  "roof_slate_flat#0",
-  "roof_slate_flat#1",
-  "roof_slate_flat#2",
-  "roof_slate_flat#3",
-  "roof_slate_flat#4",
-  "roof_slate_flat#5",
-  "roof_slate_flat#6",
-  "roof_slate_flat#7",
-  "roof_slate_flat#8",
-  "roof_slate_flat#9",
-  "roof_slate_flat#10",
-  "roof_slate_flat#11",
-  "roof_slate_flat#12",
-  "roof_slate_flat#13",
-  "roof_slate_flat#14",
-  "roof_slate_flat#15",
-  "roof_slate_peak#0",
-  "roof_slate_peak#1",
-  "roof_slate_peak#2",
-  "roof_slate_peak#3",
-  "roof_slate_peak#4",
-  "roof_slate_peak#5",
-  "roof_slate_peak#6",
-  "roof_slate_peak#7",
-  "roof_slate_peak#8",
-  "roof_slate_peak#9",
-  "roof_slate_peak#10",
-  "roof_slate_peak#11",
-  "roof_slate_peak#12",
-  "roof_slate_peak#13",
-  "roof_slate_peak#14",
-  "roof_slate_peak#15",
-  "roof_shingle_n#0",
-  "roof_shingle_n#1",
-  "roof_shingle_n#2",
-  "roof_shingle_n#3",
-  "roof_shingle_n#4",
-  "roof_shingle_n#5",
-  "roof_shingle_n#6",
-  "roof_shingle_n#7",
-  "roof_shingle_n#8",
-  "roof_shingle_n#9",
-  "roof_shingle_n#10",
-  "roof_shingle_n#11",
-  "roof_shingle_n#12",
-  "roof_shingle_n#13",
-  "roof_shingle_n#14",
-  "roof_shingle_n#15",
-  "roof_shingle_e#0",
-  "roof_shingle_e#1",
-  "roof_shingle_e#2",
-  "roof_shingle_e#3",
-  "roof_shingle_e#4",
-  "roof_shingle_e#5",
-  "roof_shingle_e#6",
-  "roof_shingle_e#7",
-  "roof_shingle_e#8",
-  "roof_shingle_e#9",
-  "roof_shingle_e#10",
-  "roof_shingle_e#11",
-  "roof_shingle_e#12",
-  "roof_shingle_e#13",
-  "roof_shingle_e#14",
-  "roof_shingle_e#15",
-  "roof_shingle_s#0",
-  "roof_shingle_s#1",
-  "roof_shingle_s#2",
-  "roof_shingle_s#3",
-  "roof_shingle_s#4",
-  "roof_shingle_s#5",
-  "roof_shingle_s#6",
-  "roof_shingle_s#7",
-  "roof_shingle_s#8",
-  "roof_shingle_s#9",
-  "roof_shingle_s#10",
-  "roof_shingle_s#11",
-  "roof_shingle_s#12",
-  "roof_shingle_s#13",
-  "roof_shingle_s#14",
-  "roof_shingle_s#15",
-  "roof_shingle_w#0",
-  "roof_shingle_w#1",
-  "roof_shingle_w#2",
-  "roof_shingle_w#3",
-  "roof_shingle_w#4",
-  "roof_shingle_w#5",
-  "roof_shingle_w#6",
-  "roof_shingle_w#7",
-  "roof_shingle_w#8",
-  "roof_shingle_w#9",
-  "roof_shingle_w#10",
-  "roof_shingle_w#11",
-  "roof_shingle_w#12",
-  "roof_shingle_w#13",
-  "roof_shingle_w#14",
-  "roof_shingle_w#15",
-  "roof_shingle_ridge_ew#0",
-  "roof_shingle_ridge_ew#1",
-  "roof_shingle_ridge_ew#2",
-  "roof_shingle_ridge_ew#3",
-  "roof_shingle_ridge_ew#4",
-  "roof_shingle_ridge_ew#5",
-  "roof_shingle_ridge_ew#6",
-  "roof_shingle_ridge_ew#7",
-  "roof_shingle_ridge_ew#8",
-  "roof_shingle_ridge_ew#9",
-  "roof_shingle_ridge_ew#10",
-  "roof_shingle_ridge_ew#11",
-  "roof_shingle_ridge_ew#12",
-  "roof_shingle_ridge_ew#13",
-  "roof_shingle_ridge_ew#14",
-  "roof_shingle_ridge_ew#15",
-  "roof_shingle_ridge_ns#0",
-  "roof_shingle_ridge_ns#1",
-  "roof_shingle_ridge_ns#2",
-  "roof_shingle_ridge_ns#3",
-  "roof_shingle_ridge_ns#4",
-  "roof_shingle_ridge_ns#5",
-  "roof_shingle_ridge_ns#6",
-  "roof_shingle_ridge_ns#7",
-  "roof_shingle_ridge_ns#8",
-  "roof_shingle_ridge_ns#9",
-  "roof_shingle_ridge_ns#10",
-  "roof_shingle_ridge_ns#11",
-  "roof_shingle_ridge_ns#12",
-  "roof_shingle_ridge_ns#13",
-  "roof_shingle_ridge_ns#14",
-  "roof_shingle_ridge_ns#15",
-  "roof_shingle_flat#0",
-  "roof_shingle_flat#1",
-  "roof_shingle_flat#2",
-  "roof_shingle_flat#3",
-  "roof_shingle_flat#4",
-  "roof_shingle_flat#5",
-  "roof_shingle_flat#6",
-  "roof_shingle_flat#7",
-  "roof_shingle_flat#8",
-  "roof_shingle_flat#9",
-  "roof_shingle_flat#10",
-  "roof_shingle_flat#11",
-  "roof_shingle_flat#12",
-  "roof_shingle_flat#13",
-  "roof_shingle_flat#14",
-  "roof_shingle_flat#15",
-  "roof_shingle_peak#0",
-  "roof_shingle_peak#1",
-  "roof_shingle_peak#2",
-  "roof_shingle_peak#3",
-  "roof_shingle_peak#4",
-  "roof_shingle_peak#5",
-  "roof_shingle_peak#6",
-  "roof_shingle_peak#7",
-  "roof_shingle_peak#8",
-  "roof_shingle_peak#9",
-  "roof_shingle_peak#10",
-  "roof_shingle_peak#11",
-  "roof_shingle_peak#12",
-  "roof_shingle_peak#13",
-  "roof_shingle_peak#14",
-  "roof_shingle_peak#15",
-  "roof_thatch_n#0",
-  "roof_thatch_n#1",
-  "roof_thatch_n#2",
-  "roof_thatch_n#3",
-  "roof_thatch_n#4",
-  "roof_thatch_n#5",
-  "roof_thatch_n#6",
-  "roof_thatch_n#7",
-  "roof_thatch_n#8",
-  "roof_thatch_n#9",
-  "roof_thatch_n#10",
-  "roof_thatch_n#11",
-  "roof_thatch_n#12",
-  "roof_thatch_n#13",
-  "roof_thatch_n#14",
-  "roof_thatch_n#15",
-  "roof_thatch_e#0",
-  "roof_thatch_e#1",
-  "roof_thatch_e#2",
-  "roof_thatch_e#3",
-  "roof_thatch_e#4",
-  "roof_thatch_e#5",
-  "roof_thatch_e#6",
-  "roof_thatch_e#7",
-  "roof_thatch_e#8",
-  "roof_thatch_e#9",
-  "roof_thatch_e#10",
-  "roof_thatch_e#11",
-  "roof_thatch_e#12",
-  "roof_thatch_e#13",
-  "roof_thatch_e#14",
-  "roof_thatch_e#15",
-  "roof_thatch_s#0",
-  "roof_thatch_s#1",
-  "roof_thatch_s#2",
-  "roof_thatch_s#3",
-  "roof_thatch_s#4",
-  "roof_thatch_s#5",
-  "roof_thatch_s#6",
-  "roof_thatch_s#7",
-  "roof_thatch_s#8",
-  "roof_thatch_s#9",
-  "roof_thatch_s#10",
-  "roof_thatch_s#11",
-  "roof_thatch_s#12",
-  "roof_thatch_s#13",
-  "roof_thatch_s#14",
-  "roof_thatch_s#15",
-  "roof_thatch_w#0",
-  "roof_thatch_w#1",
-  "roof_thatch_w#2",
-  "roof_thatch_w#3",
-  "roof_thatch_w#4",
-  "roof_thatch_w#5",
-  "roof_thatch_w#6",
-  "roof_thatch_w#7",
-  "roof_thatch_w#8",
-  "roof_thatch_w#9",
-  "roof_thatch_w#10",
-  "roof_thatch_w#11",
-  "roof_thatch_w#12",
-  "roof_thatch_w#13",
-  "roof_thatch_w#14",
-  "roof_thatch_w#15",
-  "roof_thatch_ridge_ew#0",
-  "roof_thatch_ridge_ew#1",
-  "roof_thatch_ridge_ew#2",
-  "roof_thatch_ridge_ew#3",
-  "roof_thatch_ridge_ew#4",
-  "roof_thatch_ridge_ew#5",
-  "roof_thatch_ridge_ew#6",
-  "roof_thatch_ridge_ew#7",
-  "roof_thatch_ridge_ew#8",
-  "roof_thatch_ridge_ew#9",
-  "roof_thatch_ridge_ew#10",
-  "roof_thatch_ridge_ew#11",
-  "roof_thatch_ridge_ew#12",
-  "roof_thatch_ridge_ew#13",
-  "roof_thatch_ridge_ew#14",
-  "roof_thatch_ridge_ew#15",
-  "roof_thatch_ridge_ns#0",
-  "roof_thatch_ridge_ns#1",
-  "roof_thatch_ridge_ns#2",
-  "roof_thatch_ridge_ns#3",
-  "roof_thatch_ridge_ns#4",
-  "roof_thatch_ridge_ns#5",
-  "roof_thatch_ridge_ns#6",
-  "roof_thatch_ridge_ns#7",
-  "roof_thatch_ridge_ns#8",
-  "roof_thatch_ridge_ns#9",
-  "roof_thatch_ridge_ns#10",
-  "roof_thatch_ridge_ns#11",
-  "roof_thatch_ridge_ns#12",
-  "roof_thatch_ridge_ns#13",
-  "roof_thatch_ridge_ns#14",
-  "roof_thatch_ridge_ns#15",
-  "roof_thatch_flat#0",
-  "roof_thatch_flat#1",
-  "roof_thatch_flat#2",
-  "roof_thatch_flat#3",
-  "roof_thatch_flat#4",
-  "roof_thatch_flat#5",
-  "roof_thatch_flat#6",
-  "roof_thatch_flat#7",
-  "roof_thatch_flat#8",
-  "roof_thatch_flat#9",
-  "roof_thatch_flat#10",
-  "roof_thatch_flat#11",
-  "roof_thatch_flat#12",
-  "roof_thatch_flat#13",
-  "roof_thatch_flat#14",
-  "roof_thatch_flat#15",
-  "roof_thatch_peak#0",
-  "roof_thatch_peak#1",
-  "roof_thatch_peak#2",
-  "roof_thatch_peak#3",
-  "roof_thatch_peak#4",
-  "roof_thatch_peak#5",
-  "roof_thatch_peak#6",
-  "roof_thatch_peak#7",
-  "roof_thatch_peak#8",
-  "roof_thatch_peak#9",
-  "roof_thatch_peak#10",
-  "roof_thatch_peak#11",
-  "roof_thatch_peak#12",
-  "roof_thatch_peak#13",
-  "roof_thatch_peak#14",
-  "roof_thatch_peak#15",
-  "roof_flat_n#0",
-  "roof_flat_n#1",
-  "roof_flat_n#2",
-  "roof_flat_n#3",
-  "roof_flat_n#4",
-  "roof_flat_n#5",
-  "roof_flat_n#6",
-  "roof_flat_n#7",
-  "roof_flat_n#8",
-  "roof_flat_n#9",
-  "roof_flat_n#10",
-  "roof_flat_n#11",
-  "roof_flat_n#12",
-  "roof_flat_n#13",
-  "roof_flat_n#14",
-  "roof_flat_n#15",
-  "roof_flat_e#0",
-  "roof_flat_e#1",
-  "roof_flat_e#2",
-  "roof_flat_e#3",
-  "roof_flat_e#4",
-  "roof_flat_e#5",
-  "roof_flat_e#6",
-  "roof_flat_e#7",
-  "roof_flat_e#8",
-  "roof_flat_e#9",
-  "roof_flat_e#10",
-  "roof_flat_e#11",
-  "roof_flat_e#12",
-  "roof_flat_e#13",
-  "roof_flat_e#14",
-  "roof_flat_e#15",
-  "roof_flat_s#0",
-  "roof_flat_s#1",
-  "roof_flat_s#2",
-  "roof_flat_s#3",
-  "roof_flat_s#4",
-  "roof_flat_s#5",
-  "roof_flat_s#6",
-  "roof_flat_s#7",
-  "roof_flat_s#8",
-  "roof_flat_s#9",
-  "roof_flat_s#10",
-  "roof_flat_s#11",
-  "roof_flat_s#12",
-  "roof_flat_s#13",
-  "roof_flat_s#14",
-  "roof_flat_s#15",
-  "roof_flat_w#0",
-  "roof_flat_w#1",
-  "roof_flat_w#2",
-  "roof_flat_w#3",
-  "roof_flat_w#4",
-  "roof_flat_w#5",
-  "roof_flat_w#6",
-  "roof_flat_w#7",
-  "roof_flat_w#8",
-  "roof_flat_w#9",
-  "roof_flat_w#10",
-  "roof_flat_w#11",
-  "roof_flat_w#12",
-  "roof_flat_w#13",
-  "roof_flat_w#14",
-  "roof_flat_w#15",
-  "roof_flat_ridge_ew#0",
-  "roof_flat_ridge_ew#1",
-  "roof_flat_ridge_ew#2",
-  "roof_flat_ridge_ew#3",
-  "roof_flat_ridge_ew#4",
-  "roof_flat_ridge_ew#5",
-  "roof_flat_ridge_ew#6",
-  "roof_flat_ridge_ew#7",
-  "roof_flat_ridge_ew#8",
-  "roof_flat_ridge_ew#9",
-  "roof_flat_ridge_ew#10",
-  "roof_flat_ridge_ew#11",
-  "roof_flat_ridge_ew#12",
-  "roof_flat_ridge_ew#13",
-  "roof_flat_ridge_ew#14",
-  "roof_flat_ridge_ew#15",
-  "roof_flat_ridge_ns#0",
-  "roof_flat_ridge_ns#1",
-  "roof_flat_ridge_ns#2",
-  "roof_flat_ridge_ns#3",
-  "roof_flat_ridge_ns#4",
-  "roof_flat_ridge_ns#5",
-  "roof_flat_ridge_ns#6",
-  "roof_flat_ridge_ns#7",
-  "roof_flat_ridge_ns#8",
-  "roof_flat_ridge_ns#9",
-  "roof_flat_ridge_ns#10",
-  "roof_flat_ridge_ns#11",
-  "roof_flat_ridge_ns#12",
-  "roof_flat_ridge_ns#13",
-  "roof_flat_ridge_ns#14",
-  "roof_flat_ridge_ns#15",
-  "roof_flat_flat#0",
-  "roof_flat_flat#1",
-  "roof_flat_flat#2",
-  "roof_flat_flat#3",
-  "roof_flat_flat#4",
-  "roof_flat_flat#5",
-  "roof_flat_flat#6",
-  "roof_flat_flat#7",
-  "roof_flat_flat#8",
-  "roof_flat_flat#9",
-  "roof_flat_flat#10",
-  "roof_flat_flat#11",
-  "roof_flat_flat#12",
-  "roof_flat_flat#13",
-  "roof_flat_flat#14",
-  "roof_flat_flat#15",
-  "roof_flat_peak#0",
-  "roof_flat_peak#1",
-  "roof_flat_peak#2",
-  "roof_flat_peak#3",
-  "roof_flat_peak#4",
-  "roof_flat_peak#5",
-  "roof_flat_peak#6",
-  "roof_flat_peak#7",
-  "roof_flat_peak#8",
-  "roof_flat_peak#9",
-  "roof_flat_peak#10",
-  "roof_flat_peak#11",
-  "roof_flat_peak#12",
-  "roof_flat_peak#13",
-  "roof_flat_peak#14",
-  "roof_flat_peak#15",
-  "roof_turf_n#0",
-  "roof_turf_n#1",
-  "roof_turf_n#2",
-  "roof_turf_n#3",
-  "roof_turf_n#4",
-  "roof_turf_n#5",
-  "roof_turf_n#6",
-  "roof_turf_n#7",
-  "roof_turf_n#8",
-  "roof_turf_n#9",
-  "roof_turf_n#10",
-  "roof_turf_n#11",
-  "roof_turf_n#12",
-  "roof_turf_n#13",
-  "roof_turf_n#14",
-  "roof_turf_n#15",
-  "roof_turf_e#0",
-  "roof_turf_e#1",
-  "roof_turf_e#2",
-  "roof_turf_e#3",
-  "roof_turf_e#4",
-  "roof_turf_e#5",
-  "roof_turf_e#6",
-  "roof_turf_e#7",
-  "roof_turf_e#8",
-  "roof_turf_e#9",
-  "roof_turf_e#10",
-  "roof_turf_e#11",
-  "roof_turf_e#12",
-  "roof_turf_e#13",
-  "roof_turf_e#14",
-  "roof_turf_e#15",
-  "roof_turf_s#0",
-  "roof_turf_s#1",
-  "roof_turf_s#2",
-  "roof_turf_s#3",
-  "roof_turf_s#4",
-  "roof_turf_s#5",
-  "roof_turf_s#6",
-  "roof_turf_s#7",
-  "roof_turf_s#8",
-  "roof_turf_s#9",
-  "roof_turf_s#10",
-  "roof_turf_s#11",
-  "roof_turf_s#12",
-  "roof_turf_s#13",
-  "roof_turf_s#14",
-  "roof_turf_s#15",
-  "roof_turf_w#0",
-  "roof_turf_w#1",
-  "roof_turf_w#2",
-  "roof_turf_w#3",
-  "roof_turf_w#4",
-  "roof_turf_w#5",
-  "roof_turf_w#6",
-  "roof_turf_w#7",
-  "roof_turf_w#8",
-  "roof_turf_w#9",
-  "roof_turf_w#10",
-  "roof_turf_w#11",
-  "roof_turf_w#12",
-  "roof_turf_w#13",
-  "roof_turf_w#14",
-  "roof_turf_w#15",
-  "roof_turf_ridge_ew#0",
-  "roof_turf_ridge_ew#1",
-  "roof_turf_ridge_ew#2",
-  "roof_turf_ridge_ew#3",
-  "roof_turf_ridge_ew#4",
-  "roof_turf_ridge_ew#5",
-  "roof_turf_ridge_ew#6",
-  "roof_turf_ridge_ew#7",
-  "roof_turf_ridge_ew#8",
-  "roof_turf_ridge_ew#9",
-  "roof_turf_ridge_ew#10",
-  "roof_turf_ridge_ew#11",
-  "roof_turf_ridge_ew#12",
-  "roof_turf_ridge_ew#13",
-  "roof_turf_ridge_ew#14",
-  "roof_turf_ridge_ew#15",
-  "roof_turf_ridge_ns#0",
-  "roof_turf_ridge_ns#1",
-  "roof_turf_ridge_ns#2",
-  "roof_turf_ridge_ns#3",
-  "roof_turf_ridge_ns#4",
-  "roof_turf_ridge_ns#5",
-  "roof_turf_ridge_ns#6",
-  "roof_turf_ridge_ns#7",
-  "roof_turf_ridge_ns#8",
-  "roof_turf_ridge_ns#9",
-  "roof_turf_ridge_ns#10",
-  "roof_turf_ridge_ns#11",
-  "roof_turf_ridge_ns#12",
-  "roof_turf_ridge_ns#13",
-  "roof_turf_ridge_ns#14",
-  "roof_turf_ridge_ns#15",
-  "roof_turf_flat#0",
-  "roof_turf_flat#1",
-  "roof_turf_flat#2",
-  "roof_turf_flat#3",
-  "roof_turf_flat#4",
-  "roof_turf_flat#5",
-  "roof_turf_flat#6",
-  "roof_turf_flat#7",
-  "roof_turf_flat#8",
-  "roof_turf_flat#9",
-  "roof_turf_flat#10",
-  "roof_turf_flat#11",
-  "roof_turf_flat#12",
-  "roof_turf_flat#13",
-  "roof_turf_flat#14",
-  "roof_turf_flat#15",
-  "roof_turf_peak#0",
-  "roof_turf_peak#1",
-  "roof_turf_peak#2",
-  "roof_turf_peak#3",
-  "roof_turf_peak#4",
-  "roof_turf_peak#5",
-  "roof_turf_peak#6",
-  "roof_turf_peak#7",
-  "roof_turf_peak#8",
-  "roof_turf_peak#9",
-  "roof_turf_peak#10",
-  "roof_turf_peak#11",
-  "roof_turf_peak#12",
-  "roof_turf_peak#13",
-  "roof_turf_peak#14",
-  "roof_turf_peak#15",
-  "grass_tuft",
-  "grass_tuft.1",
-  "grass_tuft.2",
-  "wildflowers",
-  "wildflowers.1",
-  "wildflowers.2",
-  "pebbles",
-  "pebbles.1",
-  "pebbles.2",
-  "twigs",
-  "twigs.1",
-  "toadstools",
-  "toadstools.1",
-  "fronds",
-  "fronds.1",
-  "shells",
-  "shells.1",
-  "sedge",
-  "sedge.1",
-  "lichen",
-  "lichen.1",
-  "cracks",
-  "cracks.1",
-  "fallen_leaves",
-  "fallen_leaves.1",
-  "fallen_leaves.2"
+  "body_human_m_n",
+  "body_human_m_e",
+  "body_human_m_s",
+  "body_human_m_w",
+  "body_human_m_walk_n",
+  "body_human_m_walk_e",
+  "body_human_m_walk_s",
+  "body_human_m_walk_w",
+  "body_human_f_n",
+  "body_human_f_e",
+  "body_human_f_s",
+  "body_human_f_w",
+  "body_human_f_walk_n",
+  "body_human_f_walk_e",
+  "body_human_f_walk_s",
+  "body_human_f_walk_w",
+  "body_elf_m_n",
+  "body_elf_m_e",
+  "body_elf_m_s",
+  "body_elf_m_w",
+  "body_elf_m_walk_n",
+  "body_elf_m_walk_e",
+  "body_elf_m_walk_s",
+  "body_elf_m_walk_w",
+  "body_elf_f_n",
+  "body_elf_f_e",
+  "body_elf_f_s",
+  "body_elf_f_w",
+  "body_elf_f_walk_n",
+  "body_elf_f_walk_e",
+  "body_elf_f_walk_s",
+  "body_elf_f_walk_w",
+  "body_dwarf_m_n",
+  "body_dwarf_m_e",
+  "body_dwarf_m_s",
+  "body_dwarf_m_w",
+  "body_dwarf_m_walk_n",
+  "body_dwarf_m_walk_e",
+  "body_dwarf_m_walk_s",
+  "body_dwarf_m_walk_w",
+  "body_dwarf_f_n",
+  "body_dwarf_f_e",
+  "body_dwarf_f_s",
+  "body_dwarf_f_w",
+  "body_dwarf_f_walk_n",
+  "body_dwarf_f_walk_e",
+  "body_dwarf_f_walk_s",
+  "body_dwarf_f_walk_w",
+  "body_halfling_m_n",
+  "body_halfling_m_e",
+  "body_halfling_m_s",
+  "body_halfling_m_w",
+  "body_halfling_m_walk_n",
+  "body_halfling_m_walk_e",
+  "body_halfling_m_walk_s",
+  "body_halfling_m_walk_w",
+  "body_halfling_f_n",
+  "body_halfling_f_e",
+  "body_halfling_f_s",
+  "body_halfling_f_w",
+  "body_halfling_f_walk_n",
+  "body_halfling_f_walk_e",
+  "body_halfling_f_walk_s",
+  "body_halfling_f_walk_w",
+  "body_orc_m_n",
+  "body_orc_m_e",
+  "body_orc_m_s",
+  "body_orc_m_w",
+  "body_orc_m_walk_n",
+  "body_orc_m_walk_e",
+  "body_orc_m_walk_s",
+  "body_orc_m_walk_w",
+  "body_orc_f_n",
+  "body_orc_f_e",
+  "body_orc_f_s",
+  "body_orc_f_w",
+  "body_orc_f_walk_n",
+  "body_orc_f_walk_e",
+  "body_orc_f_walk_s",
+  "body_orc_f_walk_w",
+  "body_lizard_m_n",
+  "body_lizard_m_e",
+  "body_lizard_m_s",
+  "body_lizard_m_w",
+  "body_lizard_m_walk_n",
+  "body_lizard_m_walk_e",
+  "body_lizard_m_walk_s",
+  "body_lizard_m_walk_w",
+  "body_lizard_f_n",
+  "body_lizard_f_e",
+  "body_lizard_f_s",
+  "body_lizard_f_w",
+  "body_lizard_f_walk_n",
+  "body_lizard_f_walk_e",
+  "body_lizard_f_walk_s",
+  "body_lizard_f_walk_w",
+  "body_gnome_m_n",
+  "body_gnome_m_e",
+  "body_gnome_m_s",
+  "body_gnome_m_w",
+  "body_gnome_m_walk_n",
+  "body_gnome_m_walk_e",
+  "body_gnome_m_walk_s",
+  "body_gnome_m_walk_w",
+  "body_gnome_f_n",
+  "body_gnome_f_e",
+  "body_gnome_f_s",
+  "body_gnome_f_w",
+  "body_gnome_f_walk_n",
+  "body_gnome_f_walk_e",
+  "body_gnome_f_walk_s",
+  "body_gnome_f_walk_w",
+  "body_fungus_m_n",
+  "body_fungus_m_e",
+  "body_fungus_m_s",
+  "body_fungus_m_w",
+  "body_fungus_m_walk_n",
+  "body_fungus_m_walk_e",
+  "body_fungus_m_walk_s",
+  "body_fungus_m_walk_w",
+  "body_fungus_f_n",
+  "body_fungus_f_e",
+  "body_fungus_f_s",
+  "body_fungus_f_w",
+  "body_fungus_f_walk_n",
+  "body_fungus_f_walk_e",
+  "body_fungus_f_walk_s",
+  "body_fungus_f_walk_w",
+  "hair_short_n",
+  "hair_short_e",
+  "hair_short_s",
+  "hair_short_w",
+  "hair_short_walk_n",
+  "hair_short_walk_e",
+  "hair_short_walk_s",
+  "hair_short_walk_w",
+  "hair_long_n",
+  "hair_long_e",
+  "hair_long_s",
+  "hair_long_w",
+  "hair_long_walk_n",
+  "hair_long_walk_e",
+  "hair_long_walk_s",
+  "hair_long_walk_w",
+  "hair_braids_n",
+  "hair_braids_e",
+  "hair_braids_s",
+  "hair_braids_w",
+  "hair_braids_walk_n",
+  "hair_braids_walk_e",
+  "hair_braids_walk_s",
+  "hair_braids_walk_w",
+  "hair_topknot_n",
+  "hair_topknot_e",
+  "hair_topknot_s",
+  "hair_topknot_w",
+  "hair_topknot_walk_n",
+  "hair_topknot_walk_e",
+  "hair_topknot_walk_s",
+  "hair_topknot_walk_w",
+  "hair_shaved_n",
+  "hair_shaved_e",
+  "hair_shaved_s",
+  "hair_shaved_w",
+  "hair_shaved_walk_n",
+  "hair_shaved_walk_e",
+  "hair_shaved_walk_s",
+  "hair_shaved_walk_w",
+  "hair_crest_n",
+  "hair_crest_e",
+  "hair_crest_s",
+  "hair_crest_w",
+  "hair_crest_walk_n",
+  "hair_crest_walk_e",
+  "hair_crest_walk_s",
+  "hair_crest_walk_w",
+  "hair_bun_n",
+  "hair_bun_e",
+  "hair_bun_s",
+  "hair_bun_w",
+  "hair_bun_walk_n",
+  "hair_bun_walk_e",
+  "hair_bun_walk_s",
+  "hair_bun_walk_w",
+  "hair_curly_n",
+  "hair_curly_e",
+  "hair_curly_s",
+  "hair_curly_w",
+  "hair_curly_walk_n",
+  "hair_curly_walk_e",
+  "hair_curly_walk_s",
+  "hair_curly_walk_w",
+  "hair_tied_n",
+  "hair_tied_e",
+  "hair_tied_s",
+  "hair_tied_w",
+  "hair_tied_walk_n",
+  "hair_tied_walk_e",
+  "hair_tied_walk_s",
+  "hair_tied_walk_w",
+  "hair_loose_n",
+  "hair_loose_e",
+  "hair_loose_s",
+  "hair_loose_w",
+  "hair_loose_walk_n",
+  "hair_loose_walk_e",
+  "hair_loose_walk_s",
+  "hair_loose_walk_w",
+  "beard_short_n",
+  "beard_short_e",
+  "beard_short_s",
+  "beard_short_w",
+  "beard_short_walk_n",
+  "beard_short_walk_e",
+  "beard_short_walk_s",
+  "beard_short_walk_w",
+  "beard_full_n",
+  "beard_full_e",
+  "beard_full_s",
+  "beard_full_w",
+  "beard_full_walk_n",
+  "beard_full_walk_e",
+  "beard_full_walk_s",
+  "beard_full_walk_w",
+  "beard_long_n",
+  "beard_long_e",
+  "beard_long_s",
+  "beard_long_w",
+  "beard_long_walk_n",
+  "beard_long_walk_e",
+  "beard_long_walk_s",
+  "beard_long_walk_w",
+  "beard_braided_n",
+  "beard_braided_e",
+  "beard_braided_s",
+  "beard_braided_w",
+  "beard_braided_walk_n",
+  "beard_braided_walk_e",
+  "beard_braided_walk_s",
+  "beard_braided_walk_w",
+  "beard_moustache_n",
+  "beard_moustache_e",
+  "beard_moustache_s",
+  "beard_moustache_w",
+  "beard_moustache_walk_n",
+  "beard_moustache_walk_e",
+  "beard_moustache_walk_s",
+  "beard_moustache_walk_w",
+  "beard_forked_n",
+  "beard_forked_e",
+  "beard_forked_s",
+  "beard_forked_w",
+  "beard_forked_walk_n",
+  "beard_forked_walk_e",
+  "beard_forked_walk_s",
+  "beard_forked_walk_w",
+  "wear_trousers_n",
+  "wear_trousers_e",
+  "wear_trousers_s",
+  "wear_trousers_w",
+  "wear_trousers_walk_n",
+  "wear_trousers_walk_e",
+  "wear_trousers_walk_s",
+  "wear_trousers_walk_w",
+  "wear_hose_n",
+  "wear_hose_e",
+  "wear_hose_s",
+  "wear_hose_w",
+  "wear_hose_walk_n",
+  "wear_hose_walk_e",
+  "wear_hose_walk_s",
+  "wear_hose_walk_w",
+  "wear_skirt_n",
+  "wear_skirt_e",
+  "wear_skirt_s",
+  "wear_skirt_w",
+  "wear_skirt_walk_n",
+  "wear_skirt_walk_e",
+  "wear_skirt_walk_s",
+  "wear_skirt_walk_w",
+  "wear_shoes_n",
+  "wear_shoes_e",
+  "wear_shoes_s",
+  "wear_shoes_w",
+  "wear_shoes_walk_n",
+  "wear_shoes_walk_e",
+  "wear_shoes_walk_s",
+  "wear_shoes_walk_w",
+  "wear_boots_n",
+  "wear_boots_e",
+  "wear_boots_s",
+  "wear_boots_w",
+  "wear_boots_walk_n",
+  "wear_boots_walk_e",
+  "wear_boots_walk_s",
+  "wear_boots_walk_w",
+  "wear_sandals_n",
+  "wear_sandals_e",
+  "wear_sandals_s",
+  "wear_sandals_w",
+  "wear_sandals_walk_n",
+  "wear_sandals_walk_e",
+  "wear_sandals_walk_s",
+  "wear_sandals_walk_w",
+  "wear_gloves_n",
+  "wear_gloves_e",
+  "wear_gloves_s",
+  "wear_gloves_w",
+  "wear_gloves_walk_n",
+  "wear_gloves_walk_e",
+  "wear_gloves_walk_s",
+  "wear_gloves_walk_w",
+  "wear_tunic_n",
+  "wear_tunic_e",
+  "wear_tunic_s",
+  "wear_tunic_w",
+  "wear_tunic_walk_n",
+  "wear_tunic_walk_e",
+  "wear_tunic_walk_s",
+  "wear_tunic_walk_w",
+  "wear_dress_n",
+  "wear_dress_e",
+  "wear_dress_s",
+  "wear_dress_w",
+  "wear_dress_walk_n",
+  "wear_dress_walk_e",
+  "wear_dress_walk_s",
+  "wear_dress_walk_w",
+  "wear_robe_n",
+  "wear_robe_e",
+  "wear_robe_s",
+  "wear_robe_w",
+  "wear_robe_walk_n",
+  "wear_robe_walk_e",
+  "wear_robe_walk_s",
+  "wear_robe_walk_w",
+  "wear_jerkin_n",
+  "wear_jerkin_e",
+  "wear_jerkin_s",
+  "wear_jerkin_w",
+  "wear_jerkin_walk_n",
+  "wear_jerkin_walk_e",
+  "wear_jerkin_walk_s",
+  "wear_jerkin_walk_w",
+  "wear_mail_n",
+  "wear_mail_e",
+  "wear_mail_s",
+  "wear_mail_w",
+  "wear_mail_walk_n",
+  "wear_mail_walk_e",
+  "wear_mail_walk_s",
+  "wear_mail_walk_w",
+  "wear_belt_n",
+  "wear_belt_e",
+  "wear_belt_s",
+  "wear_belt_w",
+  "wear_belt_walk_n",
+  "wear_belt_walk_e",
+  "wear_belt_walk_s",
+  "wear_belt_walk_w",
+  "wear_apron_n",
+  "wear_apron_e",
+  "wear_apron_s",
+  "wear_apron_w",
+  "wear_apron_walk_n",
+  "wear_apron_walk_e",
+  "wear_apron_walk_s",
+  "wear_apron_walk_w",
+  "wear_jacket_n",
+  "wear_jacket_e",
+  "wear_jacket_s",
+  "wear_jacket_w",
+  "wear_jacket_walk_n",
+  "wear_jacket_walk_e",
+  "wear_jacket_walk_s",
+  "wear_jacket_walk_w",
+  "wear_coat_n",
+  "wear_coat_e",
+  "wear_coat_s",
+  "wear_coat_w",
+  "wear_coat_walk_n",
+  "wear_coat_walk_e",
+  "wear_coat_walk_s",
+  "wear_coat_walk_w",
+  "wear_cloak_n",
+  "wear_cloak_e",
+  "wear_cloak_s",
+  "wear_cloak_w",
+  "wear_cloak_walk_n",
+  "wear_cloak_walk_e",
+  "wear_cloak_walk_s",
+  "wear_cloak_walk_w",
+  "wear_veil_n",
+  "wear_veil_e",
+  "wear_veil_s",
+  "wear_veil_w",
+  "wear_veil_walk_n",
+  "wear_veil_walk_e",
+  "wear_veil_walk_s",
+  "wear_veil_walk_w",
+  "wear_scarf_n",
+  "wear_scarf_e",
+  "wear_scarf_s",
+  "wear_scarf_w",
+  "wear_scarf_walk_n",
+  "wear_scarf_walk_e",
+  "wear_scarf_walk_s",
+  "wear_scarf_walk_w",
+  "wear_cap_n",
+  "wear_cap_e",
+  "wear_cap_s",
+  "wear_cap_w",
+  "wear_cap_walk_n",
+  "wear_cap_walk_e",
+  "wear_cap_walk_s",
+  "wear_cap_walk_w",
+  "wear_hood_n",
+  "wear_hood_e",
+  "wear_hood_s",
+  "wear_hood_w",
+  "wear_hood_walk_n",
+  "wear_hood_walk_e",
+  "wear_hood_walk_s",
+  "wear_hood_walk_w",
+  "wear_hat_n",
+  "wear_hat_e",
+  "wear_hat_s",
+  "wear_hat_w",
+  "wear_hat_walk_n",
+  "wear_hat_walk_e",
+  "wear_hat_walk_s",
+  "wear_hat_walk_w",
+  "wear_helm_n",
+  "wear_helm_e",
+  "wear_helm_s",
+  "wear_helm_w",
+  "wear_helm_walk_n",
+  "wear_helm_walk_e",
+  "wear_helm_walk_s",
+  "wear_helm_walk_w"
  ]
 }
