@@ -58,7 +58,8 @@ export function stairTo(map: PathMap, x: number, y: number, z: number | null, up
   return undefined;
 }
 
-const key = (x: number, y: number, z: number | null) => `${x},${y},${z ?? 'g'}`;
+/** A tile's key as a number: x and y within a million tiles, the level within 63 either way. */
+const key = (x: number, y: number, z: number | null) => ((x + 1048576) * 2097152 + (y + 1048576)) * 128 + (z === null ? 127 : z + 63);
 
 /**
  * The cheapest way from one tile to another (null if none within `limit` tiles looked at): a
@@ -73,7 +74,7 @@ export function findPath(map: PathMap, from: Spot, to: Spot, limit = 6000): Step
   };
   interface Node { x: number; y: number; z: number | null; g: number; f: number; parent: Node | null; door: boolean; stairs: boolean }
   const open = new Heap<Node>((a, b) => a.f - b.f);
-  const best = new Map<string, number>();
+  const best = new Map<number, number>();
   const start: Node = { x: from.x, y: from.y, z: from.z, g: 0, f: h(from.x, from.y, from.z), parent: null, door: false, stairs: false };
   open.push(start);
   best.set(key(from.x, from.y, from.z), 0);

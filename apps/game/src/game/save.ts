@@ -16,6 +16,8 @@ import { checkSave, migrateSave, pruneUnknown, SAVE_VERSION } from './migrate';
 import { ITEM } from '../actors/items/defs';
 import type { Game } from './game';
 import type { ActorData } from '../actors/actor';
+import type { OpinionData } from '../world/opinions';
+import type { Track } from '../world/senses';
 import type { Item } from '../actors/items/item';
 
 export const SAVE_FORMAT = 'world-forge.save';
@@ -58,6 +60,11 @@ export interface SaveFile {
   camps: CampData[];
   /** The state of the game's own stream of chance (game/game.ts); a game saved without it seeds it from its id. */
   dice?: number;
+  /**
+   * The people of the bubble as they stand toward the wanderer, and the tracks about (world/
+   * opinions.ts, world/senses.ts); none in games saved before people.
+   */
+  people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][] };
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
   /** Not saved: what reading it had to say (things left out); shown when the game is loaded. */
@@ -87,7 +94,7 @@ export function unpackBits(b64: string, n: number): Uint8Array {
 }
 
 /** A save of the game as it stands. */
-export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number; roofs?: 'off' | 'on' | 'auto'; character?: ActorData }): SaveFile {
+export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number; roofs?: 'off' | 'on' | 'auto'; character?: ActorData; people?: SaveFile['people'] }): SaveFile {
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
@@ -112,6 +119,7 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     camps: game.camps.export(),
     dice: game.dice.state,
     ...(meta.character ? { character: meta.character } : {}),
+    ...(meta.people ? { people: meta.people } : {}),
   };
 }
 

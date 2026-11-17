@@ -40,6 +40,18 @@
       "durable": false
     },
     {
+      "id": "supplies",
+      "name": "parcel of supplies",
+      "plural": "parcels of supplies",
+      "kind": "goods",
+      "weight": 1.5,
+      "bulk": 2.5,
+      "size": "small",
+      "value": 8,
+      "durable": false,
+      "about": "Materials for a trade, bought at the market and tied in a cloth: nails, thread, leather, wax."
+    },
+    {
       "id": "ledger",
       "name": "ledger",
       "kind": "book",

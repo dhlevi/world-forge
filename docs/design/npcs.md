@@ -399,13 +399,39 @@ nations, regions and cities; factions. **Proposed:**
    stairs and doors (opened and shut behind them), wait for, squeeze past or step round one another,
    and those standing about step aside; farther off and out of sight they arrive in one go when the
    walk would have ended; rain sends those bound out of doors home; leaving the bubble and coming in
-   happen out of sight. Paths are found at most eight per action, so a crowd setting out at once
+   happen out of sight. *Errands and street life* (added after play-testing, decided with the
+   user): the marketing of a house falls to whoever keeps it (most mornings, and now and then in
+   the afternoon) or to a great house's cook and maids; craftsmen and merchants now and then fetch
+   supplies; carters and porters go round between the warehouses, the market and the gates;
+   beggars and hawkers work the market; an inn's traders and pedlars spend the morning there.
+   Markets are the open ground among the plans' stalls. At the market an errand makes a token
+   purchase from the purse (food for the house, a parcel of supplies for a trade), carried home
+   in the basket that those who do the marketing carry. A large town's streets and market hold
+   some 400 to 500 people of a mid-morning, against some 100 before. A long way is walked in legs of
+   30 tiles. Paths are found at most eight per action, so a crowd setting out at once
    waits its turn and catches up. A long sleep or wait moves those out of sight straight to their
    places. Not yet: home doors locked at night, the city's visitors, and thinning a crowd past the
    cap in sight.)*
 4. *Senses, base:* noise events (steps, doors, work, speech) heard by the player and agents;
    tracks on soft ground; Talk with one line; a greeting between friends; the store of each
-   person's opinion of the player, drifting back to neutral.
+   person's opinion of the player, drifting back to neutral. *(Built: `world/senses.ts` gives
+   noises a loudness a tile away (a step 18 to 40 by the ground, a door 45, speech 50, a smith's
+   hammering 75), falling about 6 a doubling of the distance, 15 a level between floors and 6 a wall
+   or shut door, heard above a threshold by Hearing; the people's steps (near the wanderer), doors
+   and noisy work (smiths, coopers, carpenters, masons, hawkers, taverns) are heard by the
+   wanderer when out of sight ("You hear hammering on an anvil in the distance to the east"), each
+   kind told once in a while; the wanderer's steps and doors make those awake look toward them,
+   and a loud one near a sleeper makes them stir. Tracks are left in soft ground (and in grass
+   and on paths when wet) by the wanderer and the people walking near, fade in two days, are washed
+   out by rain and covered by falling snow, are drawn as small prints, and are read by Tracking
+   (from 15: how many and how old; 30: which way; 45: whose). `world/opinions.ts` keeps each
+   person's opinion as causes fading by their half-lives (a civil word +3, five days; being jostled
+   or pestered, small and quick), saved with the game, with the tracks. Talk (E) gives a greeting
+   by the opinion and acquaintance and a line from what they are about, their trade, the weather
+   or a tie to a neighbour in their own words (`world/talk.ts`). Friends, kin, sweethearts and
+   partners who pass close in sight greet one another once a day; rivals, feuds and debtors pass
+   coldly; those who think well of the wanderer nod to them. Walking into one standing about makes
+   them step aside; otherwise they say so, and sharper if it keeps happening.)*
 
 **Stage 2: animals.** Species and populations, bodies and temperaments, grazing and herds,
 fleeing, predators, birds across levels, smell and wind, hunting with tracks; the street animals

@@ -12,7 +12,9 @@ import { G, O, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import { GameMap } from '../src/game/map';
 import { findPath, stairTo } from '../src/world/paths';
 import { ACTIVE, Population, type PopulationView } from '../src/world/population';
+import { LOUD } from '../src/world/senses';
 import type { ChunkData, PlacedPerson, PlanStop, Spot } from '../src/worker/protocol';
+import { Inventory } from '../src/actors/items/inventory';
 import '../src/actors/cast';
 
 let failures = 0;
@@ -61,7 +63,7 @@ ok(findPath(map, hall, { x: 5, y: 5, z: 12 }) === null, 'no path to a floor that
 const H = 3600;
 const person = (id: string, plan: [number, number, PlanStop['act'], PlanStop['place'], Spot | null][], here: Spot | null, home: Spot = hall): PlacedPerson => ({
   id, name: `P ${id}`, given: 'P', female: false, age: 30, culture: 0, people: 'the folk', trade: 'cooper', role: 'head', traits: [], means: 'middling',
-  household: 'the household of P', homeId: 'b', template: 'craft', day: 0, plan: plan.map(([from, to, act, place, a]) => ({ from, to, act, place, at: a })), home, at: here, facing: 's',
+  household: 'the household of P', homeId: 'b', ties: [], template: 'craft', day: 0, plan: plan.map(([from, to, act, place, a]) => ({ from, to, act, place, at: a })), home, at: here, facing: 's',
   look: { kind: 'human', skin: '#d8b090', hair: '#5a3a20', hairStyle: 'short', beard: 'none', cloth: ['#7a6a50', '#6a5a46', '#4e5a3e'] },
 });
 const day = (id: string, here: Spot | null) => person(id, [[0, 7, 'sleep', 'bed', bed], [7, 17, 'work', 'work', work], [17, 24, 'home', 'home', hall]], here);
@@ -208,6 +210,65 @@ const runTo = (pop: Population, t: number, step = 1.2) => {
   runTo(pop, view.time + 120);
   ok(kr.x === hall.x && kr.y === hall.y, 'and walk in');
   seen.clear();
+}
+
+{
+  console.log('\nAn errand to the market');
+  const pop = fresh();
+  view.time = 8.99 * H;
+  const keeper = { ...person('q', [[0, 9, 'home', 'home', hall], [9, 10, 'errand', 'market', square], [10, 24, 'home', 'home', hall]], hall), template: 'idle' };
+  pop.take([keeper], view);
+  const q = [...pop.all()][0];
+  const inv = q.actor.get(Inventory)!;
+  const coin = inv.d.copper, things = inv.d.items.length;
+  ok(inv.d.items.some((i) => i.def === 'basket'), 'one who keeps house carries a basket');
+  runTo(pop, 9 * H + 300);
+  ok(q.x === square.x && q.y === square.y && q.where === 'errand', 'off to the market');
+  const bought = inv.d.items.length - things, paid = coin - inv.d.copper;
+  ok(bought > 0 && paid > 0, `bought something (${bought} things, ${paid} copper)`);
+  const basket = inv.d.items.find((i) => i.def === 'basket')!;
+  ok(inv.children(basket.uid).length > 0, 'and it is in the basket');
+  runTo(pop, 9 * H + 900);
+  ok(inv.d.copper === coin - paid, 'one errand buys once');
+  runTo(pop, 10 * H + 300);
+  ok(q.x === hall.x && q.y === hall.y, 'and home again');
+}
+
+{
+  console.log('\nNoises, tracks, greetings, and walking into people');
+  const pop = fresh();
+  pop.wet = true;
+  allSeen = true;
+  view.px = 15;
+  view.py = 15;
+  view.time = 8.99 * H;
+  const said: string[] = [];
+  pop.onSee = (t) => said.push(t);
+  const walker = person('w1', [[0, 9, 'home', 'home', { x: 7, y: 7, z: null }], [9, 24, 'leisure', 'square', square]], { x: 7, y: 7, z: null });
+  const smith = { ...person('s1', [[0, 24, 'work', 'work', work]], work), trade: 'smith' };
+  const a = { ...person('g1', [[0, 24, 'leisure', 'square', { x: 14, y: 18, z: null }]], { x: 14, y: 18, z: null }), name: 'Aldo Venn', given: 'Aldo', ties: [{ kind: 'friend', text: 'Old friends with Brena Holt (baker), next door to the east.' }] };
+  const b = { ...person('g2', [[0, 24, 'leisure', 'square', { x: 15, y: 19, z: null }]], { x: 15, y: 19, z: null }), name: 'Brena Holt', given: 'Brena' };
+  const idle = person('i1', [[0, 24, 'leisure', 'square', { x: 16, y: 15, z: null }]], { x: 16, y: 15, z: null });
+  allSeen = false;
+  pop.take([walker, smith, a, b, idle], view);
+  allSeen = true;
+  runTo(pop, 9 * H + 120);
+  const kinds = new Set(pop.noises.map((n) => n.kind));
+  ok(kinds.has('step') && kinds.has('door') && kinds.has('work'), `the people make noises: ${[...kinds].join(', ')}`);
+  ok(pop.noises.some((n) => n.kind === 'work' && /anvil/.test(n.what)), 'a smith at work is heard hammering');
+  ok(pop.tracks.size > 5, `walking leaves tracks in wet grass (${pop.tracks.size} tiles)`);
+  ok(said.some((t) => /Aldo and Brena greet each other/.test(t)), `friends greet each other (${said.join(' | ')})`);
+  const before = said.length;
+  runTo(pop, 9 * H + 600);
+  ok(said.length === before, 'once a day');
+  // The wanderer opens a door to the west of the one standing about: they look that way.
+  const ir = [...pop.all()].find((r) => r.p.id === 'i1')!;
+  ir.facing = 'e';
+  pop.hearPlayer(view, { x: 13, y: 15, z: null, loud: LOUD.door, kind: 'door', what: 'a door' });
+  ok((ir.facing as string) === 'w', 'one standing about looks toward a noise the wanderer makes');
+  const words = pop.bumped(view, ir);
+  ok(/steps aside/.test(words) && !(ir.x === 16 && ir.y === 15), `walked into, one standing about steps aside ("${words}")`);
+  allSeen = false;
 }
 
 {

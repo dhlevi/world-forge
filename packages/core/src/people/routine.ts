@@ -7,7 +7,11 @@
  * - **Templates** by kind of life: a craftsman's shop hours with a midday meal at home, a labourer's
  *   long day, a farmer's dawn to dusk, a merchant's, a guard's watches in turn, a priest's offices,
  *   an innkeeper's late hours, a servant's chores, a child's play, an elder's short days, a
- *   beggar's round of the square, a night trade's.
+ *   beggar's round of the market, a night trade's; a carter's or porter's rounds between the
+ *   warehouses, the market and the gates.
+ * - **Errands:** the marketing of a house falls to whoever keeps it (most mornings) or to the cook
+ *   and the maids of a great house; craftsmen and merchants now and then fetch supplies; an inn's
+ *   traders and pedlars spend the morning about the market.
  * - **Variation:** the day's seed shifts the times by a little; traits shift them more (the
  *   diligent work longer, the slothful rise late, the gregarious go to the tavern, the pious to the
  *   temple); the household's means decides whether leisure is the tavern or the inn.
@@ -17,7 +21,8 @@
  *
  * Places are named here and found on the map by the worker (apps/game/src/worker/people.ts):
  * the bed, the home and its table, the workplace (their own building, or the nearest of its kind),
- * out of doors near home, the tavern or inn, the square, the temple.
+ * out of doors near home, the tavern or inn, the square, the temple, the market (among the
+ * stalls), the warehouse, the town gate.
  */
 import { hashString, mulberry32 } from '../gen/rng';
 import type { Household, Person, RKind } from './residents';
@@ -26,13 +31,13 @@ import type { Household, Person, RKind } from './residents';
 export type Work = 'shop' | 'home' | 'out' | 'away' | 'none';
 
 /** What a person is doing. */
-export type Act = 'sleep' | 'home' | 'meal' | 'work' | 'leisure' | 'worship';
+export type Act = 'sleep' | 'home' | 'meal' | 'work' | 'leisure' | 'worship' | 'errand';
 
 /** Where a block is spent. */
-export type Place = 'bed' | 'home' | 'table' | 'work' | 'out' | 'tavern' | 'square' | 'temple';
+export type Place = 'bed' | 'home' | 'table' | 'work' | 'out' | 'tavern' | 'square' | 'temple' | 'market' | 'warehouse' | 'gate';
 
 /** Places out of doors (kept to daylight, left in the rain). */
-export const OUTDOOR_PLACES = new Set<Place>(['out', 'square']);
+export const OUTDOOR_PLACES = new Set<Place>(['out', 'square', 'market', 'gate']);
 
 /** A part of the day: from and to (hours of the day, 0 to 24), what, and where. */
 export interface Block {
@@ -43,7 +48,7 @@ export interface Block {
 }
 
 /** Kinds of days. */
-export type Template = 'craft' | 'labour' | 'farm' | 'merchant' | 'guard' | 'priest' | 'inn' | 'servant' | 'child' | 'elder' | 'beggar' | 'night' | 'idle' | 'guest';
+export type Template = 'craft' | 'carter' | 'labour' | 'farm' | 'merchant' | 'guard' | 'priest' | 'inn' | 'servant' | 'child' | 'elder' | 'beggar' | 'night' | 'idle' | 'guest';
 
 /** The day's light, and whether it is a day of rest. */
 export interface DayOpts {
@@ -74,6 +79,10 @@ const FAITH = /priest|acolyte|monk|nun|prior|shrine keeper|sexton|brother of|her
 const MERCHANT = /merchant|money-lender|banker|lawyer|notary|alderman|goldsmith|shipowner|retired captain|physician|clerk|reeve|scrivener|librarian|copyist|master|scholar|archmage|mage/;
 /** The street trades. */
 const STREET = /beggar|rag-picker|hawker|street sweeper|rat-catcher|mudlark|pedlar/;
+/** Those who carry loads about the town: between the warehouses, the market and the gates. */
+const CARRY = /carter|porter|stevedore|dockhand/;
+/** Those whose household's marketing falls to them: the cook, the maids, the steward. */
+const MARKETING = /cook|maid|scullion|steward|servant|footman/;
 /** The trades of the fields and the woods. */
 const FIELD = /farmer|shepherd|plough|cottar|swineherd|beekeeper|hedger|thatcher|gardener|woodcutter|sawyer|charcoal|drover|vine|grape|hunter|gatherer|dairy/;
 /** Night trades. */
@@ -107,6 +116,7 @@ export function templateOf(p: Person, work: Work, kind: RKind): Template {
   if (FAITH.test(t) && work === 'shop') return 'priest';
   if (work === 'shop' && kind === 'mansion') return 'servant';
   if (STREET.test(t)) return 'beggar';
+  if (CARRY.test(t) && work !== 'shop') return 'carter';
   if (FIELD.test(t)) return 'farm';
   if (t === 'retired' || p.age >= 66) return 'elder';
   if (work === 'none') return 'idle';
@@ -161,6 +171,8 @@ export function dayBlocks(seed: string, key: string, day: number, p: Person, wor
     const w = wake(7, 1.5), s = bed(21.5);
     add(w, 'sleep', 'bed');
     add(w + 0.75, 'meal', 'table');
+    // Traders and pedlars among them about the market in the morning.
+    if (/merchant|pedlar|drover|sutler|minstrel/.test(p.trade) || r() < 0.4) add(11.5 + r(), 'errand', 'market');
     add(18 + r() * 1.5, 'work', 'work');
     add(s - 0.3, 'leisure', 'home');
     add(s, 'home', 'home');
@@ -233,6 +245,12 @@ export function dayBlocks(seed: string, key: string, day: number, p: Person, wor
     const w = wake(5, 0.5);
     add(w, 'sleep', 'bed');
     add(w + 0.4, 'meal', 'table');
+    // The household's marketing, most mornings, falls to the cook or a maid.
+    if (MARKETING.test(p.trade) && !rest && r() < 0.55) {
+      const go = 8 + r() * 1.5;
+      add(go, 'work', 'work');
+      add(go + 0.75 + r() * 0.75, 'errand', 'market');
+    }
     add(12.5, 'work', 'work');
     add(13, 'meal', 'table');
     const s = bed(21.25, 0.75);
@@ -292,21 +310,28 @@ export function dayBlocks(seed: string, key: string, day: number, p: Person, wor
         w = wake(6);
         start = w + 1;
         end = 17.5 + r();
-        workAt = 'square';
-        noon = 'square';
+        // Where the alms are: about the market.
+        workAt = 'market';
+        noon = 'market';
         break;
       case 'elder':
         w = wake(6, 1);
         start = 9.5 + r();
         end = 11.75 + r() * 0.5;
-        workAt = 'square';
+        workAt = r() < 0.5 ? 'market' : 'square';
         sleepAt = bed(20, 1);
         break;
       case 'idle':
+        // Keeping house: the marketing in the morning, most days.
         w = wake(6);
-        start = 10 + r();
-        end = start + 0.75 + r() * 0.5;
-        workAt = 'square';
+        start = 8.25 + r() * 1.75;
+        end = start + 0.75 + r() * 0.75;
+        workAt = r() < 0.75 ? 'market' : 'square';
+        break;
+      case 'carter':
+        w = wake(5, 0.75);
+        start = w + 0.5;
+        end = 17.5 + r() * 0.75 + long;
         break;
       default:
         w = wake(5.75);
@@ -318,14 +343,41 @@ export function dayBlocks(seed: string, key: string, day: number, p: Person, wor
     add(Math.min(start, w + 0.6), 'meal', 'table');
     add(start, 'home', 'home');
     if (tpl === 'elder' || tpl === 'idle') {
-      // A short round: the square (or a neighbour's bench), then home for the day.
-      add(end, 'leisure', workAt);
+      // A short round: the market or the square, then home for the day (and now and then out again in the afternoon).
+      add(end, tpl === 'idle' && workAt === 'market' ? 'errand' : 'leisure', workAt);
       add(12.25, 'home', 'home');
       add(13, 'meal', 'table');
+      if (tpl === 'idle' && r() < 0.3) {
+        const go = 14 + r() * 1.5;
+        add(go, 'home', 'home');
+        add(go + 0.5 + r() * 0.5, 'errand', 'market');
+      }
       add(17.5, 'home', 'home');
       evening(17.5, sleepAt);
+    } else if (tpl === 'carter') {
+      // Rounds: a load from the warehouse to the market, to the gate, and back, a leg at a time.
+      const legs: Place[] = /porter/.test(p.trade) ? ['market', 'warehouse'] : /dock|stevedore/.test(p.trade) ? ['warehouse', 'market', 'warehouse', 'gate'] : ['warehouse', 'market', 'gate', 'market'];
+      let t0 = start, i = Math.floor(r() * legs.length);
+      while (t0 < end - 0.3) {
+        if (t0 >= 12 && t0 < 12.75) {
+          add(12.75, 'meal', legs[i % legs.length]);
+          t0 = 12.75;
+          continue;
+        }
+        const t1 = Math.min(end, t0 + 0.4 + r() * 0.6, t0 < 12 ? 12 : 24);
+        add(t1, 'work', legs[i++ % legs.length]);
+        t0 = t1;
+      }
+      evening(end, sleepAt);
     } else {
       const act: Act = 'work';
+      // Now and then a trip to the market for what the work needs (materials, stock), mid-morning.
+      const supplies = (tpl === 'craft' && r() < (p.role === 'apprentice' ? 0.35 : 0.2)) || (tpl === 'merchant' && r() < 0.4);
+      if (supplies && start < 10) {
+        const go = 10 + r();
+        add(go, act, workAt);
+        add(go + 0.5 + r() * 0.5, 'errand', 'market');
+      }
       if (start < 12) add(12, act, workAt);
       add(Math.max(start, 12) + 0.75, 'meal', noon);
       add(end, act, workAt);

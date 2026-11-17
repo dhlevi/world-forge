@@ -12,6 +12,8 @@ import { WEAR_SHAPE } from '@worldforge/core/local/figures';
 import { dayBlocks, restDay, templateOf, workOf } from '@worldforge/core/people/routine';
 import { bubbleAt, forgetPeople, peopleIn } from '../src/worker/people';
 import { belongingsOf } from '../src/world/belongings';
+import { Population } from '../src/world/population';
+import { GameMap } from '../src/game/map';
 import { defOf } from '../src/actors/items/item';
 import { ITEM } from '../src/actors/items/defs';
 import type { PlacedPerson, Spot } from '../src/worker/protocol';
@@ -77,6 +79,12 @@ for (const tier of ['city', 'town'] as const) {
   ok(working > here(day).length * 0.25, `by day many are at work (${working} of ${here(day).length})`);
   const atHome = here(evening).filter((p) => ['home', 'meal', 'sleep'].includes(actAt(p, 20))).length;
   ok(atHome > here(evening).length * 0.7, `in the evening most are at home (${atHome} of ${here(evening).length})`);
+  // Errands and rounds: the marketing, the supplies of the trades, the carters' loads, the beggars at the market.
+  const marketGoers = day.filter((p) => p.plan.some((k) => k.place === 'market' && k.at)).length;
+  ok(marketGoers > day.length * 0.15, `many go to the market in a day (${marketGoers} of ${day.length})`);
+  ok(day.some((p) => p.plan.some((k) => k.act === 'errand' && k.at)), 'errands are run');
+  const carters = day.filter((p) => p.template === 'carter');
+  if (carters.length) ok(carters.every((p) => new Set(p.plan.filter((k) => k.act === 'work').map((k) => k.place)).size >= 2), `carters and porters go round between places (${carters.length})`);
   const drinking = here(evening).filter((p) => actAt(p, 20) === 'leisure').length;
   ok(drinking > 0, `some are out of an evening (${drinking})`);
 
@@ -122,13 +130,48 @@ for (const tier of ['city', 'town'] as const) {
   }
 }
 
+// ---- Street life: a town's morning walked, with the wanderer in its middle -------------------------------
+{
+  const s = w.settlements.filter((x) => x.tier === 'town').sort((a, b) => b.population - a.population)[0];
+  if (s) {
+    console.log('\nstreet life');
+    const local = new LocalWorld(w, s);
+    const [x, y] = local.startTile();
+    const r = bubbleAt(local, x, y);
+    const map = new GameMap(() => {});
+    const C = Math.ceil((r + 64) / CHUNK);
+    for (let cy = Math.floor(y / CHUNK) - C; cy <= Math.floor(y / CHUNK) + C; cy++) for (let cx = Math.floor(x / CHUNK) - C; cx <= Math.floor(x / CHUNK) + C; cx++) map.add(local.chunk(cx, cy) as never);
+    const view = { px: x, py: y, z: null as number | null, time: DAY + 9.5 * H, map, isVisible: (a: number, b: number) => Math.max(Math.abs(a - x), Math.abs(b - y)) <= 10 };
+    const pop = new Population(() => Promise.resolve({ people: [], radius: r }), seed);
+    pop.take(peopleIn(w, local, x, y, r, view.time, 7, 17), view);
+    const outside = () => [...pop.all()].filter((p) => p.z === null && !GROUND_TILES[map.groundAt(p.x, p.y, null)]?.name.startsWith('floor_')).length;
+    const before = outside();
+    let worst = 0, total = 0, n = 0;
+    for (; view.time < DAY + 10.5 * H; view.time += 1.2) {
+      const t0 = performance.now();
+      pop.run(view);
+      const dt = performance.now() - t0;
+      worst = Math.max(worst, dt);
+      total += dt;
+      n++;
+    }
+    const after = outside();
+    const atMarket = [...pop.all()].filter((p) => p.stop?.place === 'market' && p.where !== 'walking').length;
+    console.log(`  ${pop.size} people; out of doors ${before} at 09:30, ${after} at 10:30 (${atMarket} at the market); ${(total / n).toFixed(2)} ms a step, ${worst.toFixed(1)} ms at worst; ${pop.searched} paths, ${pop.failed} not found`);
+    ok(after > pop.size * 0.1, 'a town\'s streets and market are busy of a morning');
+    ok(atMarket > 20, 'the market draws a crowd');
+    ok(total / n < 2, 'the queue keeps within its budget (under 2 ms a step on average)');
+    ok(pop.failed < pop.searched * 0.1, 'nearly every path is found');
+  }
+}
+
 // ---- Day plans: every trade, every kind of building, every day of the week ----------------------------
 {
   console.log('\nday plans');
   const P = (trade: string, age: number, role: string, traits: string[] = []) => ({ name: 'X', given: 'X', female: false, age, culture: 0, people: '', trade, role, traits, ties: [] });
-  const trades = ['cooper', 'farmer', 'labourer', 'lawyer', 'soldier', 'priest', 'innkeeper', 'maid', 'child', 'retired', 'beggar', 'night-soil man', 'merchant', 'miner', 'hawker', 'smith', 'guildmaster'];
-  const roles: Record<string, string> = { soldier: 'soldier', maid: 'maid', child: 'son', merchant: 'guest' };
-  const kinds: Record<string, string> = { soldier: 'barracks', priest: 'temple', innkeeper: 'inn', maid: 'mansion', merchant: 'inn', smith: 'trade', guildmaster: 'guild' };
+  const trades = ['carter', 'porter', 'cook', 'cooper', 'farmer', 'labourer', 'lawyer', 'soldier', 'priest', 'innkeeper', 'maid', 'child', 'retired', 'beggar', 'night-soil man', 'merchant', 'miner', 'hawker', 'smith', 'guildmaster'];
+  const roles: Record<string, string> = { cook: 'cook', soldier: 'soldier', maid: 'maid', child: 'son', merchant: 'guest' };
+  const kinds: Record<string, string> = { cook: 'mansion', soldier: 'barracks', priest: 'temple', innkeeper: 'inn', maid: 'mansion', merchant: 'inn', smith: 'trade', guildmaster: 'guild' };
   let bad = 0, n = 0;
   const seenKinds = new Set<string>();
   for (const t of trades) for (let d = 0; d < 7; d++) for (const [rise, set] of [[4.5, 21], [8.5, 16]]) {
@@ -143,7 +186,7 @@ for (const tier of ['city', 'town'] as const) {
     if (JSON.stringify(plan) !== JSON.stringify(again)) bad++;
     if (plan[0].from !== 0 || plan[plan.length - 1].to !== 24 || plan.some((k, i) => k.to <= k.from || (i && k.from !== plan[i - 1].to))) bad++;
     // Out of doors only by daylight (the night trades apart).
-    if (t !== 'night-soil man' && plan.some((k) => (k.place === 'out' || k.place === 'square') && (k.from < rise || k.to > set))) bad++;
+    if (t !== 'night-soil man' && plan.some((k) => ['out', 'square', 'market', 'gate'].includes(k.place) && (k.from < rise || k.to > set))) bad++;
     if (!plan.some((k) => k.act === 'sleep')) bad++;
   }
   ok(bad === 0, `${n} plans: whole, the same every time, out of doors only by daylight, with sleep in them`);

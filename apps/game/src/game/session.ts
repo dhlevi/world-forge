@@ -25,7 +25,7 @@ import { desktop } from '../desktop';
 import { Actor } from '../actors/actor';
 import { Cast } from '../actors/cast';
 import { check, DC } from '../actors/checks';
-import { Identity, Knowledge, Mood, Skills, type Moodlet } from '../actors/components';
+import { Body, Identity, Knowledge, Mood, Skills, Traits, type Moodlet } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
 import { defOf, type Item } from '../actors/items/item';
 import { Needs, type NeedId } from '../actors/needs';
@@ -38,6 +38,9 @@ import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type SaveFile } from './save';
 import { Travel } from './travel';
 import { Population, doingWords, type Resident } from '../world/population';
+import { LOUD, directionWords, heardLevel, hearingThreshold, readTracks, takesTracks, type Noise } from '../world/senses';
+import { opinionWords } from '../world/opinions';
+import { greeting, lineOf } from '../world/talk';
 import { sunTimes } from '@worldforge/core/weather/weather';
 import { WeatherService, type Sky } from './weather';
 import type { RoofMode } from './roofs-mode';
@@ -102,6 +105,11 @@ export class PlaySession {
   readonly travel: Travel;
   /** The residents about the wanderer (world/population.ts). */
   readonly people: Population;
+  /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
+  private lastTracksAt = -1;
+  private toldNoise = new Map<string, number>();
+  /** How often the wanderer has talked to each person today (for varying their lines). */
+  private talks = new Map<string, number>();
   readonly weather: WeatherService;
   readonly practice: Practice;
   /** What the panel and log show of the map (game/game.ts writes it). */
@@ -202,8 +210,26 @@ export class PlaySession {
     game.people = () => (this.state.mode === 'local' ? this.people.all() : []);
     game.personAt = (x, y, z) => {
       const r = this.state.mode === 'local' ? this.people.at(x, y, z) : null;
-      return r ? { name: r.p.name, lines: residentLines(r) } : null;
+      return r ? { name: r.p.name, lines: residentLines(r, this.people, game.time) } : null;
     };
+    // The senses (world/senses.ts): the wanderer's noises heard by those about, their tracks, and walking into people.
+    game.onBump = (x, y, z) => {
+      const r = this.people.at(x, y, z);
+      return r ? this.people.bumped(game, r) : null;
+    };
+    game.onNoise = (kind, x, y, z, dir) => {
+      const gid = game.map.groundAt(x, y, z), gd = GROUND_TILES[gid];
+      const loud = kind === 'door' ? LOUD.door : gd?.water ? LOUD.stepWater : takesTracks(gid, true) ? LOUD.stepSoft : LOUD.stepHard;
+      if (this.state.mode === 'local') this.people.hearPlayer(game, { x, y, z, loud, kind, what: kind === 'door' ? 'a door' : 'footsteps' });
+      if (kind === 'step' && takesTracks(gid, this.people.wet)) this.people.tracks.add(x, y, z, { t: game.time, by: 'player', kind: this.player?.get(Body)?.d.kind ?? 'human', dir });
+    };
+    game.tracksText = (x, y, z) => readTracks(this.people.tracks.at(x, y, z, game.time), game.time, this.player?.get(Skills)?.effective('tracking') ?? 0);
+    game.tracksOn = (x, y, z) => this.people.tracks.at(x, y, z, game.time).length;
+    this.people.onSee = (text) => game.say(text);
+    if (o.restore?.people) {
+      this.people.opinions.import(o.restore.people.opinions);
+      this.people.tracks.import(o.restore.people.tracks);
+    }
 
     // The road: steps take skill (fords, steep ground), weather shortens sight, arriving opens the place.
     const travel = this.travel;
@@ -452,7 +478,15 @@ export class PlaySession {
       const sky = this.weather.sky(t), st = sunTimes(this.o.site.lat, sky.doy);
       this.people.sun = 'polar' in st ? (st.polar === 'day' ? { rise: 4, set: 22 } : { rise: 9, set: 15 }) : { rise: st.rise, set: st.set };
       this.people.raining = sky.w.rainMm > 0.5;
+      this.people.wet = this.people.raining || sky.mud > 0.2 || sky.snowCm > 0;
       this.people.update(game);
+      this.listen();
+      // Rain and falling snow wash out (or cover) the older tracks; the rest fade in time.
+      if (Math.floor(t / 600) !== Math.floor(this.lastTracksAt / 600)) {
+        this.lastTracksAt = t;
+        this.people.tracks.weather(t, sky.w.rainMm > 1 || (sky.w.kind.includes('snow') && sky.w.rainMm > 0.2));
+        this.people.opinions.prune(t);
+      }
     }
     const dt = Math.max(0, t - this.lastT);
     this.lastT = t;
@@ -646,6 +680,76 @@ export class PlaySession {
     g.say('Cut brush in which direction?');
   }
 
+  /**
+   * What the wanderer hears of the people about that they cannot see (world/senses.ts): the noise
+   * of work, doors, voices, footsteps close by in the quiet; each kind told of once in a while.
+   */
+  private listen(): void {
+    const g = this.game, noises = this.people.noises.splice(0);
+    const hearing = this.player?.get(Traits)?.get('hearing') ?? 10;
+    const thr = hearingThreshold(hearing);
+    let best: { n: Noise; level: number } | null = null;
+    for (const n of noises) {
+      if (n.by === 'player' || (n.z === g.z && g.isVisible(n.x, n.y))) continue;
+      const level = heardLevel(g.map, n, { x: g.px, y: g.py, z: g.z });
+      // Footsteps only close by; the rest as far as they carry.
+      if (level < thr || (n.kind === 'step' && Math.max(Math.abs(n.x - g.px), Math.abs(n.y - g.py)) > 8)) continue;
+      if (!best || level - thr > best.level - thr) best = { n, level };
+    }
+    if (!best) return;
+    const n = best.n, key = `${n.kind}:${n.what}`;
+    const last = this.toldNoise.get(key);
+    if (last !== undefined && g.time - last < (n.kind === 'work' ? 300 : 120)) return;
+    this.toldNoise.set(key, g.time);
+    const where = directionWords({ x: g.px, y: g.py }, n), far = Math.max(Math.abs(n.x - g.px), Math.abs(n.y - g.py)) > 25 ? ' in the distance' : '';
+    g.say(`You hear ${n.what}${far} ${where}.`);
+  }
+
+  /** Talks to the one beside the wanderer: at once if there is one, else asks which way. */
+  startTalk(): void {
+    const g = this.game;
+    const beside: [number, number][] = [];
+    for (const [dx, dy] of [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]] as [number, number][]) if (this.people.at(g.px + dx, g.py + dy, g.z)) beside.push([dx, dy]);
+    if (!beside.length) {
+      g.say('There is nobody beside you to talk to.');
+      return;
+    }
+    if (beside.length === 1) {
+      this.talk(beside[0][0], beside[0][1]);
+      return;
+    }
+    this.hud.mode = 'talk';
+    g.say('Talk to whom? (a direction)');
+  }
+
+  /** Talks to the person beside the wanderer in a direction: a greeting, and a line. */
+  talk(dx: number, dy: number): void {
+    const g = this.game, r = this.people.at(g.px + dx, g.py + dy, g.z);
+    if (!r) {
+      g.say('There is nobody there.');
+      return;
+    }
+    const ops = this.people.opinions, t = g.time;
+    g.time += 6;
+    if (r.where === 'asleep') {
+      g.say(`${r.p.given} is asleep. You let them be.`);
+      return;
+    }
+    const met = ops.knows(r.p.id);
+    const opinion = ops.of(r.p.id, t);
+    r.facing = dx > 0 ? 'w' : dx < 0 ? 'e' : dy > 0 ? 'n' : 's';
+    const tk = `${r.p.id}#${Math.floor(t / 86400)}`, said = this.talks.get(tk) ?? 0;
+    if (!said && this.talks.size > 500) this.talks.clear();
+    this.talks.set(tk, said + 1);
+    const me = this.player?.get(Identity)?.d.given ?? 'traveller';
+    g.say(`${r.p.name}: "${greeting(r, opinion, met, (t % 86400) / 3600, me)} ${lineOf(r, Math.floor(t / 86400), said, this.people.raining)}"`);
+    // A civil word warms a little (no more than once a day); being pestered cools.
+    if (said >= 4) ops.add(r.p.id, r.p.name, 'pestered me', -1, t, 1);
+    else if (!met || ops.recent(r.p.id, 'spoke civilly', t, 86400) === 0) ops.add(r.p.id, r.p.name, 'spoke civilly', 3, t, 5);
+    this.people.noises.push({ x: g.px, y: g.py, z: g.z, loud: LOUD.speech, kind: 'speech', by: 'player', what: 'voices' });
+    this.redraw();
+  }
+
   /** Cuts away the bush or scrub beside the wanderer (game/tasks.ts, clearBrush). */
   cutBrush(dx: number, dy: number): void {
     const g = this.game, a = this.player, inv = a?.get(Inventory);
@@ -737,7 +841,10 @@ export class PlaySession {
   /** The game as a save. */
   snapshot(): SaveFile {
     const o = this.o;
-    return makeSave(this.game, { id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON() });
+    return makeSave(this.game, {
+      id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON(),
+      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export() },
+    });
   }
 
   async save(quiet = false): Promise<void> {
@@ -767,8 +874,8 @@ export class PlaySession {
   }
 }
 
-/** What the wanderer sees of a resident: who they are, and what they are about. */
-function residentLines(r: Resident): string[] {
+/** What the wanderer sees of a resident: who they are, what they are about, and (if met) how they stand toward the wanderer. */
+function residentLines(r: Resident, pop: Population, t: number): string[] {
   const p = r.p;
   const an = (w: string) => (/^[aeiou]/i.test(w) ? `an ${w}` : `a ${w}`);
   const trade = p.trade === 'child' ? (p.female ? 'a girl' : 'a boy') : p.trade === 'retired' || p.trade === 'helps at home' ? '' : an(p.trade);
@@ -776,5 +883,6 @@ function residentLines(r: Resident): string[] {
   out.push(`One of ${p.people}${p.age >= 12 ? `, about ${Math.max(12, Math.round(p.age / 5) * 5)} years old` : ''}.`);
   const doing = doingWords(r);
   if (doing) out.push(doing);
+  if (pop.opinions.knows(r.p.id)) out.push(`You have met; ${r.p.female ? 'she' : 'he'} is ${opinionWords(pop.opinions.of(r.p.id, t))}.`);
   return out;
 }

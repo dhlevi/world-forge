@@ -48,7 +48,7 @@ export interface Hud {
   clock: string;
   log: { t: string; text: string }[];
   look: string[];
-  mode: 'play' | 'look' | 'open' | 'close' | 'cut';
+  mode: 'play' | 'look' | 'open' | 'close' | 'cut' | 'talk';
   loading: number;
   /** The town or city the wanderer is in (for its city view), if any. */
   town?: { id: string; name: string; tier: string } | null;
@@ -125,6 +125,13 @@ export class Game {
   figure: () => FigureSpec = () => ({ kind: 'human', female: false, skin: '#d8b090', hair: { style: 'short', colour: '#5a3a20' }, beard: { style: 'none', colour: '#5a3a20' }, wear: [{ shape: 'trousers', colour: '#6a5a46' }, { shape: 'tunic', colour: '#5f6f86' }] });
   /** Someone standing on a tile and floor (world/population.ts): their name, and what can be told of them. */
   personAt: (x: number, y: number, z: number | null) => { name: string; lines: string[] } | null = () => null;
+  /** The wanderer walks into someone (world/population.ts): what happens, in words (none: they are in the way). */
+  onBump: (x: number, y: number, z: number | null) => string | null = () => null;
+  /** The wanderer makes a noise (a step, a door), for those about to hear and the ground to take their tracks. */
+  onNoise: (kind: 'step' | 'door', x: number, y: number, z: number | null, dir: Facing) => void = () => {};
+  /** The tracks on a tile, as the wanderer reads them (none: none seen), and how many there are (for drawing). */
+  tracksText: (x: number, y: number, z: number | null) => string | null = () => null;
+  tracksOn: (x: number, y: number, z: number | null) => number = () => 0;
   /** The people about, to be drawn (world/population.ts). */
   people: () => Iterable<ShownPerson> = () => [];
   /** Called when thorns scratch the wanderer (a small hurt, for the mood). */
@@ -295,7 +302,7 @@ export class Game {
     const obj = OBJECT_TILES[this.map.object(nx, ny)];
     const who = this.personAt(nx, ny, this.z);
     if (who) {
-      if (!quiet) this.say(`${who.name} is in the way.`);
+      if (!quiet) this.say(this.onBump(nx, ny, this.z) ?? `${who.name} is in the way.`);
       return false;
     }
     if (!this.pass(nx, ny)) {
@@ -366,6 +373,7 @@ export class Game {
     }
     const area1 = this.areaAt(nx, ny);
     if (area1 !== area0 && area1) this.say(`${cap(area1)}.`);
+    this.onNoise('step', nx, ny, this.z, dx || dy ? (dx > 0 ? 'e' : dx < 0 ? 'w' : dy < 0 ? 'n' : 's') : this.facing);
     return true;
   }
 
@@ -414,6 +422,7 @@ export class Game {
     }
     this.map.setObject(x, y, objectId(o.toggle)!);
     this.time += DOOR_S;
+    this.onNoise('door', x, y, this.z, this.facing);
     this.say(`You ${opening ? 'open' : 'close'} the ${o.name.startsWith('gate') ? 'gate' : 'door'}.`);
     return true;
   }
@@ -599,6 +608,8 @@ export class Game {
       const dl = this.map.level(x, y) - this.map.level(this.px, this.py);
       if (dl) out.push(`${cap(levelWords(dl))} (${Math.abs(t.elev - this.map.elev(this.px, this.py))} m ${dl > 0 ? 'higher' : 'lower'}).`);
     }
+    const tracks = seen ? this.tracksText(x, y, this.z) : null;
+    if (tracks) out.push(tracks);
     const things = this.ground.at(x, y);
     if (things.length && seen) out.push(`${t.object ? 'In it' : 'Lying here'}: ${things.slice(0, 4).map((i) => itemName(i, true)).join(', ')}${things.length > 4 ? ', and more' : ''}.`);
     const d = Math.hypot(x - this.px, y - this.py) * TILE_M;

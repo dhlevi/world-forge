@@ -45,14 +45,18 @@ interface Home {
 }
 
 let forWorld: GeneratedWorld | null = null;
+let forLocal: LocalWorld | null = null;
 const homes = new Map<string, Home>();
 const looks = new Map<number, Look | null>();
 
 /** Forgets what was worked out (a new world or a new game). */
 export function forgetPeople(): void {
   homes.clear();
+  besideCache.clear();
+  squareCache.clear();
   looks.clear();
   forWorld = null;
+  forLocal = null;
 }
 
 function homeOf(w: GeneratedWorld, b: PlanBuilding): Home {
@@ -109,6 +113,11 @@ const AWAY_AT: [RegExp, RKind[]][] = [
   [/camp follower|sutler/, ['barracks', 'keep']],
   [/merchant|pedlar|drover|courier|minstrel|pilgrim|scholar|sellsword|adventurer/, ['hall', 'civic', 'inn', 'temple']],
 ];
+/** How far (tiles) a carter's or porter's round takes them from home. */
+const ROUND = 80;
+/** What a market's stalls and a town's gates stand as on the map. */
+const STALLS = new Set(['stall']);
+const GATES = new Set(['gate_open', 'gate']);
 /** Grounds of squares and greens. */
 const SQUARE_GROUND = new Set(['flagstones', 'lawn']);
 /** Rooms meals are eaten in. */
@@ -123,9 +132,11 @@ const asSpot = (t: BuildingSpot | Spot): Spot => ({ x: t.x, y: t.y, z: t.z });
  * at that time. `rise` and `set` are the day's sunrise and sunset (hours).
  */
 export function peopleIn(w: GeneratedWorld, local: LocalWorld, x: number, y: number, radius: number, time: number, rise = 6, set = 18): PlacedPerson[] {
-  if (forWorld !== w) {
+  // What is kept is kept for one world and one local map (chunks are numbered from the game's start).
+  if (forWorld !== w || forLocal !== local) {
     forgetPeople();
     forWorld = w;
+    forLocal = local;
   }
   const seed = w.raster.seed;
   const day = Math.floor(time / 86400), hour = (time % 86400) / 3600;
@@ -147,6 +158,10 @@ export function peopleIn(w: GeneratedWorld, local: LocalWorld, x: number, y: num
     found.sort((a, c) => a[0] - c[0] || (a[1].b.bid < c[1].b.bid ? -1 : 1));
     return found.slice(0, n).map((f) => f[1]);
   };
+  // The markets (open ground beside the stalls) and the town gates (open ground beside them) within reach.
+  const markets = tilesBeside(local, x - R2, y - R2, x + R2, y + R2, STALLS);
+  const marketMemo = new Map<string, Spot[]>();
+  const gates = tilesBeside(local, x - R2, y - R2, x + R2, y + R2, GATES);
   const isTavern = (h: Home) => h.kind === 'inn' || h.b.f.properties.role === 'tavern';
   const isTemple = (h: Home) => h.kind === 'temple' || h.kind === 'shrine' || h.kind === 'monks';
 
@@ -194,6 +209,17 @@ export function peopleIn(w: GeneratedWorld, local: LocalWorld, x: number, y: num
           case 'tavern': return tavern ? [inside(tavern.b, r), tavern.b] : [null, null];
           case 'temple': return temple ? [inside(temple.b, r), temple.b] : [null, null];
           case 'square': return [pickOf(squaresNear(local, b)) ?? outdoors(local, b, r), null];
+          case 'market': {
+            // A tile among the stalls of the nearest market (else a square near home).
+            const m = marketNear(markets, b, r, marketMemo);
+            return [m ?? pickOf(squaresNear(local, b)), null];
+          }
+          case 'warehouse': {
+            // The nearest warehouse or store within a carter's round (else the market).
+            const wh = nearestOf(b, (o) => (o.kind === 'warehouse' || o.kind === 'store') && Math.max(Math.abs(o.b.x0 - b.x0), Math.abs(o.b.y0 - b.y0)) <= ROUND)[0];
+            return wh ? [inside(wh.b, r), wh.b] : [marketNear(markets, b, r, marketMemo), null];
+          }
+          case 'gate': return [pickOf(nearest(gates, b, 3)) ?? marketNear(markets, b, r, marketMemo), null];
         }
       };
       const found = new Map<string, [Spot | null, PlanBuilding | null]>();
@@ -264,6 +290,62 @@ function openGround(local: LocalWorld, tx: number, ty: number): boolean {
   return !!g && g.pass && !g.water && !g.name.startsWith('floor_') && (!c.object[k] || !!o?.pass);
 }
 
+/**
+ * The open ground beside things of some kinds (stalls, gates) in a box of tiles, on the ground: a
+ * tile one can stand on, next to one of them.
+ */
+function tilesBeside(local: LocalWorld, x0: number, y0: number, x1: number, y1: number, names: Set<string>): Spot[] {
+  const out: Spot[] = [];
+  for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor(y1 / CHUNK); cy++) for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor(x1 / CHUNK); cx++) {
+    for (const t of besideIn(local, cx, cy, names)) if (t.x >= x0 && t.x <= x1 && t.y >= y0 && t.y <= y1) out.push(t);
+  }
+  return out;
+}
+
+const besideCache = new Map<string, Spot[]>();
+
+/** The open tiles beside things of some kinds in a chunk (kept per chunk). */
+function besideIn(local: LocalWorld, cx: number, cy: number, names: Set<string>): Spot[] {
+  const key = `${cx},${cy},${[...names].join('/')}`;
+  const hit = besideCache.get(key);
+  if (hit) return hit;
+  const c = local.chunk(cx, cy);
+  const out: Spot[] = [];
+  for (let k = 0; k < CHUNK * CHUNK; k++) {
+    if (!names.has(OBJECT_TILES[c.object[k]]?.name ?? '')) continue;
+    const x = k % CHUNK, y = Math.floor(k / CHUNK);
+    for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
+      const xx = x + dx, yy = y + dy;
+      if (xx < 0 || yy < 0 || xx >= CHUNK || yy >= CHUNK) continue;
+      const kk = yy * CHUNK + xx;
+      const g = GROUND_TILES[c.ground[kk]];
+      if (c.object[kk] || !g?.pass || g.water || g.name.startsWith('floor_')) continue;
+      const t = { x: cx * CHUNK + xx, y: cy * CHUNK + yy, z: null };
+      if (!out.some((o) => o.x === t.x && o.y === t.y)) out.push(t);
+    }
+  }
+  besideCache.set(key, out);
+  if (besideCache.size > 2000) besideCache.delete(besideCache.keys().next().value!);
+  return out;
+}
+
+/** The `n` tiles of a list nearest a building's middle (nearest first). */
+function nearest(tiles: Spot[], b: PlanBuilding, n: number): Spot[] {
+  const mx = b.x0 + b.w / 2, my = b.y0 + b.h / 2;
+  return tiles.map((t) => [(t.x - mx) * (t.x - mx) + (t.y - my) * (t.y - my), t] as const).sort((a, c) => a[0] - c[0]).slice(0, n).map((e) => e[1]);
+}
+
+/** A tile of the market nearest a building: one of the stalls' tiles about the nearest (worked out once per building). */
+function marketNear(markets: Spot[], b: PlanBuilding, r: () => number, memo: Map<string, Spot[]>): Spot | null {
+  let about = memo.get(b.bid);
+  if (!about) {
+    const near = nearest(markets, b, 1)[0];
+    about = near ? markets.filter((t) => Math.abs(t.x - near.x) <= 24 && Math.abs(t.y - near.y) <= 24) : [];
+    memo.set(b.bid, about);
+  }
+  return about.length ? about[Math.floor(r() * about.length) % about.length] : null;
+}
+
 const squareCache = new Map<string, Spot[]>();
 
 /** Open tiles of squares and greens within reach of a building's door (kept per building). */
@@ -324,6 +406,7 @@ function person(seed: string, id: string, p: Household['members'][number], h: Ho
     id, name: p.name, given: p.given, female: p.female, age: p.age, culture: p.culture, people: p.people, trade: p.trade, role: p.role, traits: [...p.traits],
     ...(p.note ? { note: p.note } : {}), means: h.means, household: h.name, homeId: b.bid,
     ...(typeof b.f.properties.label === 'string' ? { homeName: b.f.properties.label } : {}),
+    ties: p.ties.map((t) => ({ kind: t.kind, text: t.text })),
     template: templateOf(p, work, kind), day, plan, home, at, facing: facings[Math.floor(r() * 4) % 4],
     look: {
       kind: lk?.kind ?? 'human', skin, hair, hairStyle, beard,

@@ -753,6 +753,17 @@ export class Renderer {
         this.marks.circle(x + TILE_PX / 2, y + TILE_PX / 2, TILE_PX * 0.8).stroke({ color: 0xffd060, width: 1.5 / z, alpha: vis[i] ? 0.85 : 0.45 });
       }
     }
+    // Tracks in soft ground, where seen: a few small prints, darker for more walkers.
+    for (let i = 0; i < this.cols * this.rows; i++) {
+      if (!vis[i]) continue;
+      const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
+      const n = game.tracksOn(tx, ty, floor);
+      if (!n) continue;
+      const x = (i % this.cols) * TILE_PX, y = Math.floor(i / this.cols) * TILE_PX;
+      const a = Math.min(0.55, 0.2 + 0.08 * n);
+      this.marks.ellipse(x + 5, y + 6, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
+      this.marks.ellipse(x + 10, y + 10, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
+    }
     this.cursor.clear();
     if (game.cursor) {
       this.cursor.rect((game.cursor[0] + this.ox) * TILE_PX, (game.cursor[1] + this.oy) * TILE_PX, TILE_PX, TILE_PX).stroke({ color: 0xffd060, width: 1 / z });

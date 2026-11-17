@@ -29,6 +29,8 @@ export interface Tile {
 export type Floor = number | null;
 
 const key = (cx: number, cy: number) => `${cx},${cy}`;
+/** A chunk's key as a number (for the lookups made many times a step: paths, sight). */
+const nkey = (cx: number, cy: number) => (cx + 32768) * 65536 + (cy + 32768);
 /** A tile's key in the changes: on the ground "x,y", on a floor "x,y,z". */
 const tileKey = (x: number, y: number, z: Floor) => (z === null ? `${x},${y}` : `${x},${y},${z}`);
 /** A chunk's key in what has been seen: on the ground "cx,cy", on a floor "cx,cy@z". */
@@ -42,6 +44,11 @@ interface Layer {
 
 export class GameMap {
   private chunks = new Map<string, ChunkData>();
+  /** The same chunks and their floors by numeric key, for fast lookups. */
+  private fast = new Map<number, ChunkData>();
+  private fastLayers = new Map<number, Map<number, Layer>>();
+  /** How many changes each chunk has (by numeric key): a chunk with none needs no lookup in `changes`. */
+  private changedIn = new Map<number, number>();
   /** Each chunk's floors, by level. */
   private layers = new Map<string, Map<number, Layer>>();
   private pending = new Set<string>();
@@ -60,7 +67,10 @@ export class GameMap {
   add(c: ChunkData): void {
     const k = key(c.cx, c.cy);
     this.chunks.set(k, c);
-    this.layers.set(k, new Map((c.layers ?? []).map((l) => [l.z, l])));
+    const ls = new Map((c.layers ?? []).map((l) => [l.z, l] as [number, Layer]));
+    this.layers.set(k, ls);
+    this.fast.set(nkey(c.cx, c.cy), c);
+    this.fastLayers.set(nkey(c.cx, c.cy), ls);
     this.pending.delete(k);
     for (const r of c.roofs ?? []) if (!this.roofs.has(r.id)) this.roofs.set(r.id, r);
   }
@@ -89,12 +99,12 @@ export class GameMap {
   }
 
   loaded(tx: number, ty: number): boolean {
-    return this.chunks.has(key(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK)));
+    return this.fast.has(nkey(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK)));
   }
 
   private at(tx: number, ty: number): [ChunkData, number] | null {
     const cx = Math.floor(tx / CHUNK), cy = Math.floor(ty / CHUNK);
-    const c = this.chunks.get(key(cx, cy));
+    const c = this.fast.get(nkey(cx, cy));
     if (!c) return null;
     return [c, (ty - cy * CHUNK) * CHUNK + (tx - cx * CHUNK)];
   }
@@ -102,7 +112,7 @@ export class GameMap {
   /** A floor's tile, where the floor has one: its layer and index (null: nothing on that floor there). */
   private onFloor(tx: number, ty: number, z: number): [Layer, number] | null {
     const cx = Math.floor(tx / CHUNK), cy = Math.floor(ty / CHUNK);
-    const l = this.layers.get(key(cx, cy))?.get(z);
+    const l = this.fastLayers.get(nkey(cx, cy))?.get(z);
     if (!l) return null;
     const k = (ty - cy * CHUNK) * CHUNK + (tx - cx * CHUNK);
     return l.ground[k] ? [l, k] : null;
@@ -125,7 +135,7 @@ export class GameMap {
   }
 
   objectAt(tx: number, ty: number, z: Floor): number {
-    const ch = this.changes.get(tileKey(tx, ty, z));
+    const ch = this.changedIn.has(nkey(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK))) ? this.changes.get(tileKey(tx, ty, z)) : undefined;
     if (ch !== undefined) return ch;
     if (z !== null) {
       const f = this.onFloor(tx, ty, z);
@@ -144,8 +154,10 @@ export class GameMap {
       const a = this.at(tx, ty);
       if (a) base = a[0].object[a[1]];
     }
-    if (base === id) this.changes.delete(tileKey(tx, ty, z));
-    else this.changes.set(tileKey(tx, ty, z), id);
+    const k = tileKey(tx, ty, z), had = this.changes.has(k);
+    if (base === id) this.changes.delete(k);
+    else this.changes.set(k, id);
+    if (had !== this.changes.has(k)) this.count(tx, ty, had ? -1 : 1);
   }
 
   tileAt(tx: number, ty: number, z: Floor): Tile | null {
@@ -277,7 +289,22 @@ export class GameMap {
 
   importChanges(ground: [number, number, number][], floors: [number, number, number, number][] = []): void {
     this.changes.clear();
-    for (const [x, y, v] of ground) this.changes.set(tileKey(x, y, null), v);
-    for (const [x, y, z, v] of floors) this.changes.set(tileKey(x, y, z), v);
+    this.changedIn.clear();
+    for (const [x, y, v] of ground) {
+      this.changes.set(tileKey(x, y, null), v);
+      this.count(x, y, 1);
+    }
+    for (const [x, y, z, v] of floors) {
+      this.changes.set(tileKey(x, y, z), v);
+      this.count(x, y, 1);
+    }
+  }
+
+  /** Counts a change in or out of its chunk's tally. */
+  private count(tx: number, ty: number, d: number): void {
+    const k = nkey(Math.floor(tx / CHUNK), Math.floor(ty / CHUNK));
+    const n = (this.changedIn.get(k) ?? 0) + d;
+    if (n > 0) this.changedIn.set(k, n);
+    else this.changedIn.delete(k);
   }
 }

@@ -36,8 +36,8 @@ export interface Spot {
 export interface PlanStop {
   from: number;
   to: number;
-  act: 'sleep' | 'home' | 'meal' | 'work' | 'leisure' | 'worship';
-  place: 'bed' | 'home' | 'table' | 'work' | 'out' | 'tavern' | 'square' | 'temple';
+  act: 'sleep' | 'home' | 'meal' | 'work' | 'leisure' | 'worship' | 'errand';
+  place: 'bed' | 'home' | 'table' | 'work' | 'out' | 'tavern' | 'square' | 'temple' | 'market' | 'warehouse' | 'gate';
   at: Spot | null;
 }
 
@@ -66,6 +66,8 @@ export interface PlacedPerson {
   household: string;
   homeId: string;
   homeName?: string;
+  /** Their ties to the neighbours (the household's head's; core people/residents.ts). */
+  ties: { kind: string; text: string }[];
   /** The kind of day they keep (core people/routine.ts, Template). */
   template: string;
   /** The day the plan is for (days since the start), and the plan. */

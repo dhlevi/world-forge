@@ -130,6 +130,14 @@ function onKey(e: KeyboardEvent): void {
     redraw();
     return;
   }
+  if (hud.mode === 'talk') {
+    if (dir) session.talk(dir[0], dir[1]);
+    else game.say('You say nothing.');
+    hud.mode = 'play';
+    e.preventDefault();
+    redraw();
+    return;
+  }
   if (hud.mode === 'cut') {
     if (dir) session.cutBrush(dir[0], dir[1]);
     else game.say('You put your blade away.');
@@ -156,6 +164,8 @@ function onKey(e: KeyboardEvent): void {
     game.refresh();
   } else if (e.code === 'KeyA' && !e.shiftKey) {
     session.startCut();
+  } else if (e.code === 'KeyE' && !e.ctrlKey && !e.metaKey) {
+    session.startTalk();
   } else if (e.code === 'KeyO') {
     hud.mode = 'open';
     game.say('Open in which direction?');
@@ -263,6 +273,7 @@ onBeforeUnmount(() => {
         <div><b>Look</b> x, then move the cursor</div>
         <div><b>Zoom</b> + and -</div>
         <div><b>Stairs</b> &lt; and &gt; on stairs or a ladder go up and down (and down a cave mouth, a dungeon's steps, a grate, or a well beside you)</div>
+        <div><b>Talk</b> E: to the one beside you (then a direction, if there are more)</div>
         <div><b>Cut brush</b> A, then a direction: clear a bush or scrub with a machete, axe, hatchet, sword or knife (Survival)</div>
         <div><b>Light</b> F: light a lantern, torch or candle from your pack, or put it out</div>
         <div><b>Levels</b> &lt; and &gt; elsewhere look up and down; walk into a rock face twice to climb it</div>

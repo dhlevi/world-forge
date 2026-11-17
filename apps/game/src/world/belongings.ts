@@ -103,6 +103,11 @@ export function belongingsOf(p: PlacedPerson, seed: string): Inventory {
       for (const id of ids) if (ITEM.has(id)) inv.stow(makeItem(id, { make, qty: id === 'arrows' ? 12 : 1 }));
       break;
     }
+    // Those who do a household's marketing carry a basket.
+    if (p.template === 'idle' || (p.template === 'servant' && /cook|maid|scullion|steward|servant|footman/.test(t))) {
+      const basket = makeItem('basket', { make });
+      if (inv.put(basket, { at: 'hand', hand: 'left' })) inv.stow(basket);
+    }
     if (p.means === 'rich') {
       const ring = makeItem(r() < 0.5 ? 'signet_ring' : 'ring', { quality: 'fine', make });
       if (inv.put(ring, { at: 'worn' })) inv.stow(ring);
