@@ -12,6 +12,7 @@
  * Proposed numbers, to tune in play.
  */
 import containers from '../../data/items/containers.json';
+import { WEAR_SHAPE } from '@worldforge/core/local/figures';
 import clothing from '../../data/items/clothing.json';
 import armour from '../../data/items/armour.json';
 import jewellery from '../../data/items/jewellery.json';
@@ -102,6 +103,9 @@ export interface ItemDef {
   /** Belts: how many things hang from them. */
   loops?: number;
   wear?: WearDef;
+  /** Worn things: the shape it is drawn as on the figure (core local/figures.ts), and its cloth's colour ("#rrggbb"). */
+  figure?: string;
+  colour?: string;
   container?: ContainerDef;
   /** Things that come in many (arrows, coins of bread): the most in one stack. */
   stack?: number;
@@ -134,7 +138,7 @@ export function itemDef(id: string): ItemDef {
 }
 
 const KINDS: readonly ItemKind[] = ['clothing', 'armour', 'jewellery', 'container', 'weapon', 'tool', 'food', 'drink', 'medicine', 'light', 'goods', 'book', 'music'];
-const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'container', 'stack', 'uses', 'useWord', 'food', 'teaches', 'mend', 'durable', 'sold', 'about']);
+const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'figure', 'colour', 'container', 'stack', 'uses', 'useWord', 'food', 'teaches', 'mend', 'durable', 'sold', 'about']);
 
 /** What is wrong with one item as read from a file (empty when it is sound). */
 export function checkItem(o: unknown): string[] {
@@ -163,6 +167,8 @@ export function checkItem(o: unknown): string[] {
   for (const k of ['belt', 'back', 'strap', 'durable']) opt(k, isBool, 'true or false');
   for (const k of ['loops', 'stack', 'uses']) opt(k, isInt, 'a whole number of at least 1');
   opt('useWord', (v) => typeof v === 'string', 'text');
+  opt('figure', (v) => typeof v === 'string' && WEAR_SHAPE.has(v), `one of the figure shapes (${[...WEAR_SHAPE.keys()].join(', ')})`);
+  opt('colour', (v) => typeof v === 'string' && /^#[0-9a-f]{6}$/i.test(v), 'a colour such as "#7a6a50"');
   opt('about', (v) => typeof v === 'string', 'text');
   opt('sold', isStrs, 'a list of places');
   const w = r.wear as Record<string, unknown> | undefined;

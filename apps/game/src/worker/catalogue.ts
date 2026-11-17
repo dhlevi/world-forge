@@ -59,7 +59,7 @@ export function catalogue(w: GeneratedWorld): Catalogue {
       const lk = lookOf(w.raster.seed, c);
       const uniq = (xs: [string, string][]) => [...new Map(xs.map((x) => [x[1], x])).values()];
       look = {
-        h: lk.h, broad: lk.broad,
+        kind: lk.kind, h: lk.h, broad: lk.broad,
         skins: uniq(lk.figures.map((f) => f.skin)), hairs: uniq(lk.figures.map((f) => f.hair)).filter((x) => x[1] !== 'none'),
         hairM: [...spec.hairM], hairF: [...spec.hairF], beards: [...spec.beard], marks: spec.marks, text: lk.text,
       };

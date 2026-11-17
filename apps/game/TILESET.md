@@ -357,16 +357,72 @@ One picture without a number serves for every join. **Until a kind has trunk art
 
 ## Figures
 
-People (and later creatures) moving about the map, drawn by the way they face: **north, east, south, west** (`n`, `e`, `s`, `w`). Seen from above and a little in front, as the furniture is. For each facing:
+People (the wanderer and everyone else) are drawn in **layers**, one over another (see `docs/design/npcs.md`, Figures): a **body** by kind of people and sex, then the garments worn (legs, feet, hands, body garment, armour, belt, outer garment, cloak), the **hair** and **beard**, and what is worn on the face and head. Draw every layer in **light greys** on a transparent background: the game tints it (the body by the skin, hair and beard by their colour, each garment by its cloth's colour), so one picture of a tunic serves every tunic in every colour. Seen from above and a little in front, as the furniture is, standing on the tile (a layer may rise above it, 16 × 24 say, with an offset; all layers of a figure should share one size and offset).
 
-- `<figure>_<facing>`: standing (an animation if wished, such as breathing);
-- `<figure>_walk_<facing>`: a walk cycle, as an animation (`frames` and `ms`: a step from one tile to the next takes about 130 ms to show).
+For each layer and facing (**north, east, south, west**: `n`, `e`, `s`, `w`):
 
-A figure may be taller than a tile (16 × 24, say): it stands on its tile, its head rising into the one above. A figure drawn facing east only is turned about for west. Without art, the game draws a placeholder person in the wanderer's own skin and hair.
+- `<layer>_<facing>`: standing;
+- `<layer>_walk_<facing>`: a walk cycle, as an animation (`frames` and `ms`: a step from one tile to the next takes about 130 ms to show). Every layer's walk should have the same number of frames, in step with the body's.
 
-| Figure | Frames | Draw |
+A layer drawn facing east only is turned about for west. A layer with no art is drawn as a placeholder (and the placeholders of shorter kinds of people are squashed toward the feet). Worn items name the shape they are drawn as (`figure` in the item data, with their `colour`): a shirt, a tunic and a doublet are all a tunic.
+
+| Layer | Frames | Draw |
 |---|---|---|
-| `person` | `person_n`, `person_e`, `person_s`, `person_w`, and `person_walk_` of each | A person seen from above and a little in front (head, shoulders, arms, legs): the wanderer, and later everyone else. |
+| `body_human_m` | `body_human_m_n`, `body_human_m_e`, `body_human_m_s`, `body_human_m_w`, and `body_human_m_walk_` of each | A person of middling height. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_human_f` | `body_human_f_n`, `body_human_f_e`, `body_human_f_s`, `body_human_f_w`, and `body_human_f_walk_` of each | A person of middling height. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_elf_m` | `body_elf_m_n`, `body_elf_m_e`, `body_elf_m_s`, `body_elf_m_w`, and `body_elf_m_walk_` of each | Taller and slighter than a human, long-limbed; pointed ears where the hair allows. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_elf_f` | `body_elf_f_n`, `body_elf_f_e`, `body_elf_f_s`, `body_elf_f_w`, and `body_elf_f_walk_` of each | Taller and slighter than a human, long-limbed; pointed ears where the hair allows. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_dwarf_m` | `body_dwarf_m_n`, `body_dwarf_m_e`, `body_dwarf_m_s`, `body_dwarf_m_w`, and `body_dwarf_m_walk_` of each | A head shorter than a human and twice as broad; big hands and feet. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_dwarf_f` | `body_dwarf_f_n`, `body_dwarf_f_e`, `body_dwarf_f_s`, `body_dwarf_f_w`, and `body_dwarf_f_walk_` of each | A head shorter than a human and twice as broad; big hands and feet. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_halfling_m` | `body_halfling_m_n`, `body_halfling_m_e`, `body_halfling_m_s`, `body_halfling_m_w`, and `body_halfling_m_walk_` of each | Half a human's height, round-faced, large bare feet. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_halfling_f` | `body_halfling_f_n`, `body_halfling_f_e`, `body_halfling_f_s`, `body_halfling_f_w`, and `body_halfling_f_walk_` of each | Half a human's height, round-faced, large bare feet. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_orc_m` | `body_orc_m_n`, `body_orc_m_e`, `body_orc_m_s`, `body_orc_m_w`, and `body_orc_m_walk_` of each | Human height or a little more, heavy-shouldered, a jutting jaw. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_orc_f` | `body_orc_f_n`, `body_orc_f_e`, `body_orc_f_s`, `body_orc_f_w`, and `body_orc_f_walk_` of each | Human height or a little more, heavy-shouldered, a jutting jaw. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_lizard_m` | `body_lizard_m_n`, `body_lizard_m_e`, `body_lizard_m_s`, `body_lizard_m_w`, and `body_lizard_m_walk_` of each | A lizard-folk: a scaled head with a snout, a tail behind, clawed feet. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_lizard_f` | `body_lizard_f_n`, `body_lizard_f_e`, `body_lizard_f_s`, `body_lizard_f_w`, and `body_lizard_f_walk_` of each | A lizard-folk: a scaled head with a snout, a tail behind, clawed feet. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_gnome_m` | `body_gnome_m_n`, `body_gnome_m_e`, `body_gnome_m_s`, `body_gnome_m_w`, and `body_gnome_m_walk_` of each | Smaller than a dwarf and lighter, a large nose and ears. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_gnome_f` | `body_gnome_f_n`, `body_gnome_f_e`, `body_gnome_f_s`, `body_gnome_f_w`, and `body_gnome_f_walk_` of each | Smaller than a dwarf and lighter, a large nose and ears. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_fungus_m` | `body_fungus_m_n`, `body_fungus_m_e`, `body_fungus_m_s`, `body_fungus_m_w`, and `body_fungus_m_walk_` of each | A mushroom-folk: a broad cap for a head, a pale stalk of a body. Male; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `body_fungus_f` | `body_fungus_f_n`, `body_fungus_f_e`, `body_fungus_f_s`, `body_fungus_f_w`, and `body_fungus_f_walk_` of each | A mushroom-folk: a broad cap for a head, a pale stalk of a body. Female; bare skin in light grey (tinted by the skin), in plain underclothes. |
+| `hair_short` | `hair_short_n`, `hair_short_e`, `hair_short_s`, `hair_short_w`, and `hair_short_walk_` of each | Short hair, cropped at the neck. In light grey (tinted by the hair's colour). |
+| `hair_long` | `hair_long_n`, `hair_long_e`, `hair_long_s`, `hair_long_w`, and `hair_long_walk_` of each | Long hair, loose to the shoulders or below. In light grey (tinted by the hair's colour). |
+| `hair_braids` | `hair_braids_n`, `hair_braids_e`, `hair_braids_s`, `hair_braids_w`, and `hair_braids_walk_` of each | Hair in one or two braids down the back or over the shoulders. In light grey (tinted by the hair's colour). |
+| `hair_topknot` | `hair_topknot_n`, `hair_topknot_e`, `hair_topknot_s`, `hair_topknot_w`, and `hair_topknot_walk_` of each | Shaved at the sides, a knot on the crown. In light grey (tinted by the hair's colour). |
+| `hair_shaved` | `hair_shaved_n`, `hair_shaved_e`, `hair_shaved_s`, `hair_shaved_w`, and `hair_shaved_walk_` of each | Shaved to stubble (a shadow on the scalp). In light grey (tinted by the hair's colour). |
+| `hair_crest` | `hair_crest_n`, `hair_crest_e`, `hair_crest_s`, `hair_crest_w`, and `hair_crest_walk_` of each | A crest of hair from brow to nape, the sides shaved. In light grey (tinted by the hair's colour). |
+| `hair_bun` | `hair_bun_n`, `hair_bun_e`, `hair_bun_s`, `hair_bun_w`, and `hair_bun_walk_` of each | Hair drawn back into a bun. In light grey (tinted by the hair's colour). |
+| `hair_curly` | `hair_curly_n`, `hair_curly_e`, `hair_curly_s`, `hair_curly_w`, and `hair_curly_walk_` of each | A mass of tight curls. In light grey (tinted by the hair's colour). |
+| `hair_tied` | `hair_tied_n`, `hair_tied_e`, `hair_tied_s`, `hair_tied_w`, and `hair_tied_walk_` of each | Hair tied back in a tail. In light grey (tinted by the hair's colour). |
+| `hair_loose` | `hair_loose_n`, `hair_loose_e`, `hair_loose_s`, `hair_loose_w`, and `hair_loose_walk_` of each | Hair worn loose and full. In light grey (tinted by the hair's colour). |
+| `beard_short` | `beard_short_n`, `beard_short_e`, `beard_short_s`, `beard_short_w`, and `beard_short_walk_` of each | A short beard along the jaw. In light grey (tinted). |
+| `beard_full` | `beard_full_n`, `beard_full_e`, `beard_full_s`, `beard_full_w`, and `beard_full_walk_` of each | A full beard. In light grey (tinted). |
+| `beard_long` | `beard_long_n`, `beard_long_e`, `beard_long_s`, `beard_long_w`, and `beard_long_walk_` of each | A long beard to the chest. In light grey (tinted). |
+| `beard_braided` | `beard_braided_n`, `beard_braided_e`, `beard_braided_s`, `beard_braided_w`, and `beard_braided_walk_` of each | A long beard in braids. In light grey (tinted). |
+| `beard_moustache` | `beard_moustache_n`, `beard_moustache_e`, `beard_moustache_s`, `beard_moustache_w`, and `beard_moustache_walk_` of each | A moustache only. In light grey (tinted). |
+| `beard_forked` | `beard_forked_n`, `beard_forked_e`, `beard_forked_s`, `beard_forked_w`, and `beard_forked_walk_` of each | A beard parted into two forks. In light grey (tinted). |
+| `wear_trousers` | `wear_trousers_n`, `wear_trousers_e`, `wear_trousers_s`, `wear_trousers_w`, and `wear_trousers_walk_` of each | Trousers to the ankle. In light grey (tinted by the cloth); drawn over the layers before legs. |
+| `wear_hose` | `wear_hose_n`, `wear_hose_e`, `wear_hose_s`, `wear_hose_w`, and `wear_hose_walk_` of each | Close-fitting hose. In light grey (tinted by the cloth); drawn over the layers before legs. |
+| `wear_skirt` | `wear_skirt_n`, `wear_skirt_e`, `wear_skirt_s`, `wear_skirt_w`, and `wear_skirt_walk_` of each | A skirt to the ankle. In light grey (tinted by the cloth); drawn over the layers before legs. |
+| `wear_shoes` | `wear_shoes_n`, `wear_shoes_e`, `wear_shoes_s`, `wear_shoes_w`, and `wear_shoes_walk_` of each | Low leather shoes. In light grey (tinted by the cloth); drawn over the layers before feet. |
+| `wear_boots` | `wear_boots_n`, `wear_boots_e`, `wear_boots_s`, `wear_boots_w`, and `wear_boots_walk_` of each | Boots to the calf. In light grey (tinted by the cloth); drawn over the layers before feet. |
+| `wear_sandals` | `wear_sandals_n`, `wear_sandals_e`, `wear_sandals_s`, `wear_sandals_w`, and `wear_sandals_walk_` of each | Sandals: straps, the toes showing. In light grey (tinted by the cloth); drawn over the layers before feet. |
+| `wear_gloves` | `wear_gloves_n`, `wear_gloves_e`, `wear_gloves_s`, `wear_gloves_w`, and `wear_gloves_walk_` of each | Gloves or mittens. In light grey (tinted by the cloth); drawn over the layers before hands. |
+| `wear_tunic` | `wear_tunic_n`, `wear_tunic_e`, `wear_tunic_s`, `wear_tunic_w`, and `wear_tunic_walk_` of each | A tunic, shirt or doublet with sleeves, to the hip or knee. In light grey (tinted by the cloth); drawn over the body. |
+| `wear_dress` | `wear_dress_n`, `wear_dress_e`, `wear_dress_s`, `wear_dress_w`, and `wear_dress_walk_` of each | A dress to the ankle with sleeves. In light grey (tinted by the cloth); drawn over the body. |
+| `wear_robe` | `wear_robe_n`, `wear_robe_e`, `wear_robe_s`, `wear_robe_w`, and `wear_robe_walk_` of each | A long robe or gown with wide sleeves (a priest's, a scholar's). In light grey (tinted by the cloth); drawn over the body. |
+| `wear_jerkin` | `wear_jerkin_n`, `wear_jerkin_e`, `wear_jerkin_s`, `wear_jerkin_w`, and `wear_jerkin_walk_` of each | A leather jerkin or padded coat over the tunic, no sleeves. In light grey (tinted by the cloth); drawn over the layers before armour. |
+| `wear_mail` | `wear_mail_n`, `wear_mail_e`, `wear_mail_s`, `wear_mail_w`, and `wear_mail_walk_` of each | A mail shirt (rings shown as a fine grey pattern). In light grey (tinted by the cloth); drawn over the layers before armour. |
+| `wear_belt` | `wear_belt_n`, `wear_belt_e`, `wear_belt_s`, `wear_belt_w`, and `wear_belt_walk_` of each | A belt at the waist, a buckle in front. In light grey (tinted by the cloth); drawn over the layers before belt. |
+| `wear_apron` | `wear_apron_n`, `wear_apron_e`, `wear_apron_s`, `wear_apron_w`, and `wear_apron_walk_` of each | A work apron from chest to knee. In light grey (tinted by the cloth); drawn over the layers before outer. |
+| `wear_jacket` | `wear_jacket_n`, `wear_jacket_e`, `wear_jacket_s`, `wear_jacket_w`, and `wear_jacket_walk_` of each | A short jacket over the tunic. In light grey (tinted by the cloth); drawn over the layers before outer. |
+| `wear_coat` | `wear_coat_n`, `wear_coat_e`, `wear_coat_s`, `wear_coat_w`, and `wear_coat_walk_` of each | A long coat to the knee. In light grey (tinted by the cloth); drawn over the layers before outer. |
+| `wear_cloak` | `wear_cloak_n`, `wear_cloak_e`, `wear_cloak_s`, `wear_cloak_w`, and `wear_cloak_walk_` of each | A cloak over the shoulders, hanging behind (seen whole from the north). In light grey (tinted by the cloth); drawn over the layers before cloak. |
+| `wear_veil` | `wear_veil_n`, `wear_veil_e`, `wear_veil_s`, `wear_veil_w`, and `wear_veil_walk_` of each | A veil over the hair and the lower face. In light grey (tinted by the cloth); drawn over the layers before face. |
+| `wear_scarf` | `wear_scarf_n`, `wear_scarf_e`, `wear_scarf_s`, `wear_scarf_w`, and `wear_scarf_walk_` of each | A scarf about the neck and the lower face. In light grey (tinted by the cloth); drawn over the layers before face. |
+| `wear_cap` | `wear_cap_n`, `wear_cap_e`, `wear_cap_s`, `wear_cap_w`, and `wear_cap_walk_` of each | A close cap. In light grey (tinted by the cloth); drawn over the layers before head. |
+| `wear_hood` | `wear_hood_n`, `wear_hood_e`, `wear_hood_s`, `wear_hood_w`, and `wear_hood_walk_` of each | A hood up over the head. In light grey (tinted by the cloth); drawn over the layers before head. |
+| `wear_hat` | `wear_hat_n`, `wear_hat_e`, `wear_hat_s`, `wear_hat_w`, and `wear_hat_walk_` of each | A broad-brimmed hat. In light grey (tinted by the cloth); drawn over the layers before head. |
+| `wear_helm` | `wear_helm_n`, `wear_helm_e`, `wear_helm_s`, `wear_helm_w`, and `wear_helm_walk_` of each | A metal helm (a padded coif is drawn as this too, in cloth). In light grey (tinted by the cloth); drawn over the layers before head. |
 
 ## Roofs
 

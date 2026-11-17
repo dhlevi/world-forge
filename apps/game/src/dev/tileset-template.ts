@@ -5,7 +5,8 @@
  * server writes the three files beside the tileset (vite.config.ts), leaving tileset.png and
  * tileset.json as they are.
  */
-import { DECOR, FACINGS, FIGURES, GROUND_TILES, OBJECT_TILES, TERRAINS, type TileDef } from '@worldforge/core/local/tiles';
+import { DECOR, FACINGS, GROUND_TILES, OBJECT_TILES, TERRAINS, type TileDef } from '@worldforge/core/local/tiles';
+import { figureLayers } from '@worldforge/core/local/figures';
 import { TREE_KINDS } from '@worldforge/core/local/trees';
 import { ROOF_MATERIALS, ROOF_PLANES } from '@worldforge/core/local/roofs';
 import { TILE_PX, TREE_FRAMES, Tileset, type Look } from '../game/tileset';
@@ -18,6 +19,8 @@ interface Row {
   frames: { name: string; look: Look | null | undefined }[];
   /** A walk cycle: its frames make one animation of this name. */
   anim?: { name: string; ms: number };
+  /** Several animations in one row: frames `from` to `from + count - 1` make each. */
+  anims?: { name: string; ms: number; from: number; count: number }[];
 }
 type Entry = Row | { title: string };
 
@@ -64,13 +67,16 @@ function rowsOf(ts: Tileset): Entry[] {
     out.push({ label: name, art: art(name), frames: masks[f].map((m) => ({ name: m < 0 ? name : `${name}#${m}`, look: look('tree', name, m) })) });
   }
   out.push({ title: 'Figures' });
-  for (const fig of FIGURES) {
-    out.push({ label: fig.name, art: FACINGS.some((d) => art(`${fig.name}_${d}`)), frames: FACINGS.map((d) => ({ name: `${fig.name}_${d}`, look: ts.figure(fig.name, d, false)?.look })) });
+  // A row to a layer: standing facing north, east, south and west, then three frames of the walk each way.
+  for (const l of figureLayers()) {
+    const frames: Row['frames'] = FACINGS.map((d) => ({ name: `${l.name}_${d}`, look: ts.figureLayer(l.name, d, false).look }));
+    const anims: NonNullable<Row['anims']> = [];
     for (const d of FACINGS) {
-      const walk = ts.figure(fig.name, d, true)?.look;
-      const name = `${fig.name}_walk_${d}`;
-      out.push({ label: name, art: art(name), anim: { name, ms: walk?.ms ?? 200 }, frames: (walk?.tex ?? []).map((t, i) => ({ name: `${name}~${i}`, look: { ...walk!, tex: [t] } })) });
+      const walk = ts.figureLayer(l.name, d, true).look, name = `${l.name}_walk_${d}`;
+      anims.push({ name, ms: walk.ms || 70, from: frames.length, count: 3 });
+      for (let i = 0; i < 3; i++) frames.push({ name: `${name}~${i}`, look: { ...walk, tex: [walk.tex[i % walk.tex.length]] } });
     }
+    out.push({ label: l.name, art: FACINGS.some((d) => art(`${l.name}_${d}`)), frames, anims });
   }
   out.push({ title: 'Roofs' });
   for (const mat of Object.keys(ROOF_MATERIALS)) for (const pl of ROOF_PLANES) {
@@ -99,7 +105,7 @@ export async function makeTemplate(baseUrl: string): Promise<Template> {
   g.imageSmoothingEnabled = false;
   const tiles: Record<string, unknown> = {}, placeholders: string[] = [];
   rows.forEach((r, row) => {
-    const cells: [number, number][] = [];
+    const cells: [number, number][] = [], animCells: Record<string, [number, number][]> = {};
     r.frames.forEach((f, col) => {
       const tex = f.look?.tex[0];
       if (!tex) return;
@@ -110,12 +116,18 @@ export async function makeTemplate(baseUrl: string): Promise<Template> {
       g.clip();
       g.drawImage(tex.source.resource as CanvasImageSource, fr.x, fr.y, fr.width, fr.height, col * P, row * P, fr.width, fr.height);
       g.restore();
+      const an = r.anims?.find((a) => col >= a.from && col < a.from + a.count);
       if (r.anim) cells.push([col, row]);
+      else if (an) (animCells[an.name] ??= []).push([col, row]);
       else {
         tiles[f.name] = [col, row];
         if (!r.art) placeholders.push(f.name);
       }
     });
+    for (const a of r.anims ?? []) if (animCells[a.name]?.length) {
+      tiles[a.name] = { at: animCells[a.name], ms: a.ms };
+      if (!r.art) placeholders.push(a.name);
+    }
     if (r.anim && cells.length) {
       tiles[r.anim.name] = { at: cells, ms: r.anim.ms };
       if (!r.art) placeholders.push(r.anim.name);

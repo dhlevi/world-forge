@@ -331,17 +331,6 @@ export const TERRAINS: readonly TerrainDef[] = [
 export const FACINGS = ['n', 'e', 's', 'w'] as const;
 export type Facing = (typeof FACINGS)[number];
 
-/** A figure: someone or something that moves about the map, drawn by the way it faces. */
-export interface FigureDef {
-  name: string;
-  /** What the art should show (for TILESET.md). */
-  art: string;
-}
-
-export const FIGURES: readonly FigureDef[] = [
-  { name: 'person', art: 'A person seen from above and a little in front (head, shoulders, arms, legs): the wanderer, and later everyone else.' },
-];
-
 // ---- Decorations ----------------------------------------------------------------------------
 
 export type Season = 'spring' | 'summer' | 'autumn' | 'winter';

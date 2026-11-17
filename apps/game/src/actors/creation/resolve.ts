@@ -633,7 +633,7 @@ export function buildActor(r: Resolved): Actor {
   const traits = actor.add(new Traits(JSON.parse(JSON.stringify(r.traits))));
   const body = actor.add(new Body({
     heightCm: r.look.heightCm, weightKg: r.look.weightKg, build: r.look.build, skin: r.look.skin[1], skinHex: r.look.skin[0],
-    hair: r.look.hair[1], hairHex: r.look.hair[0], hairStyle: r.look.hairStyle, beard: r.look.beard, marks: r.culture.look.marks, wounds: r.wounds.map((w) => ({ ...w })),
+    hair: r.look.hair[1], hairHex: r.look.hair[0], hairStyle: r.look.hairStyle, beard: r.look.beard, marks: r.culture.look.marks, kind: r.culture.look.kind, wounds: r.wounds.map((w) => ({ ...w })),
   }));
   actor.add(new Skills(r.skills.toJSON()));
   actor.add(new Pools(Pools.fromTraits(traits, body)));

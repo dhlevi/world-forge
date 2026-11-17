@@ -17,6 +17,8 @@
     {
       "id": "shirt",
       "name": "shirt",
+      "figure": "tunic",
+      "colour": "#d8d0bc",
       "kind": "clothing",
       "weight": 0.3,
       "bulk": 1,
@@ -29,6 +31,7 @@
     {
       "id": "tunic",
       "name": "tunic",
+      "figure": "tunic",
       "kind": "clothing",
       "weight": 0.6,
       "bulk": 1.5,
@@ -49,6 +52,8 @@
     {
       "id": "doublet",
       "name": "doublet",
+      "figure": "tunic",
+      "colour": "#6a3040",
       "kind": "clothing",
       "weight": 0.8,
       "bulk": 2,
@@ -70,6 +75,7 @@
     {
       "id": "dress",
       "name": "dress",
+      "figure": "dress",
       "kind": "clothing",
       "weight": 0.9,
       "bulk": 2.5,
@@ -87,6 +93,7 @@
     {
       "id": "robe",
       "name": "robe",
+      "figure": "robe",
       "kind": "clothing",
       "weight": 1.2,
       "bulk": 3,
@@ -108,6 +115,8 @@
     {
       "id": "vestments",
       "name": "vestments",
+      "figure": "robe",
+      "colour": "#d8d0b8",
       "kind": "clothing",
       "weight": 2,
       "bulk": 4,
@@ -128,6 +137,8 @@
     {
       "id": "scholar_gown",
       "name": "scholar's gown",
+      "figure": "robe",
+      "colour": "#2e2e3a",
       "kind": "clothing",
       "weight": 1.5,
       "bulk": 3,
@@ -148,6 +159,8 @@
     {
       "id": "college_robes",
       "name": "robes of the college",
+      "figure": "robe",
+      "colour": "#3a2a4a",
       "kind": "clothing",
       "weight": 1.8,
       "bulk": 3.5,
@@ -168,6 +181,8 @@
     {
       "id": "costume",
       "name": "player's costume",
+      "figure": "tunic",
+      "colour": "#a04a30",
       "kind": "clothing",
       "weight": 1.2,
       "bulk": 3,
@@ -179,6 +194,7 @@
     {
       "id": "apron",
       "name": "leather apron",
+      "figure": "apron",
       "kind": "clothing",
       "weight": 0.8,
       "bulk": 1.5,
@@ -205,6 +221,7 @@
     {
       "id": "trousers",
       "name": "trousers",
+      "figure": "trousers",
       "plural": "trousers",
       "kind": "clothing",
       "weight": 0.6,
@@ -225,6 +242,7 @@
     {
       "id": "hose",
       "name": "hose",
+      "figure": "hose",
       "plural": "hose",
       "kind": "clothing",
       "weight": 0.4,
@@ -245,6 +263,7 @@
     {
       "id": "skirt",
       "name": "skirt",
+      "figure": "skirt",
       "kind": "clothing",
       "weight": 0.6,
       "bulk": 1.5,
@@ -276,6 +295,7 @@
     {
       "id": "shoes",
       "name": "shoes",
+      "figure": "shoes",
       "plural": "shoes",
       "kind": "clothing",
       "weight": 0.6,
@@ -296,6 +316,7 @@
     {
       "id": "boots",
       "name": "boots",
+      "figure": "boots",
       "plural": "boots",
       "kind": "clothing",
       "weight": 1.4,
@@ -317,6 +338,7 @@
     {
       "id": "sandals",
       "name": "sandals",
+      "figure": "sandals",
       "plural": "sandals",
       "kind": "clothing",
       "weight": 0.4,
@@ -330,6 +352,7 @@
     {
       "id": "cap",
       "name": "cap",
+      "figure": "cap",
       "kind": "clothing",
       "weight": 0.1,
       "bulk": 0.4,
@@ -351,6 +374,7 @@
     {
       "id": "hood",
       "name": "hood",
+      "figure": "hood",
       "kind": "clothing",
       "weight": 0.3,
       "bulk": 1,
@@ -372,6 +396,7 @@
     {
       "id": "hat",
       "name": "broad hat",
+      "figure": "hat",
       "kind": "clothing",
       "weight": 0.3,
       "bulk": 3,
@@ -392,6 +417,7 @@
     {
       "id": "veil",
       "name": "veil",
+      "figure": "veil",
       "kind": "clothing",
       "weight": 0.1,
       "bulk": 0.3,
@@ -404,6 +430,7 @@
     {
       "id": "scarf",
       "name": "scarf",
+      "figure": "scarf",
       "kind": "clothing",
       "weight": 0.2,
       "bulk": 0.5,
@@ -424,6 +451,7 @@
     {
       "id": "gloves",
       "name": "leather gloves",
+      "figure": "gloves",
       "plural": "leather gloves",
       "kind": "clothing",
       "weight": 0.2,
@@ -444,6 +472,8 @@
     {
       "id": "mittens",
       "name": "fur mittens",
+      "figure": "gloves",
+      "colour": "#8a7a5a",
       "plural": "fur mittens",
       "kind": "clothing",
       "weight": 0.3,
@@ -464,6 +494,7 @@
     {
       "id": "jacket",
       "name": "jacket",
+      "figure": "jacket",
       "kind": "clothing",
       "weight": 1.2,
       "bulk": 3,
@@ -485,6 +516,7 @@
     {
       "id": "coat",
       "name": "wool coat",
+      "figure": "coat",
       "kind": "clothing",
       "weight": 2.2,
       "bulk": 6,
@@ -506,6 +538,7 @@
     {
       "id": "cloak",
       "name": "cloak",
+      "figure": "cloak",
       "kind": "clothing",
       "weight": 1.5,
       "bulk": 4,
@@ -527,6 +560,8 @@
     {
       "id": "fur_cloak",
       "name": "fur cloak",
+      "figure": "cloak",
+      "colour": "#7a6048",
       "kind": "clothing",
       "weight": 3,
       "bulk": 8,
@@ -548,6 +583,8 @@
     {
       "id": "oilskin_cloak",
       "name": "oiled cloak",
+      "figure": "cloak",
+      "colour": "#5a5a40",
       "kind": "clothing",
       "weight": 2,
       "bulk": 4,
@@ -570,6 +607,7 @@
     {
       "id": "belt",
       "name": "belt",
+      "figure": "belt",
       "kind": "clothing",
       "weight": 0.3,
       "bulk": 0.5,
@@ -584,6 +622,8 @@
     {
       "id": "sword_belt",
       "name": "sword belt",
+      "figure": "belt",
+      "colour": "#2e2016",
       "kind": "clothing",
       "weight": 0.5,
       "bulk": 0.8,

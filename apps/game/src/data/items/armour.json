@@ -5,6 +5,8 @@
     {
       "id": "padded_coat",
       "name": "padded coat",
+      "figure": "jerkin",
+      "colour": "#8a7a5a",
       "kind": "armour",
       "weight": 3,
       "bulk": 8,
@@ -26,6 +28,7 @@
     {
       "id": "leather_jerkin",
       "name": "leather jerkin",
+      "figure": "jerkin",
       "kind": "armour",
       "weight": 3,
       "bulk": 5,
@@ -46,6 +49,7 @@
     {
       "id": "mail_shirt",
       "name": "mail shirt",
+      "figure": "mail",
       "kind": "armour",
       "weight": 11,
       "bulk": 6,
@@ -58,6 +62,8 @@
     {
       "id": "coif",
       "name": "padded coif",
+      "figure": "helm",
+      "colour": "#8a8070",
       "kind": "armour",
       "weight": 0.4,
       "bulk": 1,
@@ -77,6 +83,7 @@
     {
       "id": "helm",
       "name": "helm",
+      "figure": "helm",
       "kind": "armour",
       "weight": 2,
       "bulk": 5,
@@ -102,6 +109,8 @@
     {
       "id": "gauntlets",
       "name": "gauntlets",
+      "figure": "gloves",
+      "colour": "#8a8a8a",
       "plural": "gauntlets",
       "kind": "armour",
       "weight": 1.2,

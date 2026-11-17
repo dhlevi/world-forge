@@ -31,6 +31,8 @@
         "back": { "type": "boolean", "description": "Can be carried on the back (a pack, or one thing slung)." },
         "strap": { "type": "boolean", "description": "Can be strapped to the outside of a pack." },
         "loops": { "type": "integer", "minimum": 1, "description": "Belts: how many things hang from it." },
+        "figure": { "type": "string", "description": "Worn things: the shape drawn on the figure (tunic, dress, robe, trousers, hose, skirt, shoes, boots, sandals, gloves, jerkin, mail, belt, apron, jacket, coat, cloak, veil, scarf, cap, hood, hat, helm)." },
+        "colour": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "Worn things: the cloth's colour on the figure." },
         "wear": {
           "type": "object",
           "additionalProperties": false,

@@ -52,6 +52,7 @@ import { covers, roofPlane, type Roof } from '@worldforge/core/local/roofs';
 import type { RoofMode } from './roofs-mode';
 import { TERRAIN_OF, blendsAt } from './terrain';
 import { WAYS_IN, type Game } from './game';
+import { FigureArt } from './figure-art';
 
 const REMEMBERED = 0x6a6e82;
 /** How much of a roof shows over the inside of a building seen through a door or window. */
@@ -145,7 +146,12 @@ export class Renderer {
   /** A map tile clicked. */
   onClick: (tx: number, ty: number) => void = () => {};
 
-  constructor(private tiles: Tileset) {}
+  /** Layered figures put together for drawing. */
+  private figures: FigureArt;
+
+  constructor(private tiles: Tileset) {
+    this.figures = new FigureArt(tiles, () => this.app.renderer);
+  }
 
   async init(el: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: el, background: '#07080b', antialias: false, autoDensity: true, resolution: window.devicePixelRatio || 1 });
@@ -684,8 +690,10 @@ export class Renderer {
     if (game.steps === last.steps + 1 && Math.max(Math.abs(game.px - last.x), Math.abs(game.py - last.y)) === 1) this.slide = { dx: game.px - last.x, dy: game.py - last.y, t0: performance.now() };
     else if (game.steps !== last.steps) this.slide = null;
     this.lastStep = { steps: game.steps, x: game.px, y: game.py };
-    const stand = this.tiles.figure('person', game.facing, false), walk = this.tiles.figure('person', game.facing, true);
-    this.me = { x: (game.px + this.ox) * TILE_PX, y: (game.py + this.oy) * TILE_PX, facing: game.facing, flip: stand?.flip ?? false, standing: stand?.look ?? null, walking: walk && walk.flip === stand?.flip ? walk.look : null };
+    // The wanderer's layered figure (game/figure-art.ts): their looks and what they wear.
+    const spec = game.figure();
+    const stand = this.figures.look(spec, game.facing, false), walk = this.figures.look(spec, game.facing, true);
+    this.me = { x: (game.px + this.ox) * TILE_PX, y: (game.py + this.oy) * TILE_PX, facing: game.facing, flip: false, standing: stand, walking: walk };
     this.player.zIndex = (game.py + this.oy) * 2 + 1;
     this.place(performance.now());
     // Ways in from the land, on the surface: a ring round each that has been seen.

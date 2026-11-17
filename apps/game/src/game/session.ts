@@ -13,6 +13,7 @@ import { reactive } from 'vue';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, type Season } from '@worldforge/core/local/tiles';
 import { BRUSH_TOOLS, clearBrush } from './tasks';
+import { figureOf } from './figure';
 import { makeItem } from '../actors/items/item';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Weather } from '@worldforge/core/weather/weather';
@@ -181,6 +182,8 @@ export class PlaySession {
     };
     game.onTime = (t) => this.tick(t);
     game.climb = (metres, up) => this.practice.climb(metres, up, this.invSlow());
+    const plain = game.figure();
+    game.figure = () => (this.player ? figureOf(this.player) : plain);
     game.onScratch = () => this.player?.get(Mood)?.add({ id: 'scratched', text: 'Scratched by thorns', value: -1, until: game.time + 2 * 3600 });
     game.onChange = () => this.redraw();
 

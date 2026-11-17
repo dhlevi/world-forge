@@ -5,7 +5,9 @@
  * a few tiles at a time. Tiles with no art of their own may borrow another's (stand-ins).
  */
 import { Rectangle, Texture } from 'pixi.js';
-import { DECOR, FACINGS, FIGURES, GROUND_TILES, OBJECT_TILES, TERRAINS, type DecorDef, type Facing, type TileDef } from '@worldforge/core/local/tiles';
+import { DECOR, GROUND_TILES, OBJECT_TILES, TERRAINS, type DecorDef, type Facing, type TileDef } from '@worldforge/core/local/tiles';
+import { figureFrameNames } from '@worldforge/core/local/figures';
+import { drawLayer } from './figure';
 import { edgeInside } from './terrain';
 import { TREE_KINDS, type TreeKind } from '@worldforge/core/local/trees';
 import { ROOF_MATERIALS, ROOF_PLANES, type RoofMaterial, type RoofPlane } from '@worldforge/core/local/roofs';
@@ -51,17 +53,9 @@ const LAYERS = new Map<string, FrameLayer>([
   ...DECOR.map((d) => [d.name, 'decor'] as const),
   ...TERRAINS.map((t) => [`edge_${t.name}`, 'edge'] as const),
   ...TREE_KINDS.flatMap((k) => TREE_FRAMES.map((f) => [`${f}_${k.name}`, 'tree'] as const)),
-  ...FIGURES.flatMap((f) => FACINGS.flatMap((d) => [[`${f.name}_${d}`, 'figure'] as const, [`${f.name}_walk_${d}`, 'figure'] as const])),
+  ...figureFrameNames().map((n) => [n, 'figure'] as const),
   ...(Object.keys(ROOF_MATERIALS) as RoofMaterial[]).flatMap((m) => ROOF_PLANES.map((pl) => [`roof_${m}_${pl}`, 'roof'] as const)),
 ]);
-
-/** A figure's placeholder colours: skin, hair and clothes. */
-export interface FigureColours {
-  skin: string;
-  hair: string;
-  clothes: string;
-}
-const DEFAULT_FIGURE: FigureColours = { skin: '#d8b090', hair: '#5a3a20', clothes: '#5f6f86' };
 
 /** Variants of each edge frame made from a tile's art. */
 const EDGE_VARIANTS = 3;
@@ -78,50 +72,39 @@ export class Tileset {
   readonly seasons = new Set<string>();
   /** Edge frames made from each ground tile's own art, by its name: [mask 1 to 14][variant]. */
   private madeEdges = new Map<string, Look[][]>();
-  /** Placeholder figures ("person_s", "person_walk_s"), drawn in the colours given. */
-  private figures = new Map<string, Look>();
+  /** Placeholder figure layers, made when first asked for, by "<layer>_<facing>" and "<layer>_walk_<facing>". */
+  private layerLooks = new Map<string, Look>();
 
   constructor() {
     this.placeholders();
-    this.setFigureColours(DEFAULT_FIGURE);
   }
 
   /**
-   * Draws the placeholder figures again in these colours (the wanderer's own skin and hair), for
-   * any figure without art in the tileset.
+   * A layer of a figure (core local/figures.ts: "body_dwarf_f", "hair_braids", "wear_tunic") facing
+   * a way, standing or walking: the tileset's frames if it has them (a layer drawn facing east only
+   * is turned about for west), else the placeholder, in greys to be tinted. `art`: from the tileset.
    */
-  setFigureColours(c: Partial<FigureColours>): void {
-    const col = { ...DEFAULT_FIGURE, ...c };
-    const P = TILE_PX, cv = document.createElement('canvas');
-    cv.width = 3 * P;
-    cv.height = FIGURES.length * 4 * P;
-    const g = cv.getContext('2d')!;
-    FIGURES.forEach((_f, fi) => FACINGS.forEach((d, di) => {
-      for (let fr = 0; fr < 3; fr++) drawFigure(g, fr * P, (fi * 4 + di) * P, d, fr, col);
-    }));
-    const sheet = Texture.from(cv);
-    sheet.source.scaleMode = 'nearest';
-    const tex = (fi: number, di: number, fr: number) => new Texture({ source: sheet.source, frame: new Rectangle(fr * P, (fi * 4 + di) * P, P, P) });
-    this.figures.clear();
-    FIGURES.forEach((f, fi) => FACINGS.forEach((d, di) => {
-      this.figures.set(`${f.name}_${d}`, { tex: [tex(fi, di, 0)], ms: 0, dx: 0, dy: 0, tint: 0xffffff });
-      this.figures.set(`${f.name}_walk_${d}`, { tex: [tex(fi, di, 1), tex(fi, di, 0), tex(fi, di, 2), tex(fi, di, 0)], ms: 70, dx: 0, dy: 0, tint: 0xffffff });
-    }));
-  }
-
-  /**
-   * How a figure facing a way is drawn, standing or walking: the tileset's frames if it has them
-   * (a figure drawn facing east only is turned about for west), else the placeholder. `flip`:
-   * draw it mirrored.
-   */
-  figure(name: string, facing: Facing, walking: boolean): { look: Look; flip: boolean } | null {
+  figureLayer(layer: string, facing: Facing, walking: boolean): { look: Look; flip: boolean; art: boolean } {
     const art = (n: string) => (this.drawn.has(n) ? this.get('figure', n, 0, 0) : null);
     for (const [d, flip] of [[facing, false], ...(facing === 'w' ? [['e', true] as const] : [])] as [Facing, boolean][]) {
-      const look = (walking && art(`${name}_walk_${d}`)) || art(`${name}_${d}`);
-      if (look) return { look, flip };
+      const look = (walking && art(`${layer}_walk_${d}`)) || art(`${layer}_${d}`);
+      if (look) return { look, flip, art: true };
     }
-    const look = this.figures.get(`${name}_${walking ? 'walk_' : ''}${facing}`);
-    return look ? { look, flip: false } : null;
+    const key = `${layer}_${walking ? 'walk_' : ''}${facing}`;
+    let look = this.layerLooks.get(key);
+    if (!look) {
+      const P = TILE_PX, cv = document.createElement('canvas');
+      cv.width = 3 * P;
+      cv.height = P;
+      const g = cv.getContext('2d')!;
+      for (let fr = 0; fr < 3; fr++) drawLayer(g, fr * P, 0, layer, facing, fr);
+      const sheet = Texture.from(cv);
+      sheet.source.scaleMode = 'nearest';
+      const tex = (fr: number) => new Texture({ source: sheet.source, frame: new Rectangle(fr * P, 0, P, P) });
+      look = walking ? { tex: [tex(1), tex(0), tex(2), tex(0)], ms: 70, dx: 0, dy: 0, tint: 0xffffff } : { tex: [tex(0)], ms: 0, dx: 0, dy: 0, tint: 0xffffff };
+      this.layerLooks.set(key, look);
+    }
+    return { look, flip: false, art: false };
   }
 
   private placeholders(): void {
@@ -351,52 +334,6 @@ export class Tileset {
     return null;
   }
 
-}
-
-/**
- * A placeholder figure (16 × 16): a person from above and a little in front, facing a way; frame 0
- * standing, 1 and 2 a stride with one leg and then the other.
- */
-function drawFigure(g: CanvasRenderingContext2D, x: number, y: number, d: Facing, fr: number, c: FigureColours): void {
-  const rect = (rx: number, ry: number, w: number, h: number, fill: string) => {
-    g.fillStyle = fill;
-    g.fillRect(x + rx, y + ry, w, h);
-  };
-  const side = d === 'e' || d === 'w', flip = d === 'w';
-  const X = (rx: number, w = 1) => (flip ? 16 - rx - w : rx);
-  // A shadow at the feet.
-  g.fillStyle = 'rgba(0,0,0,0.3)';
-  g.fillRect(x + 4, y + 14, 8, 2);
-  // Legs: apart in a stride, together standing.
-  const legs = shade(c.clothes, 0.6);
-  if (side) {
-    const a = fr === 1 ? -1 : fr === 2 ? 1 : 0;
-    rect(X(7 + a), 12, 2, 3, legs);
-    rect(X(7 - a), 12, 2, 3, shade(legs, 0.8));
-  } else {
-    rect(6, 12, 2, fr === 1 ? 2 : 3, legs);
-    rect(9, 12, 2, fr === 2 ? 2 : 3, legs);
-  }
-  // Body and arms.
-  rect(side ? 6 : 5, 7, side ? 5 : 7, 6, c.clothes);
-  rect(side ? 6 : 5, 7, side ? 5 : 7, 1, shade(c.clothes, 1.2));
-  if (side) rect(X(fr === 1 ? 10 : fr === 2 ? 7 : 8), 8, 2, 4, c.skin);
-  else {
-    rect(4, 8, 1, 4, c.skin);
-    rect(12, 8, 1, 4, c.skin);
-  }
-  // Head, hair, and the face where it shows.
-  rect(6, 2, 5, 5, c.skin);
-  if (d === 'n') rect(6, 2, 5, 5, c.hair);
-  else if (d === 's') {
-    rect(6, 2, 5, 2, c.hair);
-    rect(7, 4, 1, 1, '#2a2020');
-    rect(9, 4, 1, 1, '#2a2020');
-  } else {
-    rect(X(6, 3), 2, 3, 5, c.hair);
-    rect(6, 2, 5, 1, c.hair);
-    rect(X(9), 4, 1, 1, '#2a2020');
-  }
 }
 
 /**

@@ -15,6 +15,7 @@ import type { LocalSite } from '../worker/protocol';
 import { bearing, compassWord, Dice } from '../util';
 import { levelWords, overGround, stepBetween } from './levels';
 import { treeAt, treeWords } from './trees';
+import type { FigureSpec } from '@worldforge/core/local/figures';
 
 /** Seconds an action takes. */
 export const STEP_S = 1.2;
@@ -110,6 +111,8 @@ export class Game {
   onTime: (time: number) => void = () => {};
   /** Climbs a rock face of so many metres, up or down (game/practice.ts); none: it cannot be climbed. */
   climb: ((metres: number, up: boolean) => Climb) | null = null;
+  /** The wanderer's figure on the map (core local/figures.ts; set by the session from the character). */
+  figure: () => FigureSpec = () => ({ kind: 'human', female: false, skin: '#d8b090', hair: { style: 'short', colour: '#5a3a20' }, beard: { style: 'none', colour: '#5a3a20' }, wear: [{ shape: 'trousers', colour: '#6a5a46' }, { shape: 'tunic', colour: '#5f6f86' }] });
   /** Called when thorns scratch the wanderer (a small hurt, for the mood). */
   onScratch: () => void = () => {};
   /** A rock face the wanderer has walked into once: walking into it again climbs it. */

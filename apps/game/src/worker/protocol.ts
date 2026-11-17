@@ -42,6 +42,8 @@ export interface CultureInfo {
   seafaring: boolean;
   /** The look of the people (people/appearance.ts). */
   look: {
+    /** The kind of people (human, elf, dwarf...), for the figure. */
+    kind?: string;
     h: number;
     broad: number;
     skins: [string, string][];

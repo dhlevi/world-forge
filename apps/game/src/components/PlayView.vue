@@ -10,7 +10,6 @@ import { Renderer } from '../game/renderer';
 import { Tileset } from '../game/tileset';
 import { RainLayer } from '../game/rain';
 import TravelView from './TravelView.vue';
-import { Body } from '../actors/components';
 import { ROOF_MODES, ROOF_WORDS } from '../game/roofs-mode';
 import type { PlayScreen } from '../screens/play';
 
@@ -190,9 +189,6 @@ onMounted(async () => {
   await renderer.init(el.value!);
   rain.mount(el.value!);
   const n = await tiles.load(import.meta.env.BASE_URL);
-  // The wanderer's placeholder figure in their own skin and hair.
-  const body = screen.player?.get(Body)?.d;
-  if (body) tiles.setFigureColours({ skin: body.skinHex || undefined, hair: body.hairHex || undefined });
   tilesetNote.value = n
     ? `Tileset: ${tiles.drawn.size} drawn${tiles.standIns.size ? `, ${tiles.standIns.size} stood in for` : ''}, the rest placeholders.`
     : 'Placeholder tiles (no tileset in public/tileset).';

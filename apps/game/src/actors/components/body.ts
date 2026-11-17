@@ -62,6 +62,8 @@ export interface BodyData {
   hairStyle: string;
   beard: string;
   marks?: string;
+  /** The kind of people, for drawing the figure (core local/figures.ts: human, elf, dwarf...); human if none. */
+  kind?: string;
   wounds: Wound[];
 }
 

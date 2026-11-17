@@ -169,7 +169,7 @@ that change the world and rivals who may beat the player to them. The principles
 |---|---|
 | Terrain, climate, biomes, rivers (`gen/`) | Travel, survival, farming, weather, foraging |
 | Towns, villages and building interiors (`towns/`, `interiors/`) | Local map, homes, shops, taverns, property |
-| Residents and households (`people/`) | NPCs, schedules, relationships, employers, quest givers |
+| Residents and households (`people/`) | NPCs, schedules, relationships, employers, quest givers ([npcs.md](npcs.md)) |
 | Realms, history, wars, houses (`lore/`, `gen/politics.ts`) | Law, lords, factions, management, quest sources |
 | Faiths, saints, scripture (`lore/faiths.ts`) | Belief, rites, healing, clergy life, low magic |
 | Cultures and languages (`names/`, `lang/`) | Names, dialogue flavour, literacy, prejudice |
@@ -192,6 +192,7 @@ that change the world and rivals who may beat the player to them. The principles
 - Permadeath, or saves with consequences (Kingdom Come's approach, or free saving).
 - The travel map's look and the city view (see [navigation.md](navigation.md#open-questions)).
 - Companions: how many, how controlled.
-- How the world simulates beyond the player's surroundings (detail near, summary far).
+- How the world simulates beyond the player's surroundings (detail near, summary far): for people
+  and animals, decided as a bubble of detail with schedules beyond it (see [npcs.md](npcs.md)).
 - Combat: tactical turn-based on the local map (ToME, UnReal World), with how much detail
   (wounds by body part, armour layers, stances).

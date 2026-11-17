@@ -12,6 +12,10 @@ import { catalogue, cultureOf, regionAt } from '../src/worker/catalogue';
 import { quickStart } from '../src/actors/creation/random';
 import { resolve, buildActor, trackOptions } from '../src/actors/creation/resolve';
 import { Actor } from '../src/actors/actor';
+import { figureOf } from '../src/game/figure';
+import { FIGURE_KINDS, WEAR_SHAPE as SHAPE, WEAR_SHAPES, WEAR_SLOTS as SLOTS, figureLayers } from '@worldforge/core/local/figures';
+import { ITEMS } from '../src/actors/items/defs';
+const KINDS = new Set<string>(FIGURE_KINDS.map((k) => k.name));
 import { Identity, Skills, Traits, moneyText } from '../src/actors/components';
 import { Inventory } from '../src/actors/items/inventory';
 import { itemName } from '../src/actors/items/item';
@@ -84,6 +88,11 @@ for (const n of [0, 5, 17, 40, 90]) {
   check(id.full.trim().length > 0 && id.age >= 14, `${id.full}: has a name and an adult's age`);
   check(S.known().length > 0 && Object.keys(S.d.languages).length > 0, `${id.full}: has skills and a language`);
   check(inv.d.items.some((i) => i.loc?.at === 'worn') && inv.loadInfo().load !== 'overloaded', `${id.full}: is dressed, and can carry what they have`);
+  // Their figure on the map (game/figure.ts): their kind, looks and what they wear.
+  const fig = figureOf(back);
+  console.log('Figure:', fig.kind, fig.female ? 'female' : 'male', fig.skin, `hair ${fig.hair.style} ${fig.hair.colour}, beard ${fig.beard.style};`, fig.wear.map((x) => `${x.shape} ${x.colour}`).join(', '));
+  check(KINDS.has(fig.kind) && fig.wear.some((x) => x.shape === 'tunic' || x.shape === 'dress' || x.shape === 'robe') && fig.wear.some((x) => x.shape === 'boots' || x.shape === 'shoes' || x.shape === 'sandals'), `${id.full}: drawn as a ${fig.kind}, dressed and shod`);
+  check(fig.wear.every((x, i) => i === 0 || SLOTS.indexOf(SHAPE.get(fig.wear[i - 1].shape)!.slot) < SLOTS.indexOf(SHAPE.get(x.shape)!.slot)), `${id.full}: one garment to a place on the figure, in drawing order`);
   // The same choices make the same person.
   const again = buildActor(resolve(quickStart(`seed${n}`, ci, home.id, world), world));
   check(sameBut(again.toJSON().components, a.toJSON().components), `${id.full}: the same seed makes the same character (item ids aside)`);
@@ -100,5 +109,11 @@ bus.update(29); bus.update(31); bus.update(100);
 console.log('\nMessages:', got.join(', '), '| pending', bus.pending);
 check(got.join(', ') === 'changed 1, changed 2, changed 3' && bus.pending === 0, 'messages are delivered at their time, in order');
 
+// Every worn garment is drawn on the figure as a shape (or deliberately not: underclothes, jewellery).
+const HIDDEN = new Set(['undershirt', 'braies', 'socks', 'bracers', 'greaves']);
+const undrawn = ITEMS.filter((d) => d.wear?.regions && !d.figure && !HIDDEN.has(d.id)).map((d) => d.id);
+check(undrawn.length === 0, `every garment is drawn on the figure${undrawn.length ? ` (not: ${undrawn.join(', ')})` : ''}`);
+const layerNames = figureLayers().map((l) => l.name);
+check(new Set(layerNames).size === layerNames.length && WEAR_SHAPES.every((w) => layerNames.includes(`wear_${w.name}`)), `the figure's layers are named once each (${layerNames.length} layers)`);
 console.log(failures ? `\n${failures} of ${checks} checks FAILED` : `\nAll ${checks} checks passed`);
 if (failures) process.exitCode = 1;

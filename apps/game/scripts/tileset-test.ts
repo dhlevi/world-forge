@@ -3,7 +3,8 @@
  * frame may be given in, animations, stand-ins, what is refused, and where decorations lie.
  * npx tsx apps/game/scripts/tileset-test.ts (exits non-zero on a failure).
  */
-import { DECOR, FACINGS, FIGURES, G, GROUND_TILES, O, OBJECT_TILES, TERRAINS, joinsWith, standsTall } from '@worldforge/core/local/tiles';
+import { figureFrameNames } from '@worldforge/core/local/figures';
+import { DECOR, G, GROUND_TILES, O, OBJECT_TILES, TERRAINS, joinsWith, standsTall } from '@worldforge/core/local/tiles';
 import { lookKeys, readTileset, type FrameLayer } from '../src/game/tileset-format';
 import { decorAt } from '../src/game/decor';
 import { TERRAIN_OF, blendsAt, edgeInside } from '../src/game/terrain';
@@ -23,16 +24,16 @@ const layers = new Map<string, FrameLayer>([
   ...DECOR.map((d) => [d.name, 'decor'] as const),
   ...TERRAINS.map((t) => [`edge_${t.name}`, 'edge'] as const),
   ...TREE_KINDS.flatMap((k) => TREE_FRAMES.map((f) => [`${f}_${k.name}`, 'tree'] as const)),
-  ...FIGURES.flatMap((f) => FACINGS.flatMap((d) => [[`${f.name}_${d}`, 'figure'] as const, [`${f.name}_walk_${d}`, 'figure'] as const])),
+  ...figureFrameNames().map((n) => [n, 'figure'] as const),
   ...Object.keys(ROOF_MATERIALS).flatMap((m) => ROOF_PLANES.map((pl) => [`roof_${m}_${pl}`, 'roof'] as const)),
 ]);
 const read = (json: unknown) => readTileset(json, (n) => layers.get(n));
 
 // ---- The registry -------------------------------------------------------------------------------
 const names = [...GROUND_TILES, ...OBJECT_TILES].map((d) => d.name);
-ok(layers.size === names.length + DECOR.length + TERRAINS.length + TREE_KINDS.length * TREE_FRAMES.length + FIGURES.length * FACINGS.length * 2 + Object.keys(ROOF_MATERIALS).length * ROOF_PLANES.length, 'every tile, decoration, terrain edge, tree part, figure frame and roof plane has a name of its own (one layer each)');
-const walk = read({ tiles: { person_walk_e: { at: [0, 8], frames: 4, ms: 90 }, person_e: [0, 9] } });
-ok(walk.frames.find((f) => f.key === 'figure:person_walk_e')?.pictures.length === 4 && walk.warnings.length === 0, 'a figure\'s walk is an animation like any other');
+ok(layers.size === names.length + DECOR.length + TERRAINS.length + TREE_KINDS.length * TREE_FRAMES.length + figureFrameNames().length + Object.keys(ROOF_MATERIALS).length * ROOF_PLANES.length, 'every tile, decoration, terrain edge, tree part, figure frame and roof plane has a name of its own (one layer each)');
+const walk = read({ tiles: { body_human_f_walk_e: { at: [0, 8], frames: 4, ms: 90 }, body_human_f_e: [0, 9] } });
+ok(walk.frames.find((f) => f.key === 'figure:body_human_f_walk_e')?.pictures.length === 4 && walk.warnings.length === 0, 'a figure\'s walk is an animation like any other');
 
 // ---- The first format: one sheet, [column, row] --------------------------------------------------
 const old = read({ tileSize: 16, image: 'tileset.png', tiles: { grass: [0, 0], 'grass.1': [1, 0], 'wall_stone#5': [2, 3], bedroll: [4, 4] } });
