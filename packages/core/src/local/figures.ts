@@ -118,6 +118,12 @@ export interface FigureSpec {
 /** How much smaller a child is drawn. */
 export const YOUNG_SCALE = 0.72;
 
+/**
+ * Rows of a 16-pixel figure dropped to draw it shorter, the least telling first (thigh, chest,
+ * hip, brow...), so a short kind keeps its face; the rows left close up toward the feet.
+ */
+export const SHORTEN_ROWS = [12, 9, 11, 2, 8, 6, 13, 10, 1, 7, 4, 0, 14, 5, 3, 15];
+
 /** A key naming a figure (for caching its pictures). */
 export function figureKey(f: FigureSpec): string {
   return [f.kind, f.female ? 'f' : 'm', f.skin, f.hair.style, f.hair.colour, f.beard.style, f.beard.colour, ...f.wear.map((w) => `${w.shape}:${w.colour}`), f.young ? 'young' : ''].join('|');

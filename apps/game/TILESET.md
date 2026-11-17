@@ -364,7 +364,7 @@ For each layer and facing (**north, east, south, west**: `n`, `e`, `s`, `w`):
 - `<layer>_<facing>`: standing;
 - `<layer>_walk_<facing>`: a walk cycle, as an animation (`frames` and `ms`: a step from one tile to the next takes about 130 ms to show). Every layer's walk should have the same number of frames, in step with the body's.
 
-A layer drawn facing east only is turned about for west. A layer with no art is drawn as a placeholder (and the placeholders of shorter kinds of people are squashed toward the feet). Worn items name the shape they are drawn as (`figure` in the item data, with their `colour`): a shirt, a tunic and a doublet are all a tunic.
+A layer drawn facing east only is turned about for west. A layer with no art is drawn as a placeholder. Draw every body on a human's frame (head, arms and legs where a human's are), so any garment fits it: shorter kinds of people are squashed toward the feet when a figure is put together. Worn items name the shape they are drawn as (`figure` in the item data, with their `colour`): a shirt, a tunic and a doublet are all a tunic.
 
 | Layer | Frames | Draw |
 |---|---|---|

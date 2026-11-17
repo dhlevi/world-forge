@@ -197,7 +197,7 @@ export function drawLayer(g: CanvasRenderingContext2D, x: number, y: number, lay
   }
 }
 
-/** How much a kind's placeholder is squashed toward the feet. */
+/** How much shorter a kind is drawn than a human (core SHORTEN_ROWS says which rows go). */
 export function kindScale(kind: FigureKind): number {
   return { human: 1, elf: 1, dwarf: 0.78, halfling: 0.68, orc: 1, lizard: 1, gnome: 0.66, fungus: 0.85 }[kind] ?? 1;
 }

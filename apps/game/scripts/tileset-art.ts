@@ -4,19 +4,19 @@
  * and tileset.json. Deterministic, so running it again gives the same sheet.
  *
  *   npm run tileset:art            (add -- --preview for zoomed pages of the sheet in /tmp)
- *
- * Figures and ground edges are left out on purpose: the game draws the wanderer in their own skin
- * and hair, and cuts each ground's edges from its own art.
+ * Ground edges are left out on purpose: the game cuts each ground's edges from its own art.
  */
 import { writeFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { DECOR, GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
+import { DECOR, FACINGS, GROUND_TILES, OBJECT_TILES, type Facing } from '@worldforge/core/local/tiles';
 import { TREE_KINDS } from '@worldforge/core/local/trees';
 import { ROOF_MATERIALS, ROOF_PLANES } from '@worldforge/core/local/roofs';
+import { SHORTEN_ROWS, figureLayers } from '@worldforge/core/local/figures';
 import { Sprite, encodePng } from './tileset-art/paint';
 import { paintGround } from './tileset-art/ground';
 import { roof, structure } from './tileset-art/structures';
 import { animated, paintDecor, paintObject, paintTreePart } from './tileset-art/things';
+import { paintFigure } from './tileset-art/figures';
 
 const COLS = 16;
 const dir = fileURLToPath(new URL('../public/tileset/', import.meta.url));
@@ -74,6 +74,15 @@ for (const k of TREE_KINDS) {
   family(masks.map((m) => one(`leaves_${k.name}#${m}`, paintTreePart('leaves', k.name, m))));
 }
 
+// A row to a layer: standing each way, then the walks (stride, stand, other stride, stand).
+for (const l of figureLayers()) {
+  const stand = FACINGS.map((d) => paintFigure(l.name, d, 0));
+  family([
+    ...FACINGS.map((d, i) => ({ key: `${l.name}_${d}`, pictures: [stand[i]] })),
+    ...FACINGS.map((d, i) => ({ key: `${l.name}_walk_${d}`, pictures: [paintFigure(l.name, d, 1), stand[i], paintFigure(l.name, d, 2), stand[i]], ms: 70 })),
+  ]);
+}
+
 for (const m of Object.keys(ROOF_MATERIALS)) {
   for (const pl of ROOF_PLANES) family(masks.map((j) => one(`roof_${m}_${pl}#${j}`, roof(m, pl, j))));
 }
@@ -83,16 +92,19 @@ for (const d of DECOR) family(Array.from({ length: d.variants ?? 1 }, (_, v) => 
 // ---- Pack: one family to a row (animations along it), wrapping if a row is full -----------------
 
 const sheet: { key: string; at: [number, number][]; ms?: number; sprites: Sprite[] }[] = [];
+// A picture used twice (a walk's standing frame) takes one cell.
+const placed = new Map<Sprite, [number, number]>();
 let r = 0;
 for (const row of rows) {
   let c = 0;
   for (const e of row) {
-    if (c + e.pictures.length > COLS) {
+    const fresh = new Set(e.pictures.filter((sp) => !placed.has(sp)));
+    if (c + fresh.size > COLS) {
       r++;
       c = 0;
     }
-    sheet.push({ key: e.key, at: e.pictures.map((_, i) => [c + i, r] as [number, number]), ms: e.ms, sprites: e.pictures });
-    c += e.pictures.length;
+    for (const sp of fresh) placed.set(sp, [c++, r]);
+    sheet.push({ key: e.key, at: e.pictures.map((sp) => placed.get(sp)!), ms: e.ms, sprites: e.pictures });
   }
   r++;
 }
@@ -162,5 +174,48 @@ if (process.argv.includes('--preview')) {
     }
   });
   writeFileSync('/tmp/tileset-ground-mosaic.png', encodePng(mos, mw, mh));
+  // Sample people put together as the game does: layers tinted, shorter kinds squashed to the feet.
+  const people: [string, number, string[]][] = [
+    ['human_m:d8b090', 1, ['wear_trousers:6a5a46', 'wear_boots:3e2c1e', 'wear_tunic:7a6a50', 'wear_belt:3e2a1a', 'hair_short:5a3a20', 'beard_full:5a3a20']],
+    ['human_f:e8c0a0', 1, ['wear_dress:7a5060', 'wear_shoes:4a3626', 'hair_long:d8b860']],
+    ['elf_f:f0d8c0', 1, ['wear_robe:5a5a70', 'wear_belt:a08040', 'hair_braids:e8e0c0']],
+    ['dwarf_m:c89070', 0.78, ['wear_trousers:5a4a3a', 'wear_boots:3e2c1e', 'wear_mail:9a9a9a', 'wear_belt:3e2a1a', 'beard_braided:a04a20', 'wear_helm:8a8a8a']],
+    ['halfling_m:e0b090', 0.68, ['wear_trousers:6a6a40', 'wear_tunic:a09060', 'wear_jacket:4a5a46', 'hair_curly:6a4020']],
+    ['orc_m:7a9a5a', 1, ['wear_trousers:4a3a2a', 'wear_boots:2e2418', 'wear_jerkin:6a4a2e', 'hair_crest:202020']],
+    ['lizard_m:6a9a6a', 1, ['wear_apron:a09078', 'wear_scarf:8a3a3a']],
+    ['gnome_f:e8b8a0', 0.66, ['wear_dress:4a6a8a', 'wear_apron:d8d0c0', 'hair_bun:c0c0c0', 'wear_hat:5a4a30']],
+    ['fungus_m:d8c8b0', 0.85, ['wear_tunic:6a7a4a']],
+    ['human_m:a87050', 1, ['wear_hose:5a4a6a', 'wear_shoes:4a3626', 'wear_coat:4a4a5a', 'hair_tied:2a2a2a', 'beard_moustache:2a2a2a', 'wear_cap:6a5040']],
+    ['human_f:c89878', 1, ['wear_skirt:7a5a4a', 'wear_sandals:8a6a44', 'wear_tunic:c0b090', 'wear_gloves:5a4630', 'wear_veil:d8d0c0']],
+    ['orc_f:8aa060', 1, ['wear_trousers:6a5a46', 'wear_boots:3e2c1e', 'wear_tunic:7a6a50', 'wear_cloak:4e5a3e', 'wear_hood:4e5a3e']],
+  ];
+  const shots: [Facing, number][] = [['n', 0], ['e', 0], ['s', 0], ['w', 0], ['e', 1], ['e', 2], ['s', 1], ['s', 2], ['n', 1], ['n', 2]];
+  const sc = 5, cell = 16 * sc + 6, fw = shots.length * cell, fh = people.length * cell;
+  const fig = new Uint8ClampedArray(fw * fh * 4);
+  for (let i = 0; i < fw * fh; i++) fig.set([150, 146, 132, 255], i * 4);
+  people.forEach(([b, squash, wear], pi) => {
+    shots.forEach(([d, fr], si) => {
+      const pic = new Sprite();
+      for (const spec of [`body_${b}`, ...wear]) {
+        const [layer, col] = spec.split(':'), tint = [0, 2, 4].map((k) => parseInt(col.slice(k, k + 2), 16) / 255);
+        const sp = paintFigure(layer, d, fr);
+        for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) {
+          const a = sp.alpha(x, y);
+          if (a) pic.blend(x, y, sp.get(x, y).map((v, k) => v * tint[k]) as [number, number, number], a / 255);
+        }
+      }
+      const drop = new Set(SHORTEN_ROWS.slice(0, Math.round(16 * (1 - squash))));
+      const kept = Array.from({ length: 16 }, (_, y) => y).filter((y) => !drop.has(y));
+      for (let y = 0; y < 16 * sc; y++) for (let x = 0; x < 16 * sc; x++) {
+        const sy = kept[Math.floor(y / sc) - drop.size];
+        if (sy === undefined) continue;
+        const sx = Math.floor(x / sc), a = pic.alpha(sx, sy) / 255;
+        if (!a) continue;
+        const o = ((pi * cell + 3 + y) * fw + si * cell + 3 + x) * 4, c = pic.get(sx, sy);
+        for (let k = 0; k < 3; k++) fig[o + k] = c[k] * a + fig[o + k] * (1 - a);
+      }
+    });
+  });
+  writeFileSync('/tmp/tileset-figures.png', encodePng(fig, fw, fh));
   console.log('previews in /tmp/tileset-preview-*.png');
 }

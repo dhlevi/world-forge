@@ -4,8 +4,8 @@
  * into a picture per facing, standing and walking. Pictures are kept by the figure's key, so a
  * crowd in the same clothes shares them.
  */
-import { Container, RenderTexture, Sprite, type Renderer as PixiRenderer, type Texture } from 'pixi.js';
-import { WEAR_SHAPES, YOUNG_SCALE, figureKey, type FigureSpec } from '@worldforge/core/local/figures';
+import { Container, Rectangle, RenderTexture, Sprite, Texture, type Renderer as PixiRenderer } from 'pixi.js';
+import { SHORTEN_ROWS, WEAR_SHAPES, YOUNG_SCALE, figureKey, type FigureSpec } from '@worldforge/core/local/figures';
 import type { Facing } from '@worldforge/core/local/tiles';
 import { TILE_PX, type Look, type Tileset } from './tileset';
 import { kindScale } from './figure';
@@ -46,8 +46,9 @@ export class FigureArt {
     const hit = this.cache.get(key);
     if (hit) return hit;
     const layers = this.layers(f).map((l) => ({ ...l, ...this.tiles.figureLayer(l.name, facing, walking) }));
-    // A shorter kind's placeholder body is squashed toward the feet (drawn art has its own height).
-    const squash = (layers[0].art ? 1 : kindScale(f.kind)) * (f.young ? YOUNG_SCALE : 1);
+    // Every layer is drawn on a human frame (garments fit any body): a shorter kind loses rows toward the feet.
+    const squash = kindScale(f.kind) * (f.young ? YOUNG_SCALE : 1);
+    const drop = new Set(SHORTEN_ROWS.slice(0, Math.round(TILE_PX * (1 - squash))).map((r) => OY + r));
     const n = walking ? Math.max(...layers.map((l) => l.look.tex.length)) : 1;
     const frames: Texture[] = [];
     for (let i = 0; i < n; i++) {
@@ -60,15 +61,11 @@ export class FigureArt {
         if (l.flip) sp.scale.x = -1;
         c.addChild(sp);
       }
-      if (squash !== 1) {
-        c.scale.y = squash;
-        c.y = (OY + TILE_PX) * (1 - squash);
-      }
       const rt = RenderTexture.create({ width: BOX_W, height: BOX_H });
       rt.source.scaleMode = 'nearest';
       this.renderer().render({ container: c, target: rt, clear: true });
       c.destroy({ children: true });
-      frames.push(rt);
+      frames.push(drop.size ? this.shorten(rt, drop) : rt);
     }
     const look: Look = { tex: frames, ms: walking ? Math.max(...layers.map((l) => l.look.ms || 70)) : 0, dx: -OX, dy: -OY, tint: 0xffffff };
     if (this.cache.size >= KEEP) {
@@ -78,6 +75,23 @@ export class FigureArt {
     }
     this.cache.set(key, look);
     return look;
+  }
+
+  /** The picture without the given rows, the rest closed up toward the feet. */
+  private shorten(full: RenderTexture, drop: Set<number>): RenderTexture {
+    const c = new Container();
+    for (let y = BOX_H - 1, to = BOX_H - 1; y >= 0; y--) {
+      if (drop.has(y)) continue;
+      const sp = new Sprite(new Texture({ source: full.source, frame: new Rectangle(0, y, BOX_W, 1) }));
+      sp.y = to--;
+      c.addChild(sp);
+    }
+    const rt = RenderTexture.create({ width: BOX_W, height: BOX_H });
+    rt.source.scaleMode = 'nearest';
+    this.renderer().render({ container: c, target: rt, clear: true });
+    c.destroy({ children: true });
+    full.destroy(true);
+    return rt;
   }
 }
 
