@@ -13,6 +13,7 @@ import { personName } from '@worldforge/core/lore/names';
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { FromWorker, StartSite, ToWorker, LocalSite, TravelArea } from './protocol';
 import { catalogue, cultureOf, regionAt, resetCatalogue } from './catalogue';
+import { bubbleAt, forgetPeople, peopleIn } from './people';
 import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo } from './sites';
 
 let world: GeneratedWorld | null = null;
@@ -49,6 +50,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       tiles = null;
       resetCatalogue();
       forgetSites();
+      forgetPeople();
       world = generateWorld(m.settings, (stage, pct) => post({ type: 'progress', stage, pct }));
       tiles = new TileRenderer(world.raster, world.rivers);
       rememberSites(world.settlements);
@@ -126,6 +128,10 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         }
       }
       post({ type: 'area', id: m.id, area: { roads, places } });
+    } else if (m.type === 'people') {
+      if (!world || !local) throw new Error('No game started.');
+      const radius = bubbleAt(local, m.x, m.y);
+      post({ type: 'people', id: m.id, people: peopleIn(world, local, m.x, m.y, radius, m.time), radius });
     } else if (m.type === 'catalogue') {
       if (!world) throw new Error('No world yet.');
       post({ type: 'catalogue', id: m.id, catalogue: catalogue(world) });

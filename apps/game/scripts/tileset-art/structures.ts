@@ -370,7 +370,7 @@ function doorlike(name: string, mask: number): Sprite {
 }
 
 function windowTile(mask: number): Sprite {
-  let s = wall('wall_plaster', runsNS(mask) ? mask : mask);
+  const s = wall('wall_plaster', runsNS(mask) ? mask : mask);
   const glass = ramp('#9fc3d6', 0.8), frame = hex('#6a4a30');
   const horiz = !runsNS(mask);
   for (let i = 0; i < 16; i++) {

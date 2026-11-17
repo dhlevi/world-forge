@@ -84,6 +84,32 @@ export interface ChunkLayer {
   area: Uint16Array;
 }
 
+/** A tile of a building a person may stand on (LocalWorld.buildingsIn). */
+export interface BuildingSpot {
+  x: number;
+  y: number;
+  /** The level of its floor: null for the ground floor, else absolute (as ChunkLayer.z). */
+  z: number | null;
+  /** What stands on it ('' nothing; 'bed', 'bench'...). */
+  obj: string;
+  /** Its room, in lower case ('' none): "kitchen", "smithy", "bedroom". */
+  room: string;
+}
+
+/** A building of a plan, as people are placed in it (LocalWorld.buildingsIn). */
+export interface PlanBuilding {
+  bid: string;
+  site: Settlement;
+  f: PlanFeature;
+  /** The plan's buildings (the same array for every building of one plan). */
+  plan: PlanFeature[];
+  spots: BuildingSpot[];
+  /** Its doors and doorways on the ground floor. */
+  doors: [number, number][];
+  /** Its box of tiles. */
+  x0: number; y0: number; w: number; h: number;
+}
+
 // ---- Deterministic noise ---------------------------------------------------------------------
 
 function rnd01(seed: number, x: number, y: number, salt: number): number {
@@ -1507,6 +1533,55 @@ export class LocalWorld {
 
     const roofs = [...brs.map((br) => br.roof), ...unders.map((u) => u.roof)].filter((r): r is Roof => !!r && r.x0 < tx0 + CHUNK && r.y0 < ty0 + CHUNK && r.x0 + r.w > tx0 && r.y0 + r.h > ty0);
     return { cx, cy, ground, object, area, areas, elev, sites, roofs, layers, ms: performance.now() - t0 };
+  }
+
+  /**
+   * The buildings of the plans standing (in part) in a box of tiles, with the tiles of each floor a
+   * person may stand on (docs/design/npcs.md, Placed residents): the floor tiles that are clear or
+   * hold something one can stand on (a bed, a bench), never a stair. The ground floor's level is
+   * null; the others' are absolute levels, as the chunks' layers. Each building comes with its
+   * plan's other buildings (for its residents' neighbours, people/plan-residents.ts).
+   */
+  buildingsIn(tx0: number, ty0: number, tx1: number, ty1: number): PlanBuilding[] {
+    const mx0 = tx0 * TILE_M, mx1 = (tx1 + 1) * TILE_M, my0 = -(ty1 + 1) * TILE_M, my1 = -ty0 * TILE_M;
+    const out: PlanBuilding[] = [];
+    const seen = new Set<string>();
+    const sites = this.sitesNear(mx0, my0, mx1, my1, 40).sort((a, b) => (a.id < b.id ? -1 : a.id > b.id ? 1 : 0));
+    for (const s of sites) {
+      const lp = this.planOf(s);
+      if (!lp) continue;
+      let plan: PlanFeature[] | null = null;
+      for (let cy = Math.floor(ty0 / CHUNK); cy <= Math.floor(ty1 / CHUNK); cy++) for (let cx = Math.floor(tx0 / CHUNK); cx <= Math.floor(tx1 / CHUNK); cx++) {
+        for (const idx of lp.byChunk.get(ckey(cx, cy)) ?? []) {
+          const it = lp.items[idx];
+          if (it.kind !== 'building' || it.type !== 'Polygon' || it.p.tree === 'top') continue;
+          const bid = String(it.p.bid);
+          if (seen.has(bid)) continue;
+          const br = this.buildingRaster(it.f, `${s.id}/${String(it.i).padStart(6, '0')}`, lp);
+          if (!br || br.x0 > tx1 || br.y0 > ty1 || br.x0 + br.w <= tx0 || br.y0 + br.h <= ty0) continue;
+          seen.add(bid);
+          plan ??= lp.items.filter((x) => x.kind === 'building' && x.type === 'Polygon').map((x) => x.f);
+          const spots: BuildingSpot[] = [];
+          const doors: [number, number][] = [];
+          const add = (kind: Uint8Array, obj: Uint8Array, room: Int16Array, areas: string[], z: number | null) => {
+            for (let k = 0; k < br.w * br.h; k++) {
+              const x = br.x0 + (k % br.w), y = br.y0 + Math.floor(k / br.w);
+              if (z === null && (kind[k] === B_DOOR || kind[k] === B_DOORWAY)) doors.push([x, y]);
+              if (kind[k] !== B_FLOOR) continue;
+              const o = OBJECT_TILES[obj[k]];
+              if (obj[k] && (!o.pass || o.name.startsWith('stairs') || o.name.startsWith('ladder'))) continue;
+              const a = room[k] >= 0 ? areas[room[k]] : '';
+              spots.push({ x, y, z, obj: obj[k] ? o.name : '', room: a.includes(': ') ? a.slice(a.indexOf(': ') + 2) : '' });
+            }
+          };
+          add(br.kind, br.obj, br.room, br.areas, null);
+          const z0 = Math.floor(br.floorM / LEVEL_M);
+          for (const f of br.floors) add(f.kind, f.obj, f.room, f.areas, z0 + f.l);
+          out.push({ bid, site: s, f: it.f, plan, spots, doors, x0: br.x0, y0: br.y0, w: br.w, h: br.h });
+        }
+      }
+    }
+    return out;
   }
 
   /**

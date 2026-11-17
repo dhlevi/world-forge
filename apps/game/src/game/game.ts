@@ -73,6 +73,16 @@ const WAY_WORDS: Record<string, string> = {
 };
 const DIRS8: [number, number][] = [[0, -1], [1, -1], [1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1]];
 
+/** A person on the map, as drawn: where, facing which way, awake or asleep, and their figure. */
+export interface ShownPerson {
+  x: number;
+  y: number;
+  z: number | null;
+  facing: Facing;
+  where: string;
+  figure: FigureSpec;
+}
+
 export class Game {
   px: number;
   py: number;
@@ -113,6 +123,10 @@ export class Game {
   climb: ((metres: number, up: boolean) => Climb) | null = null;
   /** The wanderer's figure on the map (core local/figures.ts; set by the session from the character). */
   figure: () => FigureSpec = () => ({ kind: 'human', female: false, skin: '#d8b090', hair: { style: 'short', colour: '#5a3a20' }, beard: { style: 'none', colour: '#5a3a20' }, wear: [{ shape: 'trousers', colour: '#6a5a46' }, { shape: 'tunic', colour: '#5f6f86' }] });
+  /** Someone standing on a tile and floor (world/population.ts): their name, and what can be told of them. */
+  personAt: (x: number, y: number, z: number | null) => { name: string; lines: string[] } | null = () => null;
+  /** The people about, to be drawn (world/population.ts). */
+  people: () => Iterable<ShownPerson> = () => [];
   /** Called when thorns scratch the wanderer (a small hurt, for the mood). */
   onScratch: () => void = () => {};
   /** A rock face the wanderer has walked into once: walking into it again climbs it. */
@@ -279,6 +293,11 @@ export class Game {
       return false;
     }
     const obj = OBJECT_TILES[this.map.object(nx, ny)];
+    const who = this.personAt(nx, ny, this.z);
+    if (who) {
+      if (!quiet) this.say(`${who.name} is in the way.`);
+      return false;
+    }
     if (!this.pass(nx, ny)) {
       if (obj.toggle) return this.toggle(nx, ny, true, quiet);
       if (!quiet) {
@@ -568,6 +587,8 @@ export class Game {
     if (!seen && !this.map.wasSeen(x, y)) return ['You have not seen that.'];
     const out: string[] = [];
     if (x === this.px && y === this.py) out.push('You.');
+    const who = seen ? this.personAt(x, y, this.z) : null;
+    if (who) out.push(...who.lines);
     const o = OBJECT_TILES[t.object];
     const tree = t.object ? treeAt(this.map, x, y) : null;
     if (tree) out.push(`${cap(o.name === 'tree_trunk' ? `the trunk of ${treeWords(tree)}` : treeWords(tree))}.`);

@@ -6,7 +6,7 @@
 import type { PlaceClimate } from '../game/calendar';
 import type { MessageDispatcher } from '../engine/messages';
 import type { WorldSettings } from '@worldforge/core/settings';
-import type { Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
+import type { Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlacedPerson, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
 
 /** How long a request may take before it is given up (ms): long enough for a city's illustrated plan. */
 export const ASK_TIMEOUT_MS = 120_000;
@@ -98,6 +98,10 @@ export class WorkerClient {
 
   requestRoute = (from: [number, number], to: [number, number]): Promise<RouteResult> =>
     this.ask((id) => ({ type: 'route', id, from, to }), (m) => (m.type === 'route' ? { steps: m.steps, partial: m.partial } : { steps: null, partial: false }));
+
+  /** The residents about a tile at a time, placed by their day plan (worker/people.ts). */
+  requestPeople = (x: number, y: number, time: number): Promise<{ people: PlacedPerson[]; radius: number }> =>
+    this.ask((id) => ({ type: 'people', id, x, y, time }), (m) => (m.type === 'people' ? { people: m.people, radius: m.radius } : { people: [], radius: 0 }));
 
   requestArea = (box: Box, fine: boolean): Promise<TravelArea> =>
     this.ask((id) => ({ type: 'area', id, ...box, fine }), (m) => (m.type === 'area' ? m.area : { roads: [], places: [] }));

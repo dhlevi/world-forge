@@ -171,6 +171,16 @@
       "value": 3
     },
     {
+      "id": "key",
+      "name": "key",
+      "kind": "tool",
+      "weight": 0.05,
+      "bulk": 0.02,
+      "size": "tiny",
+      "value": 2,
+      "about": "An iron key to a door."
+    },
+    {
       "id": "blanket",
       "name": "wool blanket",
       "kind": "tool",

@@ -37,6 +37,7 @@ import { GameMap } from './map';
 import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type SaveFile } from './save';
 import { Travel } from './travel';
+import { Population, type Resident } from '../world/population';
 import { WeatherService, type Sky } from './weather';
 import type { RoofMode } from './roofs-mode';
 import { hash32 } from '../util';
@@ -60,6 +61,8 @@ export interface SessionWorld {
   requestChunk(cx: number, cy: number): void;
   climate(lon: number, lat: number): Promise<PlaceClimate>;
   requestRoute(from: [number, number], to: [number, number]): Promise<RouteResult>;
+  /** The residents about a tile at a time, placed by their day plan (none: nobody is placed). */
+  requestPeople?: WorkerClient['requestPeople'];
   site: WorkerClient['site'];
   /** The world's towns and cities that a game can begin in (for what the character knew). */
   starts(): StartSite[];
@@ -96,6 +99,8 @@ export class PlaySession {
   readonly map: GameMap;
   readonly game: Game;
   readonly travel: Travel;
+  /** The residents about the wanderer (world/population.ts). */
+  readonly people: Population;
   readonly weather: WeatherService;
   readonly practice: Practice;
   /** What the panel and log show of the map (game/game.ts writes it). */
@@ -187,6 +192,18 @@ export class PlaySession {
     game.onScratch = () => this.player?.get(Mood)?.add({ id: 'scratched', text: 'Scratched by thorns', value: -1, until: game.time + 2 * 3600 });
     game.onChange = () => this.redraw();
 
+    // The residents about the wanderer (world/population.ts), placed by their day plans.
+    const ask = world.requestPeople;
+    this.people = new Population(ask ? (x, y, t) => ask(x, y, t) : () => Promise.resolve({ people: [], radius: 0 }), o.settings.seed);
+    this.people.onChange = () => {
+      if (this.state.mode === 'local') this.redraw();
+    };
+    game.people = () => (this.state.mode === 'local' ? this.people.all() : []);
+    game.personAt = (x, y, z) => {
+      const r = this.state.mode === 'local' ? this.people.at(x, y, z) : null;
+      return r ? { name: r.p.name, lines: residentLines(r) } : null;
+    };
+
     // The road: steps take skill (fords, steep ground), weather shortens sight, arriving opens the place.
     const travel = this.travel;
     travel.requestSite = world.site;
@@ -233,6 +250,7 @@ export class PlaySession {
       if (p) this.world.bus.send('actor.moodlet', { id: 'setting-out', text: 'Setting out on the road', value: 3, until: game.time + 86400 } satisfies Moodlet, { to: p.id });
     }
     this.applySky(this.skyNow);
+    if (this.state.mode === 'local') this.people.update(game);
   }
 
   /** Ends play (the game is left): timers and listeners stopped, the cast dismissed. */
@@ -363,6 +381,7 @@ export class PlaySession {
     this.hud.mode = 'play';
     this.game.cursor = null;
     this.state.mode = 'travel';
+    this.people.clear();
     this.game.say('You take to the road.');
     this.applySky(this.skyNow);
   }
@@ -374,6 +393,7 @@ export class PlaySession {
     this.game.refresh();
     if (this.game.ensureFooting()) this.needFooting = false;
     this.applySky(this.skyNow);
+    this.people.update(this.game);
     this.redraw();
   }
 
@@ -426,6 +446,7 @@ export class PlaySession {
   tick(t: number): void {
     const game = this.game;
     this.updateClimate();
+    if (this.state.mode === 'local' && !this.travel.running) this.people.update(game);
     const dt = Math.max(0, t - this.lastT);
     this.lastT = t;
     const s = this.weather.sky(t);
@@ -737,4 +758,16 @@ export class PlaySession {
     if (this.game.time !== this.savedAt) await this.save(true);
     this.host.toTitle();
   }
+}
+
+/** What the wanderer sees of a resident: who they are, and what they are about. */
+function residentLines(r: Resident): string[] {
+  const p = r.p;
+  const an = (w: string) => (/^[aeiou]/i.test(w) ? `an ${w}` : `a ${w}`);
+  const trade = p.trade === 'child' ? (p.female ? 'a girl' : 'a boy') : p.trade === 'retired' || p.trade === 'helps at home' ? '' : an(p.trade);
+  const out = [`${p.name}${trade ? `, ${trade}` : ''}.`];
+  out.push(`One of ${p.people}${p.age >= 12 ? `, about ${Math.max(12, Math.round(p.age / 5) * 5)} years old` : ''}.`);
+  if (p.where === 'asleep') out.push('Asleep.');
+  else if (p.where === 'work' || p.where === 'out') out.push('At work.');
+  return out;
 }

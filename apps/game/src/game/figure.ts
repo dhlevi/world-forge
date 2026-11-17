@@ -35,7 +35,7 @@ export function figureOf(a: Actor): FigureSpec {
     if (!shape) continue;
     const rank = LAYERS.indexOf(d.wear?.layer ?? 'main');
     const had = bySlot.get(shape.slot);
-    if (!had || rank > had.rank) bySlot.set(shape.slot, { shape: shape.name, colour: d.colour ?? shape.colour, rank });
+    if (!had || rank > had.rank) bySlot.set(shape.slot, { shape: shape.name, colour: it.colour ?? d.colour ?? shape.colour, rank });
   }
   const wear = WEAR_SLOTS.flatMap((s) => {
     const w = bySlot.get(s);
@@ -46,6 +46,7 @@ export function figureOf(a: Actor): FigureSpec {
     hair: { style: hair === 'bald' ? 'none' : hair, colour: b?.hairHex || '#5a3a20' },
     beard: { style: beard, colour: b?.hairHex || '#5a3a20' },
     wear,
+    ...(id && id.age < 13 ? { young: true } : {}),
   };
 }
 

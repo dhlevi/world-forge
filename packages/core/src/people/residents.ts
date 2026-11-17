@@ -62,7 +62,7 @@ export interface ResidentBuilding {
 /** The trade a ground-floor room tells of. */
 const SHOP_TRADE: Record<string, string> = { Smithy: 'smith', Bakery: 'baker', Taproom: 'tavern keeper', Shop: 'shopkeeper', Butcher: 'butcher', Tailor: 'tailor', Apothecary: 'apothecary', Chandlery: 'chandler', Pawnshop: 'pawnbroker', Foundry: 'founder' };
 
-type RKind = 'home' | 'mansion' | 'slum' | 'trade' | 'inn' | 'temple' | 'shrine' | 'monks' | 'keep' | 'barracks' | 'prison' | 'guild' | 'civic'
+export type RKind = 'home' | 'mansion' | 'slum' | 'trade' | 'inn' | 'temple' | 'shrine' | 'monks' | 'keep' | 'barracks' | 'prison' | 'guild' | 'civic'
   | 'library' | 'university' | 'bank' | 'tower' | 'store' | 'mill' | 'stables' | 'hall' | 'witch' | 'warehouse';
 
 const TRADE_OF_ROLE: Record<string, string> = {
@@ -70,7 +70,8 @@ const TRADE_OF_ROLE: Record<string, string> = {
   chandlery: 'chandler', foundry: 'founder', winepress: 'vintner', bathhouse: 'bathkeeper',
 };
 
-function kindOf(b: ResidentBuilding): RKind {
+/** What kind of place a building is to its residents (a home, a trade, a temple...). */
+export function kindOf(b: ResidentBuilding): RKind {
   const r = b.role ?? '';
   if (r === 'inn') return 'inn';
   if (r === 'tavern' || TRADE_OF_ROLE[r]) return 'trade';

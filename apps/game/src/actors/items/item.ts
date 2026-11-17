@@ -34,18 +34,20 @@ export interface Item {
   uses?: number;
   /** A name of its own ("patron's letter"). */
   name?: string;
+  /** Its cloth's colour ("#rrggbb"), where it differs from the kind's (a resident's dyed tunic). */
+  colour?: string;
   loc?: Loc;
 }
 
 let counter = 0;
 const newUid = () => `i${Date.now().toString(36)}${(counter++).toString(36)}${Math.floor(Math.random() * 1296).toString(36)}`;
 
-export function makeItem(id: string, o: { qty?: number; quality?: Quality; make?: string; condition?: number; name?: string } = {}): Item {
+export function makeItem(id: string, o: { qty?: number; quality?: Quality; make?: string; condition?: number; name?: string; colour?: string } = {}): Item {
   const d = itemDef(id);
   return {
     uid: newUid(), def: id, qty: Math.max(1, Math.min(d.stack ?? 1, o.qty ?? 1)), quality: o.quality ?? 'common',
     condition: d.durable === false ? 100 : o.condition ?? 100,
-    ...(d.uses ? { uses: d.uses } : {}), ...(o.make ? { make: o.make } : {}), ...(o.name ? { name: o.name } : {}),
+    ...(d.uses ? { uses: d.uses } : {}), ...(o.make ? { make: o.make } : {}), ...(o.name ? { name: o.name } : {}), ...(o.colour ? { colour: o.colour } : {}),
   };
 }
 

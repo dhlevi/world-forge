@@ -368,7 +368,20 @@ nations, regions and cities; factions. **Proposed:**
    squashed toward the feet; TILESET.md and the template list the layers.)*
 2. *Placed residents:* the bubble's population from the plans' residents, each placed by a first,
    simple day plan (asleep at night, at work by day, at home in the evening), standing still, each
-   with the belongings of their trade and means. Looking at them names them.
+   with the belongings of their trade and means. Looking at them names them. *(Built: `LocalWorld.buildingsIn`
+   (core `local/chunk.ts`) lists the plans' buildings in a box with the tiles of each floor one may
+   stand on; `core people/routine.ts` gives each person a place of work (their own building's shop
+   or workshop or staff rooms, the house itself, out of doors near home, or away) and a day plan
+   varied by person and day; the worker (`worker/people.ts`) places the residents of the bubble at
+   a time, beds first for the sleepers, with their looks from their people's appearance; the game
+   (`world/population.ts`) makes each an Actor with Identity, Body and belongings
+   (`world/belongings.ts`), places them again every quarter of an hour and when the wanderer has gone
+   a quarter of the bubble, and lets no change be seen (a move, a coming or a going waits until its
+   tiles are out of sight). The bubble is 128 tiles in open country, 96 in a town, 64 in a city.
+   Those whose work lies away from home are not placed by day until step 3 works out their
+   workplaces; the bubble's full crowd (about 1,100 in a large town by night) is kept as data and
+   only those in sight are drawn, so the cap of about 150 agents applies from step 3, when they
+   act.)*
 3. *Routines and movement:* the day plan in full (templates and variation), the agents' queue,
    paths across floors and stairs, doors, stepping aside, cover from rain, indoors at dark.
 4. *Senses, base:* noise events (steps, doors, work, speech) heard by the player and agents;

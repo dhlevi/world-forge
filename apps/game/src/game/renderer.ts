@@ -118,6 +118,8 @@ export class Renderer {
   /** The look of the hour and season: the sky's colour, snow lying (cm), the season. */
   look: { sky: number; snowCm: number; season: Season; light: number } = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
   private player = new Sprite();
+  /** The people about (world/population.ts), a pool of sprites among the objects. */
+  private folk: Sprite[] = [];
   /** The step being shown: the way it went, and when it began (the map slides behind the wanderer). */
   private slide: { dx: number; dy: number; t0: number } | null = null;
   /** The game's step count and place at the last drawing (to tell a single step from a jump). */
@@ -209,6 +211,47 @@ export class Renderer {
     this.player.y = me.y - oy + look.dy;
   }
 
+  /**
+   * The people about (world/population.ts): those on the floor drawn and in sight, each in front
+   * of the row they stand on, lit as their tile; the sleeping lie down.
+   */
+  private drawPeople(game: Game, light0: Uint32Array, floor: number | null): void {
+    let n = 0;
+    if (this.view === 0) {
+      for (const p of game.people()) {
+        if (p.z !== floor || !game.isVisible(p.x, p.y)) continue;
+        const sx = p.x + this.ox, sy = p.y + this.oy;
+        if (sx < 0 || sy < 0 || sx >= this.cols || sy >= this.rows) continue;
+        let sp = this.folk[n];
+        if (!sp) {
+          sp = new Sprite();
+          this.folk.push(sp);
+          this.objects.addChild(sp);
+        }
+        n++;
+        const look = this.figures.look(p.figure, p.facing, false);
+        sp.texture = look.tex[0];
+        sp.tint = light0[sy * this.cols + sx] || 0xffffff;
+        sp.zIndex = sy * 2 + 1;
+        if (p.where === 'asleep') {
+          // Lying on the tile, head to the west: the figure turned a quarter about its tile's middle.
+          sp.anchor.set(0.5, 0.5);
+          sp.rotation = -Math.PI / 2;
+          // (The figure's middle lies half a tile below its picture's; turned, half a tile to the east.)
+          sp.x = sx * TILE_PX;
+          sp.y = sy * TILE_PX + TILE_PX / 2;
+        } else {
+          sp.anchor.set(0, 0);
+          sp.rotation = 0;
+          sp.x = sx * TILE_PX + look.dx;
+          sp.y = sy * TILE_PX + look.dy;
+        }
+        sp.visible = true;
+      }
+    }
+    for (let i = n; i < this.folk.length; i++) this.folk[i].visible = false;
+  }
+
   /** Gives a sprite a look (or hides it): its picture, its place over its tile, its tint. */
   private show(sp: Sprite, look: Look | null, i: number, tint: number): void {
     if (!look) {
@@ -273,6 +316,7 @@ export class Renderer {
     this.cs = [];
     this.rs = [];
     this.objects.addChild(this.player);
+    for (const f of this.folk) this.objects.addChild(f);
     this.gs = [];
     this.ds = [];
     this.os = [];
@@ -690,6 +734,7 @@ export class Renderer {
     if (game.steps === last.steps + 1 && Math.max(Math.abs(game.px - last.x), Math.abs(game.py - last.y)) === 1) this.slide = { dx: game.px - last.x, dy: game.py - last.y, t0: performance.now() };
     else if (game.steps !== last.steps) this.slide = null;
     this.lastStep = { steps: game.steps, x: game.px, y: game.py };
+    this.drawPeople(game, light0, floor);
     // The wanderer's layered figure (game/figure-art.ts): their looks and what they wear.
     const spec = game.figure();
     const stand = this.figures.look(spec, game.facing, false), walk = this.figures.look(spec, game.facing, true);

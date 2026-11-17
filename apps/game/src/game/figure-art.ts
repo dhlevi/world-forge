@@ -5,7 +5,7 @@
  * crowd in the same clothes shares them.
  */
 import { Container, RenderTexture, Sprite, type Renderer as PixiRenderer, type Texture } from 'pixi.js';
-import { WEAR_SHAPES, figureKey, type FigureSpec } from '@worldforge/core/local/figures';
+import { WEAR_SHAPES, YOUNG_SCALE, figureKey, type FigureSpec } from '@worldforge/core/local/figures';
 import type { Facing } from '@worldforge/core/local/tiles';
 import { TILE_PX, type Look, type Tileset } from './tileset';
 import { kindScale } from './figure';
@@ -47,7 +47,7 @@ export class FigureArt {
     if (hit) return hit;
     const layers = this.layers(f).map((l) => ({ ...l, ...this.tiles.figureLayer(l.name, facing, walking) }));
     // A shorter kind's placeholder body is squashed toward the feet (drawn art has its own height).
-    const squash = layers[0].art ? 1 : kindScale(f.kind);
+    const squash = (layers[0].art ? 1 : kindScale(f.kind)) * (f.young ? YOUNG_SCALE : 1);
     const n = walking ? Math.max(...layers.map((l) => l.look.tex.length)) : 1;
     const frames: Texture[] = [];
     for (let i = 0; i < n; i++) {

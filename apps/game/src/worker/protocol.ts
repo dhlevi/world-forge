@@ -22,6 +22,49 @@ export interface StartSite {
   region?: string;
 }
 
+/**
+ * A resident placed by their day plan (docs/design/npcs.md, Placed residents): who they are, from
+ * their building's households (core people/plan-residents.ts), how they look, and where they are.
+ */
+export interface PlacedPerson {
+  /** Their building, household and place in it: "<bid>#<household>#<member>". */
+  id: string;
+  name: string;
+  given: string;
+  female: boolean;
+  age: number;
+  /** Their people (index into CULTURES) and its name ("the Varskish"). */
+  culture: number;
+  people: string;
+  trade: string;
+  /** Their place in the household ("head", "wife", "apprentice"). */
+  role: string;
+  traits: string[];
+  note?: string;
+  means: 'destitute' | 'poor' | 'middling' | 'comfortable' | 'rich';
+  /** The household's name, and the home's building id and name (for a notable building). */
+  household: string;
+  homeId: string;
+  homeName?: string;
+  /** Where they stand: the tile, and the floor (null: the ground floor or the ground). */
+  x: number;
+  y: number;
+  z: number | null;
+  where: 'asleep' | 'home' | 'work' | 'out';
+  facing: 'n' | 'e' | 's' | 'w';
+  look: {
+    kind: string;
+    skin: string;
+    hair: string;
+    hairStyle: string;
+    beard: string;
+    /** Cloth colours ("#rrggbb"): the body garment, the legs, the cloak. */
+    cloth: [string, string, string];
+    /** The people's headwear, as a garment shape (none: bare-headed). */
+    head?: string;
+  };
+}
+
 /** A people of the world, for character creation. */
 export interface CultureInfo {
   index: number;
@@ -214,7 +257,9 @@ export type ToWorker =
   /** The climate at a place: its warmest and coldest months (°C). */
   | { type: 'climate'; id: number; lon: number; lat: number }
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
-  | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean };
+  | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean }
+  /** The residents about a tile at a time (game seconds), placed by their day plan (worker/people.ts). */
+  | { type: 'people'; id: number; x: number; y: number; time: number };
 
 export type FromWorker =
   | { type: 'progress'; stage: string; pct: number }
@@ -228,6 +273,7 @@ export type FromWorker =
   | { type: 'names'; id: number; male: PersonName[]; female: PersonName[] }
   | { type: 'site'; id: number; site: SiteInfo | null; gates: Gate[] }
   | { type: 'plan'; id: number; image: PlanImage | null }
+  | { type: 'people'; id: number; people: PlacedPerson[]; radius: number }
   | { type: 'climate'; id: number; warm: number; cold: number; precipSummer: number; precipWinter: number; windU: number; windV: number }
   /** Something went wrong: with the id of the request it answers, or none (making the world, starting, a chunk). */
   | { type: 'error'; message: string; id?: number };

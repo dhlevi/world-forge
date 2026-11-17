@@ -111,11 +111,16 @@ export interface FigureSpec {
   beard: { style: BeardStyle | 'none'; colour: string };
   /** Garments, in drawing order (WEAR_SLOTS), each a shape and its colour. */
   wear: { shape: string; colour: string }[];
+  /** A child (drawn smaller). */
+  young?: boolean;
 }
+
+/** How much smaller a child is drawn. */
+export const YOUNG_SCALE = 0.72;
 
 /** A key naming a figure (for caching its pictures). */
 export function figureKey(f: FigureSpec): string {
-  return [f.kind, f.female ? 'f' : 'm', f.skin, f.hair.style, f.hair.colour, f.beard.style, f.beard.colour, ...f.wear.map((w) => `${w.shape}:${w.colour}`)].join('|');
+  return [f.kind, f.female ? 'f' : 'm', f.skin, f.hair.style, f.hair.colour, f.beard.style, f.beard.colour, ...f.wear.map((w) => `${w.shape}:${w.colour}`), f.young ? 'young' : ''].join('|');
 }
 
 /** One frame of a figure layer, by name: what it is and its art note (for TILESET.md and the template). */
