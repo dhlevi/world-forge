@@ -1,21 +1,20 @@
 /**
- * Placed residents (docs/design/npcs.md, Stage 1 step 2): the people of a city's and a town's
- * plans about a tile, placed by their first day plan (core people/routine.ts, worker/people.ts);
- * their belongings (world/belongings.ts) and figures; and the bubble's rule that nobody is seen to
- * move, come or go (world/population.ts).
+ * Residents and their days (docs/design/npcs.md, Stage 1): the people of a city's and a town's
+ * plans about a tile with their day plans and every place of them found on the map (core
+ * people/routine.ts, worker/people.ts), their belongings (world/belongings.ts), and the day
+ * plans of every kind of life, day of the week and season.
  * npx tsx apps/game/scripts/people-test.ts (exits non-zero on a failure).
  */
 import { generateWorld } from '@worldforge/core/gen/world';
 import { CHUNK, LocalWorld } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
 import { WEAR_SHAPE } from '@worldforge/core/local/figures';
-import { dayPlan, whereabouts, workOf } from '@worldforge/core/people/routine';
+import { dayBlocks, restDay, templateOf, workOf } from '@worldforge/core/people/routine';
 import { bubbleAt, forgetPeople, peopleIn } from '../src/worker/people';
 import { belongingsOf } from '../src/world/belongings';
-import { Population } from '../src/world/population';
 import { defOf } from '../src/actors/items/item';
 import { ITEM } from '../src/actors/items/defs';
-import type { PlacedPerson } from '../src/worker/protocol';
+import type { PlacedPerson, Spot } from '../src/worker/protocol';
 import '../src/actors/cast';
 
 let failures = 0;
@@ -37,64 +36,71 @@ for (const tier of ['city', 'town'] as const) {
   console.log(`\n${tier} ${s.name}: bubble ${r} tiles`);
   ok(r === (tier === 'city' ? 64 : 96), `the bubble is smaller in a ${tier}`);
   const t0 = performance.now();
-  const night = peopleIn(w, local, x, y, r, DAY + 3 * H);
+  const night = peopleIn(w, local, x, y, r, DAY + 3 * H, 7, 17);
   const t1 = performance.now();
-  const day = peopleIn(w, local, x, y, r, DAY + 10.5 * H);
-  const evening = peopleIn(w, local, x, y, r, DAY + 20 * H);
+  const day = peopleIn(w, local, x, y, r, DAY + 10.5 * H, 7, 17);
+  const evening = peopleIn(w, local, x, y, r, DAY + 20 * H, 7, 17);
   const t2 = performance.now();
-  console.log(`  ${night.length} at 03:00 (${(t1 - t0).toFixed(0)} ms, the first), ${day.length} at 10:30, ${evening.length} at 20:00 (${((t2 - t1) / 2).toFixed(0)} ms each after)`);
+  const here = (ps: PlacedPerson[]) => ps.filter((p) => p.at);
+  console.log(`  ${night.length} residents (${(t1 - t0).toFixed(0)} ms the first time, ${((t2 - t1) / 2).toFixed(0)} ms after); about: ${here(night).length} at 03:00, ${here(day).length} at 10:30, ${here(evening).length} at 20:00`);
   ok(night.length > 50, 'the bubble holds the residents of its buildings');
 
-  // The same world, place and time give the same people in the same places, with or without what was kept.
-  const again = JSON.stringify(peopleIn(w, local, x, y, r, DAY + 10.5 * H));
+  // The same world, place and time give the same people, plans and places, with or without what was kept.
+  const again = JSON.stringify(peopleIn(w, local, x, y, r, DAY + 10.5 * H, 7, 17));
   forgetPeople();
-  const fresh = JSON.stringify(peopleIn(w, local, x, y, r, DAY + 10.5 * H));
+  const fresh = JSON.stringify(peopleIn(w, local, x, y, r, DAY + 10.5 * H, 7, 17));
   ok(again === JSON.stringify(day) && fresh === again, 'placing is the same every time');
 
-  const count = (ps: PlacedPerson[], where: string) => ps.filter((p) => p.where === where).length;
-  ok(count(night, 'asleep') === night.length, 'at 03:00 everyone placed is asleep');
+  // Plans: whole days, every block with a place found, on the same day for all.
+  const whole = day.every((p) => p.plan.length > 0 && p.plan[0].from === 0 && p.plan[p.plan.length - 1].to === 24 && p.plan.every((k, i) => i === 0 || k.from === p.plan[i - 1].to));
+  ok(whole, 'every plan covers the day from midnight to midnight, without gaps');
+  const stops = day.flatMap((p) => p.plan);
+  const unplaced = stops.filter((k) => !k.at);
+  ok(unplaced.length < stops.length * 0.05, `nearly every block's place is found on the map (${unplaced.length} of ${stops.length} beyond the bubble: ${[...new Set(unplaced.map((k) => k.place))].join(', ') || 'none'})`);
+  ok(day.every((p) => p.plan.some((k) => k.place === 'bed' && k.at)), 'everyone has a bed (or a place to sleep)');
+  const kinds = new Set(day.map((p) => p.template));
+  ok(['craft', 'child', 'elder', 'merchant'].every((t) => kinds.has(t)), `many kinds of day are kept (${[...kinds].join(', ')})`);
+
+  const actAt = (p: PlacedPerson, h: number) => p.plan.find((k) => h >= k.from && h < k.to)!.act;
+  const asleep = here(night).filter((p) => actAt(p, 3) === 'sleep').length;
+  ok(asleep > here(night).length * 0.9, `at 03:00 nearly everyone is asleep (${asleep} of ${here(night).length}; the watch and the night trades about)`);
   const BEDS = new Set(['bed', 'straw', 'bedroll']);
-  const inBed = night.filter((p) => {
-    const c = local.chunk(Math.floor(p.x / CHUNK), Math.floor(p.y / CHUNK));
-    const k = (p.y - c.cy * CHUNK) * CHUNK + (p.x - c.cx * CHUNK);
-    const L = p.z === null ? c : c.layers.find((l) => l.z === p.z);
-    return !!L && BEDS.has(OBJECT_TILES[L.object[k]]?.name ?? '');
-  }).length;
-  ok(inBed > night.length * 0.3, `many sleepers are in a bed (${inBed} of ${night.length}; the rest on the floor of a full house)`);
-  ok(count(day, 'work') + count(day, 'out') > day.length * 0.2, `by day many are at work (${count(day, 'work')} indoors, ${count(day, 'out')} out of doors, ${count(day, 'home')} at home)`);
-  ok(count(evening, 'home') > evening.length * 0.5, `in the evening most are at home (${count(evening, 'home')} of ${evening.length})`);
+  const objAt = (t: Spot) => {
+    const c = local.chunk(Math.floor(t.x / CHUNK), Math.floor(t.y / CHUNK));
+    const k = (t.y - c.cy * CHUNK) * CHUNK + (t.x - c.cx * CHUNK);
+    const L = t.z === null ? c : c.layers.find((l) => l.z === t.z);
+    return L ? { g: GROUND_TILES[L.ground[k]], o: OBJECT_TILES[L.object[k]], id: L.object[k] } : null;
+  };
+  const inBed = here(night).filter((p) => BEDS.has(objAt(p.at!)?.o?.name ?? '')).length;
+  ok(inBed > here(night).length * 0.3, `many sleepers are in a bed (${inBed} of ${here(night).length}; the rest on the floor of a full house)`);
+  const working = here(day).filter((p) => actAt(p, 10.5) === 'work').length;
+  ok(working > here(day).length * 0.25, `by day many are at work (${working} of ${here(day).length})`);
+  const atHome = here(evening).filter((p) => ['home', 'meal', 'sleep'].includes(actAt(p, 20))).length;
+  ok(atHome > here(evening).length * 0.7, `in the evening most are at home (${atHome} of ${here(evening).length})`);
+  const drinking = here(evening).filter((p) => actAt(p, 20) === 'leisure').length;
+  ok(drinking > 0, `some are out of an evening (${drinking})`);
 
   for (const [name, ps] of [['03:00', night], ['10:30', day], ['20:00', evening]] as const) {
-    const tiles = new Set(ps.map((p) => `${p.x},${p.y},${p.z}`));
-    ok(tiles.size === ps.length, `${name}: no two people on one tile`);
-    ok(ps.every((p) => Math.abs(p.x - x) <= r && Math.abs(p.y - y) <= r), `${name}: everyone placed is within the bubble`);
-    // Each stands where one can stand: on the ground floor's or the ground's tiles (chunks), or a floor above or below.
-    const bad = ps.filter((p) => {
-      const c = local.chunk(Math.floor(p.x / CHUNK), Math.floor(p.y / CHUNK));
-      const k = (p.y - c.cy * CHUNK) * CHUNK + (p.x - c.cx * CHUNK);
-      const L = p.z === null ? c : c.layers.find((l) => l.z === p.z);
-      if (!L) return true;
-      const g = GROUND_TILES[L.ground[k]], o = OBJECT_TILES[L.object[k]];
-      return !g || !g.pass || !!g.water || (L.object[k] !== 0 && !o.pass);
+    const placed = here(ps);
+    const tiles = new Set(placed.map((p) => `${p.at!.x},${p.at!.y},${p.at!.z}`));
+    ok(tiles.size === placed.length, `${name}: no two people on one tile`);
+    ok(placed.every((p) => Math.abs(p.at!.x - x) <= r + 48 && Math.abs(p.at!.y - y) <= r + 48), `${name}: everyone about is within the bubble's reach`);
+    // Each stands where one can stand: on the ground floor's or the ground's tiles, or a floor above or below.
+    const bad = placed.filter((p) => {
+      const t = objAt(p.at!);
+      return !t || !t.g || !t.g.pass || !!t.g.water || (t.id !== 0 && !t.o.pass);
     });
-    ok(bad.length <= Math.max(1, ps.length * 0.01), `${name}: everyone stands on open floor or ground (${bad.length} not)`);
-    if (bad.length) console.log('   ', bad.slice(0, 3).map((p) => `${p.name} at ${p.x},${p.y},${p.z}`).join('; '));
+    ok(bad.length <= Math.max(1, placed.length * 0.01), `${name}: everyone stands on open floor or ground (${bad.length} not)`);
   }
-  ok(day.some((p) => p.z !== null) || night.some((p) => p.z !== null), 'some are placed on the floors above or below');
+  // Every place of every plan is a place one can stand.
+  const badStops = stops.filter((k) => k.at && (() => {
+    const t = objAt(k.at);
+    return !t || !t.g || !t.g.pass || (t.id !== 0 && !t.o.pass);
+  })());
+  ok(badStops.length <= stops.length * 0.01, `every place in the plans can be stood on (${badStops.length} not)`);
+  ok(day.some((p) => p.plan.some((k) => k.at && k.at.z !== null)), 'some places are on the floors above or below');
 
-  // Every person of every building in the bubble has a plan: a work, waking before sleeping, the work within the day.
-  let planned = 0, badPlan = 0;
-  for (const p of day) {
-    const hh = { name: p.household, means: p.means, members: [p as never] };
-    const wk = workOf(p as never, hh as never, 'home');
-    const pl = dayPlan(seed, p.id, 1, p as never, wk);
-    planned++;
-    if (!(pl.wake < pl.sleep && pl.sleep < 24 && (!pl.work || (pl.work[0] >= pl.wake && pl.work[1] <= pl.sleep)))) badPlan++;
-    for (const h of [0, 6, 12, 18, 23.9]) if (!['asleep', 'home', 'work', 'out', 'away'].includes(whereabouts(pl, wk, h))) badPlan++;
-  }
-  ok(planned > 0 && badPlan === 0, `every day plan is whole (${planned} looked at)`);
-
-  // Belongings: dressed, shod (most), a purse and a knife and a key for the grown, all from the item list.
+  // Belongings: dressed, a purse and a knife and a key for the grown, all from the item list.
   let badKit = 0, keys = 0, grown = 0;
   for (const p of day) {
     const inv = belongingsOf(p, seed);
@@ -116,38 +122,37 @@ for (const tier of ['city', 'town'] as const) {
   }
 }
 
-// ---- The bubble: nobody is seen to move, come or go -----------------------------------------------
+// ---- Day plans: every trade, every kind of building, every day of the week ----------------------------
 {
-  const person = (id: string, x: number, where: PlacedPerson['where'] = 'home'): PlacedPerson => ({
-    id, name: `P ${id}`, given: 'P', female: false, age: 30, culture: 0, people: 'the folk', trade: 'cooper', role: 'head', traits: [], means: 'middling',
-    household: 'the household of P', homeId: 'b', x, y: 0, z: null, where, facing: 's',
-    look: { kind: 'human', skin: '#d8b090', hair: '#5a3a20', hairStyle: 'short', beard: 'none', cloth: ['#7a6a50', '#6a5a46', '#4e5a3e'] },
-  });
-  let reply: PlacedPerson[] = [person('a', 1), person('b', 5)];
-  const pop = new Population(() => Promise.resolve({ people: reply, radius: 64 }), seed);
-  const seen = new Set<number>([1, 2, 3]);
-  const view = { px: 0, py: 0, z: null as number | null, time: 0, isVisible: (x: number) => seen.has(x) };
-  const settle = () => new Promise((res) => setTimeout(res, 0));
-  console.log('\nthe bubble');
-  pop.update(view);
-  await settle();
-  ok(!pop.at(1, 0, null), 'one placed in sight does not appear there');
-  ok(!!pop.at(5, 0, null), 'one placed out of sight is there');
-  seen.delete(1);
-  pop.update(view);
-  ok(!!pop.at(1, 0, null), '... and appears once that tile is out of sight');
-  seen.add(1);
-  reply = [person('a', 8), person('c', 2, 'out')];
-  view.time = 3600;
-  pop.update(view);
-  await settle();
-  ok(!!pop.at(1, 0, null) && !pop.at(8, 0, null), 'one in sight who should be elsewhere stays put');
-  ok(!pop.at(5, 0, null) && !pop.at(2, 0, null), 'one gone out of sight is gone; one to come in sight waits');
-  seen.clear();
-  pop.update(view);
-  ok(!!pop.at(8, 0, null) && !pop.at(1, 0, null) && !!pop.at(2, 0, null), 'out of sight, all is put right');
-  ok(pop.at(2, 0, null)!.figure.wear.length > pop.at(8, 0, null)!.figure.wear.length, 'out of doors in a cloak, at home without');
-  ok(pop.at(8, 0, null)!.actor.get !== undefined && [...pop.all()].length === 2, 'each is an actor, and only those placed are kept');
+  console.log('\nday plans');
+  const P = (trade: string, age: number, role: string, traits: string[] = []) => ({ name: 'X', given: 'X', female: false, age, culture: 0, people: '', trade, role, traits, ties: [] });
+  const trades = ['cooper', 'farmer', 'labourer', 'lawyer', 'soldier', 'priest', 'innkeeper', 'maid', 'child', 'retired', 'beggar', 'night-soil man', 'merchant', 'miner', 'hawker', 'smith', 'guildmaster'];
+  const roles: Record<string, string> = { soldier: 'soldier', maid: 'maid', child: 'son', merchant: 'guest' };
+  const kinds: Record<string, string> = { soldier: 'barracks', priest: 'temple', innkeeper: 'inn', maid: 'mansion', merchant: 'inn', smith: 'trade', guildmaster: 'guild' };
+  let bad = 0, n = 0;
+  const seenKinds = new Set<string>();
+  for (const t of trades) for (let d = 0; d < 7; d++) for (const [rise, set] of [[4.5, 21], [8.5, 16]]) {
+    const p = P(t, t === 'child' ? 8 : t === 'retired' ? 70 : 35, roles[t] ?? 'head', d % 2 ? ['Diligent'] : ['Slothful', 'Gregarious']);
+    const h = { name: '', means: 'middling', members: [p] };
+    const kind = (kinds[t] ?? 'home') as never;
+    const wk = workOf(p as never, h as never, kind);
+    seenKinds.add(templateOf(p as never, wk, kind));
+    const plan = dayBlocks(seed, `t#${t}`, d, p as never, wk, kind, { rise, set });
+    const again = dayBlocks(seed, `t#${t}`, d, p as never, wk, kind, { rise, set });
+    n++;
+    if (JSON.stringify(plan) !== JSON.stringify(again)) bad++;
+    if (plan[0].from !== 0 || plan[plan.length - 1].to !== 24 || plan.some((k, i) => k.to <= k.from || (i && k.from !== plan[i - 1].to))) bad++;
+    // Out of doors only by daylight (the night trades apart).
+    if (t !== 'night-soil man' && plan.some((k) => (k.place === 'out' || k.place === 'square') && (k.from < rise || k.to > set))) bad++;
+    if (!plan.some((k) => k.act === 'sleep')) bad++;
+  }
+  ok(bad === 0, `${n} plans: whole, the same every time, out of doors only by daylight, with sleep in them`);
+  ok(seenKinds.size >= 12, `the templates are all kept (${[...seenKinds].join(', ')})`);
+  const rest = dayBlocks(seed, 'r', 6, P('cooper', 35, 'head', ['Pious']) as never, 'home', 'home' as never, { rise: 7, set: 17 });
+  const work = dayBlocks(seed, 'r', 5, P('cooper', 35, 'head', ['Pious']) as never, 'home', 'home' as never, { rise: 7, set: 17 });
+  ok(restDay(6) && !restDay(5) && !rest.some((k) => k.act === 'work') && rest.some((k) => k.place === 'temple') && work.some((k) => k.act === 'work'), 'the rest day: no work, the temple in the morning');
+  const farm = (rise: number, set: number) => dayBlocks(seed, 'f', 1, P('farmer', 35, 'head') as never, 'out', 'home' as never, { rise, set }).filter((k) => k.place === 'out').reduce((a, k) => a + k.to - k.from, 0);
+  ok(farm(4.5, 21) > farm(8.5, 16) + 3, `a farmer works longer in summer than in winter (${farm(4.5, 21).toFixed(1)} h against ${farm(8.5, 16).toFixed(1)} h)`);
 }
 
 console.log(failures ? `\n${failures} failed` : '\nall passed');

@@ -37,7 +37,8 @@ import { GameMap } from './map';
 import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type SaveFile } from './save';
 import { Travel } from './travel';
-import { Population, type Resident } from '../world/population';
+import { Population, doingWords, type Resident } from '../world/population';
+import { sunTimes } from '@worldforge/core/weather/weather';
 import { WeatherService, type Sky } from './weather';
 import type { RoofMode } from './roofs-mode';
 import { hash32 } from '../util';
@@ -194,7 +195,7 @@ export class PlaySession {
 
     // The residents about the wanderer (world/population.ts), placed by their day plans.
     const ask = world.requestPeople;
-    this.people = new Population(ask ? (x, y, t) => ask(x, y, t) : () => Promise.resolve({ people: [], radius: 0 }), o.settings.seed);
+    this.people = new Population(ask ? (x, y, t, rise, set) => ask(x, y, t, rise, set) : () => Promise.resolve({ people: [], radius: 0 }), o.settings.seed);
     this.people.onChange = () => {
       if (this.state.mode === 'local') this.redraw();
     };
@@ -446,7 +447,13 @@ export class PlaySession {
   tick(t: number): void {
     const game = this.game;
     this.updateClimate();
-    if (this.state.mode === 'local' && !this.travel.running) this.people.update(game);
+    if (this.state.mode === 'local' && !this.travel.running) {
+      // The people about: the day's light for their plans, and the rain that sends them indoors.
+      const sky = this.weather.sky(t), st = sunTimes(this.o.site.lat, sky.doy);
+      this.people.sun = 'polar' in st ? (st.polar === 'day' ? { rise: 4, set: 22 } : { rise: 9, set: 15 }) : { rise: st.rise, set: st.set };
+      this.people.raining = sky.w.rainMm > 0.5;
+      this.people.update(game);
+    }
     const dt = Math.max(0, t - this.lastT);
     this.lastT = t;
     const s = this.weather.sky(t);
@@ -767,7 +774,7 @@ function residentLines(r: Resident): string[] {
   const trade = p.trade === 'child' ? (p.female ? 'a girl' : 'a boy') : p.trade === 'retired' || p.trade === 'helps at home' ? '' : an(p.trade);
   const out = [`${p.name}${trade ? `, ${trade}` : ''}.`];
   out.push(`One of ${p.people}${p.age >= 12 ? `, about ${Math.max(12, Math.round(p.age / 5) * 5)} years old` : ''}.`);
-  if (p.where === 'asleep') out.push('Asleep.');
-  else if (p.where === 'work' || p.where === 'out') out.push('At work.');
+  const doing = doingWords(r);
+  if (doing) out.push(doing);
   return out;
 }

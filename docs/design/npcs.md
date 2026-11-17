@@ -383,7 +383,26 @@ nations, regions and cities; factions. **Proposed:**
    only those in sight are drawn, so the cap of about 150 agents applies from step 3, when they
    act.)*
 3. *Routines and movement:* the day plan in full (templates and variation), the agents' queue,
-   paths across floors and stairs, doors, stepping aside, cover from rain, indoors at dark.
+   paths across floors and stairs, doors, stepping aside, cover from rain, indoors at dark. *(Built:
+   `core people/routine.ts` makes each day from midnight to midnight as blocks (an act at a
+   place) by template (craftsman, labourer, farmer, merchant, guard on watches in turn, priest's
+   offices, innkeeper's late hours, servant, child, elder, beggar, night trade, an inn's guest),
+   varied by the day's seed and traits (the diligent work longer, the slothful rise late, the
+   gregarious and charming go to the tavern, the pious to the temple); one day in seven is a rest
+   day; out of doors only by daylight, from the day's sunrise and sunset. The worker finds every
+   block's place: bed (pillow ends first), a place at home and at the table, the workplace (their
+   own building, the nearest of its kind for trades that work away, or out of doors near home), one
+   of the three nearest taverns or inns, the nearest temple, a square near home; places beyond the
+   bubble's reach are left unnamed and the person goes away there. The game
+   (`world/population.ts`, `world/paths.ts`) runs the agents' queue after each action: within 40
+   tiles or in sight (at most the 150 nearest), people walk tile by tile on A* paths across floors,
+   stairs and doors (opened and shut behind them), wait for, squeeze past or step round one another,
+   and those standing about step aside; farther off and out of sight they arrive in one go when the
+   walk would have ended; rain sends those bound out of doors home; leaving the bubble and coming in
+   happen out of sight. Paths are found at most eight per action, so a crowd setting out at once
+   waits its turn and catches up. A long sleep or wait moves those out of sight straight to their
+   places. Not yet: home doors locked at night, the city's visitors, and thinning a crowd past the
+   cap in sight.)*
 4. *Senses, base:* noise events (steps, doors, work, speech) heard by the player and agents;
    tracks on soft ground; Talk with one line; a greeting between friends; the store of each
    person's opinion of the player, drifting back to neutral.

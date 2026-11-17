@@ -22,9 +22,29 @@ export interface StartSite {
   region?: string;
 }
 
+/** A tile on a floor (null: the ground floor, or the ground). */
+export interface Spot {
+  x: number;
+  y: number;
+  z: number | null;
+}
+
 /**
- * A resident placed by their day plan (docs/design/npcs.md, Placed residents): who they are, from
- * their building's households (core people/plan-residents.ts), how they look, and where they are.
+ * A part of a resident's day (core people/routine.ts, Block) with the tile it is spent on (null:
+ * somewhere beyond the bubble).
+ */
+export interface PlanStop {
+  from: number;
+  to: number;
+  act: 'sleep' | 'home' | 'meal' | 'work' | 'leisure' | 'worship';
+  place: 'bed' | 'home' | 'table' | 'work' | 'out' | 'tavern' | 'square' | 'temple';
+  at: Spot | null;
+}
+
+/**
+ * A resident of the bubble (docs/design/npcs.md, Stage 1): who they are, from their building's
+ * households (core people/plan-residents.ts), how they look, their day's plan with its places,
+ * and where that plan has them at the hour asked.
  */
 export interface PlacedPerson {
   /** Their building, household and place in it: "<bid>#<household>#<member>". */
@@ -46,11 +66,15 @@ export interface PlacedPerson {
   household: string;
   homeId: string;
   homeName?: string;
-  /** Where they stand: the tile, and the floor (null: the ground floor or the ground). */
-  x: number;
-  y: number;
-  z: number | null;
-  where: 'asleep' | 'home' | 'work' | 'out';
+  /** The kind of day they keep (core people/routine.ts, Template). */
+  template: string;
+  /** The day the plan is for (days since the start), and the plan. */
+  day: number;
+  plan: PlanStop[];
+  /** A tile in their home, to shelter in from the rain. */
+  home: Spot;
+  /** Where the plan has them at the hour asked (null: away beyond the bubble). */
+  at: Spot | null;
   facing: 'n' | 'e' | 's' | 'w';
   look: {
     kind: string;
@@ -259,7 +283,7 @@ export type ToWorker =
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
   | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean }
   /** The residents about a tile at a time (game seconds), placed by their day plan (worker/people.ts). */
-  | { type: 'people'; id: number; x: number; y: number; time: number };
+  | { type: 'people'; id: number; x: number; y: number; time: number; rise: number; set: number };
 
 export type FromWorker =
   | { type: 'progress'; stage: string; pct: number }

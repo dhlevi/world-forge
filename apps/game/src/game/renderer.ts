@@ -229,8 +229,10 @@ export class Renderer {
           this.objects.addChild(sp);
         }
         n++;
-        const look = this.figures.look(p.figure, p.facing, false);
+        // Walking: the stride's frames, turned over by the ticker.
+        const look = this.figures.look(p.figure, p.facing, p.where === 'walking');
         sp.texture = look.tex[0];
+        if (look.tex.length > 1) this.animated.push({ sprite: sp, look });
         sp.tint = light0[sy * this.cols + sx] || 0xffffff;
         sp.zIndex = sy * 2 + 1;
         if (p.where === 'asleep') {

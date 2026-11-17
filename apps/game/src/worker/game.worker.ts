@@ -131,7 +131,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     } else if (m.type === 'people') {
       if (!world || !local) throw new Error('No game started.');
       const radius = bubbleAt(local, m.x, m.y);
-      post({ type: 'people', id: m.id, people: peopleIn(world, local, m.x, m.y, radius, m.time), radius });
+      post({ type: 'people', id: m.id, people: peopleIn(world, local, m.x, m.y, radius, m.time, m.rise, m.set), radius });
     } else if (m.type === 'catalogue') {
       if (!world) throw new Error('No world yet.');
       post({ type: 'catalogue', id: m.id, catalogue: catalogue(world) });
