@@ -147,24 +147,28 @@ onBeforeUnmount(() => journey.stop());
       @level="(i: number) => (level = i)"
     />
     <div class="night" :style="{ opacity: Math.max(0, Math.min(0.7, ((dark ?? 0) - 0.35) * 1.1)) }" />
-    <div class="travel-bar">
-      <div class="row">
-        <button v-for="(n, i) in LEVEL_NAMES" :key="n" :class="{ on: level === i }" @click="level = i">{{ n }}</button>
-        <span class="sep" />
-        <button v-for="l in (['fantasy', 'terrain', 'biomes'] as ViewLayer[])" :key="l" :class="{ on: layer === l }" @click="layer = l">{{ l[0].toUpperCase() + l.slice(1) }}</button>
-      </div>
-      <div class="status">{{ status }}</div>
-      <div class="row">
-        <button class="primary" :disabled="!journey.steps.length || journey.planning" @click="go">{{ running ? 'Stop' : 'Travel' }}</button>
-        <select v-model.number="journey.speed" @change="tick++">
-          <option v-for="(s, i) in SPEEDS" :key="s.label" :value="i">{{ s.label }}</option>
-        </select>
-        <label class="check"><input v-model="journey.stopAtDusk" type="checkbox" /> Stop at dusk</label>
-        <button v-if="journey.dest" @click="journey.clear()">Clear</button>
-        <span class="sep" />
-        <button @click="mapRef?.centreOnParty()">Find party (F)</button>
-        <button @click="emit('zoomIn')">Zoom in (Z)</button>
-        <button @click="journey.stop(); emit('camp')">Camp (Shift+C)</button>
+    <div class="travel-dock">
+      <!-- What sits above the bar (the log). -->
+      <slot />
+      <div class="travel-bar">
+        <div class="row">
+          <button v-for="(n, i) in LEVEL_NAMES" :key="n" :class="{ on: level === i }" @click="level = i">{{ n }}</button>
+          <span class="sep" />
+          <button v-for="l in (['fantasy', 'terrain', 'biomes'] as ViewLayer[])" :key="l" :class="{ on: layer === l }" @click="layer = l">{{ l[0].toUpperCase() + l.slice(1) }}</button>
+        </div>
+        <div class="status">{{ status }}</div>
+        <div class="row">
+          <button class="primary" :disabled="!journey.steps.length || journey.planning" @click="go">{{ running ? 'Stop' : 'Travel' }}</button>
+          <select v-model.number="journey.speed" @change="tick++">
+            <option v-for="(s, i) in SPEEDS" :key="s.label" :value="i">{{ s.label }}</option>
+          </select>
+          <label class="check"><input v-model="journey.stopAtDusk" type="checkbox" /> Stop at dusk</label>
+          <button v-if="journey.dest" @click="journey.clear()">Clear</button>
+          <span class="sep" />
+          <button @click="mapRef?.centreOnParty()">Find party (F)</button>
+          <button @click="emit('zoomIn')">Zoom in (Z)</button>
+          <button @click="journey.stop(); emit('camp')">Camp (Shift+C)</button>
+        </div>
       </div>
     </div>
   </div>

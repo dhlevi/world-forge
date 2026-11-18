@@ -9,6 +9,7 @@ import type { GameApp } from '../app/app';
 import { Actor } from '../actors/actor';
 import PlayView from '../components/PlayView.vue';
 import SheetView from './views/SheetView.vue';
+import KeysView from './views/KeysView.vue';
 import { CityScreen } from './city';
 import { SleepScreen } from './sleep';
 import { CampScreen } from './camp';
@@ -61,6 +62,10 @@ export class PlayScreen extends Screen {
   }
 
   key(e: KeyboardEvent): boolean {
+    if (e.key === '?') {
+      this.showKeys();
+      return true;
+    }
     if (e.key === '@' && this.player) {
       this.showSheet();
       return true;
@@ -133,6 +138,21 @@ export class PlayScreen extends Screen {
 
   showSheet(): void {
     if (this.player) this.manager?.push(new SheetScreen(this.player, () => this.app.bus.now));
+  }
+
+  showKeys(): void {
+    this.manager?.push(new KeysScreen());
+  }
+}
+
+/** The keys, over the map. */
+export class KeysScreen extends Screen {
+  readonly view = KeysView;
+  popup = true;
+  key(e: KeyboardEvent): boolean {
+    if (e.code !== 'Escape' && e.key !== '?') return false;
+    this.close();
+    return true;
   }
 }
 

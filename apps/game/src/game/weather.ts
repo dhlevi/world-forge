@@ -24,6 +24,31 @@ export interface Sky {
   doy: number;
 }
 
+/** What the panel's picture of the sky is drawn from (components/SkyDial.vue). */
+export interface SkyPicture {
+  /** The hour of the day (0 to 24), and the hours the sun rises and sets (0 and 24: it does not set; both 12: it does not rise). */
+  hod: number;
+  rise: number;
+  set: number;
+  phase: Sun['phase'];
+  cloud: number;
+  kind: Weather['kind'];
+  fog: number;
+  thunder: boolean;
+  windMs: number;
+  windFrom: number;
+  /** The moon's phase (0 new, 0.5 full). */
+  moon: number;
+  /** Snow lies on the ground. */
+  snow: boolean;
+  season: Sky['season'];
+  /** Seen from indoors. */
+  inside: boolean;
+  /** The air where the wanderer is, and what it feels like when that differs. */
+  tempC: number;
+  feltC?: number;
+}
+
 
 /** The wind in words (after Beaufort). */
 export function windWord(ms: number): string {
@@ -97,6 +122,16 @@ export class WeatherService {
     if ('polar' in st) return st.polar === 'day' ? 'The sun does not set.' : 'The sun does not rise.';
     const f = (h: number) => `${String(Math.floor(h)).padStart(2, '0')}:${String(Math.floor((h % 1) * 60)).padStart(2, '0')}`;
     return `Sunrise ${f(st.rise)}, sunset ${f(st.set)}`;
+  }
+
+  /** The sky as the panel's picture needs it, with the air where the wanderer is. */
+  picture(s: Sky, here: Pick<SkyPicture, 'inside' | 'tempC' | 'feltC'>): SkyPicture {
+    const st = sunTimes(this.place.lat, s.doy), w = s.w;
+    const [rise, set] = 'polar' in st ? (st.polar === 'day' ? [0, 24] : [12, 12]) : [st.rise, st.set];
+    return {
+      hod: (((s.t / 3600) % 24) + 24) % 24, rise, set, phase: s.sun.phase, cloud: w.cloud, kind: w.kind, fog: w.fog, thunder: w.thunder,
+      windMs: w.windMs, windFrom: w.windFrom, moon: s.moon.phase, snow: s.snowCm >= 2, season: s.season, ...here,
+    };
   }
 
   // ---- In words ----------------------------------------------------------------------------------

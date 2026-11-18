@@ -42,23 +42,31 @@ button:disabled { opacity: 0.5; cursor: default; }
 .sites li span { color: var(--dim); font-size: 0.9em; }
 .sites li.on { background: #2b2618; }
 
-.play { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 300px; grid-template-rows: 1fr auto; }
-.map { grid-row: 1 / 3; grid-column: 1; overflow: hidden; position: relative; }
+.play { position: fixed; inset: 0; display: grid; grid-template-columns: 1fr 300px; grid-template-rows: minmax(0, 1fr); }
+.map { grid-row: 1; grid-column: 1; overflow: hidden; position: relative; }
 .panel { grid-row: 1; grid-column: 2; background: var(--panel); border-left: 1px solid var(--line); padding: 14px; display: flex; flex-direction: column; gap: 10px; overflow: auto; }
 .place { font-size: 1.15em; color: var(--accent); }
 .where, .clock { color: var(--dim); font-size: 0.92em; }
-.look { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 3px; }
-.look .head, .keys b { color: var(--dim); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
-.keys { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 4px; font-size: 0.92em; }
+.actions { border-top: 1px solid var(--line); padding-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.actions button { display: flex; justify-content: space-between; align-items: center; gap: 10px; text-align: left; }
+.actions button:hover { border-color: var(--accent); }
+.actions kbd { font: inherit; font-size: 0.8em; color: var(--dim); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 0 6px; }
 .foot { margin-top: auto; display: flex; justify-content: space-between; align-items: center; gap: 8px; color: var(--dim); font-size: 0.8em; }
-.log { grid-row: 2; grid-column: 2; background: var(--panel); border-left: 1px solid var(--line); border-top: 1px solid var(--line); padding: 10px 14px; font-size: 0.9em; min-height: 140px; }
+/* The log, over the map's bottom left corner (above the travel map's bar). */
+.log { max-width: 560px; background: rgba(13, 15, 20, 0.8); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 0.9em; pointer-events: none; }
+.play > .log { grid-row: 1; grid-column: 1; align-self: end; justify-self: start; margin: 12px; position: relative; z-index: 1; }
 .log .t { color: var(--dim); font-variant-numeric: tabular-nums; }
+/* What is under the pointer, beside it. */
+.tile-tip {
+  position: absolute; z-index: 2; width: max-content; max-width: 270px; background: rgba(21, 25, 34, 0.94); border: 1px solid var(--line);
+  border-radius: 6px; padding: 6px 10px; font-size: 0.9em; pointer-events: none; display: flex; flex-direction: column; gap: 2px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
+}
+.tile-tip .head { color: var(--dim); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
 
 @media (max-width: 760px) {
-  .play { grid-template-columns: 1fr; grid-template-rows: 1fr auto auto; }
-  .map { grid-row: 1; }
+  .play { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) auto; }
   .panel { grid-row: 2; grid-column: 1; max-height: 30vh; border-left: 0; border-top: 1px solid var(--line); }
-  .log { grid-row: 3; grid-column: 1; min-height: 0; }
 }
 .desk { margin-top: 28px; } .desk a { color: var(--accent); }
 .foot .btns { display: flex; gap: 6px; } .foot .btns button { padding: 4px 8px; }
@@ -110,11 +118,12 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 
 /* The travel map */
-.travelview { position: relative; grid-row: 1 / 3; grid-column: 1; min-width: 0; min-height: 0; }
+.travelview { position: relative; grid-row: 1; grid-column: 1; min-width: 0; min-height: 0; }
 .travelview .travel-map { position: absolute; inset: 0; }
 .travelview .night { position: absolute; inset: 0; background: #0a1030; pointer-events: none; transition: opacity 1.5s; }
+.travel-dock { position: absolute; left: 12px; right: 60px; bottom: 12px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; pointer-events: none; }
 .travel-bar {
-  position: absolute; left: 12px; right: 60px; bottom: 12px; background: rgba(21, 25, 34, 0.92); border: 1px solid var(--line);
+  align-self: stretch; pointer-events: auto; background: rgba(21, 25, 34, 0.92); border: 1px solid var(--line);
   border-radius: 8px; padding: 10px 12px; display: flex; flex-direction: column; gap: 8px; font-size: 0.92em;
 }
 .travel-bar .row { flex-wrap: wrap; gap: 6px; }
@@ -123,7 +132,6 @@ button:disabled { opacity: 0.5; cursor: default; }
 .travel-bar .sep { width: 10px; }
 .travel-bar .check { display: flex; align-items: center; gap: 6px; color: var(--dim); }
 .travel-bar select { padding: 4px 8px; }
-.travel-btn { align-self: flex-start; }
 
 /* The character in the play panel. */
 .who { display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
@@ -141,4 +149,3 @@ button:disabled { opacity: 0.5; cursor: default; }
 .need.bad .nb span { background: #c84a3a; }
 .need.bad .nw { color: #ff8a7a; }
 .need .nw { font-size: 0.92em; }
-.needs .air { font-size: 0.9em; margin-top: 2px; }

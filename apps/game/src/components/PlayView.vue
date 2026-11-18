@@ -1,15 +1,18 @@
 <script setup lang="ts">
 /**
  * The game screen: draws the game (game/session.ts): the local map (game/renderer.ts) with rain
- * and snow falling over it, or the travel map, with the side panel and the message log; and maps
- * keys to what the wanderer does. Everything that is the game itself is the session's.
+ * and snow falling over it, or the travel map, with the log over its corner, a note of what is
+ * under the pointer, and the side panel; and maps keys to what the wanderer does. Everything that
+ * is the game itself is the session's.
  */
 import { background } from '../app/errors';
-import { onBeforeUnmount, onMounted, ref } from 'vue';
+import { onBeforeUnmount, onMounted, reactive, ref } from 'vue';
 import { Renderer } from '../game/renderer';
 import { Tileset } from '../game/tileset';
 import { RainLayer } from '../game/rain';
 import TravelView from './TravelView.vue';
+import SkyDial from './SkyDial.vue';
+import MessageLog from './MessageLog.vue';
 import { ROOF_MODES, ROOF_WORDS } from '../game/roofs-mode';
 import type { PlayScreen } from '../screens/play';
 
@@ -24,13 +27,54 @@ const st = session.state;
 const el = ref<HTMLDivElement>();
 const travelRef = ref<InstanceType<typeof TravelView> | null>(null);
 const tilesetNote = ref('');
-const showHelp = ref(false);
 
 const tiles = new Tileset();
 const renderer = new Renderer(tiles);
 const rain = new RainLayer();
 let frame = 0;
 let gone = false;
+
+/** The pointer over the local map (CSS pixels from its corner), while it is there. */
+let pointer: [number, number] | null = null;
+/** The note of what is under the pointer (or the look cursor): where it hangs, and to which side. */
+const tip = reactive({ show: false, x: 0, y: 0, left: false, up: false });
+
+/** Hangs the note by the look cursor's tile, else by the pointer, turned inward near the map's edges. */
+function placeTip(): void {
+  if (st.mode !== 'local') pointer = null;
+  const box = el.value, cursor = hud.mode === 'look' ? game.cursor : null;
+  if (!box || (!cursor && !pointer)) {
+    tip.show = false;
+    return;
+  }
+  // What the note keeps clear of: the cursor's tile, or the pointer's arrow.
+  let x0: number, y0: number, x1: number, y1: number;
+  if (cursor) {
+    const p = renderer.screenOf(cursor[0], cursor[1]);
+    [x0, y0, x1, y1] = [p.x - 4, p.y - 4, p.x + p.size + 4, p.y + p.size + 4];
+  } else {
+    const [x, y] = pointer!;
+    hud.look = game.describe(...renderer.tileAt(x, y));
+    [x0, y0, x1, y1] = [x - 8, y - 8, x + 14, y + 18];
+  }
+  tip.left = x1 > box.clientWidth - 300;
+  tip.up = y1 > box.clientHeight - 200;
+  tip.x = tip.left ? x0 : x1;
+  tip.y = tip.up ? y0 : y1;
+  tip.show = true;
+}
+
+function onPointer(e: PointerEvent): void {
+  const r = el.value!.getBoundingClientRect();
+  pointer = [e.clientX - r.left, e.clientY - r.top];
+  placeTip();
+}
+
+function onPointerOut(): void {
+  pointer = null;
+  placeTip();
+}
+
 /** Draws the local map at the next frame (once, however often asked). */
 const redraw = () => {
   if (frame || gone) return;
@@ -42,6 +86,8 @@ const redraw = () => {
     renderer.look = session.look;
     rain.set(session.falling);
     renderer.draw(game);
+    // The map may have moved under the pointer.
+    placeTip();
   });
 };
 session.onRedraw = redraw;
@@ -55,11 +101,6 @@ renderer.onClick = (tx, ty) => {
   if (game.climbStairs(up)) game.refresh();
   else game.updateHud();
   redraw();
-};
-
-renderer.onHover = (tx, ty) => {
-  if (hud.mode === 'look') return;
-  hud.look = game.describe(tx, ty);
 };
 
 /** Key to direction: arrows, the number pad (with or without Num Lock) and vi keys. */
@@ -184,8 +225,6 @@ function onKey(e: KeyboardEvent): void {
     st.zoom = Math.min(4, st.zoom + 1);
   } else if (e.key === '-' || e.code === 'NumpadSubtract') {
     st.zoom = Math.max(1, st.zoom - 1);
-  } else if (e.key === '?') {
-    showHelp.value = !showHelp.value;
   } else if (e.code === 'KeyS' && (e.ctrlKey || e.metaKey)) {
     background(session.save(), 'the game');
   } else return;
@@ -224,7 +263,7 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="play">
-    <div v-show="st.mode === 'local'" ref="el" class="map" />
+    <div v-show="st.mode === 'local'" ref="el" class="map" @pointermove="onPointer" @pointerleave="onPointerOut" />
     <TravelView
       v-if="st.mode === 'travel'"
       class="map"
@@ -237,63 +276,44 @@ onBeforeUnmount(() => {
       @zoom-in="session.toLocal()"
       @camp="screen.showCamp()"
       :dark="st.darkness"
-    />
+    >
+      <MessageLog :log="hud.log" />
+    </TravelView>
+    <MessageLog v-else :log="hud.log" />
+    <div
+      v-if="tip.show && st.mode === 'local' && screen.active"
+      class="tile-tip"
+      :style="{ left: `${tip.x}px`, top: `${tip.y}px`, transform: `translate(${tip.left ? '-100%' : '0'}, ${tip.up ? '-100%' : '0'})` }"
+    >
+      <div v-if="hud.mode === 'look'" class="head">Looking (Esc to stop)</div>
+      <div v-for="(l, i) in hud.look" :key="i">{{ l }}</div>
+    </div>
     <aside class="panel">
       <div v-if="st.name" class="who">
         <a href="#" @click.prevent="screen.showSheet()">{{ st.name }}</a>
         <span class="dim">{{ st.line }}</span>
       </div>
+      <SkyDial v-if="st.sky" :sky="st.sky" :clock="hud.clock" :words="st.weather" />
+      <div v-else class="clock">{{ hud.clock }}</div>
       <div v-if="st.needs.length" class="needs">
         <div v-for="n in st.needs" :key="n.id" class="need" :class="{ bad: n.bar < 0.35, warn: n.bar < 0.6 }">
           <span class="nl">{{ n.label }}</span>
           <span class="nb"><span :style="{ width: `${Math.round(n.bar * 100)}%` }" /></span>
           <span class="nw">{{ n.word }}</span>
         </div>
-        <div v-if="st.weather" class="dim air">
-          <div>{{ st.weather.when }}</div>
-          <div>{{ st.weather.wind }}</div>
-          <div>{{ st.weather.air }}</div>
-          <div>{{ st.weather.sun }}</div>
-        </div>
-        <div v-else class="dim air">{{ st.air }}</div>
       </div>
       <div class="place">{{ hud.place }}</div>
       <div class="where">{{ hud.where }}</div>
       <div v-if="st.view" class="clock">Looking {{ Math.abs(st.view) === 1 ? 'a level' : `${Math.abs(st.view)} levels` }} {{ st.view > 0 ? 'up' : 'down' }} (&lt; and &gt;; Esc to come back)</div>
-      <div class="clock">{{ hud.clock }}<span v-if="hud.loading"> · making {{ hud.loading }} chunk{{ hud.loading === 1 ? '' : 's' }}</span></div>
-      <div class="look">
-        <div class="head">{{ hud.mode === 'look' ? 'Looking (Esc to stop)' : 'Under the pointer' }}</div>
-        <div v-for="(l, i) in hud.look" :key="i">{{ l }}</div>
+      <div v-if="hud.loading" class="clock">Making {{ hud.loading }} chunk{{ hud.loading === 1 ? '' : 's' }} of the map</div>
+      <div class="actions">
+        <button v-if="st.mode === 'local'" @click="session.toTravel()">Travel map <kbd>T</kbd></button>
+        <button v-else @click="session.toLocal()">Back on foot <kbd>T</kbd></button>
+        <button v-if="screen.player" @click="screen.showInventory()">Inventory <kbd>I</kbd></button>
+        <button v-if="screen.player && st.mode === 'local'" @click="screen.showCamp()">Camp <kbd>Shift+C</kbd></button>
+        <button v-if="st.mode === 'local' && hud.town" @click="screen.openCity(hud.town.id)">View {{ hud.town.name }} <kbd>V</kbd></button>
+        <button @click="screen.showKeys()">Keys <kbd>?</kbd></button>
       </div>
-      <div class="keys" v-if="showHelp">
-        <div><b>Move</b> arrows, number pad, or h j k l y u b n</div>
-        <div><b>Run</b> Shift + direction</div>
-        <div><b>Doors</b> walk into one to open it; o / c then a direction</div>
-        <div><b>Wait</b> . or 5</div>
-        <div><b>Look</b> x, then move the cursor</div>
-        <div><b>Zoom</b> + and -</div>
-        <div><b>Stairs</b> &lt; and &gt; on stairs or a ladder go up and down (and down a cave mouth, a dungeon's steps, a grate, or a well beside you)</div>
-        <div><b>Talk</b> E: to the one beside you (then a direction, if there are more)</div>
-        <div><b>Cut brush</b> A, then a direction: clear a bush or scrub with a machete, axe, hatchet, sword or knife (Survival)</div>
-        <div><b>Light</b> F: light a lantern, torch or candle from your pack, or put it out</div>
-        <div><b>Levels</b> &lt; and &gt; elsewhere look up and down; walk into a rock face twice to climb it</div>
-        <div><b>Roofs</b> Shift+R: shown unless you are inside, always, or never</div>
-        <div><b>Travel map</b> T (and T or Z to come back)</div>
-        <div><b>Character</b> @</div>
-        <div><b>Inventory</b> I (G to pick up; eat and drink from it)</div>
-        <div><b>Drink</b> Q at water or a well (fills waterskins too)</div>
-        <div><b>Sleep or rest</b> Shift+Z</div>
-        <div><b>Camp</b> Shift+C: choose a site, fire, shelter, food, the night</div>
-        <div><b>Read the sky</b> Shift+W: what weather is coming (Survival)</div>
-        <div><b>Town view</b> V, in a town or city</div>
-        <div><b>Save</b> Ctrl+S (also saved every few minutes and on leaving)</div>
-      </div>
-      <div class="hint" v-else>Press ? for keys.</div>
-      <button v-if="st.mode === 'local'" class="travel-btn" @click="session.toTravel()">Travel map (T)</button>
-      <button v-if="screen.player" class="travel-btn" @click="screen.showInventory()">Inventory (I)</button>
-      <button v-if="screen.player && st.mode === 'local'" class="travel-btn" @click="screen.showCamp()">Camp (Shift+C)</button>
-      <button v-if="st.mode === 'local' && hud.town" class="travel-btn" @click="screen.openCity(hud.town.id)">View {{ hud.town.name }} (V)</button>
-      <button v-else class="travel-btn" @click="session.toLocal()">Back on foot (T)</button>
       <div class="foot">
         <span>{{ tilesetNote }}</span>
         <span class="btns">
@@ -303,10 +323,5 @@ onBeforeUnmount(() => {
         </span>
       </div>
     </aside>
-    <div class="log">
-      <div v-for="(m, i) in hud.log.slice(-6)" :key="i" :style="{ opacity: 0.45 + (0.55 * (i + 1)) / Math.min(6, hud.log.length) }">
-        <span class="t">{{ m.t.split(', ')[1] }}</span> {{ m.text }}
-      </div>
-    </div>
   </div>
 </template>

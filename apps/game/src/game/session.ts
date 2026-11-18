@@ -42,7 +42,7 @@ import { LOUD, directionWords, heardLevel, hearingThreshold, readTracks, takesTr
 import { opinionWords } from '../world/opinions';
 import { greeting, lineOf } from '../world/talk';
 import { sunTimes } from '@worldforge/core/weather/weather';
-import { WeatherService, type Sky } from './weather';
+import { WeatherService, type Sky, type SkyPicture } from './weather';
 import type { RoofMode } from './roofs-mode';
 import { hash32 } from '../util';
 
@@ -135,8 +135,9 @@ export class PlaySession {
     /** The needs as bars and words (actors/needs.ts), and the air. */
     needs: [] as { id: NeedId; label: string; word: string; bar: number }[],
     air: '',
-    /** The weather and the hour in words (game/weather.ts). */
+    /** The weather and the hour in words (game/weather.ts), and as the panel's picture of the sky. */
     weather: null as { when: string; wind: string; air: string; sun: string } | null,
+    sky: null as SkyPicture | null,
   });
   /** How the local map should look now: the sky's colour, snow lying, the season, the light (game/renderer.ts). */
   look: { sky: number; snowCm: number; season: Season; light: number } = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
@@ -584,6 +585,7 @@ export class PlaySession {
       air: `${Math.round(airC)}°C${felt !== undefined && Math.abs(felt - airC) >= 3 ? ` (feels ${Math.round(felt)}°C)` : ''}, ${airWord(airC)}; ${s.season}${s.snowCm >= 2 ? `; snow ${s.snowCm} cm deep` : s.mud > 0.5 ? '; the ground is muddy' : ''}`,
       sun: this.weather.sunWords(s.t),
     };
+    this.state.sky = this.weather.picture(s, { inside, tempC: Math.round(airC), ...(felt !== undefined && Math.abs(felt - airC) >= 3 ? { feltC: Math.round(felt) } : {}) });
     this.redraw();
   }
 

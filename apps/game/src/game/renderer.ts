@@ -143,8 +143,6 @@ export class Renderer {
   private cols = 0;
   private rows = 0;
   zoom = 2;
-  /** Screen tile under the pointer, as a map tile. */
-  onHover: (tx: number, ty: number) => void = () => {};
   /** A map tile clicked. */
   onClick: (tx: number, ty: number) => void = () => {};
 
@@ -165,15 +163,20 @@ export class Renderer {
     this.itemLook = { tex: [this.glyphTexture('*', '#f3d27a')], ms: 0, dx: 0, dy: 0, tint: 0xffffff };
     this.app.stage.eventMode = 'static';
     this.app.stage.hitArea = this.app.screen;
-    this.app.stage.on('pointermove', (e) => {
-      // The map is drawn from a tile above and to the left of the screen's corner.
-      const s = TILE_PX * this.zoom;
-      this.onHover(Math.floor(e.global.x / s) + 1 - this.ox, Math.floor(e.global.y / s) + 1 - this.oy);
-    });
-    this.app.stage.on('pointertap', (e) => {
-      const s = TILE_PX * this.zoom;
-      this.onClick(Math.floor(e.global.x / s) + 1 - this.ox, Math.floor(e.global.y / s) + 1 - this.oy);
-    });
+    this.app.stage.on('pointertap', (e) => this.onClick(...this.tileAt(e.global.x, e.global.y)));
+  }
+
+  /** The map tile at a point of the picture (CSS pixels from its corner). */
+  tileAt(x: number, y: number): [number, number] {
+    // The map is drawn from a tile above and to the left of the screen's corner.
+    const s = TILE_PX * this.zoom;
+    return [Math.floor(x / s) + 1 - this.ox, Math.floor(y / s) + 1 - this.oy];
+  }
+
+  /** A map tile's corner on the picture (CSS pixels), and its size there. */
+  screenOf(tx: number, ty: number): { x: number; y: number; size: number } {
+    const s = TILE_PX * this.zoom;
+    return { x: (tx + this.ox - 1) * s, y: (ty + this.oy - 1) * s, size: s };
   }
 
   private itemLook: Look | null = null;

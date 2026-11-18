@@ -66,8 +66,11 @@ numbers proposed, tuned with `apps/game/scripts/weather-test.ts`):*
   rain on it), rain soaks in and dries; frozen ground is not muddy. Deep snow and mud slow walking
   and travel.
 - **In play** the weather follows the party (the climate is asked of the worker as it moves). The
-  side panel gives the hour, the sky, the wind and the temperature (and what it feels like) in
-  words, with the day's sunrise and sunset; the log notes changes (the rain begins, the wind rises
+  side panel pictures the sky: the sun (by night the moon, in its phase) on its way between the
+  day's sunrise and sunset, the cloud, rain or snow leaning with the wind, fog and lightning, over
+  ground in the season's colour (through a window when indoors); beneath it the clock, the wind as
+  an arrow and the temperature (and what it feels like). Hovering tells the same in words. The log
+  notes changes (the rain begins, the wind rises
   to a gale, a fog comes down, the sun sets, snow lies on the ground, a new season). A storm,
   heavy snow or a gale stops a journey. Heavy rain puts out an open camp fire. Rain and snow fall
   over the local map.
