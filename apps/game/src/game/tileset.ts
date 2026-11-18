@@ -7,6 +7,8 @@
 import { Rectangle, Texture } from 'pixi.js';
 import { DECOR, GROUND_TILES, OBJECT_TILES, TERRAINS, type DecorDef, type Facing, type TileDef } from '@worldforge/core/local/tiles';
 import { figureFrameNames } from '@worldforge/core/local/figures';
+import { SPECIES_BY_ID, animalFrameNames } from '@worldforge/core/local/fauna';
+import { drawAnimal } from './animal-art';
 import { drawLayer } from './figure';
 import { edgeInside } from './terrain';
 import { TREE_KINDS, type TreeKind } from '@worldforge/core/local/trees';
@@ -54,6 +56,7 @@ const LAYERS = new Map<string, FrameLayer>([
   ...TERRAINS.map((t) => [`edge_${t.name}`, 'edge'] as const),
   ...TREE_KINDS.flatMap((k) => TREE_FRAMES.map((f) => [`${f}_${k.name}`, 'tree'] as const)),
   ...figureFrameNames().map((n) => [n, 'figure'] as const),
+  ...animalFrameNames().map((n) => [n, 'animal'] as const),
   ...(Object.keys(ROOF_MATERIALS) as RoofMaterial[]).flatMap((m) => ROOF_PLANES.map((pl) => [`roof_${m}_${pl}`, 'roof'] as const)),
 ]);
 
@@ -105,6 +108,37 @@ export class Tileset {
       this.layerLooks.set(key, look);
     }
     return { look, flip: false, art: false };
+  }
+
+  /** Placeholder animals, made when first asked for. */
+  private animalLooks = new Map<string, Look>();
+
+  /**
+   * An animal (core local/fauna.ts) facing a way, standing, moving or (a bird) flying: the tileset's
+   * frames if it has them (east turned about for west), else a placeholder in the species' colours.
+   */
+  animalLook(species: string, facing: Facing, moving: boolean, flying: boolean): { look: Look; flip: boolean } {
+    const art = (n: string) => (this.drawn.has(n) ? this.get('animal', n, 0, 0) : null);
+    for (const [d, flip] of [[facing, false], ...(facing === 'w' ? [['e', true] as const] : [])] as [Facing, boolean][]) {
+      const look = (flying && art(`animal_${species}_fly_${d}`)) || (moving && art(`animal_${species}_walk_${d}`)) || art(`animal_${species}_${d}`);
+      if (look) return { look, flip };
+    }
+    const key = `${species}|${facing}|${moving ? 1 : 0}|${flying ? 1 : 0}`;
+    let look = this.animalLooks.get(key);
+    if (!look) {
+      const s = SPECIES_BY_ID.get(species);
+      const W = 24, H = 20, cv = document.createElement('canvas');
+      cv.width = 3 * W;
+      cv.height = H;
+      const g = cv.getContext('2d')!;
+      if (s) for (let fr = 0; fr < 3; fr++) drawAnimal(g, fr * W + 4, 4, s, facing, fr, flying);
+      const sheet = Texture.from(cv);
+      sheet.source.scaleMode = 'nearest';
+      const tex = (fr: number) => new Texture({ source: sheet.source, frame: new Rectangle(fr * W, 0, W, H) });
+      look = moving || flying ? { tex: [tex(1), tex(0), tex(2), tex(0)], ms: flying ? 90 : 110, dx: -4, dy: -4, tint: 0xffffff } : { tex: [tex(0)], ms: 0, dx: -4, dy: -4, tint: 0xffffff };
+      this.animalLooks.set(key, look);
+    }
+    return { look, flip: false };
   }
 
   private placeholders(): void {

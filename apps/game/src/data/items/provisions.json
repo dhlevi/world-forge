@@ -204,6 +204,30 @@
       "durable": false,
       "sold": ["apothecary"],
       "about": "A stoppered flask of a remedy."
+    },
+    {
+      "id": "raw_meat",
+      "name": "raw meat",
+      "plural": "cuts of raw meat",
+      "kind": "food",
+      "weight": 0.8,
+      "bulk": 1,
+      "size": "small",
+      "value": 3,
+      "stack": 8,
+      "uses": 3,
+      "useWord": "portions",
+      "food": {
+        "kcal": 220,
+        "verb": "eat some of the meat",
+        "raw": true
+      },
+      "durable": false,
+      "sold": [
+        "market",
+        "butcher"
+      ],
+      "about": "Fresh meat from a butchered animal. It will not keep long; roast it, or dry it."
     }
   ]
 }

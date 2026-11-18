@@ -150,6 +150,9 @@ export class Population {
   readonly tracks = new Tracks();
   /** Noises made by the people since the session last listened (world/senses.ts). */
   noises: Noise[] = [];
+  /** Whether an animal stands on a tile (world/fauna.ts), and shooing it off. */
+  animalAt: (x: number, y: number, z: number | null) => boolean = () => false;
+  shoo: (x: number, y: number, z: number | null) => void = () => {};
   /** What is seen to happen among them, for the log (a greeting, a sleeper stirring). */
   onSee: (text: string) => void = () => {};
   /** Greetings between people, by pair, the day they last met. */
@@ -251,7 +254,7 @@ export class Population {
 
   private free(g: PopulationView, t: Spot, me?: Resident): boolean {
     const o = this.byTile.get(tileKey(t.x, t.y, t.z));
-    return (!o || o === me) && !(t.x === g.px && t.y === g.py && t.z === g.z);
+    return (!o || o === me) && !(t.x === g.px && t.y === g.py && t.z === g.z) && !this.animalAt(t.x, t.y, t.z);
   }
 
   private place(r: Resident, t: Spot): void {
@@ -518,6 +521,12 @@ export class Population {
       const s = r.path[0];
       const other = this.byTile.get(tileKey(s.x, s.y, s.z));
       const player = s.x === g.px && s.y === g.py && s.z === g.z;
+      // An animal in the way is shooed off, and the walker waits a moment.
+      if (!other && !player && this.animalAt(s.x, s.y, s.z)) {
+        this.shoo(s.x, s.y, s.z);
+        r.nextAt += WAIT_S;
+        if (this.animalAt(s.x, s.y, s.z)) continue;
+      }
       if ((other && other !== r) || player) {
         // The last tile taken: settle beside it instead.
         if (r.path.length === 1 && !player) {

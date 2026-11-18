@@ -254,8 +254,29 @@ nations, regions and cities; factions. **Proposed:**
   with each, and how factions regard one another (helping the thieves angers the watch).
 - **What others know.** A deed reaches a person's opinion only if they saw it, or heard of it
   (rumour spreading through ties and taverns, with quests.md); reputation is not omniscient.
+- **Disguises** *(added at the user's request)*. Reputation attaches to whom people believe they
+  are dealing with. A disguise (the Disguise skill: clothes, bearing, voice, and the kit to change
+  a face) gives the wanderer another appearance; while it holds, people judge the disguise, not
+  the wanderer, so a bad name in a town can be walked past. **Proposed:**
+  - *Making one.* A disguise is a named persona built from what is worn (a priest's robe, a
+    guard's livery, a beggar's rags), changes to hair, beard and face, and a manner; its quality is
+    a Disguise check, better with fitting clothes and kit, worse for a body hard to hide (height,
+    kind of people, a famous scar).
+  - *Holding it.* Each close look, talk, or act out of character (a beggar paying in gold, a
+    priest who cannot say the rites) tests it against the onlooker's notice (Wisdom, Eyesight,
+    and how well they know the wanderer: kin and friends see through it soonest). Light, distance
+    and crowds help; the watch with a description is keener.
+  - *Its own name.* A disguise used again carries a reputation of its own: deeds done in it are
+    told of it ("the grey friar who robbed the toll house"), with its own opinions, standings and
+    wanted notices, so a much-used disguise in time draws attention of its own.
+  - *Exposure.* When a disguise is seen through (and the word spreads, as any deed does), its
+    reputation merges into the wanderer's for those who know: the friar's crimes become the
+    wanderer's, and the disguise is burnt there.
+  - *Saving.* Each persona is kept: its look, its reputation by person and place, and where it has
+    been exposed.
 - Stage 1 keeps only the personal opinion's store and its drift; places and factions come with
-  the second pass and the quests.
+  the second pass and the quests. Disguises come with skills in use (Stage 4), on the reputation of
+  places and factions (Stage 3).
 
 ## Talking and dealing (first stage only)
 
@@ -435,11 +456,55 @@ nations, regions and cities; factions. **Proposed:**
 
 **Stage 2: animals.** Species and populations, bodies and temperaments, grazing and herds,
 fleeing, predators, birds across levels, smell and wind, hunting with tracks; the street animals
-of towns (dogs, cats, rats, pigeons).
+of towns (dogs, cats, rats, pigeons). *(Built. Decided with the user: predators are threats
+only until combat (they stalk, growl and bluff-charge, then back off); hunting is tracking,
+sneaking, snares and butchery (shooting waits for combat); each species has its own template
+frames. `core local/fauna.ts` lists 47 species, wild (the everyday hare, rabbit, squirrel, fox,
+badger, roe deer and the birds; the bestiary's beasts only where the region's bestiary has them),
+kept (cattle, sheep, goats, pigs, hens, geese, horses, donkeys) and in the streets (dogs, cats,
+rats, pigeons), each with a body plan, size, temper (tame, timid, skittish, wary, aggressive),
+diet, group size, hours, pace, sight, hearing, smell, flight distance and yields. The worker
+(`worker/fauna.ts`) seeds each chunk by its region's species, thinned in and near settlements and
+renewed week by week, each group with a home range and water near it; horses at stables and inns,
+hens, pigs and geese about farmhouses, flocks and herds on the grass about villages; dogs and cats
+about a town's houses, rats, pigeons at the markets. The game (`world/fauna.ts`) acts them after
+each action within 40 tiles: asleep out of their hours (bears through the winter), grazing and
+wandering their range, the herd keeping with its leader, down to water at dawn and dusk; they
+notice the wanderer by sight (less when sneaking and in the dark), noise and scent downwind, and
+flee as a herd (a flock rises at once and comes down farther off, perching in trees); hungry
+predators stalk, chase and catch their prey; bold beasts and hungry winter packs bluff-charge the
+wanderer. Birds fly a level or two up, drawn raised with a shadow below; the slices do not show
+them yet. `world/hunting.ts`: Shift+S sneaks (slower, quieter, harder to see, practising Sneak near
+unwary beasts), P sets or lifts a snare (snare wire), which catches small game that steps on
+it or, out of sight, by the hour by Survival; a carcass is butchered with a blade (Survival) for
+meat, hide, antler, horn, tusk, teeth, claws, feathers or venom. Animal tracks are read by
+Tracking with the species named. Snares and the animals taken are saved.)*
 
 **Stage 3: the second pass.** Fear and flight among people; thieves and the watch; visitors;
 temple days, market days, holidays and festivals; using skills at work for real; reputation with
 cities, regions, nations and factions; the hooks for plague, curfew and war (Dev notes).
+
+**Stage 4: skills in use** *(added at the user's request after Stage 1)*. The wanderer's skills
+put to work on the people and beasts of the bubble: trading (buying and selling at the stalls and
+shops, haggling by Persuasion and Appraisal, with the economy's prices), tracking (following a
+trail of tracks tile by tile, telling a quarry's age and pace), picking pockets and lifting goods
+(Sleight of hand against the mark's notice, with the belongings residents already carry),
+disguises with reputations of their own (Reputation, Disguises), sneaking past and into places, persuading, intimidating and deceiving in talk, healing, and the
+crafts at a workbench. Each use is a check (actors/checks.ts) that practises the skill. Combat is
+its own design (combat.md).
+
+**Stage 5: meeting people for real** *(added at the user's request)*:
+- *Strangers stay strangers.* Looking at someone shows only what shows: their look, their
+  dress and tools, what they are doing ("a woman in a leather apron at a forge"). Their name, trade
+  and household are learnt by asking, or from someone who knows them, and kept in the journal of
+  people met.
+- *Their own tongue.* Residents speak the language of their people (lang/), written out in it.
+  What they say is translated only as far as the wanderer knows that language (characters.md,
+  Languages): a few words, the gist, or all of it; a shared second language is used if both have
+  one. Listening to a language spoken about, and talking in it, practises it (immersion).
+- *Signs.* Shops, inns, temples and workshops hang signs: a picture of the trade (a boot, a
+  bunch of grapes, a hammer) and its name written in the local script (lang/script.ts), read as
+  far as the wanderer reads that script and knows the language.
 
 ## Open questions
 

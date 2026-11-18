@@ -128,6 +128,14 @@ function onKey(e: KeyboardEvent): void {
     return;
   }
   const dir = DIR[e.code];
+  // Sneaking (Shift+S), and setting or lifting a snare (P).
+  if (hud.mode === 'play' && ((e.shiftKey && e.code === 'KeyS') || (!e.shiftKey && e.code === 'KeyP')) && !e.ctrlKey && !e.metaKey) {
+    if (e.code === 'KeyS') session.toggleSneak();
+    else session.snareHere();
+    e.preventDefault();
+    redraw();
+    return;
+  }
   // Roofs: shown unless inside, always, or never (Shift+R, in turn).
   if (hud.mode === 'play' && e.code === 'KeyR' && e.shiftKey) {
     st.roofs = ROOF_MODES[(ROOF_MODES.indexOf(st.roofs) + 1) % ROOF_MODES.length];

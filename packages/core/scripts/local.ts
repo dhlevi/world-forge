@@ -165,6 +165,28 @@ console.log(`Local hash ${(h >>> 0).toString(16).padStart(8, '0')}`);
   if (lostUp) process.exitCode = 1;
 }
 
+// Outer doors that open onto something that blocks (a tree's trunk, a hedge, a wall): none should.
+{
+  const byKey = new Map(chunks.map((c) => [`${c.cx},${c.cy}`, c]));
+  const at = (x: number, y: number) => {
+    const c = byKey.get(`${Math.floor(x / CHUNK)},${Math.floor(y / CHUNK)}`);
+    if (!c) return null;
+    const k = (y - c.cy * CHUNK) * CHUNK + (x - c.cx * CHUNK);
+    return { g: GROUND_TILES[c.ground[k]], o: OBJECT_TILES[c.object[k]] };
+  };
+  let doors = 0, shut = 0;
+  for (const c of chunks) for (let k = 0; k < c.object.length; k++) {
+    if (OBJECT_TILES[c.object[k]].name !== 'door') continue;
+    const x = c.cx * CHUNK + (k % CHUNK), y = c.cy * CHUNK + Math.floor(k / CHUNK);
+    const out = [[0, 1], [1, 0], [0, -1], [-1, 0]].map(([dx, dy]) => at(x + dx, y + dy)).filter((t) => t && !t.g.name.startsWith('floor_'));
+    if (!out.length) continue;
+    doors++;
+    if (!out.some((t) => t!.g.pass && (t!.o.name === 'none' || t!.o.pass || !!t!.o.toggle))) shut++;
+  }
+  console.log(`Outer doors: ${doors}, ${shut} opening onto something that blocks the way`);
+  if (shut) process.exitCode = 1;
+}
+
 const count = new Map<string, number>();
 for (const c of chunks) for (let k = 0; k < c.object.length; k++) if (c.object[k]) count.set(OBJECT_TILES[c.object[k]].name, (count.get(OBJECT_TILES[c.object[k]].name) ?? 0) + 1);
 console.log('Objects:', [...count].sort((a, b) => b[1] - a[1]).slice(0, 30).map(([k, v]) => `${k} ${v}`).join(', '));

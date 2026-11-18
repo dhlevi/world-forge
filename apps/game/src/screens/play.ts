@@ -32,7 +32,7 @@ export class PlayScreen extends Screen {
     super();
     const w = app.worker;
     this.session = new PlaySession(
-      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, site: w.site, starts: () => app.state.starts },
+      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, site: w.site, starts: () => app.state.starts },
       { openCity: (id, at) => this.openCity(id, at), toTitle: () => app.toTitle() },
       o,
     );

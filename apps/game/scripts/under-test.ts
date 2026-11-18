@@ -140,6 +140,44 @@ for (const kind of DUNGEON_KINDS) {
   const spirals = p.levels.map((l) => Array.from(l.object).filter((o) => OBJECT_TILES[o].name === 'stairs_spiral').length);
   ok(spirals.every((n) => n === 1), 'one spiral stair through every floor');
 }
+// Every tower can be walked into from the land: its door in the outer wall, the floor within reached
+// from the open ground outside it.
+{
+  let bad = 0, n = 0;
+  const why: string[] = [];
+  for (let seed = 1; seed <= 120; seed++) for (const size of ['small', 'medium', 'large']) {
+    const p = planDungeon({ ...site('tower', { tags: [size, `${2 + (seed % 3)} levels`] }), id: `t-tower-${seed}-${size}`, seed: seed * 7919 }, [50, 50], false, land);
+    if (!p) continue;
+    n++;
+    const tiles = new Map(p.surface.filter((e) => e.object !== undefined).map((e) => [`${e.x},${e.y}`, e]));
+    // The way in: a door with the open land beside it (the rest are doors within).
+    const door = [...tiles.values()].find((e) => OBJECT_TILES[e.object!].name === 'door' && [[0, 1], [1, 0], [0, -1], [-1, 0]].some(([dx, dy]) => !tiles.has(`${e.x + dx},${e.y + dy}`)));
+    if (!door) {
+      bad++;
+      why.push(`${seed}/${size}: no door in the outer wall`);
+      continue;
+    }
+    const seen = new Set([`${door.x},${door.y}`]);
+    const q = [[door.x, door.y]];
+    while (q.length) {
+      const [x, y] = q.pop()!;
+      for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
+        const k = `${x + dx},${y + dy}`, t = tiles.get(k);
+        if (seen.has(k) || !t) continue;
+        const o = OBJECT_TILES[t.object!];
+        if (t.object && !o.pass && !o.toggle) continue;
+        seen.add(k);
+        q.push([x + dx, y + dy]);
+      }
+    }
+    const open = [...tiles.values()].filter((t) => !t.object || OBJECT_TILES[t.object].pass || OBJECT_TILES[t.object].toggle);
+    if (seen.size < open.length * 0.9) {
+      bad++;
+      why.push(`${seed}/${size}: ${seen.size} of ${open.length} reached`);
+    }
+  }
+  ok(bad === 0, `every tower (${n}) has a door in its outer wall, and its floor is reached through it${bad ? ` (${why.slice(0, 4).join('; ')})` : ''}`);
+}
 // A cave: below the land under its mouth.
 for (const [seed, tags] of [[987, ['large']], [31, ['small', 'sealed']], [4242, ['medium', 'wet', '3 levels']], [77, ['large', '2 levels']], [1234, ['small']]] as [number, string[]][]) {
   const cave: LairSite = { id: `t-cave-${seed}`, kind: 'cave', name: 'The cave', seed, tags, lon: 0, lat: 0 };

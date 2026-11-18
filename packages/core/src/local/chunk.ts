@@ -29,7 +29,7 @@ import { dungeonSiteOf } from '../dungeons/core';
  * The local map's own version: raised whenever the same world would give different tiles (a game
  * saves its changes over the baseline of one version).
  */
-export const LOCAL_MAP_VERSION = 9;
+export const LOCAL_MAP_VERSION = 10;
 
 /** Metres in a level (a storey): the land's height and the floors of buildings go up in these. */
 export const LEVEL_M = 3;
@@ -446,8 +446,8 @@ export class LocalWorld {
 
     // The plan's buildings near this one (older and newer) and its streets.
     const near: LocalItem[] = [], streets: number[][] = [], ways: { xy: number[]; hw: number }[] = [];
-    /** What else of the plan stands on the open ground and would block a door: town walls, trees, wells, towers. */
-    const blockers: { xy: number[]; r: number }[] = [];
+    /** What else of the plan stands on the open ground and would block a door: town walls, trees, wells, towers, hedges and fences, the great trunks of tree towns. */
+    const blockers: { xy: number[]; r: number; poly?: boolean }[] = [];
     const seenIt = new Set<number>();
     for (let ky = Math.floor((by0 - 8) / CHUNK); ky <= Math.floor((by0 + h + 8) / CHUNK); ky++) {
       for (let kx = Math.floor((bx0 - 8) / CHUNK); kx <= Math.floor((bx0 + w + 8) / CHUNK); kx++) {
@@ -461,6 +461,8 @@ export class LocalWorld {
             streets.push(it.xy);
             ways.push({ xy: it.xy, hw: it.kind === 'road' ? (ROAD_W[String(it.p.cls ?? '')] ?? 3.5) / 2 : WAY_HW[it.kind] });
           } else if (it.type === 'LineString' && it.kind === 'wall') blockers.push({ xy: it.xy, r: (Number(it.p.w ?? 2) / 2) * 1.07 });
+          else if (it.type === 'Polygon' && it.kind === 'trunk') blockers.push({ xy: it.xy, r: 0, poly: true });
+          else if (it.type === 'LineString' && (it.kind === 'hedge' || it.kind === 'picket')) blockers.push({ xy: it.xy, r: 0.4 });
           else if (it.type === 'Point' && (it.kind === 'tree' || it.kind === 'well' || it.kind === 'tower')) blockers.push({ xy: it.xy, r: it.kind === 'tower' ? Math.min(Number(it.p.r ?? 0), 6) : 0 });
         }
       }
@@ -598,6 +600,7 @@ export class LocalWorld {
       const px = cx(k), py = cy(k), m = TILE_M * 0.75;
       for (const b of blockers) {
         const r = b.r + m;
+        if (b.poly && pointInPoly(b.xy, px, py)) return true;
         if (b.xy.length === 2) {
           const dx = b.xy[0] - px, dy = b.xy[1] - py;
           if (dx * dx + dy * dy < r * r) return true;

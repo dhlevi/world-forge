@@ -38,6 +38,9 @@ import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type SaveFile } from './save';
 import { Travel } from './travel';
 import { Population, doingWords, type Resident } from '../world/population';
+import { Fauna, animalLines, type Presence } from '../world/fauna';
+import { Snares, carcassOf } from '../world/hunting';
+import { SPECIES_BY_ID } from '@worldforge/core/local/fauna';
 import { LOUD, directionWords, heardLevel, hearingThreshold, readTracks, takesTracks, type Noise } from '../world/senses';
 import { opinionWords } from '../world/opinions';
 import { greeting, lineOf } from '../world/talk';
@@ -67,6 +70,8 @@ export interface SessionWorld {
   requestRoute(from: [number, number], to: [number, number]): Promise<RouteResult>;
   /** The residents about a tile at a time, placed by their day plan (none: nobody is placed). */
   requestPeople?: WorkerClient['requestPeople'];
+  /** The animals about a tile (none: no animals). */
+  requestAnimals?: WorkerClient['requestAnimals'];
   site: WorkerClient['site'];
   /** The world's towns and cities that a game can begin in (for what the character knew). */
   starts(): StartSite[];
@@ -103,8 +108,12 @@ export class PlaySession {
   readonly map: GameMap;
   readonly game: Game;
   readonly travel: Travel;
-  /** The residents about the wanderer (world/population.ts). */
+  /** The residents about the wanderer (world/population.ts), the animals (world/fauna.ts), and the snares set (world/hunting.ts). */
   readonly people: Population;
+  readonly fauna: Fauna;
+  readonly snares = new Snares();
+  /** When the wanderer last practised Sneak near animals (game seconds). */
+  private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
   private lastTracksAt = -1;
   private toldNoise = new Map<string, number>();
@@ -190,7 +199,7 @@ export class PlaySession {
     this.travel = new Travel(game, [o.site.lon, o.site.lat], (from, to) => world.requestRoute(from, to));
 
     // The game's hooks: what slows the wanderer, what they carry for light, what happens as time passes.
-    game.loadSlow = () => this.invSlow() * (this.needs()?.slow() ?? 1) * this.groundSlow();
+    game.loadSlow = () => this.invSlow() * (this.needs()?.slow() ?? 1) * this.groundSlow() * (game.sneaking ? 1.6 : 1);
     game.carriedLight = () => {
       const it = this.heldLight();
       return it ? LIGHT_REACH[it.def] ?? 3 : 0;
@@ -220,16 +229,44 @@ export class PlaySession {
     };
     game.onNoise = (kind, x, y, z, dir) => {
       const gid = game.map.groundAt(x, y, z), gd = GROUND_TILES[gid];
-      const loud = kind === 'door' ? LOUD.door : gd?.water ? LOUD.stepWater : takesTracks(gid, true) ? LOUD.stepSoft : LOUD.stepHard;
-      if (this.state.mode === 'local') this.people.hearPlayer(game, { x, y, z, loud, kind, what: kind === 'door' ? 'a door' : 'footsteps' });
+      // Sneaking: much quieter (more so with skill).
+      const hush = game.sneaking ? 10 + (this.player?.get(Skills)?.effective('sneak') ?? 0) / 8 : 0;
+      const loud = (kind === 'door' ? LOUD.door : gd?.water ? LOUD.stepWater : takesTracks(gid, true) ? LOUD.stepSoft : LOUD.stepHard) - hush;
+      const n = { x, y, z, loud, kind, what: kind === 'door' ? 'a door' : 'footsteps' };
+      if (this.state.mode === 'local') {
+        this.people.hearPlayer(game, n);
+        if (z === null) this.fauna.hearPlayer(game, n, this.presence());
+        if (kind === 'step') this.stepped(x, y, z);
+      }
       if (kind === 'step' && takesTracks(gid, this.people.wet)) this.people.tracks.add(x, y, z, { t: game.time, by: 'player', kind: this.player?.get(Body)?.d.kind ?? 'human', dir });
     };
     game.tracksText = (x, y, z) => readTracks(this.people.tracks.at(x, y, z, game.time), game.time, this.player?.get(Skills)?.effective('tracking') ?? 0);
     game.tracksOn = (x, y, z) => this.people.tracks.at(x, y, z, game.time).length;
     this.people.onSee = (text) => game.say(text);
+    // The animals about (world/fauna.ts), their noises and tracks, and the wanderer's snares (world/hunting.ts).
+    const askA = world.requestAnimals;
+    this.fauna = new Fauna(askA ? (x, y, t, w) => askA(x, y, t, w) : () => Promise.resolve({ groups: [], radius: 0 }), this.people.tracks);
+    this.fauna.personAt = (x, y) => !!this.people.at(x, y, null);
+    this.fauna.onSee = (text) => game.say(text);
+    this.fauna.onChange = () => {
+      if (this.state.mode === 'local') this.redraw();
+    };
+    this.people.animalAt = (x, y, z) => z === null && (this.fauna.at(x, y)?.alt ?? 1) === 0;
+    this.people.shoo = (x, y) => this.fauna.shoo(x, y, game);
+    game.animals = () => (this.state.mode === 'local' ? [...this.fauna.all()].map((a) => ({ x: a.x, y: a.y, alt: a.alt, perched: a.perched, facing: a.facing, species: a.s.id, moving: a.state === 'walk' || a.state === 'flee' || a.state === 'chase' || a.state === 'stalk' || a.state === 'drink', sleeping: a.state === 'sleep' })) : []);
+    game.animalAt = (x, y) => {
+      const a = this.state.mode === 'local' ? this.fauna.at(x, y) : null;
+      return a ? animalLines(a, game.time) : null;
+    };
+    game.onBumpAnimal = (x, y) => {
+      const a = this.state.mode === 'local' ? this.fauna.at(x, y) : null;
+      return a && a.alt === 0 ? this.fauna.bumped(game, a) : null;
+    };
     if (o.restore?.people) {
       this.people.opinions.import(o.restore.people.opinions);
       this.people.tracks.import(o.restore.people.tracks);
+      this.snares.import(o.restore.people.snares);
+      for (const id of o.restore.people.gone ?? []) this.fauna.gone.add(id);
     }
 
     // The road: steps take skill (fords, steep ground), weather shortens sight, arriving opens the place.
@@ -410,6 +447,7 @@ export class PlaySession {
     this.game.cursor = null;
     this.state.mode = 'travel';
     this.people.clear();
+    this.fauna.clear();
     this.game.say('You take to the road.');
     this.applySky(this.skyNow);
   }
@@ -481,6 +519,11 @@ export class PlaySession {
       this.people.raining = sky.w.rainMm > 0.5;
       this.people.wet = this.people.raining || sky.mud > 0.2 || sky.snowCm > 0;
       this.people.update(game);
+      // The animals, and the snares set for them.
+      this.fauna.update(game, this.presence());
+      for (const sn of this.snares.run(this.fauna, game, this.player?.get(Skills)?.effective('survival') ?? 0)) {
+        if (game.isVisible(sn.x, sn.y) && game.z === null) game.say(`Your snare catches a ${SPECIES_BY_ID.get(sn.caught ?? '')?.name ?? 'beast'}.`);
+      }
       this.listen();
       // Rain and falling snow wash out (or cover) the older tracks; the rest fade in time.
       if (Math.floor(t / 600) !== Math.floor(this.lastTracksAt / 600)) {
@@ -687,7 +730,7 @@ export class PlaySession {
    * of work, doors, voices, footsteps close by in the quiet; each kind told of once in a while.
    */
   private listen(): void {
-    const g = this.game, noises = this.people.noises.splice(0);
+    const g = this.game, noises = [...this.people.noises.splice(0), ...this.fauna.noises.splice(0)];
     const hearing = this.player?.get(Traits)?.get('hearing') ?? 10;
     const thr = hearingThreshold(hearing);
     let best: { n: Noise; level: number } | null = null;
@@ -705,6 +748,82 @@ export class PlaySession {
     this.toldNoise.set(key, g.time);
     const where = directionWords({ x: g.px, y: g.py }, n), far = Math.max(Math.abs(n.x - g.px), Math.abs(n.y - g.py)) > 25 ? ' in the distance' : '';
     g.say(`You hear ${n.what}${far} ${where}.`);
+  }
+
+  /** The wanderer as the animals sense them: sneaking and how well, the light, the wind, the season, the day's light. */
+  presence(): Presence {
+    const sky = this.skyNow, w = sky.w, toward = (((w.windFrom + 180) % 360) * Math.PI) / 180;
+    return {
+      sneaking: this.game.sneaking, sneak: this.player?.get(Skills)?.effective('sneak') ?? 0, light: sky.light,
+      wind: { x: Math.sin(toward), y: -Math.cos(toward), strength: w.windMs }, winter: sky.season === 'winter', rise: this.people.sun.rise, set: this.people.sun.set,
+    };
+  }
+
+  /** Sneaking, or not (Shift+S). */
+  toggleSneak(): void {
+    const g = this.game;
+    g.sneaking = !g.sneaking;
+    g.say(g.sneaking ? 'You move quietly, keeping low.' : 'You stop sneaking.');
+  }
+
+  /**
+   * A step taken: a snare's catch taken from under foot; sneaking unnoticed near an animal practises
+   * Sneak (once a minute at most).
+   */
+  private stepped(x: number, y: number, z: number | null): void {
+    const g = this.game, inv = this.player?.get(Inventory);
+    const sn = z === null ? this.snares.at(x, y) : undefined;
+    if (sn?.caught && inv) {
+      const s = SPECIES_BY_ID.get(sn.caught);
+      if (s) {
+        const it = carcassOf(s);
+        const left = !!inv.stow(it);
+        if (left) g.ground.put(x, y, [it]);
+        g.say(`You take a dead ${s.name} from your snare${left ? ', and lay it down: you have no room for it' : ''}.`);
+      }
+      sn.caught = undefined;
+      sn.tried = g.time;
+    }
+    if (g.sneaking && g.time - this.sneakAt > 60) {
+      for (const a of this.fauna.all()) {
+        if (Math.max(Math.abs(a.x - x), Math.abs(a.y - y)) > 12 || g.time - a.noticed < 120 || a.state === 'sleep') continue;
+        this.sneakAt = g.time;
+        this.player?.get(Skills)?.practise('sneak', 0.15, g.time);
+        break;
+      }
+    }
+  }
+
+  /** Sets a snare where the wanderer stands, or lifts one (P). */
+  snareHere(): void {
+    const g = this.game, inv = this.player?.get(Inventory);
+    if (!inv) return;
+    if (g.z !== null || GROUND_TILES[g.map.ground(g.px, g.py)]?.name.startsWith('floor_')) {
+      g.say('Snares are for setting out of doors, on the ground.');
+      return;
+    }
+    const here = this.snares.at(g.px, g.py);
+    if (here) {
+      this.snares.lift(g.px, g.py);
+      const wire = makeItem('snares');
+      if (inv.stow(wire)) g.ground.put(g.px, g.py, [wire]);
+      g.time += 30;
+      g.say('You lift the snare and coil the wire.');
+      this.player?.changed();
+      return;
+    }
+    const wire = inv.d.items.find((i) => i.def === 'snares');
+    if (!wire) {
+      g.say('You have no snare wire.');
+      return;
+    }
+    if (wire.qty > 1) wire.qty -= 1;
+    else inv.drop(wire.uid);
+    this.snares.set(g.px, g.py, g.time);
+    g.time += 5 * 60;
+    this.player?.get(Skills)?.practise('survival', 0.2, g.time);
+    g.say(`You set a snare here${this.snares.list.length > 1 ? ` (${this.snares.list.length} set)` : ''}. Come back for it later.`);
+    this.player?.changed();
   }
 
   /** Talks to the one beside the wanderer: at once if there is one, else asks which way. */
@@ -845,7 +964,7 @@ export class PlaySession {
     const o = this.o;
     return makeSave(this.game, {
       id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON(),
-      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export() },
+      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), gone: [...this.fauna.gone].slice(-500) },
     });
   }
 

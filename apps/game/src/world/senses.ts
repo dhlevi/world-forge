@@ -15,6 +15,7 @@
 import { GROUND_TILES } from '@worldforge/core/local/tiles';
 import type { Facing } from '@worldforge/core/local/tiles';
 import type { Spot } from '../worker/protocol';
+import { SPECIES_BY_ID } from '@worldforge/core/local/fauna';
 
 export type NoiseKind = 'step' | 'door' | 'work' | 'speech' | 'shout';
 
@@ -168,17 +169,24 @@ const KIND_WORD: Record<string, string> = { human: 'a person', elf: 'an elf', dw
  */
 export function readTracks(ts: Track[], now: number, tracking: number): string | null {
   if (!ts.length) return null;
-  if (tracking < 15) return 'Footprints in the ground.';
+  if (tracking < 15) return ts.every((t) => t.kind.startsWith('animal:')) ? 'Tracks in the ground.' : 'Footprints in the ground.';
   const by = new Set(ts.map((t) => t.by));
   const newest = ts[ts.length - 1];
-  let out = `Footprints: ${by.size === 1 ? 'one walker' : by.size <= 3 ? `${by.size} walkers` : 'many walkers'}, the newest ${ageWords(now - newest.t)}`;
+  const beasts = ts.every((t) => t.kind.startsWith('animal:'));
+  let out = `${beasts ? 'Tracks' : 'Footprints'}: ${by.size === 1 ? (beasts ? 'one beast, or one herd' : 'one walker') : by.size <= 3 ? `${by.size} ${beasts ? 'beasts or herds' : 'walkers'}` : 'many'}, the newest ${ageWords(now - newest.t)}`;
   if (tracking >= 30) {
     const ways = [...new Set(ts.slice(-3).map((t) => WAY[t.dir]))];
     out += `, going ${ways.join(' and ')}`;
   }
   if (tracking >= 45) {
     const own = ts.some((t) => t.by === 'player');
-    const kinds = [...new Set(ts.filter((t) => t.by !== 'player').map((t) => (t.young ? 'a child' : KIND_WORD[t.kind] ?? 'a person')))];
+    const kinds = [...new Set(ts.filter((t) => t.by !== 'player').map((t) => {
+      if (t.kind.startsWith('animal:')) {
+        const sp = SPECIES_BY_ID.get(t.kind.slice(7));
+        return sp ? `${/^[aeiou]/.test(sp.name) ? 'an' : 'a'} ${sp.name}` : 'a beast';
+      }
+      return t.young ? 'a child' : KIND_WORD[t.kind] ?? 'a person';
+    }))];
     const whose = [...(own ? ['your own'] : []), ...kinds.slice(0, 3)];
     if (whose.length) out += ` (${whose.join(', ')})`;
   }

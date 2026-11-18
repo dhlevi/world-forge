@@ -189,10 +189,10 @@ that change the world and rivals who may beat the player to them. The principles
 
 - The character details still open (see [characters.md](characters.md#open-questions)).
 - Who can practise magic, and how the world regards mages (see [magic.md](magic.md#open-questions)).
-- Permadeath, or saves with consequences (Kingdom Come's approach, or free saving).
+- ~~Permadeath, or saves with consequences~~ **Decided: permadeath** (see [combat.md](combat.md#decisions-taken)).
 - The travel map's look and the city view (see [navigation.md](navigation.md#open-questions)).
 - Companions: how many, how controlled.
 - How the world simulates beyond the player's surroundings (detail near, summary far): for people
   and animals, decided as a bubble of detail with schedules beyond it (see [npcs.md](npcs.md)).
 - Combat: tactical turn-based on the local map (ToME, UnReal World), with how much detail
-  (wounds by body part, armour layers, stances).
+  (wounds by body part, armour layers, stances). Drafted in [combat.md](combat.md), with its own questions.

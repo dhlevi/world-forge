@@ -18,6 +18,7 @@ import type { Game } from './game';
 import type { ActorData } from '../actors/actor';
 import type { OpinionData } from '../world/opinions';
 import type { Track } from '../world/senses';
+import type { Snare } from '../world/hunting';
 import type { Item } from '../actors/items/item';
 
 export const SAVE_FORMAT = 'world-forge.save';
@@ -64,7 +65,7 @@ export interface SaveFile {
    * The people of the bubble as they stand toward the wanderer, and the tracks about (world/
    * opinions.ts, world/senses.ts); none in games saved before people.
    */
-  people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][] };
+  people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][]; snares?: Snare[]; gone?: string[] };
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
   /** Not saved: what reading it had to say (things left out); shown when the game is loaded. */

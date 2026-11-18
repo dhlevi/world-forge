@@ -116,7 +116,7 @@ const AWAY_AT: [RegExp, RKind[]][] = [
 /** How far (tiles) a carter's or porter's round takes them from home. */
 const ROUND = 80;
 /** What a market's stalls and a town's gates stand as on the map. */
-const STALLS = new Set(['stall']);
+export const STALLS = new Set(['stall']);
 const GATES = new Set(['gate_open', 'gate']);
 /** Grounds of squares and greens. */
 const SQUARE_GROUND = new Set(['flagstones', 'lawn']);
@@ -283,7 +283,7 @@ function freeBeside(local: LocalWorld, b: PlanBuilding | null, at: Spot, taken: 
 }
 
 /** Open ground one may stand on (not a floor, not water, nothing in the way). */
-function openGround(local: LocalWorld, tx: number, ty: number): boolean {
+export function openGround(local: LocalWorld, tx: number, ty: number): boolean {
   const cx = Math.floor(tx / CHUNK), cy = Math.floor(ty / CHUNK);
   const c = local.chunk(cx, cy), k = (ty - cy * CHUNK) * CHUNK + (tx - cx * CHUNK);
   const g = GROUND_TILES[c.ground[k]], o = OBJECT_TILES[c.object[k]];
@@ -294,7 +294,7 @@ function openGround(local: LocalWorld, tx: number, ty: number): boolean {
  * The open ground beside things of some kinds (stalls, gates) in a box of tiles, on the ground: a
  * tile one can stand on, next to one of them.
  */
-function tilesBeside(local: LocalWorld, x0: number, y0: number, x1: number, y1: number, names: Set<string>): Spot[] {
+export function tilesBeside(local: LocalWorld, x0: number, y0: number, x1: number, y1: number, names: Set<string>): Spot[] {
   const out: Spot[] = [];
   for (let cy = Math.floor(y0 / CHUNK); cy <= Math.floor(y1 / CHUNK); cy++) for (let cx = Math.floor(x0 / CHUNK); cx <= Math.floor(x1 / CHUNK); cx++) {
     for (const t of besideIn(local, cx, cy, names)) if (t.x >= x0 && t.x <= x1 && t.y >= y0 && t.y <= y1) out.push(t);

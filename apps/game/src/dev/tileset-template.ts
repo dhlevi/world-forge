@@ -7,6 +7,7 @@
  */
 import { DECOR, FACINGS, GROUND_TILES, OBJECT_TILES, TERRAINS, type TileDef } from '@worldforge/core/local/tiles';
 import { figureLayers } from '@worldforge/core/local/figures';
+import { SPECIES } from '@worldforge/core/local/fauna';
 import { TREE_KINDS } from '@worldforge/core/local/trees';
 import { ROOF_MATERIALS, ROOF_PLANES } from '@worldforge/core/local/roofs';
 import { TILE_PX, TREE_FRAMES, Tileset, type Look } from '../game/tileset';
@@ -77,6 +78,18 @@ function rowsOf(ts: Tileset): Entry[] {
       for (let i = 0; i < 3; i++) frames.push({ name: `${name}~${i}`, look: { ...walk, tex: [walk.tex[i % walk.tex.length]] } });
     }
     out.push({ label: l.name, art: FACINGS.some((d) => art(`${l.name}_${d}`)), frames, anims });
+  }
+  out.push({ title: 'Animals' });
+  // A row to a species: standing each way, then three frames of its walk each way, and (birds) of its flight.
+  for (const s of SPECIES) {
+    const frames: Row['frames'] = FACINGS.map((d) => ({ name: `animal_${s.id}_${d}`, look: ts.animalLook(s.id, d, false, false).look }));
+    const anims: NonNullable<Row['anims']> = [];
+    for (const kind of s.fly ? ['walk', 'fly'] : ['walk']) for (const d of FACINGS) {
+      const mv = ts.animalLook(s.id, d, true, kind === 'fly').look, name = `animal_${s.id}_${kind}_${d}`;
+      anims.push({ name, ms: mv.ms || 110, from: frames.length, count: 3 });
+      for (let i = 0; i < 3; i++) frames.push({ name: `${name}~${i}`, look: { ...mv, tex: [mv.tex[i % mv.tex.length]] } });
+    }
+    out.push({ label: `animal_${s.id}`, art: FACINGS.some((d) => art(`animal_${s.id}_${d}`)), frames, anims });
   }
   out.push({ title: 'Roofs' });
   for (const mat of Object.keys(ROOF_MATERIALS)) for (const pl of ROOF_PLANES) {

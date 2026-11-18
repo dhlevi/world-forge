@@ -43,7 +43,7 @@ help its checks.
 | Sneak | Moving unseen and unheard, hiding | Agility, Hearing |
 | Athletics | Running, jumping, lifting, endurance at hard work | Strength, Constitution |
 | Acrobatics | Balance, tumbling, falling well, escaping holds | Agility |
-| Disguise | Passing as someone else: clothes, bearing, voice | Charm, Aura |
+| Disguise | Passing as someone else: clothes, bearing, voice; disguises carry reputations of their own (see [npcs.md](npcs.md#reputation)) | Charm, Aura |
 | Sleight of hand | Picking pockets, palming, conjuring tricks | Agility, Touch |
 | Lockpicking | Locks, latches and strongboxes | Agility, Touch, Intelligence |
 | Mount riding | Riding and fighting from horseback; driving carts and wagons | Agility, Wisdom |

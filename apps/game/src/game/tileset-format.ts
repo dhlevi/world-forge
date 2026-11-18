@@ -21,7 +21,7 @@
  *   (200 if left out).
  */
 
-export type FrameLayer = 'ground' | 'object' | 'decor' | 'edge' | 'tree' | 'figure' | 'roof';
+export type FrameLayer = 'ground' | 'object' | 'decor' | 'edge' | 'tree' | 'figure' | 'animal' | 'roof';
 
 /** One picture: a rectangle of a sheet, and where it sits over the tile (pixels). */
 export interface Picture {

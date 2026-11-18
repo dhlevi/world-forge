@@ -120,6 +120,11 @@ export class Renderer {
   private player = new Sprite();
   /** The people about (world/population.ts), a pool of sprites among the objects. */
   private folk: Sprite[] = [];
+  /** The animals (world/fauna.ts): on the ground among the objects; birds aloft or perched over the trees, with their shadows. */
+  private beasts: Sprite[] = [];
+  private aloft = new Container();
+  private flyers: Sprite[] = [];
+  private birdShadows = new Graphics();
   /** The step being shown: the way it went, and when it began (the map slides behind the wanderer). */
   private slide: { dx: number; dy: number; t0: number } | null = null;
   /** The game's step count and place at the last drawing (to tell a single step from a jump). */
@@ -156,7 +161,7 @@ export class Renderer {
   async init(el: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: el, background: '#07080b', antialias: false, autoDensity: true, resolution: window.devicePixelRatio || 1 });
     el.appendChild(this.app.canvas);
-    this.app.stage.addChild(this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.marks, this.cursor);
+    this.app.stage.addChild(this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor);
     this.solidTex = this.solidTexture();
     this.objects.addChild(this.player);
     this.app.ticker.add(this.animate);
@@ -201,7 +206,7 @@ export class Renderer {
     }
     // Behind by what is left of the step: the map seems to move under the wanderer.
     const left = this.slide ? 1 - t : 0, ox = (this.slide?.dx ?? 0) * left * T, oy = (this.slide?.dy ?? 0) * left * T;
-    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.marks, this.cursor]) {
+    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor]) {
       c.x = (ox - T) * z;
       c.y = (oy - T) * z;
     }
@@ -255,6 +260,57 @@ export class Renderer {
       }
     }
     for (let i = n; i < this.folk.length; i++) this.folk[i].visible = false;
+  }
+
+  /**
+   * The animals (world/fauna.ts), on the surface: those on the ground among the objects, in front
+   * of their row; birds flying or perched drawn over the trees, raised by their height, a flying
+   * bird's small shadow on the ground below it.
+   */
+  private drawAnimals(game: Game, light0: Uint32Array, floor: number | null): void {
+    let n = 0, f = 0;
+    this.birdShadows.clear();
+    if (this.view === 0 && floor === null) {
+      for (const a of game.animals()) {
+        if (!game.isVisible(a.x, a.y)) continue;
+        const sx = a.x + this.ox, sy = a.y + this.oy;
+        if (sx < 0 || sy < 0 || sx >= this.cols || sy >= this.rows) continue;
+        const up = a.alt > 0;
+        let sp: Sprite;
+        if (up) {
+          sp = this.flyers[f] ?? (() => {
+            const s = new Sprite();
+            this.flyers.push(s);
+            this.aloft.addChild(s);
+            return s;
+          })();
+          f++;
+        } else {
+          sp = this.beasts[n] ?? (() => {
+            const s = new Sprite();
+            this.beasts.push(s);
+            this.objects.addChild(s);
+            return s;
+          })();
+          n++;
+        }
+        const flying = up && !a.perched;
+        const { look, flip } = this.tiles.animalLook(a.species, a.facing, a.moving && !a.sleeping, flying);
+        sp.texture = look.tex[0];
+        if (look.tex.length > 1) this.animated.push({ sprite: sp, look });
+        sp.scale.x = flip ? -1 : 1;
+        const lift = up ? Math.round(a.alt * TILE_PX * 0.6) : 0;
+        sp.x = sx * TILE_PX + look.dx + (flip ? sp.texture.frame.width : 0);
+        sp.y = sy * TILE_PX + look.dy - lift + (a.sleeping ? 2 : 0);
+        sp.tint = light0[sy * this.cols + sx] || 0xffffff;
+        sp.alpha = a.sleeping ? 0.85 : 1;
+        if (!up) sp.zIndex = sy * 2 + 1;
+        sp.visible = true;
+        if (flying) this.birdShadows.ellipse(sx * TILE_PX + TILE_PX / 2, sy * TILE_PX + TILE_PX - 3, 2.5, 1).fill({ color: 0x000000, alpha: 0.25 });
+      }
+    }
+    for (let i = n; i < this.beasts.length; i++) this.beasts[i].visible = false;
+    for (let i = f; i < this.flyers.length; i++) this.flyers[i].visible = false;
   }
 
   /** Gives a sprite a look (or hides it): its picture, its place over its tile, its tint. */
@@ -322,6 +378,7 @@ export class Renderer {
     this.rs = [];
     this.objects.addChild(this.player);
     for (const f of this.folk) this.objects.addChild(f);
+    for (const b of this.beasts) this.objects.addChild(b);
     this.gs = [];
     this.ds = [];
     this.os = [];
@@ -618,7 +675,7 @@ export class Renderer {
     this.app.resize();
     this.layout();
     const z = this.zoom;
-    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.edges, this.objects, this.canopy, this.marks, this.cursor]) c.scale.set(z);
+    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor]) c.scale.set(z);
     /** Each screen tile: 1 if what stands on it casts a shadow, 2 if it is ground that can take one. */
     const tall = new Uint8Array(this.cols * this.rows);
     /** Each screen tile's terrain (-2 where not drawn as ground), ground and tint, for the edges between kinds of ground. */
@@ -740,6 +797,7 @@ export class Renderer {
     else if (game.steps !== last.steps) this.slide = null;
     this.lastStep = { steps: game.steps, x: game.px, y: game.py };
     this.drawPeople(game, light0, floor);
+    this.drawAnimals(game, light0, floor);
     // The wanderer's layered figure (game/figure-art.ts): their looks and what they wear.
     const spec = game.figure();
     const stand = this.figures.look(spec, game.facing, false), walk = this.figures.look(spec, game.facing, true);

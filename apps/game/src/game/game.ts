@@ -83,6 +83,18 @@ export interface ShownPerson {
   figure: FigureSpec;
 }
 
+/** An animal on the map, as drawn: where (and how high, for a bird), its species and what it is doing. */
+export interface ShownAnimal {
+  x: number;
+  y: number;
+  alt: number;
+  perched: boolean;
+  facing: Facing;
+  species: string;
+  moving: boolean;
+  sleeping: boolean;
+}
+
 export class Game {
   px: number;
   py: number;
@@ -132,6 +144,14 @@ export class Game {
   /** The tracks on a tile, as the wanderer reads them (none: none seen), and how many there are (for drawing). */
   tracksText: (x: number, y: number, z: number | null) => string | null = () => null;
   tracksOn: (x: number, y: number, z: number | null) => number = () => 0;
+  /** Moving quietly (Shift+S): slower, quieter, harder for animals to see (world/fauna.ts). */
+  sneaking = false;
+  /** An animal on a tile, in words (world/fauna.ts); none if none (or only a bird flying over). */
+  animalAt: (x: number, y: number) => string[] | null = () => null;
+  /** The wanderer walks into an animal: what happens, in words (none: there is none there). */
+  onBumpAnimal: (x: number, y: number) => string | null = () => null;
+  /** The animals about, to be drawn. */
+  animals: () => Iterable<ShownAnimal> = () => [];
   /** The people about, to be drawn (world/population.ts). */
   people: () => Iterable<ShownPerson> = () => [];
   /** Called when thorns scratch the wanderer (a small hurt, for the mood). */
@@ -304,6 +324,12 @@ export class Game {
     if (who) {
       if (!quiet) this.say(this.onBump(nx, ny, this.z) ?? `${who.name} is in the way.`);
       return false;
+    }
+    const beast = this.z === null ? this.onBumpAnimal(nx, ny) : null;
+    if (beast) {
+      if (!quiet) this.say(beast);
+      this.time += STEP_S;
+      return true;
     }
     if (!this.pass(nx, ny)) {
       if (obj.toggle) return this.toggle(nx, ny, true, quiet);
@@ -598,6 +624,8 @@ export class Game {
     if (x === this.px && y === this.py) out.push('You.');
     const who = seen ? this.personAt(x, y, this.z) : null;
     if (who) out.push(...who.lines);
+    const beast = seen && this.z === null ? this.animalAt(x, y) : null;
+    if (beast) out.push(...beast);
     const o = OBJECT_TILES[t.object];
     const tree = t.object ? treeAt(this.map, x, y) : null;
     if (tree) out.push(`${cap(o.name === 'tree_trunk' ? `the trunk of ${treeWords(tree)}` : treeWords(tree))}.`);

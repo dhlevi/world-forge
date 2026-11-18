@@ -443,19 +443,44 @@ function planTower(d: Dungeon, ent: [number, number], land: UnderLand, style: St
   const zg = Math.floor(floorM / LEVEL_M);
   const out: UnderPlan = { id: d.site.id, kind: d.site.kind, levels: [], surface: [], roof: null };
   const rs = d.levels.map((L) => rasterDLevel(L, style, title));
-  // The door: the wall square nearest the way in on the ground floor's circle.
+  // The door: in the outer wall (a wall square with the open land on one side), the nearest to the
+  // way in that leads straight to the floor within; where the wall is thick, a passage is cut through
+  // it to the floor (a door on an inner partition, or into the thickness of the wall, leads nowhere).
   const e = G0.entrances[0], r0 = rs[g];
   if (e) {
-    let best = -1, bd = Infinity;
-    for (let k = 0; k < r0.w * r0.h; k++) {
+    const W = r0.w, H = r0.h;
+    const out = (x: number, y: number) => x < 0 || y < 0 || x >= W || y >= H || !r0.ground[y * W + x];
+    let best: number[] | null = null, bd = Infinity;
+    for (let k = 0; k < W * H; k++) {
       if (!WALLS.has(r0.object[k])) continue;
-      const x = (k % r0.w) - 1 + 0.5, y = Math.floor(k / r0.w) - 1 + 0.5, dd = (x - e.x) * (x - e.x) + (y - e.y) * (y - e.y);
-      if (dd < bd) {
-        bd = dd;
-        best = k;
+      const x = k % W, y = Math.floor(k / W);
+      for (const [dx, dy] of [[0, 1], [1, 0], [0, -1], [-1, 0]]) {
+        if (!out(x + dx, y + dy)) continue;
+        // Inward from the open side: through the wall to the first open floor.
+        const run = [k];
+        let ix = x - dx, iy = y - dy, reached = false;
+        for (let n = 0; n < 4 && !out(ix, iy); n++) {
+          const q = iy * W + ix;
+          if (!WALLS.has(r0.object[q])) {
+            reached = !r0.object[q] || !!OBJECT_TILES[r0.object[q]]?.pass;
+            break;
+          }
+          run.push(q);
+          ix -= dx;
+          iy -= dy;
+        }
+        if (!reached) continue;
+        const cx = x - 1 + 0.5, cy = y - 1 + 0.5, dd = Math.sqrt((cx - e.x) * (cx - e.x) + (cy - e.y) * (cy - e.y)) + 4 * (run.length - 1);
+        if (dd < bd) {
+          bd = dd;
+          best = run;
+        }
       }
     }
-    if (best >= 0) r0.object[best] = O('door');
+    if (best) {
+      r0.object[best[0]] = O('door');
+      for (const q of best.slice(1)) r0.object[q] = 0;
+    }
   }
   d.levels.forEach((L, k) => {
     const p = place(rs[k], c, c, ent[0], ent[1], zg + (g - k) * -1);

@@ -6,7 +6,7 @@
 import type { PlaceClimate } from '../game/calendar';
 import type { MessageDispatcher } from '../engine/messages';
 import type { WorldSettings } from '@worldforge/core/settings';
-import type { Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlacedPerson, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
+import type { AnimalGroup, Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlacedPerson, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
 
 /** How long a request may take before it is given up (ms): long enough for a city's illustrated plan. */
 export const ASK_TIMEOUT_MS = 120_000;
@@ -102,6 +102,10 @@ export class WorkerClient {
   /** The residents about a tile at a time, placed by their day plan (worker/people.ts). */
   requestPeople = (x: number, y: number, time: number, rise: number, set: number): Promise<{ people: PlacedPerson[]; radius: number }> =>
     this.ask((id) => ({ type: 'people', id, x, y, time, rise, set }), (m) => (m.type === 'people' ? { people: m.people, radius: m.radius } : { people: [], radius: 0 }));
+
+  /** The animals about a tile in the week of a time (worker/fauna.ts). */
+  requestAnimals = (x: number, y: number, time: number, winter: boolean): Promise<{ groups: AnimalGroup[]; radius: number }> =>
+    this.ask((id) => ({ type: 'animals', id, x, y, time, winter }), (m) => (m.type === 'animals' ? { groups: m.groups, radius: m.radius } : { groups: [], radius: 0 }));
 
   requestArea = (box: Box, fine: boolean): Promise<TravelArea> =>
     this.ask((id) => ({ type: 'area', id, ...box, fine }), (m) => (m.type === 'area' ? m.area : { roads: [], places: [] }));

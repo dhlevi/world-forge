@@ -213,6 +213,121 @@
       "value": 400,
       "hands": 2,
       "about": "You could lift it, just; you could not pack it."
+    },
+    {
+      "id": "carcass",
+      "name": "carcass",
+      "plural": "carcasses",
+      "kind": "goods",
+      "weight": 2.5,
+      "bulk": 3,
+      "size": "small",
+      "value": 2,
+      "durable": false,
+      "about": "A small animal, freshly killed. Butcher it with a knife for its meat and hide."
+    },
+    {
+      "id": "hide",
+      "name": "hide",
+      "plural": "hides",
+      "kind": "goods",
+      "weight": 1.5,
+      "bulk": 3,
+      "size": "small",
+      "value": 6,
+      "sold": [
+        "market"
+      ],
+      "about": "An untanned hide or pelt, scraped clean. A tanner or a furrier pays for good ones."
+    },
+    {
+      "id": "antler",
+      "name": "antler",
+      "plural": "antlers",
+      "kind": "goods",
+      "weight": 1,
+      "bulk": 2,
+      "size": "small",
+      "value": 4,
+      "sold": [
+        "market"
+      ],
+      "about": "A shed or taken antler, for handles, combs and glue."
+    },
+    {
+      "id": "horn",
+      "name": "horn",
+      "plural": "horns",
+      "kind": "goods",
+      "weight": 0.5,
+      "bulk": 1,
+      "size": "small",
+      "value": 3,
+      "sold": [
+        "market"
+      ],
+      "about": "A beast's horn, for cups, combs and bows."
+    },
+    {
+      "id": "tusk",
+      "name": "tusk",
+      "plural": "tusks",
+      "kind": "goods",
+      "weight": 0.6,
+      "bulk": 0.8,
+      "size": "small",
+      "value": 8,
+      "sold": [
+        "market"
+      ],
+      "about": "A curved tusk, carved by craftsmen and worn as a trophy."
+    },
+    {
+      "id": "tooth",
+      "name": "tooth",
+      "plural": "teeth",
+      "kind": "goods",
+      "weight": 0.02,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 1,
+      "stack": 20,
+      "about": "A beast's tooth, worn as a charm or a trophy."
+    },
+    {
+      "id": "claw",
+      "name": "claw",
+      "plural": "claws",
+      "kind": "goods",
+      "weight": 0.03,
+      "bulk": 0,
+      "size": "tiny",
+      "value": 2,
+      "stack": 20,
+      "about": "A great claw, worn as a charm or a trophy."
+    },
+    {
+      "id": "feathers",
+      "name": "bunch of feathers",
+      "plural": "bunches of feathers",
+      "kind": "goods",
+      "weight": 0.05,
+      "bulk": 0.2,
+      "size": "tiny",
+      "value": 1,
+      "stack": 20,
+      "about": "Feathers, for fletching arrows and stuffing pillows."
+    },
+    {
+      "id": "venom",
+      "name": "vial of venom",
+      "plural": "vials of venom",
+      "kind": "goods",
+      "weight": 0.05,
+      "bulk": 0.05,
+      "size": "tiny",
+      "value": 10,
+      "about": "Venom milked from a snake's fangs, for apothecaries, and worse."
     }
   ]
 }

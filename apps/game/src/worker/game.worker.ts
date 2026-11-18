@@ -14,6 +14,7 @@ import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { FromWorker, StartSite, ToWorker, LocalSite, TravelArea } from './protocol';
 import { catalogue, cultureOf, regionAt, resetCatalogue } from './catalogue';
 import { bubbleAt, forgetPeople, peopleIn } from './people';
+import { animalsIn } from './fauna';
 import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo } from './sites';
 
 let world: GeneratedWorld | null = null;
@@ -132,6 +133,10 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       if (!world || !local) throw new Error('No game started.');
       const radius = bubbleAt(local, m.x, m.y);
       post({ type: 'people', id: m.id, people: peopleIn(world, local, m.x, m.y, radius, m.time, m.rise, m.set), radius });
+    } else if (m.type === 'animals') {
+      if (!world || !local) throw new Error('No game started.');
+      const radius = bubbleAt(local, m.x, m.y);
+      post({ type: 'animals', id: m.id, groups: animalsIn(world, local, m.x, m.y, radius, m.time, m.winter), radius });
     } else if (m.type === 'catalogue') {
       if (!world) throw new Error('No world yet.');
       post({ type: 'catalogue', id: m.id, catalogue: catalogue(world) });

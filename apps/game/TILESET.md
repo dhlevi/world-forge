@@ -424,6 +424,67 @@ A layer drawn facing east only is turned about for west. A layer with no art is 
 | `wear_hat` | `wear_hat_n`, `wear_hat_e`, `wear_hat_s`, `wear_hat_w`, and `wear_hat_walk_` of each | A broad-brimmed hat. In light grey (tinted by the cloth); drawn over the layers before head. |
 | `wear_helm` | `wear_helm_n`, `wear_helm_e`, `wear_helm_s`, `wear_helm_w`, and `wear_helm_walk_` of each | A metal helm (a padded coif is drawn as this too, in cloth). In light grey (tinted by the cloth); drawn over the layers before head. |
 
+## Animals
+
+The animals of the local map (see `docs/design/npcs.md`, Animals; `packages/core/src/local/fauna.ts`): wild, kept and in the streets. Draw each in its own colours (not tinted), seen from above and a little in front as the figures are, standing on its tile; a picture may be larger than a tile (24 × 20 with an offset of 4 left and 4 up, say), and the large beasts larger still. For each facing (`n`, `e`, `s`, `w`):
+
+- `animal_<id>_<facing>`: standing (also used asleep, drawn a little lower);
+- `animal_<id>_walk_<facing>`: moving, as an animation (`frames` and `ms`);
+- birds also `animal_<id>_fly_<facing>`: flying, wings beating, as an animation (drawn raised above its tile, with a small shadow below; a bird perched in a tree uses its standing frame, raised).
+
+A species drawn facing east only is turned about for west. A species with no art is drawn as a placeholder by its body plan and colour.
+
+| Animal | Frames | Plan, size | Draw |
+|---|---|---|---|
+| hare (`hare`) | `animal_hare_<facing>`, `_walk_` | small, small | A brown hare, long ears up, crouched or bounding. |
+| rabbit (`rabbit`) | `animal_rabbit_<facing>`, `_walk_` | small, small | A grey-brown rabbit with a white scut. |
+| squirrel (`squirrel`) | `animal_squirrel_<facing>`, `_walk_` | small, tiny | A red squirrel, bushy tail curled over its back. |
+| fox (`fox`) | `animal_fox_<facing>`, `_walk_` | quad, small | A red fox with a white-tipped brush. |
+| badger (`badger`) | `animal_badger_<facing>`, `_walk_` | quad, small | A grey badger with a black-and-white striped face. |
+| roe deer (`roe_deer`) | `animal_roe_deer_<facing>`, `_walk_` | quad, medium | A small reddish deer with a pale rump; the buck has short spiked antlers. |
+| red deer (`red_deer`) | `animal_red_deer_<facing>`, `_walk_` | quad, large | A red deer: the stag with branching antlers, the hinds without. |
+| elk (`elk`) | `animal_elk_<facing>`, `_walk_` | quad, large | A towering dark deer with broad flat antlers and a hanging dewlap. |
+| wild horse (`wild_horse`) | `animal_wild_horse_<facing>`, `_walk_` | quad, large | A small, tough dun horse with a dark mane. |
+| bison (`bison`) | `animal_bison_<facing>`, `_walk_` | quad, large | A great humped bison, shaggy at the shoulders, short curved horns. |
+| aurochs (`aurochs`) | `animal_aurochs_<facing>`, `_walk_` | quad, large | Wild cattle black as soot, with lyre-shaped horns. |
+| camel (`camel`) | `animal_camel_<facing>`, `_walk_` | quad, large | A long-legged camel with a hump and a haughty face. |
+| mountain goat (`mountain_goat`) | `animal_mountain_goat_<facing>`, `_walk_` | quad, medium | A shaggy white goat with short black horns. |
+| wild boar (`boar`) | `animal_boar_<facing>`, `_walk_` | quad, medium | A bristled dark boar with tusks curving from its jaw. |
+| beaver (`beaver`) | `animal_beaver_<facing>`, `_walk_` | small, small | A brown beaver with a flat scaly tail. |
+| wolverine (`wolverine`) | `animal_wolverine_<facing>`, `_walk_` | quad, small | A squat dark wolverine with a pale band along its flank. |
+| wolf (`wolf`) | `animal_wolf_<facing>`, `_walk_` | quad, medium | A grey wolf, lean and long-legged, its tail low. |
+| lynx (`lynx`) | `animal_lynx_<facing>`, `_walk_` | quad, small | A tufted-eared spotted lynx with a short black-tipped tail. |
+| mountain lion (`mountain_lion`) | `animal_mountain_lion_<facing>`, `_walk_` | quad, medium | A tawny long-tailed cat of the crags. |
+| brown bear (`brown_bear`) | `animal_brown_bear_<facing>`, `_walk_` | quad, large | A great shaggy brown bear with a hump at the shoulders. |
+| lion (`lion`) | `animal_lion_<facing>`, `_walk_` | quad, large | A maned lion, or a sleek lioness. |
+| tiger (`tiger`) | `animal_tiger_<facing>`, `_walk_` | quad, large | A striped tiger, orange and black. |
+| hyena (`hyena`) | `animal_hyena_<facing>`, `_walk_` | quad, medium | A spotted hyena, high-shouldered, with a heavy jaw. |
+| elephant (`elephant`) | `animal_elephant_<facing>`, `_walk_` | quad, huge | A great grey elephant with trunk and tusks (a picture two tiles across). |
+| crocodile (`crocodile`) | `animal_crocodile_<facing>`, `_walk_` | serpent, large | A long armoured crocodile, low to the ground. |
+| viper (`viper`) | `animal_viper_<facing>`, `_walk_` | serpent, tiny | A small zigzag-backed viper, coiled or gliding. |
+| seal (`seal`) | `animal_seal_<facing>`, `_walk_` | small, medium | A sleek grey seal hauled out on the shore. |
+| sparrow (`sparrow`) | `animal_sparrow_<facing>`, `_walk_`, `_fly_` | bird, tiny | A small brown sparrow; flying, wings out. |
+| crow (`crow`) | `animal_crow_<facing>`, `_walk_`, `_fly_` | bird, small | A black crow; flying, wings out. |
+| raven (`raven`) | `animal_raven_<facing>`, `_walk_`, `_fly_` | bird, small | A great black raven with a heavy beak; flying, wings out. |
+| pheasant (`pheasant`) | `animal_pheasant_<facing>`, `_walk_`, `_fly_` | bird, small | A long-tailed pheasant, the cock bronze with a green head. |
+| wild duck (`duck`) | `animal_duck_<facing>`, `_walk_`, `_fly_` | bird, small | A mallard: the drake green-headed, the duck brown; swimming or flying. |
+| heron (`heron`) | `animal_heron_<facing>`, `_walk_`, `_fly_` | bird, medium | A tall grey heron standing in the shallows; flying, neck drawn back. |
+| gull (`gull`) | `animal_gull_<facing>`, `_walk_`, `_fly_` | bird, small | A white gull with grey wings; flying, wings out. |
+| owl (`owl`) | `animal_owl_<facing>`, `_walk_`, `_fly_` | bird, small | A round-faced owl; flying, wings out. |
+| hawk (`hawk`) | `animal_hawk_<facing>`, `_walk_`, `_fly_` | bird, small | A brown hawk; soaring, wings spread. |
+| cow (`cattle`) | `animal_cattle_<facing>`, `_walk_` | quad, large | A brown or dappled cow with short horns. |
+| sheep (`sheep`) | `animal_sheep_<facing>`, `_walk_` | quad, medium | A woolly sheep, white or brown, with a dark face. |
+| goat (`goat`) | `animal_goat_<facing>`, `_walk_` | quad, medium | A goat with a beard and backswept horns. |
+| pig (`pig`) | `animal_pig_<facing>`, `_walk_` | quad, medium | A pink or spotted pig, snout to the ground. |
+| hen (`hen`) | `animal_hen_<facing>`, `_walk_` | bird, small | A brown hen pecking; a cockerel with a red comb. |
+| goose (`goose`) | `animal_goose_<facing>`, `_walk_` | bird, medium | A white goose with an orange bill, neck out. |
+| horse (`horse`) | `animal_horse_<facing>`, `_walk_` | quad, large | A bay, black or grey horse, saddled or not. |
+| donkey (`donkey`) | `animal_donkey_<facing>`, `_walk_` | quad, medium | A grey donkey with long ears and a dark cross on its back. |
+| dog (`dog`) | `animal_dog_<facing>`, `_walk_` | quad, medium | A dog: a brown mongrel, a hound, a mastiff. |
+| cat (`cat`) | `animal_cat_<facing>`, `_walk_` | small, small | A cat: tabby, black or ginger, tail up. |
+| rat (`rat`) | `animal_rat_<facing>`, `_walk_` | small, tiny | A brown rat, long tail behind. |
+| pigeon (`pigeon`) | `animal_pigeon_<facing>`, `_walk_`, `_fly_` | bird, small | A grey pigeon with a green-purple sheen at the neck; flying, wings out. |
+
 ## Roofs
 
 Every building has a roof (its shape and material from its climate and use, as the atlas's town pictures have them), drawn over it from straight above as an option: shown unless the wanderer is inside (faded over any of the inside seen through a door or window), always, or never (Shift+R). Each tile of a roof lies on one **plane** of it: a slope facing north, east, south or west (`n`, `e`, `s`, `w`), the ridge running east and west or north and south (`ridge_ew`, `ridge_ns`), a flat roof (`flat`), or the peak of a cone or dome (`peak`). Frames are named `roof_<material>_<plane>`, with joins as walls have them (`roof_tile_s#5`; the open sides are the eaves), and seasons and snow as any frame (`roof_thatch_n@snow`). One picture without a number serves for every join. The light falls from the north: draw slopes facing north lighter and those facing south darker.

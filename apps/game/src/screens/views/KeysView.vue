@@ -31,6 +31,8 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
     name: 'Doing',
     keys: [
       ['Talk', 'E: to the one beside you (then a direction, if there are more)'],
+      ['Sneak', 'Shift+S: move quietly and slowly (Sneak); animals see and hear you less'],
+      ['Snare', 'P: set a snare wire here for small game, or lift one; walk onto it to take a catch'],
       ['Cut brush', 'A, then a direction: clear a bush or scrub with a machete, axe, hatchet, sword or knife (Survival)'],
       ['Light', 'F: light a lantern, torch or candle from your pack, or put it out'],
       ['Drink', 'Q at water or a well (fills waterskins too)'],

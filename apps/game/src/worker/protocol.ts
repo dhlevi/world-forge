@@ -91,6 +91,19 @@ export interface PlacedPerson {
   };
 }
 
+/**
+ * A group of animals about the wanderer (worker/fauna.ts): a species (core local/fauna.ts), its
+ * members' tiles (on the ground), its home range, and water near it to drink at.
+ */
+export interface AnimalGroup {
+  /** Wild "w:<chunk>:<week>:<species>:<n>", kept "k:<building>:<species>", street "s:...". */
+  id: string;
+  species: string;
+  members: Spot[];
+  home: { x: number; y: number; r: number };
+  water: Spot | null;
+}
+
 /** A people of the world, for character creation. */
 export interface CultureInfo {
   index: number;
@@ -285,7 +298,9 @@ export type ToWorker =
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
   | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean }
   /** The residents about a tile at a time (game seconds), placed by their day plan (worker/people.ts). */
-  | { type: 'people'; id: number; x: number; y: number; time: number; rise: number; set: number };
+  | { type: 'people'; id: number; x: number; y: number; time: number; rise: number; set: number }
+  /** The animals about a tile in the week of a time (worker/fauna.ts). */
+  | { type: 'animals'; id: number; x: number; y: number; time: number; winter: boolean };
 
 export type FromWorker =
   | { type: 'progress'; stage: string; pct: number }
@@ -300,6 +315,7 @@ export type FromWorker =
   | { type: 'site'; id: number; site: SiteInfo | null; gates: Gate[] }
   | { type: 'plan'; id: number; image: PlanImage | null }
   | { type: 'people'; id: number; people: PlacedPerson[]; radius: number }
+  | { type: 'animals'; id: number; groups: AnimalGroup[]; radius: number }
   | { type: 'climate'; id: number; warm: number; cold: number; precipSummer: number; precipWinter: number; windU: number; windV: number }
   /** Something went wrong: with the id of the request it answers, or none (making the world, starting, a chunk). */
   | { type: 'error'; message: string; id?: number };
