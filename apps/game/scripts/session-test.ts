@@ -1,7 +1,7 @@
 /**
  * A game played without a browser (game/session.ts): carried on from a save, with stand-ins for the
  * world worker and the screens. Time passing, sleep, drinking, reading the sky, collapse, saving and
- * loading again, and leaving cleanly.
+ * loading again, wounds, fainting and death, and leaving cleanly.
  * npx tsx apps/game/scripts/session-test.ts (exits non-zero on a failure).
  */
 import { readFileSync } from 'node:fs';
@@ -10,6 +10,7 @@ import { MessageDispatcher } from '../src/engine/messages';
 import '../src/actors/cast';
 import { Needs } from '../src/actors/needs';
 import { Identity } from '../src/actors/components';
+import { Health } from '../src/actors/health';
 import { readSave } from '../src/game/save';
 import { PlaySession, type PlayOptions, type SessionHost, type SessionWorld } from '../src/game/session';
 import type { StartSite } from '../src/worker/protocol';
@@ -31,7 +32,7 @@ function world(): SessionWorld {
     starts: () => [],
   };
 }
-const host = { titles: 0, openCity: async () => {}, toTitle() { this.titles++; } } satisfies SessionHost & { titles: number };
+const host = { titles: 0, deaths: 0, openCity: async () => {}, toTitle() { this.titles++; }, onDeath() { this.deaths++; } } satisfies SessionHost & { titles: number; deaths: number };
 
 const site = { id: 's12', name: 'Onson', tier: 'city', population: 40000, lon: 10, lat: 50 } as StartSite;
 const fixture = readFileSync(fileURLToPath(new URL('./fixtures/save-v1-camps.json', import.meta.url)), 'utf8');
@@ -55,7 +56,7 @@ ok(typeof s.game.climb === 'function', 'rock faces can be climbed (by the Climbi
 const before = { fatigue: n().d.fatigue, reserve: n().d.reserveKcal };
 s.advance(10 * 3600);
 ok(n().d.fatigue > before.fatigue && n().d.reserveKcal < before.reserve, 'ten hours awake: more tired, and hungrier');
-ok(!!s.state.weather && s.state.needs.length === 6, 'the panel shows the weather and the six needs');
+ok(!!s.state.weather && s.state.needs.length === 7 && s.state.needs[0].id === 'health', 'the panel shows the weather, health and the six needs');
 
 // ---- Sleep --------------------------------------------------------------------------------------
 const tired = n().d.fatigue, t0 = s.now();
@@ -95,6 +96,26 @@ n().d.hydrationL = 0;
 s.advance(600);
 await new Promise((r) => setTimeout(r, 10));
 ok(/come round hours later/.test(logText(s)) && !n().collapse, 'with no water at all the body gives out, and comes round');
+
+// ---- Wounds, fainting and death (actors/health.ts) ------------------------------------------------
+const h = () => again.player!.need(Health);
+ok(!!again.player?.get(Health) && h().d.blood > 4, 'a character saved before health has it, whole');
+h().hurt({ kind: 'cut', sev: 6, part: 'arm.l', cause: 'a test', now: again.now() });
+again.advance(60);
+ok(again.state.needs[0].word !== '', `the panel shows the wound ("${again.state.needs[0].word}")`);
+const said = again.treatWound(h().d.wounds[0].id, 'stitch');
+ok(/needle|stitch/.test(said), `treating it says what happened ("${said}")`);
+h().d.blood = h().bloodMax() * 0.52;
+again.advance(60);
+await new Promise((r) => setTimeout(r, 10));
+ok(/Your senses leave you/.test(logText(again)) && /You come to/.test(logText(again)) && !again.state.dead, 'faint from loss of blood, and come to as it comes back');
+h().hurt({ kind: 'cut', sev: 14, part: 'neck', cause: 'a test', now: again.now() });
+for (let i = 0; i < 12 && !again.state.dead; i++) {
+  again.advance(3600);
+  await new Promise((r) => setTimeout(r, 5));
+}
+ok(!!again.state.dead && /blood/.test(again.state.dead.cause) && host.deaths === 1, `a deep gash in the neck kills ("${again.state.dead?.cause}"), and the screens are told`);
+ok(JSON.parse(JSON.stringify(again.snapshot())).dead?.cause === again.state.dead?.cause, 'the save says the wanderer is dead');
 
 // ---- Leaving ------------------------------------------------------------------------------------
 s.dispose();

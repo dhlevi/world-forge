@@ -3,7 +3,8 @@
  * (saved, so a game replays the same) against the chance their skill gives them at a task.
  *
  * - **The score** is the skill as it stands now (less rust), plus a little for the traits that
- *   govern it, plus modifiers (tools, quality, load, the state of the body), each with its reason.
+ *   govern it, plus modifiers (tools, quality, load, the state of the body and its wounds), each
+ *   with its reason.
  * - **The chance** is 50% when the score meets the difficulty, 1.5 points per point between them,
  *   kept between 2% and 98% (nothing is certain). A skill that must be taught (`trained`) cannot
  *   be tried at all untaught.
@@ -20,6 +21,7 @@ import type { Actor } from './actor';
 import { Mood, Skills, Traits } from './components';
 import { SKILL } from './data/skills';
 import { Needs } from './needs';
+import { Health } from './health';
 import { clamp } from '../util';
 
 /** Difficulties, as the skill level that gives an even chance. */
@@ -85,7 +87,7 @@ export function teachFactor(level: number, difficulty: number): number {
   return 2 / (1 + Math.exp(-(difficulty - level + 5) / 7));
 }
 
-/** The body's state as modifiers: tiredness, hunger and thirst, cold and heat, and mood. */
+/** The body's state as modifiers: tiredness, hunger and thirst, cold and heat, wounds and pain, and mood. */
 export function bodyMods(a: Actor, skill: string): Mod[] {
   const out: Mod[] = [];
   const n = a.get(Needs);
@@ -103,6 +105,9 @@ export function bodyMods(a: Actor, skill: string): Mod[] {
     if (heat[w.heat]) out.push({ why: w.heat.toLowerCase(), value: physical ? heat[w.heat] : Math.round(heat[w.heat] / 2) });
     if (physical && stamina[w.stamina]) out.push({ why: w.stamina.toLowerCase(), value: stamina[w.stamina] });
   }
+  // Wounds: pain, a dazed head, hurt hands or legs (actors/health.ts).
+  const h = a.get(Health);
+  if (h) out.push(...h.mods(SKILL.get(skill)?.group));
   const mood = a.get(Mood)?.value ?? 0;
   if (Math.abs(mood) >= 6) out.push({ why: mood > 0 ? 'in good heart' : 'low in spirit', value: clamp(Math.round(mood / 4), -5, 3) });
   return out;

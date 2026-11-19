@@ -13,7 +13,7 @@ import { ScreenManager } from '../engine/screens';
 import { WorkerClient } from './worker-client';
 import { loadMods, type ModReport } from './mods';
 import { desktop, readJson, writeJson, type DesktopInfo } from '../desktop';
-import { deleteSave, listSaves, loadSave, readSave, versionNote, writeSave, newGameId, type SaveFile, type SaveSummary } from '../game/save';
+import { deleteSave, listSaves, loadSave, readSave, reviveSave, versionNote, writeSave, newGameId, type SaveFile, type SaveSummary } from '../game/save';
 import type { Catalogue, StartSite, WorldSummary } from '../worker/protocol';
 import type { Actor } from '../actors/actor';
 import { TitleScreen, LoadScreen, SetupScreen, ProgressScreen, StartScreen } from '../screens/menus';
@@ -226,11 +226,19 @@ export class GameApp {
 
   // ---- Saved games ---------------------------------------------------------------------------
 
-  async continueGame(id: string): Promise<void> {
+  /**
+   * Carries on a saved game. A dead wanderer's game cannot be carried on (combat.md, permadeath),
+   * unless `revive`: the developer's escape (game/save.ts, `reviveSave`).
+   */
+  async continueGame(id: string, revive = false): Promise<void> {
     this.state.error = '';
     try {
       const s = await loadSave(id);
       if (!s) throw new Error('That saved game could not be read.');
+      if (s.dead) {
+        if (!revive) throw new Error(`${s.dead.name} is dead; that game is over.`);
+        reviveSave(s);
+      }
       this.startFromSave(s);
     } catch (err) {
       this.state.error = err instanceof Error ? err.message : String(err);
@@ -251,7 +259,9 @@ export class GameApp {
       const s = readSave(text);
       await writeSave(s);
       await this.refreshSaves();
-      this.startFromSave(s);
+      // A dead wanderer's game is listed, not carried on.
+      if (s.dead) this.state.error = `${s.dead.name} is dead; that game is over.`;
+      else this.startFromSave(s);
     } catch (err) {
       this.state.error = err instanceof Error ? err.message : String(err);
     }

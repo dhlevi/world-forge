@@ -164,6 +164,19 @@ World, with blood loss, bandaging and so on.
 - **Treatment** needs skill, materials and time: bandages, cleaning, stitching, splints,
   poultices, setting bones, and later surgery; poor treatment brings infection.
 
+*Built (combat.md, stage 1; `apps/game/src/actors/health.ts`, `game/treatment.ts`):* the tree of
+parts with every finger and toe, the ribs, the teeth and the pelvis; wounds of each kind with a
+severity against the part's toughness, lost and ruined parts, and death by a ruined vital part;
+blood from body weight, bleeding by kind, size and part, clotting, and fainting and death from its
+loss; pain (eased by Willpower and a remedy) lowering consciousness; the ten capacities from the
+parts, slowing steps, shortening sight, dulling hearing and making checks harder; healing by rest,
+food and water, scars, crooked bones and lasting harm; festering in the first two days, raced by
+immunity; the conditions of dehydration, starvation, hypothermia, heatstroke and drowning, and
+frostbite; and first aid with Medicine (bandage, clean, stitch, splint, poultice). Harm so far comes
+from thorns, brush cutting, falls, fords, cold and heat, hunger and thirst, and the water; the
+blows of beasts and people come with combat (stages 2 to 4). Not yet: surgery, setting bones by
+another's hand, illness, healers in towns, and treating another person.
+
 ## The two-bar pools
 
 **Decided.** Physical and mental stamina each have a **day** pool and a **burst** pool. Effort

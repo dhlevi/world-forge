@@ -19,6 +19,7 @@ import { folkOf, LETTERED, TRADITION_SKILLS, type FolkDef } from '../data/folk';
 import { STANDING, type ParentTrade, type StandingDef } from '../data/standing';
 import { Inventory, startingInventory, type InventoryData } from '../items/inventory';
 import { Needs } from '../needs';
+import { Health } from '../health';
 import type { Item } from '../items/item';
 import type { Quality } from '../items/defs';
 import { TRACK, TRACKS, type TrackCtx, type TrackDef, type TrackId } from '../data/occupations';
@@ -639,6 +640,7 @@ export function buildActor(r: Resolved): Actor {
   actor.add(new Pools(Pools.fromTraits(traits, body)));
   actor.add(new Mood([]));
   actor.add(new Needs(Needs.fresh()));
+  actor.add(new Health(Health.fresh(r.look.weightKg)));
   actor.add(Inventory.fromJSON(JSON.parse(JSON.stringify(r.inventory))));
   actor.add(new History({
     lines: r.biography.map((b) => ({ ...b })),

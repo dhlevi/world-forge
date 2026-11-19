@@ -20,9 +20,17 @@ import type { OpinionData } from '../world/opinions';
 import type { Track } from '../world/senses';
 import type { Snare } from '../world/hunting';
 import type { Item } from '../actors/items/item';
+import { Health, type HealthData } from '../actors/health';
 
 export const SAVE_FORMAT = 'world-forge.save';
 export { SAVE_VERSION };
+
+/** A death, as a save keeps it. */
+export interface Dead {
+  cause: string;
+  at: number;
+  name: string;
+}
 
 export interface SaveFile {
   format: typeof SAVE_FORMAT;
@@ -68,12 +76,17 @@ export interface SaveFile {
   people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][]; snares?: Snare[]; gone?: string[] };
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
+  /**
+   * The wanderer died (combat.md, permadeath): of what, when (game seconds), and who. A dead
+   * game cannot be carried on (screens/views/LoadView.vue), but for the developer's escape.
+   */
+  dead?: Dead;
   /** Not saved: what reading it had to say (things left out); shown when the game is loaded. */
   loadNotes?: string[];
 }
 
 /** The short form shown in the list of saves. */
-export type SaveSummary = Pick<SaveFile, 'id' | 'title' | 'savedAt' | 'place' | 'time' | 'settings' | 'generator' | 'localMap'>;
+export type SaveSummary = Pick<SaveFile, 'id' | 'title' | 'savedAt' | 'place' | 'time' | 'settings' | 'generator' | 'localMap' | 'dead'>;
 
 export function newGameId(): string {
   return `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e6).toString(36)}`;
@@ -95,7 +108,7 @@ export function unpackBits(b64: string, n: number): Uint8Array {
 }
 
 /** A save of the game as it stands. */
-export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number; roofs?: 'off' | 'on' | 'auto'; character?: ActorData; people?: SaveFile['people'] }): SaveFile {
+export function makeSave(game: Game, meta: { id: string; settings: WorldSettings; siteId: string; siteName: string; zoom?: number; roofs?: 'off' | 'on' | 'auto'; character?: ActorData; people?: SaveFile['people']; dead?: Dead }): SaveFile {
   return {
     format: SAVE_FORMAT,
     version: SAVE_VERSION,
@@ -121,7 +134,19 @@ export function makeSave(game: Game, meta: { id: string; settings: WorldSettings
     dice: game.dice.state,
     ...(meta.character ? { character: meta.character } : {}),
     ...(meta.people ? { people: meta.people } : {}),
+    ...(meta.dead ? { dead: meta.dead } : {}),
   };
+}
+
+/**
+ * The developer's escape from permadeath: a dead game made playable again (the death forgotten,
+ * the body mended enough to go on; actors/health.ts, `Health.revive`). Changes the save in place.
+ */
+export function reviveSave(s: SaveFile): void {
+  delete s.dead;
+  const c = s.character?.components;
+  const h = c?.health as HealthData | undefined;
+  if (h) Health.revive(h, (c?.body as { weightKg?: number } | undefined)?.weightKg ?? 70);
 }
 
 /** Puts a saved game's state into a freshly started game. */
@@ -172,7 +197,7 @@ export function versionNote(s: SaveFile): string {
   return [...out, ...(s.loadNotes ?? [])].join(' ');
 }
 
-const summary = (s: SaveFile): SaveSummary => ({ id: s.id, title: s.title, savedAt: s.savedAt, place: s.place, time: s.time, settings: s.settings, generator: s.generator, localMap: s.localMap });
+const summary = (s: SaveFile): SaveSummary => ({ id: s.id, title: s.title, savedAt: s.savedAt, place: s.place, time: s.time, settings: s.settings, generator: s.generator, localMap: s.localMap, ...(s.dead ? { dead: s.dead } : {}) });
 
 // ---- Where saves are kept ---------------------------------------------------------------------
 

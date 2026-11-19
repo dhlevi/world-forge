@@ -20,6 +20,7 @@ import type { RouteStep } from '../worker/protocol';
 import { check, DC, type Mod } from '../actors/checks';
 import { Skills, type Activity, type Moodlet } from '../actors/components';
 import { Needs } from '../actors/needs';
+import { Health } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
 import { conditionWord, defOf, itemName, type Item } from '../actors/items/item';
 import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
@@ -79,14 +80,24 @@ export class Practice {
       while (this.swimS >= SWIM_EVERY) {
         this.swimS -= SWIM_EVERY;
         const cold = n.d.airC < 10 ? [{ why: 'the cold water', value: -10 }] : [];
+        // Wounded arms and legs swim badly (actors/health.ts).
+        const caps = a.get(Health)?.capacities();
+        if (caps && Math.min(caps.moving, caps.manipulation) < 0.9) cold.push({ why: 'your wounds', value: -Math.round((1 - Math.min(caps.moving, caps.manipulation)) * 40) });
         const r = check(a, 'swimming', { difficulty: DC.easy - 10, mods: [...this.loadMods(load), ...cold], now });
         const P = n.pools();
+        const h = a.get(Health);
         if (r.grade === 'fumble') {
           if (P) P.physBurst.value = Math.max(0, P.physBurst.value * 0.4);
           n.d.fatigue = Math.min(140, n.d.fatigue + 4);
+          // Spent, the swimmer goes under for longer (actors/health.ts: drowning).
+          h?.choke(P && P.physBurst.value <= 1 ? 0.3 : 0.12);
           this.say('You go under, and come up choking.');
         } else if (!r.ok) {
           if (P) P.physBurst.value = Math.max(0, P.physBurst.value - 15);
+          if (P && P.physBurst.value <= 0) {
+            h?.choke(0.1);
+            this.say('You are spent, and the water closes over your head again and again.');
+          }
           this.sayOnce('swim', load > 1.3 ? 'Your load drags at you; you struggle to keep your head up.' : 'You struggle to keep your head above the water.');
         }
       }
@@ -113,6 +124,7 @@ export class Practice {
       n.d.fatigue = Math.min(140, n.d.fatigue + 6);
       this.mood({ id: 'turned-ankle', text: 'Turned an ankle', value: -2, until: this.game.time + 12 * 3600 });
       this.say('You turn your ankle on the rough going.');
+      a.get(Health)?.hurt({ kind: 'bruise', sev: 2 + this.game.dice.random() * 3, region: 'feet', part: this.game.dice.random() < 0.5 ? 'foot.l' : 'foot.r', cause: 'a turned ankle', now: this.game.time });
     } else if (!r.ok) {
       n.d.fatigue = Math.min(140, n.d.fatigue + 3);
       this.sayOnce('hard', load > 1.1 ? 'The going under your load wears you down.' : 'Every step is an effort.');
@@ -132,6 +144,7 @@ export class Practice {
         n.d.heat = Math.max(-100, n.d.heat - 15);
         extra += r.grade === 'fumble' ? 1200 : 600;
         this.say(r.grade === 'fumble' ? 'You are swept off your feet in the ford, and drag yourself out soaked and shaken.' : 'You lose your footing in the ford and are soaked through.');
+        if (r.grade === 'fumble') a.get(Health)?.hurt({ kind: 'bruise', sev: 2 + this.game.dice.random() * 4, cause: 'the stones of a ford', now });
         if (r.grade === 'fumble') this.mood({ id: 'soaked', text: 'Soaked in a river', value: -2, until: now + 6 * 3600 });
       }
     }
@@ -145,6 +158,7 @@ export class Practice {
         this.mood({ id: 'fall', text: 'Took a fall', value: -2, until: now + 12 * 3600 });
         const torn = this.tear();
         this.say(`You slip on the steep ground and fall${torn ? `, tearing your ${torn}` : ''}.`);
+        a.get(Health)?.fall(1.2, 'a fall on steep ground', now);
       } else if (!r.ok) {
         extra += st.min * 30;
         if (P) P.physBurst.value = Math.max(0, P.physBurst.value - 8);
@@ -187,6 +201,9 @@ export class Practice {
     this.mood({ id: 'fall', text: 'Took a fall', value: -3, until: this.game.time + 24 * 3600 });
     const torn = this.tear();
     this.say(up ? `Your hold gives way, and you fall back to the foot of the rock${torn ? `, tearing your ${torn}` : ''}.` : `You slip, and fall the rest of the way down${torn ? `, tearing your ${torn}` : ''}.`);
+    // How far: going up, from part of the way; going down, the rest of it (actors/health.ts).
+    const drop = Math.max(1, metres * (0.3 + this.game.dice.random() * 0.6));
+    a.get(Health)?.fall(drop, `a fall from a rock face of ${metres} m`, this.game.time);
     return { ok: !up, seconds: Math.round(s * 0.5) };
   }
 

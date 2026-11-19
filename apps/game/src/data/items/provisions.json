@@ -192,6 +192,20 @@
       "sold": ["apothecary"]
     },
     {
+      "id": "splint",
+      "name": "splint",
+      "plural": "splints",
+      "kind": "medicine",
+      "weight": 0.3,
+      "bulk": 0.5,
+      "size": "small",
+      "value": 2,
+      "stack": 4,
+      "durable": false,
+      "sold": ["apothecary", "market"],
+      "about": "Two padded slats and their bindings, to hold a broken bone still while it knits."
+    },
+    {
       "id": "potion",
       "name": "potion",
       "plural": "potions",
@@ -203,7 +217,7 @@
       "stack": 5,
       "durable": false,
       "sold": ["apothecary"],
-      "about": "A stoppered flask of a remedy."
+      "about": "A stoppered flask of a remedy: it eases pain for some hours."
     },
     {
       "id": "raw_meat",

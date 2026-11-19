@@ -304,7 +304,7 @@ onBeforeUnmount(() => {
       <SkyDial v-if="st.sky" :sky="st.sky" :clock="hud.clock" :words="st.weather" />
       <div v-else class="clock">{{ hud.clock }}</div>
       <div v-if="st.needs.length" class="needs">
-        <div v-for="n in st.needs" :key="n.id" class="need" :class="{ bad: n.bar < 0.35, warn: n.bar < 0.6 }">
+        <div v-for="n in st.needs" :key="n.id" class="need" :class="{ bad: n.bar < 0.35, warn: n.bar < 0.6, link: n.id === 'health' }" :title="n.id === 'health' ? 'Your wounds and first aid (D)' : ''" @click="n.id === 'health' && !st.dead && screen.showHealth()">
           <span class="nl">{{ n.label }}</span>
           <span class="nb"><span :style="{ width: `${Math.round(n.bar * 100)}%` }" /></span>
           <span class="nw">{{ n.word }}</span>
@@ -314,10 +314,15 @@ onBeforeUnmount(() => {
       <div class="where">{{ hud.where }}</div>
       <div v-if="st.view" class="clock">Looking {{ Math.abs(st.view) === 1 ? 'a level' : `${Math.abs(st.view)} levels` }} {{ st.view > 0 ? 'up' : 'down' }} (&lt; and &gt;; Esc to come back)</div>
       <div v-if="hud.loading" class="clock">Making {{ hud.loading }} chunk{{ hud.loading === 1 ? '' : 's' }} of the map</div>
-      <div class="actions">
+      <div v-if="st.dead" class="actions">
+        <div class="dead">{{ st.dead.name }} is dead, of {{ st.dead.cause }}.</div>
+        <button class="primary" @click="screen.app.toTitle()">Return to the title</button>
+      </div>
+      <div v-else class="actions">
         <button v-if="st.mode === 'local'" @click="session.toTravel()">Travel map <kbd>T</kbd></button>
         <button v-else @click="session.toLocal()">Back on foot <kbd>T</kbd></button>
         <button v-if="screen.player" @click="screen.showInventory()">Inventory <kbd>I</kbd></button>
+        <button v-if="screen.player" @click="screen.showHealth()">Health <kbd>D</kbd></button>
         <button v-if="screen.player && st.mode === 'local'" @click="screen.showCamp()">Camp <kbd>Shift+C</kbd></button>
         <button v-if="st.mode === 'local' && hud.town" @click="screen.openCity(hud.town.id)">View {{ hud.town.name }} <kbd>V</kbd></button>
         <button @click="screen.showKeys()">Keys <kbd>?</kbd></button>
@@ -325,7 +330,7 @@ onBeforeUnmount(() => {
       <div class="foot">
         <span>{{ tilesetNote }}</span>
         <span class="btns">
-          <button :disabled="st.saving" @click="session.save()">Save</button>
+          <button :disabled="st.saving || !!st.dead" @click="session.save()">Save</button>
           <button @click="session.exportNow()">Export</button>
           <button @click="session.leave()">Leave</button>
         </span>

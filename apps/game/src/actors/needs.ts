@@ -18,8 +18,9 @@
  *   warms; too cold or too hot drifts the body toward chill or overheating.
  *
  * Each need has a state in words ("Hungry", "Parched", "Exhausted", "Shivering"); worse states
- * slow the person, bring moodlets, and at the end bring collapse (no death yet: the person comes
- * round hours later, worse off). Changes are kept as notes for the game to report.
+ * slow the person, bring moodlets, and at the end bring collapse (the person comes round hours
+ * later, worse off). Left too long, thirst, hunger, cold and heat kill: the conditions of
+ * actors/health.ts. Changes are kept as notes for the game to report.
  *
  * Proposed numbers, to tune in play.
  */

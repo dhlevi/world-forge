@@ -103,8 +103,10 @@ animals, fear and flight, the watch, predators that are threats only until this 
    and blows (a robber aims at the legs and the head's side, a predator at the throat), when they
    break off, and what they do with a fallen foe.
    *Dev note:* permadeath touches saving: one save per game, kept up to date, with death ending
-   it (no loading an older save to undo a death); exports for backup stay possible. To agree when
-   the body stage is built.
+   it (no loading an older save to undo a death); exports for backup stay possible.
+   **Decided (19 November 2026):** death ends the game and the save is marked dead (it is listed,
+   with its cause, but cannot be carried on); a developer's setting on the Load screen revives a
+   dead game, for testing.
 4. **Magic: left out of combat** until the magic systems are built (magic.md).
 5. **Melee first; then ranged and thrown weapons.** Throwing takes anything that can be held and
    thrown: rocks, branches, axes, knives, bottles; each with its weight, balance and edge setting
@@ -118,7 +120,12 @@ animals, fear and flight, the watch, predators that are threats only until this 
 ## Stages (decided order)
 
 1. **The body**: parts, wounds, bleeding, pain, capacities, treatment, healing and death
-   (characters.md), with falls, cold and bites using them.
+   (characters.md), with falls, cold and bites using them. **Built** (19 November 2026;
+   `actors/health.ts`, `game/treatment.ts`). Decided for it: every finger and toe in the body;
+   full first aid (bandage, clean, stitch, splint, poultice) with infection; harm from thorns and
+   brush, cold and heat, hunger and thirst, falls and drowning; permadeath with a developer's
+   escape. The body is the wanderer's alone so far: residents and animals take it on with stages
+   2 and 4, and a beast's body plan with stage 2.
 2. **Melee with beasts**: strike, block, dodge, flee; predators attacking; hunting with the spear.
 3. **Ranged and thrown**: bows, slings, crossbows, and throwing anything held (rocks, branches,
    axes, knives, bottles), ammunition; hunting with the bow.

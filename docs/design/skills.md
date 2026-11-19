@@ -64,7 +64,7 @@ help its checks.
 | Skill | Governs | Traits |
 |---|---|---|
 | Herbalism | Finding, knowing and preparing plants; simple remedies and poisons | Wisdom, Smell |
-| Medicine | Treating wounds and illness: bandaging, stitching, setting bones, surgery, nursing | Intelligence, Touch |
+| Medicine | Treating wounds and illness: bandaging, stitching, setting bones, surgery, nursing (built: first aid, [combat.md](combat.md#stages-decided-order) stage 1) | Intelligence, Touch |
 | Stewardship | Accounts, stores, estates, shops, a lord's lands and revenues | Intelligence, Wisdom |
 | Cartography | Reading, judging, copying and drawing maps and charts; finding the way by them (Proposed, see [navigation.md](navigation.md)) | Intelligence, Agility |
 | History and heraldry, per realm | Houses, arms, wars, claims and old places of a realm | Intelligence |

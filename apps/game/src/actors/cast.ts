@@ -7,6 +7,7 @@ import { Actor, registerComponent, type ActorData } from './actor';
 import { Body, History, Identity, Knowledge, Mood, Pools, Skills, Traits } from './components';
 import { Inventory } from './items/inventory';
 import { Needs } from './needs';
+import { Health } from './health';
 import type { TimeCtx } from './components';
 import type { MessageDispatcher } from '../engine/messages';
 
@@ -20,6 +21,7 @@ registerComponent(Inventory);
 registerComponent(History);
 registerComponent(Knowledge);
 registerComponent(Needs);
+registerComponent(Health);
 
 export class Cast {
   private actors = new Map<number, Actor>();

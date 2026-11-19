@@ -14,6 +14,10 @@ import { CityScreen } from './city';
 import { SleepScreen } from './sleep';
 import { CampScreen } from './camp';
 import { InventoryScreen } from './inventory';
+import { HealthScreen } from './health';
+import DeathView from './views/DeathView.vue';
+import { Body } from '../actors/components';
+import type { Dead } from '../game/save';
 import { PlaySession, type PlayOptions } from '../game/session';
 
 export type { PlayOptions };
@@ -33,7 +37,7 @@ export class PlayScreen extends Screen {
     const w = app.worker;
     this.session = new PlaySession(
       { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, site: w.site, starts: () => app.state.starts },
-      { openCity: (id, at) => this.openCity(id, at), toTitle: () => app.toTitle() },
+      { openCity: (id, at) => this.openCity(id, at), toTitle: () => app.toTitle(), onDeath: () => this.showDeath() },
       o,
     );
   }
@@ -62,6 +66,11 @@ export class PlayScreen extends Screen {
   }
 
   key(e: KeyboardEvent): boolean {
+    // Dead: nothing more can be done but look, and go back to the title.
+    if (this.session.state.dead) {
+      if (e.code === 'Escape' || e.code === 'Enter') this.showDeath();
+      return true;
+    }
     if (e.key === '?') {
       this.showKeys();
       return true;
@@ -85,6 +94,10 @@ export class PlayScreen extends Screen {
     // A light: a lantern, torch or candle lit from the pack, or the one held put out.
     if (e.code === 'KeyF' && !e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
       this.session.toggleLight();
+      return true;
+    }
+    if (e.code === 'KeyD' && !e.shiftKey && !e.ctrlKey && !e.metaKey && this.player) {
+      this.showHealth();
       return true;
     }
     if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player) {
@@ -136,12 +149,44 @@ export class PlayScreen extends Screen {
     if (this.player) this.manager?.push(new InventoryScreen(this, this.player));
   }
 
+  showHealth(): void {
+    if (this.player) this.manager?.push(new HealthScreen(this, this.player));
+  }
+
+  showDeath(): void {
+    const d = this.session.state.dead;
+    if (d && this.active) this.manager?.push(new DeathScreen(this, d));
+  }
+
   showSheet(): void {
     if (this.player) this.manager?.push(new SheetScreen(this.player, () => this.app.bus.now));
   }
 
   showKeys(): void {
     this.manager?.push(new KeysScreen());
+  }
+}
+
+/** The wanderer is dead (combat.md, permadeath): of what, and back to the title. */
+export class DeathScreen extends Screen {
+  readonly view = DeathView;
+  popup = true;
+  readonly place: string;
+  readonly scars: string[];
+  constructor(readonly play: PlayScreen, readonly dead: Dead) {
+    super();
+    this.place = play.session.hud.place || 'the wilds';
+    this.scars = play.player?.get(Body)?.scars ?? [];
+  }
+  toTitle(): void {
+    this.close();
+    this.play.app.toTitle();
+  }
+  key(e: KeyboardEvent): boolean {
+    if (e.code === 'Enter') this.toTitle();
+    else if (e.code === 'Escape') this.close();
+    else return true;
+    return true;
   }
 }
 

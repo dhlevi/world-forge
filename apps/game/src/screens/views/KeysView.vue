@@ -45,6 +45,7 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
     name: 'Yourself and the game',
     keys: [
       ['Character', '@'],
+      ['Health', 'D: your wounds, blood and pain, and first aid (bandage, clean, stitch, splint, poultice)'],
       ['Inventory', 'I (G to pick up; eat and drink from it)'],
       ['Save', 'Ctrl+S (also saved every few minutes and on leaving)'],
       ['These keys', '?'],

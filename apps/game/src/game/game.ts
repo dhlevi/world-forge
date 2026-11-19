@@ -156,6 +156,8 @@ export class Game {
   people: () => Iterable<ShownPerson> = () => [];
   /** Called when thorns scratch the wanderer (a small hurt, for the mood). */
   onScratch: () => void = () => {};
+  /** Called after going up or down stairs or a ladder (a stumble, for the lame and the laden). */
+  onClimbed: (up: boolean) => void = () => {};
   /** A rock face the wanderer has walked into once: walking into it again climbs it. */
   private face: { x: number; y: number } | null = null;
 
@@ -513,6 +515,7 @@ export class Game {
     const dest = /floor|cellar|basement|attic/.test(fw) ? ` to ${fw}` : '';
     this.say(`You ${up ? 'climb' : 'go down'} ${WAY_WORDS[def.name] ?? 'the way'}${dest}.`);
     if (area && !dest) this.say(`${cap(area)}.`);
+    this.onClimbed(up);
     return true;
   }
 

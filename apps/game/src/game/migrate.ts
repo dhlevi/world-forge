@@ -15,9 +15,10 @@
  */
 import { startingInventory } from '../actors/items/inventory';
 import { Needs } from '../actors/needs';
+import { Health } from '../actors/health';
 
 /** The version saves are written at. Raise it with each new upgrade step. */
-export const SAVE_VERSION = 3;
+export const SAVE_VERSION = 4;
 
 type Json = Record<string, unknown>;
 const isObj = (v: unknown): v is Json => !!v && typeof v === 'object' && !Array.isArray(v);
@@ -55,6 +56,17 @@ const STEPS: Record<number, (s: Json) => void> = {
    */
   2: (s) => {
     s.floors = { changes: [], ground: [] };
+  },
+  /**
+   * 3 to 4: health (actors/health.ts; combat.md, stage 1). The wanderer begins it whole, with the
+   * blood their weight gives them.
+   */
+  3: (s) => {
+    const ch = s.character;
+    if (!isObj(ch) || !isObj(ch.components)) return;
+    const c = ch.components;
+    const kg = isObj(c.body) && isNum(c.body.weightKg) ? c.body.weightKg : 70;
+    if (!isObj(c.health)) c.health = Health.fresh(kg);
   },
 };
 
@@ -101,6 +113,7 @@ export function checkSave(s: Json): string[] {
       need(isObj(c.identity) && typeof c.identity.full === 'string', "the character's name is missing");
       need(isObj(c.inventory) && Array.isArray(c.inventory.items) && (c.inventory.items as unknown[]).every((i) => isObj(i) && typeof i.uid === 'string' && typeof i.def === 'string'), "the character's belongings are damaged");
       need(isObj(c.needs) && isNum(c.needs.fatigue), "the character's needs are damaged");
+      need(isObj(c.health) && isNum(c.health.blood) && Array.isArray(c.health.wounds), "the character's health is damaged");
       need(c.skills === undefined || (isObj(c.skills) && isObj(c.skills.levels)), "the character's skills are damaged");
     }
   }

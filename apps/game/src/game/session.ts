@@ -2,8 +2,9 @@
  * A game being played: everything about it that is not drawing (components/PlayView.vue draws it
  * and maps keys to it). It holds the wanderer and the cast, the local map and the travel map,
  * the weather and the skills at work, and runs what happens as time passes: needs and the body,
- * the weather and the light, fires and torches, the log. It sleeps, drinks, reads the sky and
- * collapses; it remembers what the character knew of the world; it saves.
+ * the weather and the light, fires and torches, the log. It sleeps, drinks, reads the sky,
+ * collapses and faints, treats wounds, and dies; it remembers what the character knew of the world;
+ * it saves.
  *
  * It needs no browser to run: the world worker is reached through `SessionWorld`, and the
  * screens (the city view, the title) through `SessionHost`, so that scripts/session-test.ts can
@@ -29,13 +30,15 @@ import { Body, Identity, Knowledge, Mood, Skills, Traits, type Moodlet } from '.
 import { Inventory } from '../actors/items/inventory';
 import { defOf, type Item } from '../actors/items/item';
 import { Needs, type NeedId } from '../actors/needs';
+import { Health } from '../actors/health';
+import { takeRemedy, treat, type Treat } from './treatment';
 import { airWord, seasonOf, type PlaceClimate } from './calendar';
 import { SHELTERS } from './camp';
 import { HOME_KNOWN_M } from './discovery';
 import { Game, SIGHT, type Hud } from './game';
 import { GameMap } from './map';
 import { Practice } from './practice';
-import { applySave, exportSave, makeSave, writeSave, type SaveFile } from './save';
+import { applySave, exportSave, makeSave, writeSave, type Dead, type SaveFile } from './save';
 import { Travel } from './travel';
 import { Population, doingWords, type Resident } from '../world/population';
 import { Fauna, animalLines, type Presence } from '../world/fauna';
@@ -83,6 +86,8 @@ export interface SessionHost {
   openCity(siteId: string, at?: { lon: number; lat: number }): Promise<void>;
   /** Back to the title. */
   toTitle(): void;
+  /** The wanderer has died: the screen that says so (screens/play.ts). */
+  onDeath?(): void;
 }
 
 export interface SleepOptions {
@@ -141,8 +146,10 @@ export class PlaySession {
     roofs: 'auto' as RoofMode,
     name: '',
     line: '',
-    /** The needs as bars and words (actors/needs.ts), and the air. */
-    needs: [] as { id: NeedId; label: string; word: string; bar: number }[],
+    /** Health and the needs as bars and words (actors/health.ts, actors/needs.ts), and the air. */
+    needs: [] as { id: NeedId | 'health'; label: string; word: string; bar: number }[],
+    /** The wanderer has died (combat.md, permadeath): of what, and when. */
+    dead: null as Dead | null,
     air: '',
     /** The weather and the hour in words (game/weather.ts), and as the panel's picture of the sky. */
     weather: null as { when: string; wind: string; air: string; sun: string } | null,
@@ -162,6 +169,8 @@ export class PlaySession {
   private torchS = 0;
   private lastReading: { hour: number; text: string } | null = null;
   private collapsing = false;
+  /** Something about the body worth waking for (bleeding, a festering wound) since last asked. */
+  private alarm = false;
   /** After travelling, the wanderer is set on open ground once the chunks there have come. */
   private needFooting = false;
   /** Game time at the last save (-1: never), to know whether there is anything new to save. */
@@ -190,6 +199,10 @@ export class PlaySession {
       if (o.restore.roofs) this.state.roofs = o.restore.roofs;
       game.say('You take up where you left off.');
     }
+    // Health (actors/health.ts): the body's clock, and the parts of older characters made whole.
+    const p0 = this.player;
+    if (p0 && !p0.get(Health)) p0.add(new Health(Health.fresh(p0.get(Body)?.d.weightKg ?? 70)));
+    p0?.get(Health)?.setNow(game.time);
     this.savedAt = o.restore ? game.time : -1;
     this.lastT = game.time;
 
@@ -199,7 +212,7 @@ export class PlaySession {
     this.travel = new Travel(game, [o.site.lon, o.site.lat], (from, to) => world.requestRoute(from, to));
 
     // The game's hooks: what slows the wanderer, what they carry for light, what happens as time passes.
-    game.loadSlow = () => this.invSlow() * (this.needs()?.slow() ?? 1) * this.groundSlow() * (game.sneaking ? 1.6 : 1);
+    game.loadSlow = () => this.invSlow() * (this.needs()?.slow() ?? 1) * (this.health()?.slow() ?? 1) * this.groundSlow() * (game.sneaking ? 1.6 : 1);
     game.carriedLight = () => {
       const it = this.heldLight();
       return it ? LIGHT_REACH[it.def] ?? 3 : 0;
@@ -208,7 +221,14 @@ export class PlaySession {
     game.climb = (metres, up) => this.practice.climb(metres, up, this.invSlow());
     const plain = game.figure();
     game.figure = () => (this.player ? figureOf(this.player) : plain);
-    game.onScratch = () => this.player?.get(Mood)?.add({ id: 'scratched', text: 'Scratched by thorns', value: -1, until: game.time + 2 * 3600 });
+    // Thorns scratch the legs (actors/health.ts): a small cut that soon clots.
+    game.onScratch = () => {
+      this.player?.get(Mood)?.add({ id: 'scratched', text: 'Scratched by thorns', value: -1, until: game.time + 2 * 3600 });
+      const h = this.health();
+      h?.hurt({ kind: 'cut', sev: 0.5 + game.dice.random() * 1.2, region: ['legs', 'feet'], cause: 'thorns', now: game.time });
+    };
+    // Stairs: a stumble when lame, worn out, laden or in the dark.
+    game.onClimbed = (up) => this.stairsStumble(up);
     game.onChange = () => this.redraw();
 
     // The residents about the wanderer (world/population.ts), placed by their day plans.
@@ -429,7 +449,11 @@ export class PlaySession {
     const n = this.needs();
     if (n) {
       const w = n.words(), b = n.bars();
-      this.state.needs = (Object.keys(NEED_LABEL) as NeedId[]).map((k) => ({ id: k, label: NEED_LABEL[k], word: w[k], bar: b[k] }));
+      const h = this.health()?.summary();
+      this.state.needs = [
+        ...(h ? [{ id: 'health' as const, label: 'Health', word: h.word, bar: h.bar }] : []),
+        ...(Object.keys(NEED_LABEL) as NeedId[]).map((k) => ({ id: k, label: NEED_LABEL[k], word: w[k], bar: b[k] })),
+      ];
       this.state.air = `${Math.round(n.d.airC)}°C, ${airWord(n.d.airC)}; ${seasonOf(time, this.o.site.lat)}`;
     }
   }
@@ -585,6 +609,29 @@ export class PlaySession {
     game.activity = 'rest';
     this.describe(t);
     this.applySky(s);
+    // Health (actors/health.ts): what has changed, death, and fainting.
+    const h = this.health();
+    if (h) {
+      for (const note of h.takeNotes()) {
+        if (note.text === 'You die.') continue;
+        game.say(note.text);
+        if (note.bad) {
+          this.alarm = true;
+          if (travel.running) {
+            travel.stop();
+            game.say('You stop.');
+          }
+        }
+      }
+      if (h.dead) {
+        this.die();
+        return;
+      }
+      if (h.senseless() && !this.collapsing) {
+        this.collapsing = true;
+        setTimeout(() => this.faint(), 0);
+      }
+    }
     const n = this.needs();
     if (!n) return;
     for (const note of n.takeNotes()) {
@@ -595,7 +642,7 @@ export class PlaySession {
         game.say('You stop.');
       }
     }
-    if (n.collapse && !this.collapsing) {
+    if (n.collapse && !this.collapsing && !this.state.dead) {
       this.collapsing = true;
       setTimeout(() => this.collapse(), 0);
     }
@@ -616,7 +663,10 @@ export class PlaySession {
     const inside = this.indoors();
     let range = s.light >= 0.9 ? SIGHT : Math.round(3 + 27 * Math.pow(s.light, 0.8));
     range = Math.round(range * (1 - w.fog * 0.75) * (w.rainMm > 3 ? 0.6 : w.kind.includes('snow') ? 0.7 : 1));
-    this.game.ambient = inside ? { light: Math.max(0.15, s.light * 0.75), range: Math.max(4, range) } : { light: s.light, range: Math.max(2, range) };
+    // Hurt eyes see less far (and the blind, hardly at all).
+    const sight = this.health()?.capacities().sight ?? 1;
+    if (sight < 1) range = Math.max(1, Math.round(range * (0.15 + 0.85 * sight)));
+    this.game.ambient = inside ? { light: Math.max(0.15, s.light * 0.75), range: Math.max(sight < 0.2 ? 1 : 4, range) } : { light: s.light, range: Math.max(sight < 0.2 ? 1 : 2, range) };
     this.look = { sky: inside ? 0xffffff : PlaySession.skyTint(s), snowCm: s.snowCm, season: s.season, light: inside ? Math.max(0.4, s.light) : s.light };
     this.falling = this.state.mode === 'local' && !inside && w.kind !== 'none' ? w : null;
     const n = this.needs();
@@ -656,6 +706,101 @@ export class PlaySession {
     game.updateHud();
   }
 
+  /** The wanderer's health (actors/health.ts). */
+  health(): Health | undefined {
+    return this.player?.get(Health);
+  }
+
+  /**
+   * Senseless from pain, blood loss, drowning or a blow: time passes in ten-minute steps until the
+   * wanderer comes to (or dies). Senseless in deep water, they drown.
+   */
+  faint(): void {
+    const h = this.health(), game = this.game;
+    if (!h || h.dead || this.state.dead) {
+      this.collapsing = false;
+      return;
+    }
+    this.travel.stop();
+    const deep = () => game.z === null && GROUND_TILES[game.map.ground(game.px, game.py)]?.water === 'deep';
+    game.say(deep() ? 'Your senses leave you, and the water closes over your head.' : 'Your senses leave you, and you fall.');
+    let mins = 0;
+    while (mins < 24 * 60 && h.senseless() && !h.dead && !this.state.dead) {
+      if (deep()) h.choke(0.35);
+      game.time += 600;
+      game.activity = deep() ? 'swim' : 'rest';
+      game.updateHud();
+      mins += 10;
+    }
+    this.collapsing = false;
+    if (this.state.dead) return;
+    game.say(mins >= 90 ? `You come to ${Math.round(mins / 60)} hours later.` : 'You come to.');
+    const p = this.player;
+    if (p) this.world.bus.send('actor.moodlet', { id: 'fainted', text: 'Fainted', value: -4, until: game.time + 12 * 3600 } satisfies Moodlet, { to: p.id });
+    this.redraw();
+  }
+
+  /** The wanderer has died: the game ends, saved as dead (combat.md, permadeath). */
+  private die(): void {
+    if (this.state.dead) return;
+    const game = this.game, h = this.health();
+    const id = this.player?.get(Identity);
+    this.travel.stop();
+    this.state.dead = { cause: h?.d.dead?.cause ?? 'unknown causes', at: game.time, name: id?.name ?? 'The wanderer' };
+    game.say(`${this.state.dead.name} is dead, of ${this.state.dead.cause}.`);
+    background(this.save(true), 'the game');
+    this.redraw();
+    this.host.onDeath?.();
+  }
+
+  /** On stairs: a stumble and a fall, when lame, worn out, heavily laden or in the dark (Athletics). */
+  private stairsStumble(up: boolean): void {
+    const a = this.player, h = this.health(), n = this.needs(), game = this.game;
+    if (!a || !h) return;
+    const moving = h.capacities().moving, load = this.invSlow(), tired = n ? n.tiredness() : 0;
+    const dark = game.ambient.light < 0.15 && !this.heldLight();
+    const risk = (1 - moving) * 1.5 + (tired >= 100 ? 0.4 : 0) + Math.max(0, load - 1.2) + (dark ? 0.4 : 0);
+    if (risk < 0.25) return;
+    const r = check(a, 'athletics', { difficulty: DC.trivial + Math.round(risk * 30), now: game.time });
+    if (r.grade !== 'fumble' && !(r.grade === 'fail' && game.dice.random() < risk / 3)) return;
+    game.say(up ? 'You miss your footing on the stairs and fall back.' : 'You stumble on the stairs and fall the rest of the way.');
+    h.fall(up ? 1.5 : 2.5, 'a fall on the stairs', game.time);
+    game.time += 30;
+    game.updateHud();
+  }
+
+  /** Treats a wound (game/treatment.ts): the time it takes passes. Returns what happened, in words. */
+  treatWound(woundId: number, t: Treat): string {
+    const a = this.player, h = this.health(), game = this.game;
+    const w = h?.d.wounds.find((x) => x.id === woundId);
+    if (!a || !h || !w) return 'There is no such wound.';
+    if (h.senseless() || this.state.dead) return 'You are in no state to.';
+    const water = !!game.nearby(1, (x, y) => {
+      const od = OBJECT_TILES[game.map.object(x, y)];
+      return od?.name === 'well' || od?.name === 'fountain' || GROUND_TILES[game.map.ground(x, y)]?.water ? 'water' : null;
+    });
+    const r = treat(a, a, w, t, game.time, water);
+    if (r.seconds > 0) {
+      game.time += r.seconds;
+      game.activity = 'work';
+    }
+    game.say(r.text);
+    this.practice.flush();
+    if (r.seconds > 0) game.refresh();
+    return r.text;
+  }
+
+  /** Takes a remedy for the pain (a potion). */
+  takeRemedy(): string {
+    const a = this.player, game = this.game;
+    if (!a || this.state.dead) return '';
+    const r = takeRemedy(a, game.time);
+    if (r.seconds) game.time += r.seconds;
+    game.say(r.text);
+    if (r.seconds) game.refresh();
+    return r.text;
+  }
+
   /** The body gives out: hours pass senseless, then the wanderer comes round, worse for it. */
   collapse(): void {
     const n = this.needs(), game = this.game;
@@ -671,6 +816,7 @@ export class PlaySession {
       game.time += 3600;
       game.activity = 'sleep';
       game.updateHud();
+      if (this.state.dead) return;
     }
     game.sleepQuality = 0.6;
     n.recover();
@@ -685,6 +831,7 @@ export class PlaySession {
   sleep(hours: number, quality: number, o: SleepOptions = {}): number {
     const n = this.needs(), game = this.game;
     this.travel.stop();
+    this.alarm = false;
     game.say(o.awake ? 'You sit and rest.' : 'You lie down to sleep.');
     // Sleeping rough, Survival makes a better or worse bed of it.
     if (!o.awake && quality < 1) quality = this.practice.roughSleep(quality);
@@ -697,9 +844,16 @@ export class PlaySession {
       slept++;
       o.onHour?.(h);
       if (o.untilRested && n && n.d.fatigue <= 2 && n.d.debt < 0.5) break;
-      if (n?.collapse) break;
+      if (n?.collapse || this.state.dead || this.collapsing) break;
+      // Woken by the body: bleeding, a wound festering, the cold biting.
+      if (this.alarm) {
+        this.alarm = false;
+        game.say('Something is wrong; you wake.');
+        break;
+      }
     }
     game.sleepQuality = 0.6;
+    if (this.state.dead) return slept;
     if (!o.awake && slept > 0) {
       const p = this.player;
       const cold = (n?.d.airC ?? 15) < 8;
@@ -731,7 +885,8 @@ export class PlaySession {
    */
   private listen(): void {
     const g = this.game, noises = [...this.people.noises.splice(0), ...this.fauna.noises.splice(0)];
-    const hearing = this.player?.get(Traits)?.get('hearing') ?? 10;
+    const hearing = (this.player?.get(Traits)?.get('hearing') ?? 10) * (this.health()?.capacities().hearing ?? 1);
+    if (hearing <= 0.5) return;
     const thr = hearingThreshold(hearing);
     let best: { n: Noise; level: number } | null = null;
     for (const n of noises) {
@@ -891,6 +1046,8 @@ export class PlaySession {
     g.activity = 'work';
     g.say(r.text);
     if (r.mood) a.get(Mood)?.add(r.mood);
+    // A fumble nicks the hand that holds the brush (actors/health.ts).
+    if (r.mood?.id === 'cut-hand') a.get(Health)?.hurt({ kind: 'cut', sev: 1.5 + g.dice.random() * 2.5, region: 'hands', cause: 'a slip of your blade', now: g.time });
     if (r.wood) {
       const wood = makeItem('firewood');
       if (inv.stow(wood)) g.ground.put(g.px, g.py, [wood]);
@@ -965,6 +1122,7 @@ export class PlaySession {
     return makeSave(this.game, {
       id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON(),
       people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), gone: [...this.fauna.gone].slice(-500) },
+      ...(this.state.dead ? { dead: this.state.dead } : {}),
     });
   }
 
