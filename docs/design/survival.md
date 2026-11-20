@@ -234,6 +234,34 @@ need grooming or suffer penalties.
   culture's expectations (a lord's court expects more than a logging camp), as moodlets for the
   character and as modifiers in conversation and trade.
 
+*Built (first pass, `apps/game/src/actors/needs.ts`):* dirt as a seventh need, Clean, with a bar
+and a word (Grubby, Dirty, Filthy; Bloodied when blood shows). Grime builds by the hour with what
+is done (little at rest, more walking, most on the road and at work), faster on muddy ground, in
+a sweat, and sleeping rough: about three days on the road leave one dirty, four or five filthy. Blood
+from one's own bleeding wounds, from a blow struck close to and from butchering a carcass stains
+skin and clothes. Washing (W) takes it off: in a bathtub or water to stand in (a river, a lake,
+the sea), or less thoroughly from a well's bucket or a fountain; a swim does as well, and rain
+rinses the blood and the worst of the dirt. In towns a bathhouse (3 copper) or a bath drawn at an
+inn (4 copper, less for a good haggler) leaves one clean to the skin, with a moodlet for it.
+Being dirty lowers the mood, makes Social checks harder (Persuasion, Trading and the like), and
+from Dirty up lets open wounds fester more readily.
+
+*Built (first pass, `actors/components/body.ts`, `game/grooming.ts`):* the wanderer's hair and
+beard grow, about 1.4 cm a month, and are kept as lengths. Each way of wearing them has a length
+it needs and, for the cut ones, a length past which it is lost: a shaven face shows stubble
+within days and is a short beard in a fortnight, cropped hair grows out to shaggy, a crest or a
+topknot needs its sides shaved again each month. Untended for a fortnight one looks unkempt, and
+after a month and a half ragged (Social checks −2 and −5). Grooming (Shift+G) lists the ways the
+length allows: a cut only shortens, so the longer ways open as it grows. Cutting and shaving need
+a knife; a dry shave often nicks the face, less so with water beside one and seldom with soap.
+Combing and putting in order needs nothing. A town's bathhouse has a barber (2 copper), who needs
+no knife of yours and never nicks. Those who grow no beard (women, and the peoples that do not)
+are offered none. **Soap** is a cake bought at markets, general stores and apothecaries (about
+3 copper, eight washes): washing with it takes off all the dirt even from a bucket or a
+fountain, and it softens a shave. Not yet: soap made by the character (with crafting), smell
+(people's noses and animals downwind), dirty clothes apart from the skin, other people's hair
+growing, and what each culture expects.
+
 ## The sea
 
 **Decided:** storms reach the sea, so sailing without good weather sense and seamanship is risky.
@@ -309,6 +337,27 @@ and elsewhere.
 way from their own appearance, then changed by their state: hair and beard length and how well
 they are kept, dirt and grime, wet hair and clothes, what they wear, scars and fresh wounds,
 bandages, pallor or flush, and age. The same marks would show in how others describe them.
+
+**Decided (later): simple pixel art.** The character's portrait is a small pixel picture, in
+keeping with the tileset, painted fresh from their state: it shows wounds, dirt and blood.
+
+*Built (first pass, `apps/game/src/game/portrait.ts`, `components/Portrait.vue`):* a head and
+shoulders 32 pixels square, painted by rule from the person's kind of people (a face of its own
+for each: an elf's ears, an orc's tusks, a lizard-folk's scales, a mushroom-folk's cap), sex, body
+type, skin, hair style and colour, beard, and what they wear at the shoulders, neck and head (in
+its own colours, mail as rings, a cloak with its clasp, hoods, hats, helms, veils and scarves).
+Over that, their state: wounds where they would show (the head, face, neck, chest and shoulders)
+by kind (a cut, a stab, a bite, bruises and black eyes, burns, frostbite, broken teeth), stitches,
+festering, blood running from those that bleed, bandages over those that are bound, a lost eye,
+ear or nose, old scars on the face, pallor from lost blood, eyes shut when senseless, and dirt
+and blood that gather with the Clean need and go when washed. It is shown in character creation
+(changing with each choice), beside the name in the play panel, and on the character sheet.
+Hair and beards are painted at their length (stubble, a beard coming in, hair past the
+shoulders), with stray ends when unkempt. **Other people have portraits too**, painted the same
+way: the people of the character's life (see characters.md, People in your life) from the looks
+kept with each, and anyone looked over in play from their own (`game/person-card.ts`).
+Not yet: wet hair and clothes, age beyond greying hair, a flush of heat or fever, and drawn
+(rather than painted by rule) art.
 
 ## How it could be built (proposed)
 

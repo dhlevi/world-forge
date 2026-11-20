@@ -5,7 +5,7 @@
  * npx tsx apps/game/scripts/health-test.ts (exits non-zero on a failure).
  */
 import { Actor } from '../src/actors/actor';
-import { Body, HUMANOID, Mood, PART, Pools, Skills, Traits, type TimeCtx } from '../src/actors/components';
+import { Body, HUMANOID, Identity, Mood, PART, Pools, SEXED, Skills, Traits, type TimeCtx } from '../src/actors/components';
 import { startingInventory } from '../src/actors/items/inventory';
 import { makeItem } from '../src/actors/items/item';
 import { Needs } from '../src/actors/needs';
@@ -293,6 +293,31 @@ console.log('\ntreatment');
   ok(takeRemedy(a, 0).ok && h.pain() < p0, `a remedy eases the pain (${p0.toFixed(2)} to ${h.pain().toFixed(2)})`);
   ok(!inv.d.items.some((x) => x.def === 'potion'), 'and is used up');
   ok(treat(a, a, c, 'splint', 0).text === 'There is no broken bone.', 'a treatment that does not suit is refused');
+}
+
+console.log('\na man\'s and a woman\'s body');
+{
+  const sexed = (female: boolean, seed = 1) => {
+    const p = person(seed);
+    p.a.add(new Identity({ given: 'T', full: 'T', female, age: 30, year: 0, folk: '', culture: 0, cultureName: '', people: '', homeId: '', homeName: '', standing: 'peasant' }));
+    return p;
+  };
+  const m = sexed(false), f = sexed(true), none = person();
+  const ids = (h: Health) => new Set(h.plan.map((p) => p.id));
+  ok(ids(m.h).has('testicles') && ids(m.h).has('penis') && !ids(m.h).has('womb'), 'a man\'s body has a man\'s parts, and not a woman\'s');
+  ok(ids(f.h).has('womb') && ids(f.h).has('breast.l') && ids(f.h).has('ovaries') && !ids(f.h).has('penis'), 'a woman\'s body has a woman\'s parts, and not a man\'s');
+  ok(none.h.plan.length === HUMANOID.length && SEXED.every((p) => !none.h.partOf(p.id)), 'a body of no known sex has neither');
+  ok([m, f].every((p) => p.h.plan.every((x) => !x.parent || !!p.h.partOf(x.parent))), 'every part of each hangs from a part');
+  ok(Object.values(m.h.capacities()).every((v) => v > 0.99) && Object.values(f.h.capacities()).every((v) => v > 0.99), 'whole, each has every capacity full');
+  const [w] = m.h.hurt({ kind: 'bruise', sev: 4, part: 'testicles', cause: 'a kick', now: 0 });
+  none.h.hurt({ kind: 'bruise', sev: 4, part: 'arm.l', cause: 'a kick', now: 0 });
+  ok(!!w && m.h.pain() > none.h.pain() * 1.5, `a blow there hurts more than the same to an arm (pain ${m.h.pain().toFixed(2)} against ${none.h.pain().toFixed(2)})`);
+  ok(f.h.hurt({ kind: 'bruise', sev: 4, part: 'testicles', cause: 'a kick', now: 0 }).length === 0, 'a part the body has not cannot be hurt');
+  let reached = 0;
+  for (let s = 1; s <= 20; s++) if (sexed(true, s).h.hurt({ kind: 'stab', sev: 8, part: 'pelvis', cause: 'a blade', deep: 1, now: 0 }).some((x) => x.part === 'womb' || x.part === 'ovaries')) reached++;
+  ok(reached === 20 && m.h.hurt({ kind: 'stab', sev: 8, part: 'pelvis', cause: 'a blade', deep: 1, now: 0 }).length === 1, 'a deep wound to a woman\'s pelvis goes on within; a man\'s has nothing within');
+  const back = Actor.fromJSON(JSON.parse(JSON.stringify(m.a.toJSON()))).need(Health);
+  ok(back.d.wounds.some((x) => x.part === 'testicles') && !!back.partOf('testicles'), 'and they are saved with the rest');
 }
 
 console.log('\nsaving');

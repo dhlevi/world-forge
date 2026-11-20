@@ -29,4 +29,6 @@ export interface TimeCtx {
   windCover?: number;
   /** Beside a fire (drying out). */
   fire?: boolean;
+  /** How muddy the ground is underfoot (0 to 1). */
+  mud?: number;
 }

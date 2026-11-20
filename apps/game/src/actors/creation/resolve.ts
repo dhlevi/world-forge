@@ -11,8 +11,8 @@
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import { Actor } from '../actor';
 import {
-  Body, History, Identity, Knowledge, Mood, Pools, Skills, Traits,
-  type KnowledgeData, type StandingId, type Tie, type TraitsData, type Wound,
+  BODY_TYPES, Body, History, Identity, Knowledge, Mood, Pools, Skills, Traits,
+  type BodyTypeDef, type KnowledgeData, type StandingId, type Tie, type TraitsData, type Wound,
 } from '../components';
 import { SENSES, TRAITS, TRAIT_BUDGET, TRAIT_MAX, TRAIT_MIN, TRAIT_SPREAD, PHYSICAL, type SenseId, type TraitId } from '../data/traits';
 import { folkOf, LETTERED, TRADITION_SKILLS, type FolkDef } from '../data/folk';
@@ -59,7 +59,8 @@ export interface Choices {
   /** Index into the names drawn for the culture and sex, or a name typed in. */
   name: number;
   customName?: string;
-  look: { skin: number; hair: number; hairStyle: number; beard: number; build: number };
+  /** Each an index into what the people and sex allow; `build` draws the height and weight again; `type` is the body type (BODY_TYPES). */
+  look: { skin: number; hair: number; hairStyle: number; beard: number; build: number; type: number };
 }
 
 export interface CreationWorld {
@@ -123,7 +124,7 @@ export interface Resolved {
   wounds: Wound[];
   knowledge: KnowledgeData;
   look: {
-    skin: [string, string]; hair: [string, string]; hairStyle: string; beard: string; heightCm: number; weightKg: number; build: string;
+    skin: [string, string]; hair: [string, string]; hairStyle: string; beard: string; heightCm: number; weightKg: number; build: string; type: BodyTypeDef;
     hairStyles: string[]; beards: string[];
   };
   biography: { age: number; text: string }[];
@@ -152,7 +153,7 @@ const LEAVING: Record<TrackId, string> = {
 export function newChoices(seed: string, culture: number, homeId: string, female: boolean, standing: StandingId = 'peasant'): Choices {
   return {
     seed, culture, homeId, female, standing, family: 0, spread: null, redraws: 0, spend: {}, terms: [], name: 0,
-    look: { skin: 0, hair: 0, hairStyle: 0, beard: 0, build: 0 },
+    look: { skin: 0, hair: 0, hairStyle: 0, beard: 0, build: 0, type: 1 },
   };
 }
 
@@ -213,7 +214,13 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
     return nameAt(female, i).given;
   };
   let nameNo = 16;
-  const nextName = (female: boolean) => given(female, nameNo++);
+  // What is known of each person named, as they come into the story: their sex, and their trade if it is told.
+  const met = new Map<string, { female: boolean; trade?: string }>();
+  const nextName = (female: boolean, trade?: string) => {
+    const n = given(female, nameNo++);
+    met.set(n, { female, trade });
+    return n;
+  };
   const own = ch.customName?.trim() ? { given: ch.customName.trim().split(/\s+/)[0], full: ch.customName.trim() } : nameAt(ch.female, ch.name);
 
   // ---- The cards ----------------------------------------------------------------------------
@@ -249,6 +256,9 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
     mother: { name: given(true, 9), trade: motherTrade, alive: motherAlive },
     siblings, literate,
   };
+  met.set(family.father.name, { female: false, trade: fatherTrade.name });
+  met.set(family.mother.name, { female: true, trade: motherTrade?.name ?? 'keeper of the house' });
+  for (const s of siblings) met.set(s.name, { female: s.female });
 
   // ---- Traits -------------------------------------------------------------------------------
   const base = Object.fromEntries(TRAITS.map((t) => [t, clampT(10 + (folk.traits[t] ?? 0))])) as Record<TraitId, number>;
@@ -422,13 +432,13 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
         break;
       }
       case 'contact': {
-        const n = nextName(tr() < 0.5);
+        const n = nextName(tr() < 0.5, rankName);
         ties.push({ kind: 'contact', name: n, text: `${n}, from your days as ${a(rankName)}, owes you a favour.`, alive: true });
         res.text.push(`You did ${n} a good turn that will not be forgotten.`);
         break;
       }
       case 'rival': {
-        const n = nextName(tr() < 0.4);
+        const n = nextName(tr() < 0.4, rankName);
         ties.push({ kind: 'rival', name: n, text: `${n} has hated you since your days as ${a(rankName)}.`, alive: true });
         res.text.push(`You made an enemy of ${n}.`);
         break;
@@ -454,7 +464,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
         }
         break;
       case 'mentor': {
-        const n = nextName(tr() < 0.4);
+        const n = nextName(tr() < 0.4, t.ranks[Math.min(t.ranks.length - 1, rank + 1)].toLowerCase());
         const main = parts[0];
         if (main) {
           if (main.id === 'craft' || main.id === 'school') skills.gain(choiceSkills(t, plan)[0], 8);
@@ -515,9 +525,39 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
   const beards = ch.female ? ['none'] : L.beards.length ? L.beards : ['none'];
   const hBase = folk.height[ch.female ? 1 : 0] * (L.h || 1);
   const heightCm = Math.round(hBase * (1 + (lr() - 0.5) * 0.12));
-  const weightKg = Math.round(folk.weight[ch.female ? 1 : 0] * (heightCm / folk.height[ch.female ? 1 : 0]) ** 2 * (L.broad || 1) * (0.88 + lr() * 0.24) * (1 + (T.d.traits.strength - 10) * 0.015));
+  const type = BODY_TYPES[ch.look.type % BODY_TYPES.length];
+  const weightKg = Math.round(folk.weight[ch.female ? 1 : 0] * (heightCm / folk.height[ch.female ? 1 : 0]) ** 2 * (L.broad || 1) * (0.88 + lr() * 0.24) * (1 + (T.d.traits.strength - 10) * 0.015) * type.weight);
   const bmi = weightKg / (heightCm / 100) ** 2;
-  const build = bmi < 18.5 ? 'slight' : bmi < 21 ? 'lean' : bmi < 25 ? 'of middling build' : bmi < 28 ? 'stocky' : 'heavy';
+  // The build in a word, as the body type has it at that weight.
+  const build = type.id === 'ectomorph' ? (bmi < 18.5 ? 'slight' : bmi < 21.5 ? 'lean' : 'rangy')
+    : type.id === 'endomorph' ? (bmi < 23 ? 'soft' : bmi < 27 ? 'stocky' : 'heavy')
+      : bmi < 18.5 ? 'slight' : bmi < 21 ? 'wiry' : bmi < 25 ? 'of middling build' : bmi < 28 ? 'broad' : 'powerfully built';
+
+  // ---- The people of their life -------------------------------------------------------------
+  // Each tie to a person is given who they are (characters.md, People in your life), from dice of
+  // their own: kin take after the character; all are of the home's people.
+  const CLOTH = ['#7a6a50', '#6a5a46', '#7a5060', '#4a5a46', '#5a5a70', '#8a6a44', '#4a6a8a', '#7a4a3a'];
+  for (const tie of ties) {
+    const known = tie.name ? met.get(tie.name) : undefined;
+    if (!tie.name || !known) continue;
+    const wr = rngOf(ch.seed, `who:${tie.name}`);
+    const kin = tie.kind === 'parent' || tie.kind === 'sibling' || siblings.some((s) => s.name === tie.name);
+    const sib = siblings.find((s) => s.name === tie.name);
+    const theirAge = tie.kind === 'parent' ? age + 19 + Math.floor(wr() * 16)
+      : sib ? Math.max(8, age + (sib.older ? 1 : -1) * (1 + Math.floor(wr() * 7)))
+        : tie.kind === 'master' ? age + 8 + Math.floor(wr() * 25) : Math.max(folk.adult, age - 6 + Math.floor(wr() * 16));
+    const theirHair = kin && wr() < 0.6 ? L.hairs[ch.look.hair % L.hairs.length] : pick(wr, L.hairs);
+    const styles = known.female ? L.hairF : L.hairM;
+    tie.who = {
+      female: known.female, age: theirAge, ...(known.trade ? { trade: known.trade } : {}), ...(L.kind ? { kind: L.kind } : {}),
+      skin: (kin ? skin : pick(wr, L.skins) ?? skin)[0],
+      hair: theirAge > folk.prime * 1.25 ? '#9b9a96' : (theirHair ?? hair)[0],
+      hairStyle: styles.length ? pick(wr, styles) : 'short',
+      beard: known.female || theirAge < folk.adult || !L.beards.length ? 'none' : pick(wr, L.beards),
+      type: kin && wr() < 0.5 ? type.id : pick(wr, BODY_TYPES).id,
+      cloth: pick(wr, CLOTH), home: home.name,
+    };
+  }
 
   // ---- The biography ------------------------------------------------------------------------
   const bio: { age: number; text: string }[] = [];
@@ -552,7 +592,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
     choices: ch, culture, folk, home, realm, year, family, cards,
     base, budget, spent, start: startTraits, traits: T.toJSON(), skills, terms, ranks, age,
     name: own, copper: Math.max(0, Math.round(copper)), gear, inventory, leftBehind, ties, wounds, knowledge,
-    look: { skin, hair, hairStyle: hairStyles[ch.look.hairStyle % Math.max(1, hairStyles.length)] ?? 'short', beard: beards[ch.look.beard % beards.length], heightCm, weightKg, build, hairStyles, beards },
+    look: { skin, hair, hairStyle: hairStyles[ch.look.hairStyle % Math.max(1, hairStyles.length)] ?? 'short', beard: beards[ch.look.beard % beards.length], heightCm, weightKg, build, type, hairStyles, beards },
     biography: bio,
     omen: omen ? (omen.draw.reversed ? omen.card.omenDown : omen.card.omenUp) : undefined,
     path: path && !path.draw.reversed ? path.card.track : path?.card.track,
@@ -633,8 +673,9 @@ export function buildActor(r: Resolved): Actor {
   }));
   const traits = actor.add(new Traits(JSON.parse(JSON.stringify(r.traits))));
   const body = actor.add(new Body({
-    heightCm: r.look.heightCm, weightKg: r.look.weightKg, build: r.look.build, skin: r.look.skin[1], skinHex: r.look.skin[0],
-    hair: r.look.hair[1], hairHex: r.look.hair[0], hairStyle: r.look.hairStyle, beard: r.look.beard, marks: r.culture.look.marks, kind: r.culture.look.kind, wounds: r.wounds.map((w) => ({ ...w })),
+    heightCm: r.look.heightCm, weightKg: r.look.weightKg, build: r.look.build, type: r.look.type.id, skin: r.look.skin[1], skinHex: r.look.skin[0],
+    hair: r.look.hair[1], hairHex: r.look.hair[0], hairStyle: r.look.hairStyle, beard: r.look.beard, beardless: r.choices.female || !r.look.beards.some((b) => b !== 'none'),
+    marks: r.culture.look.marks, kind: r.culture.look.kind, wounds: r.wounds.map((w) => ({ ...w })),
   }));
   actor.add(new Skills(r.skills.toJSON()));
   actor.add(new Pools(Pools.fromTraits(traits, body)));

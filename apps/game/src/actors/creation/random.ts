@@ -104,6 +104,6 @@ export function quickStart(seed: string, culture: number, homeId: string, w: Cre
   }
 
   ch.name = Math.floor(r() * 6);
-  ch.look = { skin: Math.floor(r() * 4), hair: Math.floor(r() * 4), hairStyle: Math.floor(r() * 6), beard: Math.floor(r() * 6), build: Math.floor(r() * 4) };
+  ch.look = { skin: Math.floor(r() * 4), hair: Math.floor(r() * 4), hairStyle: Math.floor(r() * 6), beard: Math.floor(r() * 6), build: Math.floor(r() * 4), type: Math.floor(r() * 3) };
   return ch;
 }

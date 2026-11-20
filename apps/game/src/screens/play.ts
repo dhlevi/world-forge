@@ -15,6 +15,9 @@ import { SleepScreen } from './sleep';
 import { CampScreen } from './camp';
 import { InventoryScreen } from './inventory';
 import { HealthScreen } from './health';
+import { GroomScreen } from './groom';
+import { PersonScreen } from './person';
+import type { PersonCard } from '../game/person-card';
 import { Inventory } from '../actors/items/inventory';
 import { defOf } from '../actors/items/item';
 import { FightScreen } from './fight';
@@ -108,6 +111,15 @@ export class PlayScreen extends Screen {
       this.showHealth();
       return true;
     }
+    // Looking a person over: the one under the look cursor, or the nearest in sight.
+    if (e.code === 'KeyI' && e.shiftKey && !e.ctrlKey && !e.metaKey && this.session.state.mode === 'local') {
+      this.inspect(this.session.hud.mode === 'look' ? this.session.game.cursor ?? undefined : undefined);
+      return true;
+    }
+    if (e.code === 'KeyG' && e.shiftKey && !e.ctrlKey && !e.metaKey && this.player) {
+      this.showGroom();
+      return true;
+    }
     if ((e.code === 'KeyI' || e.code === 'KeyG') && !e.ctrlKey && !e.metaKey && this.player) {
       this.showInventory();
       return true;
@@ -174,13 +186,39 @@ export class PlayScreen extends Screen {
     if (this.player) this.manager?.push(new HealthScreen(this, this.player));
   }
 
+  /** Grooming: by the wanderer's own hand, or (in town) a barber's. */
+  showGroom(barber = false): void {
+    if (this.player) this.manager?.push(new GroomScreen(this, this.player, barber));
+  }
+
+  showPerson(card: PersonCard): void {
+    this.manager?.push(new PersonScreen(card));
+  }
+
+  /**
+   * Looks a person over (game/person-card.ts): the one on a tile (the wanderer's own: their sheet),
+   * or, with none given, the nearest in sight. Returns whether there was someone to look at.
+   */
+  inspect(at?: [number, number]): boolean {
+    const s = this.session, g = s.game;
+    if (at && at[0] === g.px && at[1] === g.py) {
+      this.showSheet();
+      return !!this.player;
+    }
+    const spot = at ?? s.nearestPerson();
+    const card = spot ? s.inspect(spot[0], spot[1]) : null;
+    if (card) this.showPerson(card);
+    else if (!at) s.say('There is no one in sight to look over.');
+    return !!card;
+  }
+
   showDeath(): void {
     const d = this.session.state.dead;
     if (d && this.active) this.manager?.push(new DeathScreen(this, d));
   }
 
   showSheet(): void {
-    if (this.player) this.manager?.push(new SheetScreen(this.player, () => this.app.bus.now));
+    if (this.player) this.manager?.push(new SheetScreen(this.player, () => this.app.bus.now, (card) => this.showPerson(card)));
   }
 
   showKeys(): void {
@@ -227,7 +265,8 @@ export class SheetScreen extends Screen {
   readonly view = SheetView;
   popup = true;
   readonly state = reactive({ tab: 'life' as 'life' | 'skills' | 'gear' });
-  constructor(readonly actor: Actor, readonly now: () => number) {
+  /** `openPerson`: shows the card of one of the people of their life. */
+  constructor(readonly actor: Actor, readonly now: () => number, readonly openPerson: (card: PersonCard) => void = () => {}) {
     super();
   }
   key(e: KeyboardEvent): boolean {

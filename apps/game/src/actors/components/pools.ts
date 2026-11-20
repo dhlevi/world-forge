@@ -20,7 +20,8 @@ export interface PoolsData {
 }
 
 /**
- * Physical and mental stamina, each a day pool and a burst pool (sizes from traits and body).
+ * Physical and mental stamina, each a day pool and a burst pool (sizes from traits, body weight
+ * and body type).
  * Spent and refilled by the needs (actors/needs.ts) as time passes.
  */
 export class Pools extends Component {
@@ -34,8 +35,8 @@ export class Pools extends Component {
     const bulk = b ? clamp(b.d.weightKg / 70, 0.6, 1.4) : 1;
     const full = (max: number): Pool => ({ value: Math.round(max), max: Math.round(max) });
     return {
-      physBurst: full(30 + ((g('strength') + g('agility') + g('constitution')) * 4) / 3),
-      physDay: full((60 + 2 * g('constitution') + g('willpower')) * (0.85 + 0.15 * bulk)),
+      physBurst: full((30 + ((g('strength') + g('agility') + g('constitution')) * 4) / 3) * (b?.type.burst ?? 1)),
+      physDay: full((60 + 2 * g('constitution') + g('willpower')) * (0.85 + 0.15 * bulk) * (b?.type.day ?? 1)),
       mentBurst: full(30 + 2 * (g('intelligence') + g('willpower'))),
       mentDay: full(60 + 2 * g('willpower') + g('wisdom')),
     };

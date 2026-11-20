@@ -56,7 +56,8 @@ ok(typeof s.game.climb === 'function', 'rock faces can be climbed (by the Climbi
 const before = { fatigue: n().d.fatigue, reserve: n().d.reserveKcal };
 s.advance(10 * 3600);
 ok(n().d.fatigue > before.fatigue && n().d.reserveKcal < before.reserve, 'ten hours awake: more tired, and hungrier');
-ok(!!s.state.weather && s.state.needs.length === 7 && s.state.needs[0].id === 'health', 'the panel shows the weather, health and the six needs');
+ok(!!s.state.weather && s.state.needs.length === 8 && s.state.needs[0].id === 'health', 'the panel shows the weather, health and the seven needs');
+ok(!!s.state.portrait && s.state.portrait.wear.length > 0, 'and the wanderer\'s portrait, dressed');
 
 // ---- Sleep --------------------------------------------------------------------------------------
 const tired = n().d.fatigue, t0 = s.now();
@@ -71,6 +72,11 @@ ok(s.now() < t1 + 12 * 3600, 'sleeping until rested wakes early once rested');
 // ---- Drinking and reading the sky -------------------------------------------------------------------
 s.drinkHere();
 ok(/There is no water here to drink/.test(logText(s)), 'with no water beside, there is nothing to drink (and the land is searched)');
+const grime = n().d.grime;
+n().d.grime = 70;
+s.washHere();
+ok(/no water here to wash in/.test(logText(s)) && n().d.grime === 70, 'nor to wash in');
+n().d.grime = grime;
 s.readSky();
 ok(/sky/.test(s.hud.log[s.hud.log.length - 1].text), `the sky is read: "${s.hud.log[s.hud.log.length - 1].text}"`);
 const readAt = s.now();
@@ -103,6 +109,7 @@ ok(!!again.player?.get(Health) && h().d.blood > 4, 'a character saved before hea
 h().hurt({ kind: 'cut', sev: 6, part: 'arm.l', cause: 'a test', now: again.now() });
 again.advance(60);
 ok(again.state.needs[0].word !== '', `the panel shows the wound ("${again.state.needs[0].word}")`);
+ok(again.state.portrait?.marks.some((m) => m.at === 'shoulder.l' && m.kind === 'cut') === true, 'and so does the portrait');
 const said = again.treatWound(h().d.wounds[0].id, 'stitch');
 ok(/needle|stitch/.test(said), `treating it says what happened ("${said}")`);
 h().d.blood = h().bloodMax() * 0.52;

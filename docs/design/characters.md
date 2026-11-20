@@ -138,6 +138,25 @@ body parts, so wounds, illness and age can dull or take them.
 - **Age** (proposed addition): youth, prime and old age move traits and recovery; the world's
   calendar runs, so the player ages too.
 
+**Decided: body type.** Each person is an ectomorph, a mesomorph or an endomorph, chosen in
+character creation (Finish) beside the height and build.
+
+**Proposed: what each does** (small leanings, to tune in play; `BODY_TYPES` in
+`apps/game/src/actors/components/body.ts`).
+
+| Type | In a word | Weight for a height | Leans |
+|---|---|---|---|
+| Ectomorph | Lean and light-boned | A tenth less | A larger day pool and a smaller burst pool; burns food faster and lasts less long without it; feels the cold sooner |
+| Mesomorph | Broad-shouldered and muscular | As the people's build gives | A larger burst pool; otherwise the middle way |
+| Endomorph | Heavy-set and well padded | A seventh more | Lasts longer without food and burns it more slowly; keeps warm, but overheats sooner; a smaller day pool |
+
+Weight carries its own effects as before (blood, what can be carried, how much food the body
+needs). *Built:* the choice in creation (the quick start draws one), the leanings above in the
+pools, the needs and the comfortable range of temperature, the build in a word to suit (a lean
+ectomorph, a broad mesomorph, a stocky endomorph), and the type on the character sheet and in the
+portrait's face, neck and shoulders. A body from before types were kept is given the one its
+height and weight suggest. Not yet: the type shifting with long feeding or starvation.
+
 ## Health: body parts and wounds
 
 **Decided.** No hit points. Damage is to body parts, by wound type, as in RimWorld and UnReal
@@ -163,6 +182,16 @@ World, with blood loss, bandaging and so on.
   suffocation, or illness; not from a number reaching zero.
 - **Treatment** needs skill, materials and time: bandages, cleaning, stitching, splints,
   poultices, setting bones, and later surgery; poor treatment brings infection.
+
+**Decided: the parts of each sex.** A man's body and a woman's have the parts the other has not.
+
+**Proposed.** A woman's: the breasts (on the torso), the vulva, and the womb and ovaries (within
+the pelvis, reached only by a deep wound). A man's: the penis and testicles. They are parts like
+any other: struck by their size, covered by what is worn on the torso or the waist, wounded,
+bleeding, scarring and (the man's) lost; a wound to them hurts more than the same wound elsewhere.
+No capacity rests on them yet (fertility waits for families in play). *Built:* as proposed, in a
+person's body plan by their sex (`SEXED`, `humanoidPlan` in `actors/components/body.ts`); a body
+whose sex is not known has neither set.
 
 *Built (combat.md, stage 1; `apps/game/src/actors/health.ts`, `game/treatment.ts`):* the tree of
 parts with every finger and toe, the ribs, the teeth and the pelvis; wounds of each kind with a
@@ -246,6 +275,13 @@ and the day pool recover, the morning's moodlet (well rested, stiff, cold and ac
 night), and, below some level, a chance of waking in the night. *Built so far:* bed, blanket or
 ground set the speed of recovery and a moodlet (slept in a bed, slept rough, slept on the cold
 ground).
+
+## Keeping clean
+
+**Decided:** travelling builds up grime, which must be washed off: in a river, at a well or a
+fountain, in a bathhouse or at an inn. The design is in
+[survival.md](survival.md#cleanliness-and-grooming); the portrait shows the dirt and the blood
+([survival.md](survival.md#portraits)).
 
 ## Conditions: addiction and disease
 
@@ -453,6 +489,20 @@ and met in play.
   navigation.md (asking around, a mark with a ring of doubt).
 - **They live on:** in the world's summary ticks they can move, prosper, fall ill or die, and send
   word (letters, messengers) that becomes news or a quest.
+
+*Built (first pass):* each named tie carries a small record of the person (`Tie.who` in
+`actors/components/history.ts`: sex, age, trade, people, skin, hair and its style, beard, body
+type, the colour they wear, their home), drawn when the character is resolved from a seed of
+its own, so a re-roll of some other step leaves them as they were; kin share the family's
+colouring and the old go grey. Character creation (the Family and Finish steps) and the character
+sheet list them as cards with a portrait; a card opens a short sheet of the person (who they
+are to the character, age and trade, looks, where they were last known), the dead shown faded.
+Characters from before this have the list without the portraits. **Anyone seen in play can be
+looked over** the same way (`game/person-card.ts`): Shift+I for the nearest person in sight,
+Enter on one while looking about (X), or a click on their tile. A stranger shows their portrait,
+looks and dress and what they are doing; once spoken to, their household, manner, ties and how
+they regard the wanderer as well. Not yet: ties as residents placed in the world, when last seen,
+and their lives going on.
 
 ## Mood
 

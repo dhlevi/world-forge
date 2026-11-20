@@ -134,7 +134,9 @@ button:disabled { opacity: 0.5; cursor: default; }
 .travel-bar select { padding: 4px 8px; }
 
 /* The character in the play panel. */
-.who { display: flex; flex-direction: column; gap: 2px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.who { display: flex; align-items: center; gap: 10px; border-bottom: 1px solid var(--line); padding-bottom: 8px; }
+.who > div { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.who .portrait { cursor: pointer; }
 .who a { color: var(--text); font-weight: 600; text-decoration: none; }
 .who a:hover { color: var(--accent); }
 .who .dim { font-size: 0.88em; }

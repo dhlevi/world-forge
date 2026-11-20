@@ -18,7 +18,7 @@
  * Proposed numbers, to tune in play.
  */
 import type { Actor } from './actor';
-import { Mood, Skills, Traits } from './components';
+import { Body, Mood, Skills, Traits } from './components';
 import { SKILL } from './data/skills';
 import { Needs } from './needs';
 import { Health } from './health';
@@ -87,7 +87,7 @@ export function teachFactor(level: number, difficulty: number): number {
   return 2 / (1 + Math.exp(-(difficulty - level + 5) / 7));
 }
 
-/** The body's state as modifiers: tiredness, hunger and thirst, cold and heat, wounds and pain, and mood. */
+/** The body's state as modifiers: tiredness, hunger and thirst, cold and heat, dirt, wounds and pain, and mood. */
 export function bodyMods(a: Actor, skill: string): Mod[] {
   const out: Mod[] = [];
   const n = a.get(Needs);
@@ -104,7 +104,13 @@ export function bodyMods(a: Actor, skill: string): Mod[] {
     if (thirst[w.thirst]) out.push({ why: w.thirst.toLowerCase(), value: thirst[w.thirst] });
     if (heat[w.heat]) out.push({ why: w.heat.toLowerCase(), value: physical ? heat[w.heat] : Math.round(heat[w.heat] / 2) });
     if (physical && stamina[w.stamina]) out.push({ why: w.stamina.toLowerCase(), value: stamina[w.stamina] });
+    // Dirt and blood put people off.
+    const dirt: Record<string, number> = { Dirty: -4, Bloodied: -8, Filthy: -10 };
+    if (SKILL.get(skill)?.group === 'Social' && dirt[w.clean]) out.push({ why: w.clean.toLowerCase(), value: dirt[w.clean] });
   }
+  // So do hair and a beard run wild.
+  const kempt = a.get(Body)?.kempt();
+  if (kempt && SKILL.get(skill)?.group === 'Social') out.push({ why: kempt.toLowerCase(), value: kempt === 'Ragged' ? -5 : -2 });
   // Wounds: pain, a dazed head, hurt hands or legs (actors/health.ts).
   const h = a.get(Health);
   if (h) out.push(...h.mods(SKILL.get(skill)?.group));

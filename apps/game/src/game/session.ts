@@ -13,8 +13,10 @@
 import { reactive } from 'vue';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, type Season } from '@worldforge/core/local/tiles';
-import { BRUSH_TOOLS, clearBrush } from './tasks';
+import { BRUSH_TOOLS, clearBrush, usePortion } from './tasks';
 import { figureOf } from './figure';
+import { portraitOf, type PortraitSpec } from './portrait';
+import { residentCard, residentLines, type PersonCard } from './person-card';
 import { makeItem } from '../actors/items/item';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Weather } from '@worldforge/core/weather/weather';
@@ -40,7 +42,7 @@ import { GameMap } from './map';
 import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type Dead, type SaveFile } from './save';
 import { Travel } from './travel';
-import { Population, doingWords, type Resident } from '../world/population';
+import { Population } from '../world/population';
 import { Fauna, animalLines, type Presence } from '../world/fauna';
 import { Snares, carcassOf } from '../world/hunting';
 import { aimables, armsOf, beastStrikes, readyWeapon, strikeBeast, strikeChance, type Arms, type Blow, type BlowId, type Stance, type Target } from './combat';
@@ -50,7 +52,6 @@ import type { Mod } from '../actors/checks';
 import type { Species } from '@worldforge/core/local/fauna';
 import { SPECIES_BY_ID } from '@worldforge/core/local/fauna';
 import { LOUD, directionWords, heardLevel, hearingThreshold, readTracks, takesTracks, type Noise } from '../world/senses';
-import { opinionWords } from '../world/opinions';
 import { greeting, lineOf } from '../world/talk';
 import { sunTimes } from '@worldforge/core/weather/weather';
 import { WeatherService, type Sky, type SkyPicture } from './weather';
@@ -104,7 +105,7 @@ export interface SleepOptions {
   onHour?: (h: number) => void;
 }
 
-const NEED_LABEL: Record<NeedId, string> = { hunger: 'Food', thirst: 'Water', sleep: 'Rest', stamina: 'Stamina', heat: 'Warmth', wet: 'Dry' };
+const NEED_LABEL: Record<NeedId, string> = { hunger: 'Food', thirst: 'Water', sleep: 'Rest', stamina: 'Stamina', heat: 'Warmth', wet: 'Dry', clean: 'Clean' };
 /** Real minutes between autosaves (when something has happened). */
 const AUTOSAVE_MS = 3 * 60 * 1000;
 
@@ -151,6 +152,8 @@ export class PlaySession {
     roofs: 'auto' as RoofMode,
     name: '',
     line: '',
+    /** The wanderer's portrait as they are now (game/portrait.ts). */
+    portrait: null as PortraitSpec | null,
     /** Health and the needs as bars and words (actors/health.ts, actors/needs.ts), and the air. */
     needs: [] as { id: NeedId | 'health'; label: string; word: string; bar: number }[],
     /** The wanderer has died (combat.md, permadeath): of what, and when. */
@@ -471,6 +474,7 @@ export class PlaySession {
     const id = this.player?.get(Identity);
     this.state.name = id ? id.name : '';
     this.state.line = id ? `${id.d.people.replace(/^the /, '')} ${id.d.female ? 'woman' : 'man'}, ${id.ageAt(time)}` : '';
+    this.state.portrait = this.player ? portraitOf(this.player) : null;
     const n = this.needs();
     if (n) {
       const w = n.words(), b = n.bars();
@@ -606,7 +610,7 @@ export class PlaySession {
     const fireBy = !!camp?.fire.lit || (inside && !!game.besideObject(['hearth', 'forge', 'oven'], 2));
     this.cast.clock(t, {
       activity: game.activity, ambientC: air + game.camps.warmth(game.px, game.py, air), loadSlow: this.invSlow(), sleepQuality: game.sleepQuality,
-      weather: inside ? undefined : { rainMm: w.rainMm, snow: w.kind.includes('snow'), windMs: w.windMs, sun }, cover, windCover, fire: fireBy,
+      weather: inside ? undefined : { rainMm: w.rainMm, snow: w.kind.includes('snow'), windMs: w.windMs, sun }, cover, windCover, fire: fireBy, mud: inside ? 0 : s.mud,
     });
     // Weather in the log (not while asleep, but a season or snow noticed on waking).
     const changed = WeatherService.changes(this.lastSky, s);
@@ -659,10 +663,12 @@ export class PlaySession {
     }
     const n = this.needs();
     if (!n) return;
+    // Hair and beard as they grow (actors/components/body.ts).
+    for (const text of this.player?.get(Body)?.takeNotes() ?? []) game.say(text);
     for (const note of n.takeNotes()) {
       game.say(note.text);
-      // A need growing worse stops a journey, as dusk does.
-      if (note.worse && travel.running && note.word !== 'Winded') {
+      // A need growing worse stops a journey, as dusk does (not being winded, or the road's dirt).
+      if (note.worse && travel.running && note.word !== 'Winded' && note.need !== 'clean') {
         travel.stop();
         game.say('You stop.');
       }
@@ -842,6 +848,9 @@ export class PlaySession {
     g.time += ex.seconds;
     g.activity = 'work';
     g.say(ex.text, ex.tip);
+    // Blood drawn close to gets on the one who drew it.
+    const drawn = ex.wounds.filter((w) => w.kind !== 'bruise' && w.kind !== 'fracture').reduce((sum, w) => sum + w.start, 0);
+    if (drawn && d <= 1) this.needs()?.stain(Math.min(25, 2 + drawn * 0.8));
     // Noise: a fight is loud.
     this.onNoiseOfFight(a.x, a.y);
     if (t.health.dead) this.carcass(a.s, a.x, a.y, `The ${a.s.name} falls dead.`, a);
@@ -948,17 +957,22 @@ export class PlaySession {
     game.updateHud();
   }
 
+  /** Water to hand: a well or a fountain, or water, underfoot or beside. */
+  waterBeside(): boolean {
+    const game = this.game;
+    return !!game.nearby(1, (x, y) => {
+      const od = OBJECT_TILES[game.map.object(x, y)];
+      return od?.name === 'well' || od?.name === 'fountain' || GROUND_TILES[game.map.ground(x, y)]?.water ? 'water' : null;
+    });
+  }
+
   /** Treats a wound (game/treatment.ts): the time it takes passes. Returns what happened, in words. */
   treatWound(woundId: number, t: Treat): string {
     const a = this.player, h = this.health(), game = this.game;
     const w = h?.d.wounds.find((x) => x.id === woundId);
     if (!a || !h || !w) return 'There is no such wound.';
     if (h.senseless() || this.state.dead) return 'You are in no state to.';
-    const water = !!game.nearby(1, (x, y) => {
-      const od = OBJECT_TILES[game.map.object(x, y)];
-      return od?.name === 'well' || od?.name === 'fountain' || GROUND_TILES[game.map.ground(x, y)]?.water ? 'water' : null;
-    });
-    const r = treat(a, a, w, t, game.time, water);
+    const r = treat(a, a, w, t, game.time, this.waterBeside());
     if (r.seconds > 0) {
       game.time += r.seconds;
       game.activity = 'work';
@@ -987,7 +1001,7 @@ export class PlaySession {
       this.collapsing = false;
       return;
     }
-    const why = { thirst: 'Your legs give way: you have had nothing to drink for too long.', hunger: 'You faint from hunger.', sleep: 'You can stay awake no longer and drop where you stand.', heat: n.d.heat < 0 ? 'The cold takes you, and the world goes dark.' : 'The heat overcomes you, and you fall.', stamina: 'You collapse.', wet: 'You collapse.' }[n.collapse];
+    const why = { thirst: 'Your legs give way: you have had nothing to drink for too long.', hunger: 'You faint from hunger.', sleep: 'You can stay awake no longer and drop where you stand.', heat: n.d.heat < 0 ? 'The cold takes you, and the world goes dark.' : 'The heat overcomes you, and you fall.', stamina: 'You collapse.', wet: 'You collapse.', clean: 'You collapse.' }[n.collapse];
     this.travel.stop();
     game.say(why);
     game.sleepQuality = 0.3;
@@ -1273,6 +1287,61 @@ export class PlaySession {
   }
 
   /**
+   * Washing (W): in a bathtub, or water to stand in (a river, a lake, the sea), or from the bucket
+   * of a well or a fountain's basin, which leaves a little of the dirt; with soap, none at all. It
+   * takes off the blood, and leaves the washer wet.
+   */
+  washHere(): void {
+    const n = this.needs(), game = this.game, inv = this.player?.get(Inventory);
+    if (!n) return;
+    const found = game.nearby(1, (x, y) => {
+      const od = OBJECT_TILES[game.map.object(x, y)];
+      if (od?.name === 'bath') return { how: `in ${od.look}`, leaves: 0, minutes: 25, wet: 30 };
+      if (od?.name === 'well' || od?.name === 'fountain') return { how: `at ${od.look}`, leaves: 12, minutes: 10, wet: 25 };
+      return GROUND_TILES[game.map.ground(x, y)]?.water ? { how: 'in the water', leaves: 5, minutes: 12, wet: 45 } : null;
+    });
+    if (!found) {
+      game.say('There is no water here to wash in: a river or a lake, a well, a fountain or a bath.');
+      return;
+    }
+    const was = n.words().clean;
+    const soap = inv?.d.items.find((i) => i.def === 'soap');
+    if (!n.wash(soap ? 0 : found.leaves)) {
+      game.say('You are clean enough already.');
+      return;
+    }
+    if (soap && inv) usePortion(inv, soap);
+    n.d.wet = Math.max(n.d.wet ?? 0, found.wet);
+    game.time += found.minutes * 60;
+    if (soap || was === 'Dirty' || was === 'Filthy' || was === 'Bloodied') this.player?.get(Mood)?.add({ id: 'washed', text: soap ? 'Scrubbed clean with soap' : 'Washed clean', value: soap ? 2 : 1, until: game.time + (soap ? 8 : 4) * 3600 });
+    game.say(`You strip off and wash ${found.how}${soap ? ' with soap' : ''}${was === 'Bloodied' ? ', and the blood comes away' : was ? ', scrubbing off the dirt of the road' : ''}${n.d.airC < 5 ? '. The water is bitterly cold' : ''}.`);
+    game.updateHud();
+  }
+
+  // ---- The people about ------------------------------------------------------------------------
+
+  /** A person on a tile in sight, looked over (Shift+I, or a click on them): what can be told of them, or null if no one is seen there. */
+  inspect(x: number, y: number): PersonCard | null {
+    const g = this.game;
+    const r = this.state.mode === 'local' && g.isVisible(x, y) ? this.people.at(x, y, g.z) : null;
+    return r ? residentCard(r, this.people, g.time) : null;
+  }
+
+  /** The tile of the person nearest the wanderer in sight, if anyone is. */
+  nearestPerson(): [number, number] | null {
+    const g = this.game;
+    let best: [number, number] | null = null, bd = Infinity;
+    if (this.state.mode === 'local') for (const r of this.people.all()) {
+      const d = Math.hypot(r.x - g.px, r.y - g.py);
+      if (r.z === g.z && d < bd && g.isVisible(r.x, r.y)) {
+        bd = d;
+        best = [r.x, r.y];
+      }
+    }
+    return best;
+  }
+
+  /**
    * What the character knew of the world before setting out (their occupations and standing,
    * actors/creation/resolve.ts): the roads walked and the places seen, laid on the travel map once,
    * at the start of a new game.
@@ -1337,17 +1406,4 @@ export class PlaySession {
     if (this.game.time !== this.savedAt) await this.save(true);
     this.host.toTitle();
   }
-}
-
-/** What the wanderer sees of a resident: who they are, what they are about, and (if met) how they stand toward the wanderer. */
-function residentLines(r: Resident, pop: Population, t: number): string[] {
-  const p = r.p;
-  const an = (w: string) => (/^[aeiou]/i.test(w) ? `an ${w}` : `a ${w}`);
-  const trade = p.trade === 'child' ? (p.female ? 'a girl' : 'a boy') : p.trade === 'retired' || p.trade === 'helps at home' ? '' : an(p.trade);
-  const out = [`${p.name}${trade ? `, ${trade}` : ''}.`];
-  out.push(`One of ${p.people}${p.age >= 12 ? `, about ${Math.max(12, Math.round(p.age / 5) * 5)} years old` : ''}.`);
-  const doing = doingWords(r);
-  if (doing) out.push(doing);
-  if (pop.opinions.knows(r.p.id)) out.push(`You have met; ${r.p.female ? 'she' : 'he'} is ${opinionWords(pop.opinions.of(r.p.id, t))}.`);
-  return out;
 }

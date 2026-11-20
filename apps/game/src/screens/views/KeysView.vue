@@ -21,6 +21,7 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
     name: 'Looking',
     keys: [
       ['Look', 'x, then move the cursor; or point at a tile'],
+      ['Look someone over', 'Shift+I: the nearest person in sight (or, while looking, the one under the cursor; Enter does the same); or click on them. Their portrait, and what you know of them'],
       ['Levels', '< and > elsewhere look up and down'],
       ['Zoom', '+ and -'],
       ['Roofs', 'Shift+R: shown unless you are inside, always, or never'],
@@ -37,6 +38,8 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
       ['Cut brush', 'A, then a direction: clear a bush or scrub with a machete, axe, hatchet, sword or knife (Survival)'],
       ['Light', 'F: light a lantern, torch or candle from your pack, or put it out'],
       ['Drink', 'Q at water or a well (fills waterskins too)'],
+      ['Wash', 'W in or beside water, at a well or fountain, or in a bathtub: off with the dirt and the blood (cleaner with soap)'],
+      ['Groom', 'Shift+G: cut or dress your hair, shave or trim your beard (a knife; soap and water for a shave)'],
       ['Sleep or rest', 'Shift+Z'],
       ['Camp', 'Shift+C: choose a site, fire, shelter, food, the night'],
       ['Read the sky', 'Shift+W: what weather is coming (Survival)'],

@@ -6,13 +6,17 @@
 import { computed } from 'vue';
 import type { CreationScreen } from '../creation';
 import { STEPS } from '../creation-steps';
-import { trackOptions } from '../../actors/creation/resolve';
+import { trackOptions, buildActor } from '../../actors/creation/resolve';
 import { STANDINGS } from '../../actors/data/standing';
 import { CARD, POSITION_INFO, type Position } from '../../actors/data/cards';
 import { TRAIT_GROUPS, TRAIT_INFO, SENSES, traitWord, type TraitId } from '../../actors/data/traits';
 import { skillWord, fluencyWord, KNOWLEDGE } from '../../actors/data/skills';
 import { moneyText, hairText, beardText } from '../../actors/components';
 import { itemName } from '../../actors/items/item';
+import { portraitOf } from '../../game/portrait';
+import { tieCards } from '../../game/person-card';
+import Portrait from '../../components/Portrait.vue';
+import PeopleList from '../../components/PeopleList.vue';
 
 const props = defineProps<{ screen: CreationScreen }>();
 const screen = props.screen;
@@ -25,6 +29,11 @@ const res = computed(() => {
   return screen.resolved();
 });
 const ch = computed(() => ui.choices!);
+/** The character's portrait as they would set out: their looks, dress and old scars. */
+const portrait = computed(() => (res.value ? portraitOf(buildActor(res.value)) : null));
+/** The people of their life so far, a card each; the family among them. */
+const people = computed(() => tieCards(res.value?.ties ?? [], res.value?.culture.people ?? ''));
+const kin = computed(() => tieCards((res.value?.ties ?? []).filter((t) => t.kind === 'parent' || t.kind === 'sibling'), res.value?.culture.people ?? '').cards);
 const cultures = computed(() => screen.catalogue.value?.cultures ?? []);
 /** The peoples by world (Old, New, and the Underworld), then by folk. */
 const worlds = computed(() => {
@@ -138,8 +147,9 @@ function onMother(e: Event): void {
             </label>
             <button @click="screen.rollFamily()">Another family</button>
           </div>
+          <PeopleList :cards="kin" @open="screen.openPerson" />
           <ul class="cc-ties">
-            <li v-for="(t, i) in res.ties.filter((x) => x.kind === 'parent' || x.kind === 'sibling' || x.kind === 'feud' || (x.kind === 'debt' && !x.name))" :key="i">{{ t.text }}</li>
+            <li v-for="(t, i) in res.ties.filter((x) => x.kind === 'feud' || (x.kind === 'debt' && !x.name))" :key="i">{{ t.text }}</li>
             <li>{{ res.family.literate ? `You were taught to read ${res.culture.name}.` : 'You were never taught to read.' }}</li>
           </ul>
         </section>
@@ -231,12 +241,17 @@ function onMother(e: Event): void {
             <button @click="screen.cycleLook('hair')">Hair: {{ res.look.hair[1] }}</button>
             <button @click="screen.cycleLook('hairStyle')">Style: {{ res.look.hairStyle }}</button>
             <button v-if="!ch.female" @click="screen.cycleLook('beard')">Beard: {{ res.look.beard }}</button>
+            <button :title="res.look.type.about" @click="screen.cycleLook('type')">Body type: {{ res.look.type.name }}</button>
             <button @click="screen.cycleLook('build')">Height and build</button>
           </div>
           <p>{{ res.look.heightCm }} cm and {{ res.look.weightKg }} kg, {{ res.look.build }}; {{ res.look.skin[1] }} skin, {{ hairText(res.look.hair[1], res.look.hairStyle) }}<span v-if="!ch.female">, {{ beardText(res.look.beard) }}</span>.<span v-if="res.culture.look.marks"> Like all your people: {{ res.culture.look.marks }}.</span></p>
+          <p class="dim"><b>{{ res.look.type.name }}.</b> {{ res.look.type.about }}</p>
           <h4>Your story</h4>
           <p v-for="(b, i) in res.biography" :key="i" class="cc-bio">{{ b.text }}</p>
           <p v-for="(w, i) in res.wounds" :key="'w' + i" class="dim">You bear {{ w.scar }}.</p>
+          <h4>The people in your life</h4>
+          <PeopleList :cards="people.cards" @open="screen.openPerson" />
+          <p v-for="(t, i) in people.others" :key="'o' + i" class="dim">{{ t.text }}</p>
           <h4>What you know of the world</h4>
           <p class="dim">The country within {{ (res.knowledge.homeRadiusM / 1000).toFixed(0) }} km of {{ res.home.name }}<span v-if="res.knowledge.roads.length">, the roads to {{ res.knowledge.roads.length }} other place{{ res.knowledge.roads.length === 1 ? '' : 's' }}</span><span v-if="res.knowledge.places.length">, and {{ res.knowledge.places.length }} place{{ res.knowledge.places.length === 1 ? '' : 's' }} further off</span>.</p>
           <p v-for="(n, i) in res.knowledge.notes" :key="'n' + i" class="dim">{{ n }}</p>
@@ -250,6 +265,7 @@ function onMother(e: Event): void {
       </main>
 
       <aside class="cc-side">
+        <Portrait v-if="portrait" :spec="portrait" :scale="4" />
         <div class="cc-name">{{ res.name.full }}</div>
         <div class="dim">{{ ch.female ? 'Woman' : 'Man' }} of {{ res.culture.people }}, {{ res.age }}</div>
         <div class="dim">{{ res.family.standing.name }}; from {{ res.home.name }}</div>

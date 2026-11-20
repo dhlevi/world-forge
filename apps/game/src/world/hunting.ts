@@ -17,6 +17,7 @@ import { check, DC, type Grade } from '../actors/checks';
 import type { Inventory } from '../actors/items/inventory';
 import { makeItem, type Item } from '../actors/items/item';
 import { ITEM } from '../actors/items/defs';
+import { Needs } from '../actors/needs';
 import { BRUSH_TOOLS } from '../game/tasks';
 import { fightOf } from './beasts';
 import type { Fauna, FaunaView } from './fauna';
@@ -145,5 +146,9 @@ export function butcher(a: Actor, inv: Inventory, it: Item, now: number): { item
   };
   // A big beast takes longer: a deer most of an hour, a bear the better part of a morning.
   const kg = fightOf(s).kg;
+  // Bloody work, the more of it on a big beast.
+  const n = a.get(Needs);
+  n?.stain(Math.min(40, 8 + kg * 0.25));
+  n?.soil(5);
   return { items, text: words[grade], seconds: Math.round(15 * 60 * Math.max(1, Math.pow(kg / 10, 0.55))) };
 }

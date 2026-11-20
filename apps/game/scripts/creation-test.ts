@@ -16,7 +16,10 @@ import { figureOf } from '../src/game/figure';
 import { FIGURE_KINDS, WEAR_SHAPE as SHAPE, WEAR_SHAPES, WEAR_SLOTS as SLOTS, figureLayers } from '@worldforge/core/local/figures';
 import { ITEMS } from '../src/actors/items/defs';
 const KINDS = new Set<string>(FIGURE_KINDS.map((k) => k.name));
-import { Identity, Skills, Traits, moneyText } from '../src/actors/components';
+import { Body, BODY_TYPE, History, Identity, Skills, Traits, moneyText } from '../src/actors/components';
+import { tieCards } from '../src/game/person-card';
+import { Health } from '../src/actors/health';
+import { PORTRAIT_PX, paintPortrait, portraitOf } from '../src/game/portrait';
 import { Inventory } from '../src/actors/items/inventory';
 import { itemName } from '../src/actors/items/item';
 import '../src/actors/cast';
@@ -93,6 +96,20 @@ for (const n of [0, 5, 17, 40, 90]) {
   console.log('Figure:', fig.kind, fig.female ? 'female' : 'male', fig.skin, `hair ${fig.hair.style} ${fig.hair.colour}, beard ${fig.beard.style};`, fig.wear.map((x) => `${x.shape} ${x.colour}`).join(', '));
   check(KINDS.has(fig.kind) && fig.wear.some((x) => x.shape === 'tunic' || x.shape === 'dress' || x.shape === 'robe') && fig.wear.some((x) => x.shape === 'boots' || x.shape === 'shoes' || x.shape === 'sandals'), `${id.full}: drawn as a ${fig.kind}, dressed and shod`);
   check(fig.wear.every((x, i) => i === 0 || SLOTS.indexOf(SHAPE.get(fig.wear[i - 1].shape)!.slot) < SLOTS.indexOf(SHAPE.get(x.shape)!.slot)), `${id.full}: one garment to a place on the figure, in drawing order`);
+  // Their body: its type, the parts of their sex, and their portrait (game/portrait.ts).
+  const body = back.need(Body), plan = back.need(Health).plan;
+  console.log('Body:', body.type.name, `(${res.look.build})`);
+  check(!!body.d.type && BODY_TYPE.has(body.d.type) && body.type.id === res.look.type.id, `${id.full}: has a body type`);
+  check(plan.some((p) => p.sex === (id.female ? 'f' : 'm')) && !plan.some((p) => p.sex === (id.female ? 'm' : 'f')), `${id.full}: has the body of their sex`);
+  const spec = portraitOf(back);
+  check(paintPortrait(spec).length === PORTRAIT_PX * PORTRAIT_PX * 4 && spec.kind === fig.kind && spec.type === body.type.id && spec.grime === 0 && spec.blood === 0, `${id.full}: has a portrait, clean and whole`);
+  // The people of their life (game/person-card.ts): everyone named has a card and a portrait; the dead are faded.
+  const people = tieCards(back.need(History).d.ties, id.people);
+  console.log('People:', people.cards.map((c) => `${c.name} (${c.lines.join(' ')})`).join('; '));
+  check(people.cards.length > 0 && people.cards.every((c) => !!c.portrait && c.sections.length >= 2) && people.cards.some((c) => /father/.test(c.lines[0])), `${id.full}: the people of their life have portraits (${people.cards.length})`);
+  check(new Set(people.cards.map((c) => c.name)).size === people.cards.length && people.cards.every((c) => !!c.faded === res.ties.some((t) => t.name === c.name && t.alive === false)), `${id.full}: one card a person, the dead shown so`);
+  const father = res.ties.find((t) => t.kind === 'parent' && !t.who?.female)?.who;
+  check(!!father && father.age > id.age + 15 && father.skin === res.look.skin[0], `${id.full}: their father is older, and of their colouring`);
   // The same choices make the same person.
   const again = buildActor(resolve(quickStart(`seed${n}`, ci, home.id, world), world));
   check(sameBut(again.toJSON().components, a.toJSON().components), `${id.full}: the same seed makes the same character (item ids aside)`);

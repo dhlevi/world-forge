@@ -31,7 +31,7 @@
  */
 import { Component } from './actor';
 import type { Message } from '../engine/messages';
-import { Body, HUMANOID, Mood, PART, PLANS, PLAN_PARTS, Skills, Traits, type Activity, type BodyPartDef, type PlanId, type TimeCtx } from './components';
+import { Body, HUMANOID, Identity, Mood, PART, PLANS, PLAN_PARTS, Skills, Traits, humanoidPlan, type Activity, type BodyPartDef, type PlanId, type Sex, type TimeCtx } from './components';
 import { Needs } from './needs';
 import { Inventory } from './items/inventory';
 import { defOf } from './items/item';
@@ -121,6 +121,11 @@ const DIRTY: Record<WoundKind, number> = { cut: 1, stab: 1.3, bite: 1.8, crush: 
 const SCARS = new Set<WoundKind>(['cut', 'stab', 'bite', 'burn', 'frostbite', 'crush']);
 
 const KIND_WORD: Record<WoundKind, string> = { cut: 'cut', stab: 'stab wound', bite: 'bite', bruise: 'bruise', fracture: 'broken bone', crush: 'crushing wound', burn: 'burn', frostbite: 'frostbite' };
+
+/** "is" or "are", for a part named in the plural (the ribs, the teeth). */
+const isAre = (name: string) => (name !== 'pelvis' && /(s|teeth)$/.test(name) ? 'are' : 'is');
+/** Blood on the skin and clothes for each litre lost (actors/needs.ts, `stain`). */
+const STAIN_PER_L = 150;
 
 /** The wound's name in words, with how bad it is ("a deep cut", "a bruise"). */
 export function woundWords(w: HealthWound, def: BodyPartDef | undefined = PART.get(w.part)): string {
@@ -220,9 +225,15 @@ export class Health extends Component {
     return this.d.plan ?? 'humanoid';
   }
 
-  /** The parts of the body's plan. */
+  /** A person's sex, for the parts only a man's or a woman's body has (none, if there is no telling). */
+  private get sex(): Sex | undefined {
+    const id = this.actor?.get(Identity);
+    return id ? (id.d.female ? 'f' : 'm') : undefined;
+  }
+
+  /** The parts of the body's plan (a person's, with those of their sex). */
   get plan(): BodyPartDef[] {
-    return PLANS[this.planId];
+    return this.planId === 'humanoid' ? humanoidPlan(this.sex) : PLANS[this.planId];
   }
 
   /** How tough the parts are against a person's: a beast's by its weight (a hare's far less, a bear's more). */
@@ -235,7 +246,7 @@ export class Health extends Component {
     let p = this.scaled.get(id);
     if (!p) {
       const b = PLAN_PARTS[this.planId].get(id);
-      if (!b) return undefined;
+      if (!b || (b.sex && b.sex !== this.sex)) return undefined;
       p = this.scale === 1 ? b : { ...b, hp: b.hp * this.scale };
       this.scaled.set(id, p);
     }
@@ -313,7 +324,7 @@ export class Health extends Component {
     let sum = 0;
     for (const w of this.d.wounds) {
       const def = this.partOf(w.part);
-      let p = Math.min(w.sev, def?.hp ?? w.sev) * PAIN[w.kind] * (def?.inside ? 1.2 : 1);
+      let p = Math.min(w.sev, def?.hp ?? w.sev) * PAIN[w.kind] * (def?.inside ? 1.2 : 1) * (def?.pain ?? 1);
       if (w.kind === 'fracture' && w.splinted) p *= 0.5;
       if (w.poultice !== undefined) p *= 0.85;
       if (w.infection) p += w.infection * 6;
@@ -535,8 +546,8 @@ export class Health extends Component {
     if (part.sever) {
       const gone = new Set(within(part.id, this.plan));
       this.d.wounds = this.d.wounds.filter((x) => !gone.has(x.part));
-      this.note(`Your ${part.name} is ${w.kind === 'crush' || w.kind === 'fracture' ? 'crushed beyond saving' : w.kind === 'frostbite' ? 'black with frostbite, and lost' : 'torn away'}.`, true);
-    } else this.note(`Your ${part.name} is ${part.id.startsWith('eye') ? 'blinded' : 'ruined'}.`, true);
+      this.note(`Your ${part.name} ${isAre(part.name)} ${w.kind === 'crush' || w.kind === 'fracture' ? 'crushed beyond saving' : w.kind === 'frostbite' ? 'black with frostbite, and lost' : 'torn away'}.`, true);
+    } else this.note(`Your ${part.name} ${isAre(part.name)} ${part.id.startsWith('eye') ? 'blinded' : 'ruined'}.`, true);
     if (part.vital) this.die(`a ruined ${part.name}${w.cause ? `, from ${w.cause}` : ''}`);
   }
 
@@ -619,10 +630,11 @@ export class Health extends Component {
   private step(dt: number, ctx: TimeCtx): void {
     const d = this.d, h = dt / H;
     const act: Activity = ctx.activity ?? 'rest';
-    const n = this.actor?.get(Needs)?.d;
+    const needs = this.actor?.get(Needs), n = needs?.d;
 
-    // ---- Blood: lost to the wounds, made again (faster fed and watered).
+    // ---- Blood: lost to the wounds (and onto the skin and clothes), made again (faster fed and watered).
     const lost = this.bleeding() / 1000;
+    if (lost > 0) needs?.stain(lost * h * STAIN_PER_L);
     const max = this.bloodMax();
     const fed = n ? clamp(Math.min(n.nourish, n.hydrated) / 60, 0.2, 1) : 1;
     d.blood = clamp(d.blood - lost * h + (lost < 0.02 ? 0.02 * fed * h : 0), 0, max);
@@ -666,12 +678,14 @@ export class Health extends Component {
     const food = n ? (n.nourish < 25 ? 0.3 : n.nourish < 50 ? 0.6 : 1) * (n.hydrated < 40 ? 0.5 : 1) : 1;
     const con = this.actor?.get(Traits)?.get('constitution') ?? 10;
     const body = Math.sqrt(con / 10);
+    // A filthy skin festers the more (actors/needs.ts, Keeping clean).
+    const filth = needs?.festering() ?? 1;
     const healed: HealthWound[] = [];
     for (const w of d.wounds) {
       const age = (this.now - w.at) / H;
       // Festering, in the first two days of an open wound not yet closed by healing.
       if (OPEN.has(w.kind) && w.infection === undefined && age >= 4 && age <= 52) {
-        const risk = Math.min(0.6, 0.035 * w.start) * DIRTY[w.kind] * (w.cleaned !== undefined ? 0.25 * (1.4 - w.cleaned) : 1) * (w.poultice !== undefined ? 0.5 : 1) * (w.stitched !== undefined && w.cleaned === undefined ? 1.5 : 1);
+        const risk = Math.min(0.6, 0.035 * w.start) * DIRTY[w.kind] * filth * (w.cleaned !== undefined ? 0.25 * (1.4 - w.cleaned) : 1) * (w.poultice !== undefined ? 0.5 : 1) * (w.stitched !== undefined && w.cleaned === undefined ? 1.5 : 1);
         if (this.random() < (risk / 48) * h) {
           w.infection = 0.02;
           w.immunity = 0;

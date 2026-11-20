@@ -64,6 +64,22 @@
       "about": "Needles, thread, wax and a roll of patches: for mending cloth."
     },
     {
+      "id": "soap",
+      "name": "cake of soap",
+      "plural": "cakes of soap",
+      "kind": "tool",
+      "weight": 0.15,
+      "bulk": 0.1,
+      "size": "tiny",
+      "value": 3,
+      "stack": 5,
+      "uses": 8,
+      "useWord": "washes",
+      "durable": false,
+      "sold": ["market", "store", "apothecary"],
+      "about": "Tallow and lye boiled hard. With water it takes off what water alone leaves, and it eases a shave."
+    },
+    {
       "id": "awl",
       "name": "leatherworker's awl",
       "plural": "leatherworker's awls",

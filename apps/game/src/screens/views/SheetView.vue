@@ -8,15 +8,25 @@ import { Needs } from '../../actors/needs';
 import { itemName } from '../../actors/items/item';
 import { TRAIT_GROUPS, TRAIT_INFO, SENSES, traitWord } from '../../actors/data/traits';
 import { SKILLS, SKILL_GROUPS, KNOWLEDGE, skillWord, fluencyWord } from '../../actors/data/skills';
+import { portraitOf } from '../../game/portrait';
+import { tieCards } from '../../game/person-card';
+import Portrait from '../../components/Portrait.vue';
+import PeopleList from '../../components/PeopleList.vue';
 
 const props = defineProps<{ screen: SheetScreen }>();
 const screen = props.screen;
 const a = screen.actor;
 const id = a.need(Identity).d;
 const body = a.get(Body)?.d;
+const bodyType = a.get(Body)?.type;
+const beard = a.get(Body)?.beardShown() ?? 'none';
+const kempt = a.get(Body)?.kempt().toLowerCase() ?? '';
+const portrait = portraitOf(a);
 const traits = a.get(Traits);
 const skills = a.get(Skills);
 const hist = a.get(History)?.d;
+/** The people of their life, a card each, and the ties to no one by name. */
+const people = tieCards(hist?.ties ?? [], id.people);
 const inv = a.get(Inventory);
 const pools = a.get(Pools)?.d;
 const needs = a.get(Needs);
@@ -39,6 +49,7 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
 <template>
   <div class="sheet card">
     <header class="row">
+      <Portrait :spec="portrait" :scale="3" />
       <div>
         <div class="sheet-name">{{ id.full }}</div>
         <div class="dim">{{ id.female ? 'Woman' : 'Man' }} of {{ id.people }} ({{ id.folk.toLowerCase() }}), {{ age }}; from {{ id.homeName }}{{ id.realm ? `, ${id.realm}` : '' }}</div>
@@ -53,13 +64,15 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
     </div>
 
     <div v-if="ui.tab === 'life'" class="sheet-body">
-      <p v-if="body">{{ body.heightCm }} cm, {{ body.weightKg }} kg, {{ body.build }}; {{ body.skin }} skin, {{ hairText(body.hair, body.hairStyle) }}<span v-if="!id.female">, {{ beardText(body.beard) }}</span>.</p>
+      <p v-if="body">{{ body.heightCm }} cm, {{ body.weightKg }} kg, {{ body.build }}<span v-if="bodyType" :title="bodyType.about"> ({{ bodyType.name.toLowerCase() }})</span>; {{ body.skin }} skin, {{ hairText(body.hair, body.hairStyle) }}<span v-if="!id.female">, {{ beardText(beard) }}</span><span v-if="kempt">; {{ kempt }}</span>.</p>
+      <p v-if="bodyType" class="dim">{{ bodyType.about }}</p>
       <p v-for="(s, i) in (body?.wounds ?? []).filter((w) => w.scar)" :key="'s' + i" class="dim">You bear {{ s.scar }}.</p>
       <p v-if="id.faith" class="dim">You keep {{ id.faith }}.</p>
       <div class="cc-label">Your story</div>
       <p v-for="(l, i) in hist?.lines ?? []" :key="i" class="line">{{ l.text }}</p>
       <div class="cc-label">People in your life</div>
-      <ul><li v-for="(t, i) in hist?.ties ?? []" :key="i">{{ t.text }}</li></ul>
+      <PeopleList :cards="people.cards" @open="screen.openPerson" />
+      <ul v-if="people.others.length"><li v-for="(t, i) in people.others" :key="i">{{ t.text }}</li></ul>
       <div v-if="hist?.spread.length" class="dim">The cards: {{ hist.spread.map((s) => `${s.card}${s.reversed ? ' (reversed)' : ''}`).join(', ') }}.</div>
       <div v-if="mood?.moodlets.length" class="cc-label">Mood</div>
       <div v-for="m in mood?.moodlets ?? []" :key="m.id" class="dim">{{ m.text }} ({{ m.value > 0 ? '+' : '' }}{{ m.value }})</div>
@@ -81,6 +94,7 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
           <div class="kv"><span>Water</span><span>{{ needs.d.stomachL.toFixed(2) }} L in the stomach (room for {{ needs.room().litres.toFixed(2) }} more), {{ needs.d.hydrationL.toFixed(2) }} L taken up; hydration {{ Math.round(needs.d.hydrated) }}/100{{ needs.d.hydrated < 100 ? (needs.d.hydrationL > 1 ? ', mending' : ', mends once you have drunk enough') : '' }}</span></div>
           <div class="kv"><span>Fatigue</span><span>{{ Math.round(needs.d.fatigue) }}<span v-if="needs.d.debt >= 0.5">, {{ needs.d.debt.toFixed(1) }} h of sleep owed</span></span></div>
           <div class="kv"><span>Warmth</span><span>{{ Math.round(needs.d.heat) }} (dressed for {{ Math.round(needs.comfort().low) }} to {{ Math.round(needs.comfort().high) }}°C); air {{ Math.round(needs.d.airC) }}°C</span></div>
+          <div class="kv"><span>Clean</span><span>dirt {{ Math.round(needs.d.grime ?? 0) }}/100<span v-if="(needs.d.bloodied ?? 0) >= 1">, blood {{ Math.round(needs.d.bloodied ?? 0) }}/100</span><span v-if="needs.festering() > 1.001">; wounds fester the more for it</span></span></div>
           <div class="kv"><span>Slowed</span><span>{{ needs.slow() > 1.001 ? `by ${Math.round((needs.slow() - 1) * 100)}%` : 'not at all' }}</span></div>
         </template>
         <div v-if="pools" class="kv"><span>Mental</span><span>{{ Math.round(pools.mentBurst.value) }}/{{ pools.mentBurst.max }} burst, {{ Math.round(pools.mentDay.value) }}/{{ pools.mentDay.max }} day</span></div>

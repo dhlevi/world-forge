@@ -14,6 +14,8 @@ import { bubbleAt, forgetPeople, peopleIn } from '../src/worker/people';
 import { belongingsOf } from '../src/world/belongings';
 import { Population } from '../src/world/population';
 import { GameMap } from '../src/game/map';
+import { residentCard } from '../src/game/person-card';
+import { PORTRAIT_PX, paintPortrait } from '../src/game/portrait';
 import { defOf } from '../src/actors/items/item';
 import { ITEM } from '../src/actors/items/defs';
 import type { PlacedPerson, Spot } from '../src/worker/protocol';
@@ -162,6 +164,16 @@ for (const tier of ['city', 'town'] as const) {
     ok(atMarket > 20, 'the market draws a crowd');
     ok(total / n < 2, 'the queue keeps within its budget (under 2 ms a step on average)');
     ok(pop.failed < pop.searched * 0.1, 'nearly every path is found');
+    // A resident looked over (game/person-card.ts): a portrait, and more once they have been spoken to.
+    const one = [...pop.all()].find((p) => p.p.age >= 16)!;
+    const card = residentCard(one, pop, view.time);
+    const label = (c: typeof card) => c.sections.map((x) => x.label).join(', ');
+    console.log(`  ${card.name}: ${card.lines.join(' ')} [${label(card)}] ${card.sections[0].lines.join(' ')}`);
+    ok(card.name === one.p.name && paintPortrait(card.portrait!).length === PORTRAIT_PX * PORTRAIT_PX * 4 && card.portrait!.kind === one.figure.kind, 'a resident looked over has a portrait');
+    ok(!card.sections.some((x) => x.label === 'Toward you') && /have not spoken/.test(card.sections[1].lines[0]), 'a stranger\'s card tells only what is seen');
+    pop.opinions.meet(one.p.id, one.p.name, view.time);
+    const known = residentCard(one, pop, view.time);
+    ok(known.sections.some((x) => x.label === 'Toward you') && known.sections.some((x) => x.lines.some((l) => l.includes(one.p.household))), `once met, it tells their household and how they stand toward the wanderer [${label(known)}]`);
   }
 }
 

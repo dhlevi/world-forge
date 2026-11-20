@@ -19,9 +19,12 @@ import { check, DC, type Grade } from '../actors/checks';
 import { defOf, itemName, type Item } from '../actors/items/item';
 import { taughtAt } from '../actors/learning';
 import { LessonsScreen } from './lessons';
+import { tidy } from '../game/grooming';
 
 /** What asking for a better price at an inn does (Persuasion, once a day). */
 const INN_FACTOR: Record<Grade, number> = { fine: 0.7, success: 0.85, near: 1, fail: 1, fumble: 1.2 };
+/** What a bath costs (copper): at a bathhouse, and drawn at an inn; and the bathhouse's barber. */
+const BATH = 3, INN_BATH = 4, BARBER = 2;
 
 /** Walking pace in a town (m/s), and how much longer the streets make a straight line. */
 const PACE = 1.25, WINDING = 1.3;
@@ -164,9 +167,10 @@ export class CityScreen extends Screen {
     const broke = (c: number) => (this.copper() < c ? `You have ${moneyText(this.copper())}.` : undefined);
     const out: SceneAction[] = [];
     if (p.kind === 'inn') {
-      const meal = this.innPrice(p, 4), room = this.innPrice(p, 10);
+      const meal = this.innPrice(p, 4), room = this.innPrice(p, 10), bath = this.innPrice(p, INN_BATH);
       out.push({ id: 'meal', label: `Take a hot meal (${moneyText(meal)})`, disabled: broke(meal) });
       out.push({ id: 'room', label: `Take a room for the night (${moneyText(room)})`, disabled: broke(room) });
+      out.push({ id: 'bath', label: `Have a bath drawn (${moneyText(bath)})`, disabled: broke(bath) });
       if (!this.dealing(p, 'persuasion')) out.push({ id: 'haggle', label: 'Ask for a better price' });
       out.push({ id: 'news', label: 'Ask the travellers for news' });
       out.push({ id: 'tale', label: 'Tell a tale by the fire' });
@@ -180,6 +184,9 @@ export class CityScreen extends Screen {
       out.push({ id: 'trade', label: 'Look over the goods (buy)' });
     } else if (p.kind === 'gate') {
       out.push({ id: 'leave', label: 'Leave the town by this way' });
+    } else if (p.role === 'bathhouse') {
+      out.push({ id: 'bath', label: `Bathe (${moneyText(BATH)})`, disabled: broke(BATH) });
+      out.push({ id: 'barber', label: `See the barber: hair and beard (${moneyText(BARBER)})`, disabled: broke(BARBER) });
     }
     if (p.kind === 'market' || p.kind === 'tavern' || p.kind === 'inn') {
       const ins = this.instrument();
@@ -215,6 +222,27 @@ export class CityScreen extends Screen {
         while (wake < now + 6 * 3600) wake += day;
         this.play.session.sleep(Math.round((wake - now) / 3600), 1);
         say('You sleep in a narrow bed under the eaves.');
+        break;
+      }
+      case 'bath': {
+        // Hot water and soap: clean to the skin (actors/needs.ts, Keeping clean).
+        const inn = p.kind === 'inn';
+        if (!this.pay(inn ? this.innPrice(p, INN_BATH) : BATH)) return;
+        this.play.player?.get(Needs)?.wash(0);
+        this.play.advance(45 * 60);
+        this.mood({ id: 'bathed', text: 'A hot bath', value: 3, until: now + 8 * 3600 });
+        say(inn ? 'A tub is filled by the fire in a back room. You soak until the water cools, and the road comes off you.' : 'You scrub down and soak in the hot pool, steam rising to the rafters, until the road has come off you.');
+        break;
+      }
+      case 'barber': {
+        // Combed and trimmed for the price, and then cut or shaved as asked (screens/groom.ts).
+        const a = this.play.player;
+        if (!a || !this.pay(BARBER)) return;
+        const r = tidy(a, now, true);
+        this.play.advance(r.seconds);
+        this.mood({ id: 'barbered', text: 'Fresh from the barber', value: 1, until: now + 86400 });
+        say(r.text);
+        this.play.showGroom(true);
         break;
       }
       case 'drink':

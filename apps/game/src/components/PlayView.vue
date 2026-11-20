@@ -12,6 +12,7 @@ import { Tileset } from '../game/tileset';
 import { RainLayer } from '../game/rain';
 import TravelView from './TravelView.vue';
 import SkyDial from './SkyDial.vue';
+import Portrait from './Portrait.vue';
 import MessageLog from './MessageLog.vue';
 import { ROOF_MODES, ROOF_WORDS } from '../game/roofs-mode';
 import type { PlayScreen } from '../screens/play';
@@ -92,9 +93,11 @@ const redraw = () => {
 };
 session.onRedraw = redraw;
 
-// Clicking the stairs or ladder the wanderer stands on goes up them (or down, if they lead only down).
+// A click on a person looks them over; on the stairs or ladder the wanderer stands on, goes up them (or down, if they lead only down).
 renderer.onClick = (tx, ty) => {
-  if (hud.mode !== 'play' || st.mode !== 'local' || tx !== game.px || ty !== game.py) return;
+  if ((hud.mode !== 'play' && hud.mode !== 'look') || st.mode !== 'local') return;
+  if ((tx !== game.px || ty !== game.py) && screen.inspect([tx, ty])) return;
+  if (hud.mode !== 'play' || tx !== game.px || ty !== game.py) return;
   const up = !!game.stairsHere(true);
   if (!up && !game.stairsHere(false)) return;
   st.view = 0;
@@ -171,6 +174,8 @@ function onKey(e: KeyboardEvent): void {
     if (dir && game.cursor) {
       game.cursor = [game.cursor[0] + dir[0] * (e.shiftKey ? 5 : 1), game.cursor[1] + dir[1] * (e.shiftKey ? 5 : 1)];
       hud.look = game.describe(game.cursor[0], game.cursor[1]);
+    } else if (e.code === 'Enter' && game.cursor && screen.inspect(game.cursor)) {
+      // Enter on a person looks them over (and the looking goes on).
     } else if (e.code === 'Escape' || e.code === 'KeyX' || e.code === 'Enter') {
       hud.mode = 'play';
       game.cursor = null;
@@ -223,6 +228,8 @@ function onKey(e: KeyboardEvent): void {
     game.say('Close in which direction?');
   } else if (e.code === 'KeyQ') {
     session.drinkHere();
+  } else if (e.code === 'KeyW' && !e.ctrlKey && !e.metaKey) {
+    session.washHere();
   } else if (e.code === 'KeyV' && hud.town) {
     background(screen.openCity(hud.town.id), 'the game');
   } else if (e.code === 'KeyX') {
@@ -298,8 +305,11 @@ onBeforeUnmount(() => {
     </div>
     <aside class="panel">
       <div v-if="st.name" class="who">
-        <a href="#" @click.prevent="screen.showSheet()">{{ st.name }}</a>
-        <span class="dim">{{ st.line }}</span>
+        <Portrait v-if="st.portrait" :spec="st.portrait" title="Your character (@)" @click="screen.showSheet()" />
+        <div>
+          <a href="#" @click.prevent="screen.showSheet()">{{ st.name }}</a>
+          <span class="dim">{{ st.line }}</span>
+        </div>
       </div>
       <SkyDial v-if="st.sky" :sky="st.sky" :clock="hud.clock" :words="st.weather" />
       <div v-else class="clock">{{ hud.clock }}</div>

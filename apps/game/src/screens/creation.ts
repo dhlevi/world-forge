@@ -15,6 +15,8 @@ import { TRACK, type TrackId } from '../actors/data/occupations';
 import type { TraitId } from '../actors/data/traits';
 import { TRAIT_SPREAD } from '../actors/data/traits';
 import CreationView from './views/CreationView.vue';
+import { PersonScreen } from './person';
+import type { PersonCard } from '../game/person-card';
 import { STEPS, type StepId } from './creation-steps';
 
 export type { StepId };
@@ -193,6 +195,11 @@ export class CreationScreen extends Screen {
     const l = this.state.choices!.look;
     this.set({ look: { ...l, [k]: Math.max(0, l[k] + d) } });
   }
+
+  /** Shows the card of one of the people of the character's life. */
+  readonly openPerson = (card: PersonCard): void => {
+    this.manager?.push(new PersonScreen(card));
+  };
 
   // ---- All at once ---------------------------------------------------------------------------
 

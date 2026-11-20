@@ -16,6 +16,13 @@
  *   sleep. An empty day pool is exhaustion.
  * - **Body heat:** worn clothes keep warm (their warmth against the air's temperature), effort
  *   warms; too cold or too hot drifts the body toward chill or overheating.
+ * - **Keeping clean** (survival.md, Cleanliness and grooming): grime builds with the day's going
+ *   (most on the road and at work, more in mud, in a sweat and sleeping rough), and blood from
+ *   wounds stains skin and clothes. A swim or a wash takes them off (`wash`); rain rinses blood
+ *   and the worst of the dirt. Dirt lowers the mood, puts people off, and lets wounds fester.
+ *
+ * The body's type (actors/components/body.ts) leans some of this: how fast food is burnt, how long
+ * the body lasts on itself, and how it bears cold and heat.
  *
  * Each need has a state in words ("Hungry", "Parched", "Exhausted", "Shivering"); worse states
  * slow the person, bring moodlets, and at the end bring collapse (the person comes round hours
@@ -31,7 +38,7 @@ import { Inventory } from './items/inventory';
 import { defOf } from './items/item';
 import { clamp } from '../util';
 
-export type NeedId = 'hunger' | 'thirst' | 'sleep' | 'stamina' | 'heat' | 'wet';
+export type NeedId = 'hunger' | 'thirst' | 'sleep' | 'stamina' | 'heat' | 'wet' | 'clean';
 
 export interface NeedsData {
   /** Food waiting in the stomach (kcal), and the day's reserve (kcal). */
@@ -55,6 +62,9 @@ export interface NeedsData {
   wet?: number;
   /** What the cold felt like when last told, with wind and wet counted in (°C). */
   feltC?: number;
+  /** Dirt on skin and clothes, 0 clean to 100 filthy; and blood on them, 0 to 100. */
+  grime?: number;
+  bloodied?: number;
   /** The words last reported for each need. */
   said: Partial<Record<NeedId, string>>;
 }
@@ -75,6 +85,10 @@ const SWEAT: Record<Activity, number> = { rest: 1, sleep: 0.7, walk: 2, travel: 
 const TIRE: Record<Activity, number> = { rest: 1, sleep: 0, walk: 1.2, travel: 1.4, swim: 1.8, work: 1.4 };
 /** Warmth effort makes (°C felt warmer). */
 const EFFORT_HEAT: Record<Activity, number> = { rest: 0, sleep: -2, walk: 3, travel: 4, swim: -6, work: 5 };
+/** Grime an hour, by what is done (a swim washes instead). */
+const GRIME: Record<Activity, number> = { rest: 0.15, sleep: 0.1, walk: 1, travel: 1.8, swim: 0, work: 2.5 };
+/** What a swim leaves, and what rain will not rinse below. */
+const SWIM_CLEAN = 10, RAIN_CLEAN = 30;
 
 export class Needs extends Component {
   static readonly key = 'needs';
@@ -135,7 +149,7 @@ export class Needs extends Component {
 
   /** The range of air temperature this person is comfortable in, as dressed (°C). */
   comfort(): { low: number; high: number } {
-    const w = this.insulation();
+    const w = this.insulation() + (this.actor?.get(Body)?.type.warmth ?? 0);
     return { low: 18 - 1.6 * w, high: 27 - 0.5 * w };
   }
 
@@ -161,6 +175,7 @@ export class Needs extends Component {
     if (ctx.ambientC !== undefined) d.airC = ctx.ambientC;
     const kg = this.bodyKg();
     const asleep = act === 'sleep';
+    const type = this.actor?.get(Body)?.type;
 
     // ---- Wet and dry (survival.md, Wetness).
     const wx = ctx.weather;
@@ -187,9 +202,27 @@ export class Needs extends Component {
     const target = felt < c.low ? -Math.min(100, (c.low - felt) * 4) : felt > c.high ? Math.min(100, (felt - c.high) * 4) : 0;
     d.heat += (target - d.heat) * Math.min(1, h * 1.2);
 
+    // ---- Grime and blood.
+    let grime = d.grime ?? 0, gore = d.bloodied ?? 0;
+    if (act === 'swim') {
+      grime = Math.min(grime, Math.max(SWIM_CLEAN, grime - 240 * h));
+      gore = Math.max(0, gore - 400 * h);
+    } else {
+      const onFoot = act === 'walk' || act === 'travel';
+      const rough = asleep && (ctx.sleepQuality ?? 0.6) < 0.9 ? 3 : 1;
+      grime += GRIME[act] * rough * (onFoot ? 1 + (ctx.mud ?? 0) * 1.5 : 1) * (d.heat > 15 ? 1 + (d.heat - 15) / 60 : 1) * h;
+      if (wx && wx.rainMm > 0 && !wx.snow) {
+        const rinse = wx.rainMm * (1 - cover) * h;
+        gore = Math.max(0, gore - rinse * 8);
+        if (grime > RAIN_CLEAN) grime = Math.max(RAIN_CLEAN, grime - rinse * 2);
+      }
+    }
+    d.grime = clamp(grime, 0, 100);
+    d.bloodied = clamp(gore, 0, 100);
+
     // ---- Food.
     const cold = d.heat < -15 ? 1 + (-d.heat - 15) / 100 : 1;
-    const burn = 0.9 * kg * BURN[act] * (act === 'travel' ? load : 1) * cold * h;
+    const burn = 0.9 * kg * BURN[act] * (act === 'travel' ? load : 1) * cold * (type?.burn ?? 1) * h;
     const digest = Math.min(d.stomachKcal, 500 * h);
     d.stomachKcal -= digest;
     d.reserveKcal = Math.min(2600, d.reserveKcal + digest);
@@ -197,7 +230,7 @@ export class Needs extends Component {
     else {
       const deficit = burn - d.reserveKcal;
       d.reserveKcal = 0;
-      d.nourish = Math.max(0, d.nourish - deficit / 120);
+      d.nourish = Math.max(0, d.nourish - deficit / (120 * (type?.reserve ?? 1)));
     }
     // Nourishment mends while the body is well fed (a few points an hour).
     if (d.reserveKcal > 800 && d.nourish < 100) d.nourish = Math.min(100, d.nourish + 1.5 * h);
@@ -279,7 +312,9 @@ export class Needs extends Component {
     const heat = x <= -70 ? 'Hypothermic' : x <= -40 ? 'Shivering' : x <= -15 ? 'Chilly' : x >= 70 ? 'Overheating' : x >= 40 ? 'Hot' : x >= 15 ? 'Warm' : '';
     const wv = d.wet ?? 0;
     const wet = wv >= 60 ? 'Soaked' : wv >= 20 ? 'Damp' : '';
-    return { hunger, thirst, sleep, stamina, heat, wet };
+    const g = d.grime ?? 0;
+    const clean = g >= 80 ? 'Filthy' : (d.bloodied ?? 0) >= 30 ? 'Bloodied' : g >= 55 ? 'Dirty' : g >= 30 ? 'Grubby' : '';
+    return { hunger, thirst, sleep, stamina, heat, wet, clean };
   }
 
   /** How much these states slow the person (1 not at all). */
@@ -303,6 +338,7 @@ export class Needs extends Component {
       stamina: P ? clamp((P.physDay.value / P.physDay.max) * 0.7 + (P.physBurst.value / P.physBurst.max) * 0.3, 0, 1) : 1,
       heat: clamp(1 - Math.abs(d.heat) / 100, 0, 1),
       wet: clamp(1 - (d.wet ?? 0) / 100, 0, 1),
+      clean: clamp(1 - Math.max(d.grime ?? 0, (d.bloodied ?? 0) * 0.8) / 100, 0, 1),
     };
   }
 
@@ -313,6 +349,7 @@ export class Needs extends Component {
     stamina: ['', 'Winded', 'Weary', 'Spent'],
     heat: ['', 'Warm', 'Chilly', 'Hot', 'Shivering', 'Overheating', 'Hypothermic'],
     wet: ['', 'Damp', 'Soaked'],
+    clean: ['', 'Grubby', 'Dirty', 'Bloodied', 'Filthy'],
   };
 
   private static readonly TEXT: Record<string, string> = {
@@ -322,6 +359,7 @@ export class Needs extends Component {
     Exhausted: 'You are exhausted; you need sleep.', Collapsing: 'You can barely stay on your feet.', Winded: 'You are out of breath.', Weary: 'Your legs are heavy.',
     Spent: 'You are spent: every step is an effort.', Warm: 'You are warm.', Chilly: 'You feel the chill.', Hot: 'You are hot and sweating.',
     Shivering: 'You are shivering.', Damp: 'You are damp.', Soaked: 'You are soaked through.', Overheating: 'You are overheating; your head pounds.', Hypothermic: 'You are shaking with cold; your fingers have gone numb.',
+    Grubby: 'You are grubby from the road.', Dirty: 'You are dirty: you could do with a wash.', Bloodied: 'You are spattered with blood.', Filthy: 'You are filthy, and you stink.',
   };
 
   /** Compares the states with those last reported; keeps notes, moodlets, and a collapse. */
@@ -336,7 +374,7 @@ export class Needs extends Component {
       const order = Needs.ORDER[k];
       const worse = order.indexOf(now) > order.indexOf(before) && now !== 'Full' && now !== 'Slaked' && now !== 'Warm';
       this.d.said[k] = now;
-      this.notes.push({ need: k, word: now, worse, text: now ? Needs.TEXT[now] ?? now : k === 'heat' ? 'You are comfortable again.' : k === 'sleep' ? 'You feel rested.' : k === 'stamina' ? 'You have your strength back.' : k === 'hunger' ? 'Your hunger is gone.' : k === 'wet' ? 'You are dry again.' : 'Your thirst is gone.' });
+      this.notes.push({ need: k, word: now, worse, text: now ? Needs.TEXT[now] ?? now : k === 'heat' ? 'You are comfortable again.' : k === 'sleep' ? 'You feel rested.' : k === 'stamina' ? 'You have your strength back.' : k === 'hunger' ? 'Your hunger is gone.' : k === 'wet' ? 'You are dry again.' : k === 'clean' ? 'You are clean again.' : 'Your thirst is gone.' });
       // Warm and dry after a soaking: a small relief.
       if (k === 'wet' && !now && before && mood && Math.abs(this.d.heat) < 15) mood.add({ id: 'dry-again', text: 'Warm and dry again', value: 1, until: this.now + 4 * 3600 });
       // A moodlet for the state while it lasts.
@@ -362,7 +400,31 @@ export class Needs extends Component {
     return n;
   }
 
-  // ---- Eating, drinking, coming round --------------------------------------------------------
+  // ---- Eating, drinking, washing, coming round ------------------------------------------------
+
+  /** Blood gets on the person: their own from a wound, a beast's from a blow or a carcass. */
+  stain(amount: number): void {
+    this.d.bloodied = clamp((this.d.bloodied ?? 0) + amount, 0, 100);
+  }
+
+  /** Dirt gets on the person, beyond the day's (a carcass butchered). */
+  soil(amount: number): void {
+    this.d.grime = clamp((this.d.grime ?? 0) + amount, 0, 100);
+  }
+
+  /** Washes: the blood off, and the dirt down to what the washing leaves (0: a bath). Returns whether there was anything to wash off. */
+  wash(leaves = 0): boolean {
+    const d = this.d, dirty = (d.grime ?? 0) > leaves + 5 || (d.bloodied ?? 0) > 2;
+    d.grime = Math.min(d.grime ?? 0, leaves);
+    d.bloodied = 0;
+    this.review();
+    return dirty;
+  }
+
+  /** How much more readily an open wound festers for the dirt (1: no more). */
+  festering(): number {
+    return 1 + Math.max(0, (this.d.grime ?? 0) - 50) / 50 * 0.8;
+  }
 
   /** Eats food (kcal); returns how much there was room for. */
   eat(kcal: number, waterL = 0): number {
@@ -413,5 +475,6 @@ export class Needs extends Component {
 const MOOD: Record<string, number> = {
   Hungry: -2, Ravenous: -5, Underfed: -4, Malnourished: -8, Starving: -15, Thirsty: -2, Parched: -6, Dehydrated: -8, 'Badly dehydrated': -15,
   Tired: -2, 'Very tired': -4, Exhausted: -8, Collapsing: -12, Spent: -4, Chilly: -2, Shivering: -6, Hypothermic: -15, Hot: -2, Overheating: -10, Full: 1, Damp: -1, Soaked: -3,
+  Dirty: -2, Bloodied: -3, Filthy: -5,
 };
 
