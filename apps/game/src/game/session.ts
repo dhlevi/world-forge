@@ -28,7 +28,7 @@ import { Cast } from '../actors/cast';
 import { check, DC } from '../actors/checks';
 import { Body, Identity, Knowledge, Mood, Skills, Traits, type Moodlet } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
-import { defOf, type Item } from '../actors/items/item';
+import { defOf, itemName, type Item } from '../actors/items/item';
 import { Needs, type NeedId } from '../actors/needs';
 import { Health } from '../actors/health';
 import { takeRemedy, treat, type Treat } from './treatment';
@@ -43,6 +43,11 @@ import { Travel } from './travel';
 import { Population, doingWords, type Resident } from '../world/population';
 import { Fauna, animalLines, type Presence } from '../world/fauna';
 import { Snares, carcassOf } from '../world/hunting';
+import { aimables, armsOf, beastStrikes, readyWeapon, strikeBeast, strikeChance, type Arms, type Blow, type BlowId, type Stance, type Target } from './combat';
+import { fightOf } from '../world/beasts';
+import type { Animal } from '../world/fauna';
+import type { Mod } from '../actors/checks';
+import type { Species } from '@worldforge/core/local/fauna';
 import { SPECIES_BY_ID } from '@worldforge/core/local/fauna';
 import { LOUD, directionWords, heardLevel, hearingThreshold, readTracks, takesTracks, type Noise } from '../world/senses';
 import { opinionWords } from '../world/opinions';
@@ -150,6 +155,12 @@ export class PlaySession {
     needs: [] as { id: NeedId | 'health'; label: string; word: string; bar: number }[],
     /** The wanderer has died (combat.md, permadeath): of what, and when. */
     dead: null as Dead | null,
+    /**
+     * How the wanderer fights (combat.md, stage 2): the standing aim (a part's id; null, anywhere),
+     * the blow (null: the weapon's best), and the stance; walking into a beast in a fight strikes
+     * with them, and the fight menu (Shift+F) changes them.
+     */
+    fight: { aim: null as string | null, blow: null as BlowId | null, stance: 'balanced' as Stance },
     air: '',
     /** The weather and the hour in words (game/weather.ts), and as the panel's picture of the sky. */
     weather: null as { when: string; wind: string; air: string; sun: string } | null,
@@ -259,9 +270,12 @@ export class PlaySession {
         if (kind === 'step') this.stepped(x, y, z);
       }
       if (kind === 'step' && takesTracks(gid, this.people.wet)) this.people.tracks.add(x, y, z, { t: game.time, by: 'player', kind: this.player?.get(Body)?.d.kind ?? 'human', dir });
+      // Bleeding, the wanderer leaves a trail of blood on any ground.
+      const bleed = this.health()?.bleeding() ?? 0;
+      if (kind === 'step' && bleed > 30 && game.dice.random() < Math.min(0.9, bleed / 400)) this.people.tracks.add(x, y, z, { t: game.time, by: 'player', kind: this.player?.get(Body)?.d.kind ?? 'human', dir, blood: true });
     };
     game.tracksText = (x, y, z) => readTracks(this.people.tracks.at(x, y, z, game.time), game.time, this.player?.get(Skills)?.effective('tracking') ?? 0);
-    game.tracksOn = (x, y, z) => this.people.tracks.at(x, y, z, game.time).length;
+    game.tracksOn = (x, y, z) => this.people.tracks.at(x, y, z, game.time).filter((t) => !t.blood).length;
     this.people.onSee = (text) => game.say(text);
     // The animals about (world/fauna.ts), their noises and tracks, and the wanderer's snares (world/hunting.ts).
     const askA = world.requestAnimals;
@@ -278,15 +292,26 @@ export class PlaySession {
       const a = this.state.mode === 'local' ? this.fauna.at(x, y) : null;
       return a ? animalLines(a, game.time) : null;
     };
-    game.onBumpAnimal = (x, y) => {
+    game.onBumpAnimal = (x, y, quiet) => {
       const a = this.state.mode === 'local' ? this.fauna.at(x, y) : null;
-      return a && a.alt === 0 ? this.fauna.bumped(game, a) : null;
+      if (!a || a.alt !== 0) return null;
+      // A beast fighting the wanderer: walking into it strikes it with the standing aim and blow.
+      if (a.fight) {
+        if (!quiet) this.attack(a);
+        return true;
+      }
+      return this.fauna.bumped(game, a);
     };
+    // A beast's blow at the wanderer (game/combat.ts), and a beast dead of its wounds.
+    this.fauna.onStrike = (a, blow) => this.beastBlow(a, blow);
+    this.fauna.onDied = (s, x, y, seen) => this.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null);
+    game.bloodOn = (x, y, z) => this.people.tracks.bloodAt(x, y, z, game.time);
     if (o.restore?.people) {
       this.people.opinions.import(o.restore.people.opinions);
       this.people.tracks.import(o.restore.people.tracks);
       this.snares.import(o.restore.people.snares);
       for (const id of o.restore.people.gone ?? []) this.fauna.gone.add(id);
+      this.fauna.importWounded(o.restore.people.wounded);
     }
 
     // The road: steps take skill (fords, steep ground), weather shortens sight, arriving opens the place.
@@ -706,6 +731,160 @@ export class PlaySession {
     game.updateHud();
   }
 
+  // ---- Fighting (combat.md, stage 2; game/combat.ts) ----------------------------------------------
+
+  /** A beast as the blow sees it. */
+  targetOf(a: Animal): Target {
+    return {
+      name: `the ${a.s.name}`, health: this.fauna.healthOf(a, this.game.time), fight: fightOf(a.s), size: a.s.size,
+      asleep: a.state === 'sleep' || (a.health?.senseless() ?? false), unaware: !a.fight && this.game.time - a.noticed > 60,
+    };
+  }
+
+  /** What makes a blow harder now, beyond the body: the dark, the water underfoot. */
+  private fightMods(): Mod[] {
+    const g = this.game, out: Mod[] = [];
+    if (this.skyNow.light < 0.3 && !this.heldLight() && !this.indoors()) out.push({ why: 'the dark', value: -15 });
+    if (g.z === null && GROUND_TILES[g.map.ground(g.px, g.py)]?.water) out.push({ why: 'in the water', value: -10 });
+    return out;
+  }
+
+  /** The wanderer's arms now (what they hold), or null. */
+  arms(): Arms | null {
+    const inv = this.player?.get(Inventory);
+    return inv ? armsOf(inv) : null;
+  }
+
+  /**
+   * The arms the wanderer would fight with: those held, or, with no weapon in hand, the best
+   * carried, as if drawn (`drawn`: its name; drawing it takes the next blow's turn).
+   */
+  armsReady(): { arms: Arms; drawn: string | null } | null {
+    const inv = this.player?.get(Inventory);
+    if (!inv) return null;
+    const copy = new Inventory(JSON.parse(JSON.stringify(inv.d)));
+    const r = readyWeapon(copy);
+    return { arms: armsOf(copy), drawn: r ? itemName(r.item) : null };
+  }
+
+  /** The beasts the wanderer can strike from here with a blow's reach (beside; a spear's, two tiles off with nothing between). */
+  inReach(reach = 2): Animal[] {
+    const g = this.game, out: Animal[] = [];
+    if (g.z !== null || this.state.mode !== 'local') return out;
+    for (const a of this.fauna.all()) {
+      const d = Math.max(Math.abs(a.x - g.px), Math.abs(a.y - g.py));
+      // Out of reach in the air or up a tree, or not seen.
+      if (a.alt > 0 || d < 1 || d > reach || !g.isVisible(a.x, a.y)) continue;
+      if (d === 2) {
+        // A thrust two tiles off goes straight (or straight on the diagonal), over open ground.
+        const dx = a.x - g.px, dy = a.y - g.py;
+        if ((dx && dy && Math.abs(dx) !== Math.abs(dy)) || (Math.abs(dx) !== 2 && dx !== 0) || (Math.abs(dy) !== 2 && dy !== 0)) continue;
+        const mx = g.px + Math.sign(dx), my = g.py + Math.sign(dy);
+        if (!g.map.passable(mx, my) || this.fauna.at(mx, my) || this.people.at(mx, my, null)) continue;
+      }
+      out.push(a);
+    }
+    return out.sort((p, q) => Math.max(Math.abs(p.x - g.px), Math.abs(p.y - g.py)) - Math.max(Math.abs(q.x - g.px), Math.abs(q.y - g.py)));
+  }
+
+  /** The blow to use: the one asked for, the standing one, or the weapon's first (its best). */
+  private pickBlow(arms: Arms, id?: BlowId | null): Blow {
+    const want = id ?? this.state.fight.blow;
+    return arms.blows.find((b) => b.id === want) ?? arms.blows[0];
+  }
+
+  /** The chance of each blow at a beast, at an aim (for the fight menu). */
+  blowChances(a: Animal, aim: string | null, stance: Stance): { blow: Blow; chance: number; mods: Mod[]; reach: boolean }[] {
+    const p = this.player, arms = this.armsReady()?.arms;
+    if (!p || !arms) return [];
+    const t = this.targetOf(a), g = this.game;
+    const d = Math.max(Math.abs(a.x - g.px), Math.abs(a.y - g.py));
+    return arms.blows.map((b) => ({ blow: b, ...strikeChance(p, t, b, aim, stance, this.fightMods()), reach: d <= b.reach }));
+  }
+
+  /** The parts of a beast that can be aimed at, with how much harder each is to hit. */
+  aimsAt(a: Animal): { id: string; name: string; mod: number }[] {
+    return aimables(this.fauna.healthOf(a, this.game.time));
+  }
+
+  /**
+   * Strikes a beast: readies a weapon first if none is in hand (that takes its own time), then the
+   * blow (the one asked for, else the standing one), at the aim and in the stance asked for (else the
+   * standing ones). The beast fights back, stands at bay or flees (world/fauna.ts). Returns whether
+   * time passed.
+   */
+  attack(a: Animal, o: { blow?: BlowId | null; aim?: string | null; stance?: Stance } = {}): boolean {
+    const p = this.player, g = this.game, inv = p?.get(Inventory), h = this.health();
+    if (!p || !inv || !h || this.state.dead) return false;
+    if (h.senseless()) return false;
+    // Hands empty of any weapon: draw the best carried (not when a blow without one was asked for).
+    if (!o.blow || (o.blow !== 'punch' && o.blow !== 'kick')) {
+      const drawn = readyWeapon(inv);
+      if (drawn) {
+        g.time += drawn.seconds;
+        g.say(drawn.text);
+        g.refresh();
+        return true;
+      }
+    }
+    const arms = armsOf(inv);
+    const blow = this.pickBlow(arms, o.blow);
+    const d = Math.max(Math.abs(a.x - g.px), Math.abs(a.y - g.py));
+    if (d > blow.reach) {
+      g.say(`The ${a.s.name} is out of reach.`);
+      return false;
+    }
+    const aim = o.aim !== undefined ? o.aim : this.state.fight.aim;
+    const stance = o.stance ?? this.state.fight.stance;
+    const t = this.targetOf(a);
+    const ex = strikeBeast(p, t, blow, aim && t.health.partOf(aim) ? aim : null, stance, g.time, this.fightMods());
+    g.facing = a.x > g.px ? 'e' : a.x < g.px ? 'w' : a.y < g.py ? 'n' : 's';
+    g.time += ex.seconds;
+    g.activity = 'work';
+    g.say(ex.text, ex.tip);
+    // Noise: a fight is loud.
+    this.onNoiseOfFight(a.x, a.y);
+    if (t.health.dead) this.carcass(a.s, a.x, a.y, `The ${a.s.name} falls dead.`, a);
+    else this.fauna.provoke(a, g);
+    this.practice.flush();
+    g.refresh();
+    return true;
+  }
+
+  /** A fight is heard by those about (residents look round; beasts start). */
+  private onNoiseOfFight(x: number, y: number): void {
+    const n = { x, y, z: null, loud: LOUD.door + 15, kind: 'shout' as const, what: 'the noise of a fight' };
+    this.people.hearPlayer(this.game, n);
+  }
+
+  /** A beast's blow at the wanderer (world/fauna.ts calls it). */
+  private beastBlow(a: Animal, blow: import('../world/beasts').NaturalBlow): void {
+    const p = this.player, g = this.game, h = this.health();
+    if (!p || !h || this.state.dead) return;
+    // Asleep, the first blow lands unopposed, and wakes them; senseless, none is opposed.
+    const asleep = g.activity === 'sleep' && !this.woken;
+    const ex = beastStrikes({ name: `the ${a.s.name}`, fight: fightOf(a.s), health: a.health ?? null, stance: a.fight?.stance }, p, blow, this.state.fight.stance, g.time, { helpless: asleep || h.senseless(), extra: this.fightMods() });
+    if (asleep) {
+      this.woken = true;
+      g.say('You wake to an attack!');
+    }
+    g.say(ex.text, ex.tip);
+    this.alarm = true;
+    this.travel.stop();
+    this.practice.flush();
+  }
+
+  /** Woken by an attack while sleeping (the rest of the night's blows are fought). */
+  private woken = false;
+
+  /** A dead beast: its carcass left where it fell (world/hunting.ts), told if seen. */
+  private carcass(s: Species, x: number, y: number, text: string | null, a?: Animal): void {
+    if (a) this.fauna.kill(a);
+    this.game.ground.put(x, y, [carcassOf(s)]);
+    if (text) this.game.say(text);
+    this.redraw();
+  }
+
   /** The wanderer's health (actors/health.ts). */
   health(): Health | undefined {
     return this.player?.get(Health);
@@ -832,6 +1011,7 @@ export class PlaySession {
     const n = this.needs(), game = this.game;
     this.travel.stop();
     this.alarm = false;
+    this.woken = false;
     game.say(o.awake ? 'You sit and rest.' : 'You lie down to sleep.');
     // Sleeping rough, Survival makes a better or worse bed of it.
     if (!o.awake && quality < 1) quality = this.practice.roughSleep(quality);
@@ -908,7 +1088,13 @@ export class PlaySession {
   /** The wanderer as the animals sense them: sneaking and how well, the light, the wind, the season, the day's light. */
   presence(): Presence {
     const sky = this.skyNow, w = sky.w, toward = (((w.windFrom + 180) % 360) * Math.PI) / 180;
+    const h = this.health(), g = this.game;
+    const caps = h?.capacities();
+    const wet = (x: number, y: number) => !!GROUND_TILES[g.map.ground(x, y)]?.water;
     return {
+      weak: !!h && ((caps?.moving ?? 1) < 0.8 || h.bleeding() > 100 || h.bloodShare() < 0.85),
+      helpless: g.activity === 'sleep' || (!!h && h.senseless()),
+      water: g.z === null && (wet(g.px, g.py) || !!g.nearby(1, (x, y) => (wet(x, y) ? 'w' : null))),
       sneaking: this.game.sneaking, sneak: this.player?.get(Skills)?.effective('sneak') ?? 0, light: sky.light,
       wind: { x: Math.sin(toward), y: -Math.cos(toward), strength: w.windMs }, winter: sky.season === 'winter', rise: this.people.sun.rise, set: this.people.sun.set,
     };
@@ -1121,7 +1307,7 @@ export class PlaySession {
     const o = this.o;
     return makeSave(this.game, {
       id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON(),
-      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), gone: [...this.fauna.gone].slice(-500) },
+      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), gone: [...this.fauna.gone].slice(-500), wounded: this.fauna.exportWounded() },
       ...(this.state.dead ? { dead: this.state.dead } : {}),
     });
   }

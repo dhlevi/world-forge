@@ -33,6 +33,23 @@
         "loops": { "type": "integer", "minimum": 1, "description": "Belts: how many things hang from it." },
         "figure": { "type": "string", "description": "Worn things: the shape drawn on the figure (tunic, dress, robe, trousers, hose, skirt, shoes, boots, sandals, gloves, jerkin, mail, belt, apron, jacket, coat, cloak, veil, scarf, cap, hood, hat, helm)." },
         "colour": { "type": "string", "pattern": "^#[0-9a-fA-F]{6}$", "description": "Worn things: the cloth's colour on the figure." },
+        "melee": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["skill", "reach", "seconds"],
+          "description": "Fighting with it hand to hand (game/combat.ts): the skill, reach (tiles), seconds a blow takes, the harm of each blow it can make (cut, thrust, bash: severity points), and how well it parries or blocks.",
+          "properties": {
+            "skill": { "type": "string" },
+            "reach": { "type": "integer", "minimum": 1, "maximum": 3 },
+            "seconds": { "type": "number", "minimum": 0.3 },
+            "cut": { "type": "number", "minimum": 0 },
+            "thrust": { "type": "number", "minimum": 0 },
+            "bash": { "type": "number", "minimum": 0 },
+            "parry": { "type": "number", "minimum": 0 },
+            "block": { "type": "number", "minimum": 0 },
+            "hands": { "enum": [1, 2] }
+          }
+        },
         "wear": {
           "type": "object",
           "additionalProperties": false,

@@ -68,6 +68,24 @@ export interface WearDef {
   wool?: boolean;
 }
 
+/**
+ * Fighting with a thing hand to hand (docs/design/combat.md; game/combat.ts): the skill it is used
+ * with, its reach (tiles), the seconds a blow takes, the harm of each blow it can make (severity
+ * points before skill, strength and armour), and how well it parries (or, a shield, blocks).
+ */
+export interface MeleeDef {
+  skill: string;
+  reach: number;
+  seconds: number;
+  cut?: number;
+  thrust?: number;
+  bash?: number;
+  parry?: number;
+  block?: number;
+  /** Wielded in both hands. */
+  hands?: 1 | 2;
+}
+
 export interface ContainerDef {
   /** Room inside (litres) and the most weight it will bear (kg). */
   litres: number;
@@ -103,6 +121,8 @@ export interface ItemDef {
   /** Belts: how many things hang from them. */
   loops?: number;
   wear?: WearDef;
+  /** Weapons (and things that serve as one): fighting with it hand to hand. */
+  melee?: MeleeDef;
   /** Worn things: the shape it is drawn as on the figure (core local/figures.ts), and its cloth's colour ("#rrggbb"). */
   figure?: string;
   colour?: string;
@@ -138,7 +158,7 @@ export function itemDef(id: string): ItemDef {
 }
 
 const KINDS: readonly ItemKind[] = ['clothing', 'armour', 'jewellery', 'container', 'weapon', 'tool', 'food', 'drink', 'medicine', 'light', 'goods', 'book', 'music'];
-const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'figure', 'colour', 'container', 'stack', 'uses', 'useWord', 'food', 'teaches', 'mend', 'durable', 'sold', 'about']);
+const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'melee', 'figure', 'colour', 'container', 'stack', 'uses', 'useWord', 'food', 'teaches', 'mend', 'durable', 'sold', 'about']);
 
 /** What is wrong with one item as read from a file (empty when it is sound). */
 export function checkItem(o: unknown): string[] {
@@ -184,6 +204,18 @@ export function checkItem(o: unknown): string[] {
       for (const k of ['warmth', 'armour']) if (w[k] !== undefined && typeof w[k] !== 'number') bad.push(`wear.${k} must be a number`);
       for (const k of ['rain', 'wind', 'sun']) if (w[k] !== undefined && (typeof w[k] !== 'number' || (w[k] as number) < 0 || (w[k] as number) > 1)) bad.push(`wear.${k} must be from 0 to 1`);
       if (w.wool !== undefined && typeof w.wool !== 'boolean') bad.push('wear.wool must be true or false');
+    }
+  }
+  const me = r.melee as Record<string, unknown> | undefined;
+  if (me !== undefined) {
+    if (!me || typeof me !== 'object') bad.push('melee must be an object');
+    else {
+      if (typeof me.skill !== 'string' || !SKILL.has(me.skill)) bad.push('melee.skill must be a skill id');
+      if (!Number.isInteger(me.reach) || (me.reach as number) < 1 || (me.reach as number) > 3) bad.push('melee.reach must be 1, 2 or 3');
+      num('melee.seconds', me.seconds, 0.3);
+      for (const k of ['cut', 'thrust', 'bash', 'parry', 'block']) if (me[k] !== undefined) num(`melee.${k}`, me[k]);
+      if (!me.cut && !me.thrust && !me.bash) bad.push('melee needs a cut, thrust or bash');
+      if (me.hands !== undefined && me.hands !== 1 && me.hands !== 2) bad.push('melee.hands must be 1 or 2');
     }
   }
   const c = r.container as Record<string, unknown> | undefined;

@@ -13,9 +13,17 @@
  *   timid or skittish beast flees beyond its flight distance, a herd together, a startled flock
  *   rising all at once; the tame let people near.
  * - **Predators** hunt when hungry: they stalk their prey, chase it when close, give up when it
- *   outruns them, and eat what they catch. Toward the wanderer they are threats only (until combat):
- *   wary ones keep away; bold ones, and hungry packs in winter, shadow, growl and bluff-charge, then
- *   back off.
+ *   outruns them, and eat what they catch.
+ * - **Fighting** (docs/design/combat.md, stage 2; world/beasts.ts, game/combat.ts): most beasts
+ *   keep from people, and bold ones bluff. Some set on the wanderer, as is their way: a hungry pack
+ *   by night or in winter, a bear surprised close or with young, a great cat stalking the weak, a
+ *   crocodile at the water, a viper trodden near, a boar or a bull pressed too close. Struck, a
+ *   beast fights back, at bay when cornered, or flees, by its kind; its pack joins it. It fights to
+ *   kill, to drive off, or to defend itself, and breaks off when its courage runs out. Each blow is
+ *   the session's (`onStrike`).
+ * - **Wounds:** a beast's body is a Health of its plan (actors/health.ts): it bleeds, limps, leaves a
+ *   blood trail, and may die of its wounds where it lies. A wounded beast that leaves the bubble is
+ *   kept, and found again lying up (or dead) when the wanderer comes near.
  * - **Birds** are on the ground, perched in trees, or flying a few levels up; startled, they rise and
  *   fly off, and land again farther on.
  *
@@ -26,6 +34,9 @@ import { SIZE_RANK, SPECIES_BY_ID, awake, type Species } from '@worldforge/core/
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { AnimalGroup, Spot } from '../worker/protocol';
 import { heardLevel, takesTracks, type Noise, type Tracks } from './senses';
+import { Health, type HealthData } from '../actors/health';
+import { morale, type Stance } from '../game/combat';
+import { fightOf, planOf, type NaturalBlow } from './beasts';
 
 /** Within this many tiles of the wanderer, animals act. */
 export const ANIMAL_ACTIVE = 40;
@@ -64,11 +75,34 @@ export interface Presence {
   wind: { x: number; y: number; strength: number };
   /** The season is winter (hungry predators are bolder). */
   winter: boolean;
+  /** Hurt or slow (a great cat's chance), helpless (asleep, senseless), in or at the water's edge. */
+  weak?: boolean;
+  helpless?: boolean;
+  water?: boolean;
   rise: number;
   set: number;
 }
 
-type State = 'idle' | 'walk' | 'sleep' | 'flee' | 'stalk' | 'chase' | 'threaten' | 'eat' | 'drink';
+type State = 'idle' | 'walk' | 'sleep' | 'flee' | 'stalk' | 'chase' | 'threaten' | 'eat' | 'drink' | 'attack' | 'lying';
+
+/** A beast's fight with the wanderer: what it wants (to kill, to drive off, to defend itself), since when, how many blows it has landed. */
+export interface BeastFightState {
+  intent: 'kill' | 'drive' | 'defend';
+  since: number;
+  hits: number;
+  stance: Stance;
+}
+
+/** A wounded beast gone from the bubble, kept to be found again (lying up, or dead) when the wanderer comes near. */
+export interface WoundedBeast {
+  id: string;
+  species: string;
+  x: number;
+  y: number;
+  health: HealthData;
+  /** When it was last seen (game seconds): its body's time. */
+  t: number;
+}
 
 export interface Animal {
   id: string;
@@ -93,6 +127,9 @@ export interface Animal {
   threatAt: number;
   /** Noticed the wanderer (game seconds), for "watching you". */
   noticed: number;
+  /** Its body, once it has been hurt or has fought (actors/health.ts); its fight with the wanderer. */
+  health?: Health;
+  fight?: BeastFightState | null;
 }
 
 export interface Herd {
@@ -132,6 +169,14 @@ export class Fauna {
   onChange: () => void = () => {};
   /** Whether a herd has been told of as fleeing lately (by herd id). */
   private told = new Map<string, number>();
+  /** Wounded beasts gone from the bubble (saved with the game). */
+  wounded: WoundedBeast[] = [];
+  /** A beast's blow at the wanderer: the session works it out (game/combat.ts). */
+  onStrike: (a: Animal, blow: NaturalBlow) => void = () => {};
+  /** A beast dead of its wounds (or found so): its carcass is the session's to leave where it lies. */
+  onDied: (species: Species, x: number, y: number, seen: boolean) => void = () => {};
+  /** Blows struck this update, per beast (a beast strikes at most twice for each of the wanderer's actions). */
+  private blows = new Map<Animal, number>();
 
   constructor(
     private ask: (x: number, y: number, time: number, winter: boolean) => Promise<{ groups: AnimalGroup[]; radius: number }>,
@@ -208,8 +253,107 @@ export class Fauna {
   }
 
   private dropUnseen(h: Herd, g: FaunaView): void {
-    for (const a of [...h.members]) if (!g.isVisible(a.x, a.y)) this.remove(a);
+    for (const a of [...h.members]) if (!g.isVisible(a.x, a.y)) {
+      this.keepWounded(a);
+      this.remove(a);
+    }
     if (!h.members.length) this.herds.delete(h.id);
+  }
+
+  /** A wounded beast leaving the bubble is kept, to be found later. */
+  private keepWounded(a: Animal): void {
+    const h = a.health;
+    if (!h || h.dead || !h.d.wounds.length) return;
+    this.wounded = this.wounded.filter((w) => w.id !== a.id);
+    this.wounded.push({ id: a.id, species: a.s.id, x: a.x, y: a.y, health: h.toJSON(), t: h.time });
+    if (this.wounded.length > 40) this.wounded.shift();
+  }
+
+  /** A beast's body (made when first needed: hurt, or fighting). */
+  healthOf(a: Animal, now: number): Health {
+    if (!a.health) {
+      const f = fightOf(a.s);
+      a.health = new Health(Health.beast(planOf(a.s.plan), f.kg));
+      a.health.setNow(now);
+    }
+    if (!a.health.rng) a.health.rng = mulberry32(hashString(`${a.id}#body`));
+    return a.health;
+  }
+
+  /** The wanderer struck a beast: it fights back, stands at bay, or flees, by its kind; its pack joins in. */
+  provoke(a: Animal, g: FaunaView): void {
+    const f = fightOf(a.s), h = this.healthOf(a, g.time);
+    a.noticed = g.time;
+    if (h.dead) return;
+    if (a.state === 'sleep' || a.state === 'lying') a.state = 'idle';
+    if (a.fight) return;
+    const cornered = this.cornered(a, g) || h.capacities().moving < 0.5;
+    const fights = morale(h) >= f.breaks && (f.fights === 'back' || (f.fights === 'cornered' && cornered));
+    if (fights) {
+      const intent = f.fights === 'back' ? (a.s.diet === 'predator' && SIZE_RANK[a.s.size] >= 2 ? 'kill' : 'drive') : 'defend';
+      this.startFight(a, intent, g);
+      // A pack fights together; a herd runs.
+      if (a.s.herd && a.s.diet === 'predator') for (const m of a.g.members) if (m !== a && !m.fight && cheb(m, a.x, a.y) <= 14) this.startFight(m, intent, g);
+      else if (a.g.members.length > 1) this.frightenOthers(a, g);
+    } else this.frighten(a.g, { x: g.px, y: g.py, z: null }, g);
+  }
+
+  private frightenOthers(a: Animal, g: FaunaView): void {
+    const h = a.g;
+    h.fearUntil = g.time + FRIGHT_S;
+    h.fearFrom = { x: g.px, y: g.py, z: null };
+    for (const m of h.members) if (m !== a && !m.fight) {
+      m.state = 'flee';
+      m.nextAt = Math.max(m.nextAt, g.time - 1);
+    }
+  }
+
+  /** Hemmed in: fewer than two ways open to it that lead away from the wanderer. */
+  private cornered(a: Animal, g: FaunaView): boolean {
+    let ways = 0;
+    const d0 = Math.hypot(a.x - g.px, a.y - g.py);
+    for (const [dx, dy] of DIRS8) {
+      const x = a.x + dx, y = a.y + dy;
+      if (this.free(x, y, g, a) && this.canStand(a, x, y, g) && Math.hypot(x - g.px, y - g.py) > d0) ways++;
+    }
+    return ways < 2;
+  }
+
+  private startFight(a: Animal, intent: BeastFightState['intent'], g: FaunaView): void {
+    this.healthOf(a, g.time);
+    a.fight = { intent, since: g.time, hits: 0, stance: intent === 'kill' ? 'aggressive' : intent === 'defend' ? 'defensive' : 'balanced' };
+    a.state = 'attack';
+    a.to = null;
+    a.nextAt = Math.max(a.nextAt, g.time - 1);
+  }
+
+  /** Ends a beast's fight: it breaks and runs (bleeding, perhaps), or backs off, having made its point. */
+  private endFight(a: Animal, g: FaunaView, broke: boolean): void {
+    a.fight = null;
+    const seen = g.isVisible(a.x, a.y);
+    if (broke) {
+      this.frighten(a.g, { x: g.px, y: g.py, z: null }, g);
+      if (seen) this.onSee(`The ${a.s.name} breaks off and runs${(a.health?.bleeding() ?? 0) > 40 ? ', bleeding' : ''}${(a.health?.capacities().moving ?? 1) < 0.7 ? ', limping' : ''}.`);
+    } else {
+      a.state = 'idle';
+      a.g.fearUntil = g.time + 20;
+      a.g.fearFrom = { x: g.px, y: g.py, z: null };
+      if (seen) this.onSee(`The ${a.s.name} backs away from you.`);
+    }
+  }
+
+  /** The wanderer killed a beast (game/combat.ts): it is taken from the map. */
+  kill(a: Animal): void {
+    a.fight = null;
+    this.wounded = this.wounded.filter((w) => w.id !== a.id);
+    this.remove(a);
+  }
+
+  /** A beast dies of its wounds where it is. */
+  private died(a: Animal, g: FaunaView): void {
+    const seen = g.isVisible(a.x, a.y);
+    this.kill(a);
+    this.onDied(a.s, a.x, a.y, seen);
   }
 
   /** Takes an animal from the map for good (caught, killed). */
@@ -326,6 +470,8 @@ export class Fauna {
   run(g: FaunaView, who: Presence): boolean {
     let changed = false;
     const hour = (g.time % 86400) / 3600;
+    this.blows.clear();
+    if (this.findWounded(g)) changed = true;
     for (const h of [...this.herds.values()]) {
       if (h.gone) {
         this.dropUnseen(h, g);
@@ -364,10 +510,32 @@ export class Fauna {
     const h = a.g;
     let moved = false;
     if (a.nextAt < g.time - 120) a.nextAt = g.time - 120;
-    // Noticing the wanderer: fear, a threat, or (the tame) nothing much.
+    // Its wounds: bleeding, healing, and dying of them.
+    if (a.health) {
+      a.health.advance(g.time - a.health.time, {}, g.time);
+      if (a.health.dead) {
+        this.died(a, g);
+        return true;
+      }
+    }
+    if (a.fight) return this.fightAct(a, g, who);
+    // Lying up, wounded: it keeps still unless the wanderer comes close.
+    if (a.state === 'lying') {
+      const d = cheb(a, g.px, g.py);
+      if (d <= Math.max(2, a.s.flee / 2) && this.senses(a, g, who)) {
+        a.noticed = g.time;
+        this.provoke(a, g);
+        return true;
+      }
+      a.nextAt = g.time + 60;
+      return false;
+    }
+    // Noticing the wanderer: fear, an attack, a threat, or (the tame) nothing much.
     if (up && a.state !== 'flee' && this.senses(a, g, who)) {
+      const before = a.noticed;
       a.noticed = g.time;
       const d = cheb(a, g.px, g.py);
+      if (this.decideAttack(a, g, who, d, before)) return true;
       const bold = a.s.temper === 'aggressive' || (a.s.diet === 'predator' && who.winter && h.members.length >= 3 && g.time - a.ate > MEAL_H * 3600);
       if (bold && SIZE_RANK[a.s.size] >= 1 && !a.s.fly) {
         if (d <= 6 && g.time - a.threatAt > 30) this.threaten(a, g);
@@ -375,8 +543,9 @@ export class Fauna {
         if (d <= a.s.flee * (who.sneaking ? 0.6 : 1)) this.frighten(h, { x: g.px, y: g.py, z: null }, g);
       }
     }
+    const lame = a.health ? Math.max(0.15, a.health.capacities().moving) : 1;
     for (let n = 0; n < MAX_STEPS && a.nextAt <= g.time; n++) {
-      const pace = a.s.step;
+      const pace = a.s.step / lame;
       // Fleeing: away from the fright, fast; a bird flies off and lands farther on.
       if (h.fearUntil > g.time && h.fearFrom) {
         const from = h.fearFrom;
@@ -469,6 +638,9 @@ export class Fauna {
   /** Footprints in soft ground, for those near the wanderer. */
   private tracked(a: Animal, g: FaunaView): void {
     if (a.alt > 0 || cheb(a, g.px, g.py) > ANIMAL_ACTIVE) return;
+    // Blood, on any ground, while it bleeds.
+    const bleed = a.health?.bleeding() ?? 0;
+    if (bleed > 30 && (hashString(`${a.id}${a.x},${a.y}`) % 100) < Math.min(90, bleed / 4)) this.tracks.add(a.x, a.y, null, { t: g.time, by: `animal:${a.id}`, kind: `animal:${a.s.id}`, dir: a.facing, blood: true });
     const gid = g.map.groundAt(a.x, a.y, null);
     if (takesTracks(gid, true) && SIZE_RANK[a.s.size] >= 1) this.tracks.add(a.x, a.y, null, { t: g.time, by: `animal:${a.g.id}`, kind: `animal:${a.s.id}`, dir: a.facing });
   }
@@ -540,8 +712,128 @@ export class Fauna {
     return ok;
   }
 
+  /**
+   * A beast in a fight with the wanderer: it breaks off when its courage runs out (or, driving off,
+   * once it has made its point), closes in, and strikes when beside them, at most twice for each of
+   * the wanderer's actions.
+   */
+  private fightAct(a: Animal, g: FaunaView, who: Presence): boolean {
+    const f = a.fight!, body = this.healthOf(a, g.time), fight = fightOf(a.s);
+    let moved = false;
+    for (let n = 0; n < MAX_STEPS && a.nextAt <= g.time; n++) {
+      const d = cheb(a, g.px, g.py);
+      const broke = morale(body) < fight.breaks;
+      const done = f.intent !== 'kill' && (f.hits >= (fight.blows.some((b) => b.venom) ? 1 : 2) || (d > 4 && g.time - f.since > 20) || who.helpless);
+      if (broke || done || g.z !== null || d > 25 || body.senseless()) {
+        this.endFight(a, g, broke || body.senseless());
+        return true;
+      }
+      a.state = 'attack';
+      if (d <= 1 && a.alt === 0) {
+        const used = this.blows.get(a) ?? 0;
+        if (used >= 2) {
+          a.nextAt = g.time + 0.5;
+          break;
+        }
+        this.blows.set(a, used + 1);
+        const r = mulberry32(hashString(`${a.id}#blow#${Math.floor(g.time * 10)}`))();
+        const blow = fight.blows[Math.floor(r * fight.blows.length)];
+        a.facing = facingOf(g.px - a.x, g.py - a.y);
+        const before = a.fight;
+        this.onStrike(a, blow);
+        if (a.fight === before && a.fight) a.fight.hits++;
+        a.nextAt += blow.seconds / Math.max(0.4, Math.min(1, body.capacities().moving + 0.3));
+        continue;
+      }
+      // Close in: at a run, as fast as its legs let it.
+      const ok = this.step(a, { x: g.px, y: g.py, z: null }, g);
+      a.nextAt += (a.s.step / 2) / Math.max(0.15, body.capacities().moving);
+      if (ok) {
+        moved = true;
+        this.tracked(a, g);
+      } else a.nextAt += a.s.step;
+    }
+    return moved;
+  }
+
+  /**
+   * Whether a beast that has just noticed the wanderer sets on them, by its way (world/beasts.ts,
+   * Attacks): realistic, so seldom. `before`: when it last noticed them (to know a surprise).
+   */
+  private decideAttack(a: Animal, g: FaunaView, who: Presence, d: number, before: number): boolean {
+    const f = fightOf(a.s);
+    if (!f.attacks?.length || a.alt > 0 || g.z !== null) return false;
+    const roll = (hashString(`${a.id}#atk#${Math.floor(g.time / 600)}`) % 1000) / 1000;
+    const hungry = g.time - a.ate > MEAL_H * 3600;
+    const dark = who.light < 0.35;
+    for (const way of f.attacks) {
+      let go: BeastFightState['intent'] | null = null;
+      if (way === 'pack' && a.g.members.length >= 3 && hungry && (who.winter || dark) && d <= 12 && roll < 0.6) go = 'kill';
+      else if (way === 'surprised' && ((d <= 3 && g.time - before > 600 && roll < 0.6) || (a.g.members.length > 1 && d <= 6 && roll < 0.8))) go = 'drive';
+      else if (way === 'stalks' && (dark || who.helpless) && (who.weak || who.helpless) && d <= 14 && roll < 0.5) go = 'kill';
+      else if (way === 'water' && who.water && d <= 3 && roll < 0.7) go = 'kill';
+      else if (way === 'trodden' && d <= 1 && roll < 0.7) go = 'drive';
+      else if (way === 'pressed' && d <= Math.max(2, Math.round(a.s.flee * 0.6)) && roll < 0.35) go = 'drive';
+      if (!go) continue;
+      this.startFight(a, go, g);
+      if (way === 'pack') for (const m of a.g.members) if (m !== a && !m.fight) this.startFight(m, go, g);
+      if (g.isVisible(a.x, a.y)) {
+        const words: Record<string, string> = {
+          pack: `The ${a.s.plural} close in on you.`, surprised: `The ${a.s.name} rears up and comes for you!`, stalks: `The ${a.s.name} springs at you out of the dark!`,
+          water: `The ${a.s.name} lunges from the water!`, trodden: `The ${a.s.name} strikes!`, pressed: `The ${a.s.name} lowers its head and charges!`,
+        };
+        this.onSee(words[way]);
+      }
+      return true;
+    }
+    return false;
+  }
+
+  /** Wounded beasts kept from before, near the wanderer again: found lying up, or dead of their wounds. */
+  private findWounded(g: FaunaView): boolean {
+    let changed = false;
+    for (const w of [...this.wounded]) {
+      if (cheb(w, g.px, g.py) > ANIMAL_ACTIVE || g.isVisible(w.x, w.y) && cheb(w, g.px, g.py) < 6) continue;
+      const s = SPECIES_BY_ID.get(w.species);
+      this.wounded = this.wounded.filter((x) => x !== w);
+      if (!s) continue;
+      const body = Health.fromJSON(w.health);
+      body.setNow(w.t);
+      body.rng = mulberry32(hashString(`${w.id}#body`));
+      body.advance(g.time - body.time, {}, g.time);
+      if (body.dead) {
+        this.onDied(s, w.x, w.y, g.isVisible(w.x, w.y));
+        changed = true;
+        continue;
+      }
+      if (this.byTile.has(key(w.x, w.y)) || !g.map.loaded(w.x, w.y)) continue;
+      const h: Herd = { id: `wounded:${w.id}`, s, home: { x: w.x, y: w.y, r: 4 }, water: null, members: [], fearUntil: 0, fearFrom: null, planAt: g.time + 3600, gone: false };
+      const a: Animal = { id: w.id, s, g: h, x: w.x, y: w.y, alt: 0, perched: false, facing: 's', state: 'lying', to: null, nextAt: g.time, ate: g.time, quarry: null, chase: 0, calledAt: g.time, threatAt: 0, noticed: -1, health: body };
+      h.members.push(a);
+      this.byTile.set(key(w.x, w.y), a);
+      this.herds.set(h.id, h);
+      changed = true;
+    }
+    return changed;
+  }
+
+  /** The wounded kept, for saving (with those in the bubble now). */
+  exportWounded(): WoundedBeast[] {
+    const out = [...this.wounded];
+    for (const a of this.all()) if (a.health && !a.health.dead && a.health.d.wounds.length) out.push({ id: a.id, species: a.s.id, x: a.x, y: a.y, health: a.health.toJSON(), t: a.health.time });
+    return out;
+  }
+
+  importWounded(list: WoundedBeast[] | undefined): void {
+    this.wounded = (list ?? []).filter((w) => w && typeof w.id === 'string' && SPECIES_BY_ID.has(w.species) && w.health && typeof w.health.blood === 'number' && typeof w.t === 'number');
+  }
+
   /** The wanderer walks into an animal: the tame shy away, the rest flee (or threaten). Returns what happens. */
   bumped(g: FaunaView, a: Animal): string {
+    if (a.state === 'lying') {
+      this.provoke(a, g);
+      return `The wounded ${a.s.name} starts up.`;
+    }
     if (a.s.temper === 'aggressive') {
       this.threaten(a, g);
       return `The ${a.s.name} will not give way.`;
@@ -563,9 +855,17 @@ export function animalLines(a: Animal, now: number): string[] {
   const s = a.s, n = a.g.members.length;
   const doing = a.state === 'sleep' ? 'asleep' : a.state === 'flee' ? (s.fly ? 'flying off' : 'running off') : a.state === 'eat' ? 'feeding on a kill'
     : a.state === 'stalk' ? 'stalking something' : a.state === 'chase' ? 'giving chase' : a.state === 'threaten' ? 'facing you, hackles up'
+    : a.state === 'attack' ? (a.fight?.intent === 'kill' ? 'attacking you' : 'fighting you') : a.state === 'lying' ? 'lying up'
     : a.perched ? 'perched in a tree' : a.alt > 0 ? 'flying' : a.state === 'drink' ? 'drinking' : now - a.noticed < 60 ? 'watching you' : s.diet === 'grazer' ? 'grazing' : s.diet === 'browser' ? 'browsing' : s.diet === 'seeds' ? 'pecking about' : 'nosing about';
   const out = [`${/^[aeiou]/.test(s.name) ? 'An' : 'A'} ${s.name}, ${doing}.`];
   if (n > 1) out.push(`One of ${s.herd ? (s.fly ? 'a flock' : s.diet === 'predator' ? 'a pack' : 'a herd') : 'a group'} of ${n} ${s.plural}.`);
   if (s.home === 'kept') out.push('Someone\'s, by the look of it.');
+  // Its wounds, as they can be seen.
+  const h = a.health;
+  if (h && h.d.wounds.length) {
+    const c = h.capacities();
+    const how = [h.bleeding() > 200 ? 'bleeding badly' : h.bleeding() > 30 ? 'bleeding' : '', c.moving < 0.7 ? 'limping' : '', h.d.lost.length ? `missing its ${h.d.lost.map((id) => h.partOf(id)?.name ?? id).slice(0, 2).join(' and ')}` : ''].filter(Boolean);
+    out.push(`It is wounded${how.length ? `: ${how.join(', ')}` : ''}.`);
+  }
   return out;
 }

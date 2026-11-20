@@ -1,6 +1,7 @@
 /**
- * Hunting without weapons (docs/design/npcs.md, Animals: Hunting; Stage 2): snares set on the
- * ground for small game, and butchery. Shooting and the spear wait for combat (combat.md).
+ * Hunting without bows (docs/design/npcs.md, Animals: Hunting; Stage 2): snares set on the ground
+ * for small game, and butchery. The spear and the blade are combat's (game/combat.ts; combat.md,
+ * stage 2); shooting waits for stage 3.
  *
  * - **Snares.** A length of snare wire set on a tile (P). Small game (core local/fauna.ts,
  *   `snared`) that steps on it is caught; out of sight, each hour, a snare in the range of a group of
@@ -17,6 +18,7 @@ import type { Inventory } from '../actors/items/inventory';
 import { makeItem, type Item } from '../actors/items/item';
 import { ITEM } from '../actors/items/defs';
 import { BRUSH_TOOLS } from '../game/tasks';
+import { fightOf } from './beasts';
 import type { Fauna, FaunaView } from './fauna';
 
 export interface Snare {
@@ -100,9 +102,12 @@ export class Snares {
   }
 }
 
-/** A carcass of a species, to carry home or butcher. */
+/** A carcass of a species, to carry home or butcher: as heavy as the beast (a deer is no load to carry far). */
 export function carcassOf(s: Species): Item {
-  return makeItem('carcass', { name: `dead ${s.name}` });
+  const it = makeItem('carcass', { name: `dead ${s.name}` });
+  const kg = fightOf(s).kg;
+  if (Math.abs(kg - 2.5) > 0.2) it.kg = Math.round(kg * 10) / 10;
+  return it;
 }
 
 /** The species a carcass is of (by its name). */
@@ -138,5 +143,7 @@ export function butcher(a: Actor, inv: Inventory, it: Item, now: number): { item
     success: `You butcher the ${s.name} cleanly.`,
     fine: `You butcher the ${s.name} quickly and well, wasting nothing.`,
   };
-  return { items, text: words[grade], seconds: 15 * 60 };
+  // A big beast takes longer: a deer most of an hour, a bear the better part of a morning.
+  const kg = fightOf(s).kg;
+  return { items, text: words[grade], seconds: Math.round(15 * 60 * Math.max(1, Math.pow(kg / 10, 0.55))) };
 }

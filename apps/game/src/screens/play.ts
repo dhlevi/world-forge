@@ -15,6 +15,9 @@ import { SleepScreen } from './sleep';
 import { CampScreen } from './camp';
 import { InventoryScreen } from './inventory';
 import { HealthScreen } from './health';
+import { Inventory } from '../actors/items/inventory';
+import { defOf } from '../actors/items/item';
+import { FightScreen } from './fight';
 import DeathView from './views/DeathView.vue';
 import { Body } from '../actors/components';
 import type { Dead } from '../game/save';
@@ -91,6 +94,11 @@ export class PlayScreen extends Screen {
       this.showCamp();
       return true;
     }
+    // The fight menu (combat.md, stage 2): a blow at a beast in reach, with its aim, blow and stance.
+    if (e.code === 'KeyF' && e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
+      this.showFight();
+      return true;
+    }
     // A light: a lantern, torch or candle lit from the pack, or the one held put out.
     if (e.code === 'KeyF' && !e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
       this.session.toggleLight();
@@ -147,6 +155,19 @@ export class PlayScreen extends Screen {
 
   showInventory(): void {
     if (this.player) this.manager?.push(new InventoryScreen(this, this.player));
+  }
+
+  showFight(): void {
+    const s = this.session;
+    // The reach of what is held, or of the best weapon carried (drawn when the blow is struck).
+    const inv = this.player?.get(Inventory);
+    const reach = Math.max(1, ...(s.arms()?.blows.map((b) => b.reach) ?? [1]), ...(inv?.d.items.map((i) => defOf(i).melee?.reach ?? 1) ?? [1]));
+    const targets = s.inReach(reach);
+    if (!targets.length) {
+      s.say(reach > 1 ? 'There is no beast within reach of your weapon.' : 'There is no beast beside you to strike.');
+      return;
+    }
+    this.manager?.push(new FightScreen(this, targets));
   }
 
   showHealth(): void {

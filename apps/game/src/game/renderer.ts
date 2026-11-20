@@ -818,9 +818,16 @@ export class Renderer {
     for (let i = 0; i < this.cols * this.rows; i++) {
       if (!vis[i]) continue;
       const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
-      const n = game.tracksOn(tx, ty, floor);
-      if (!n) continue;
+      const n = game.tracksOn(tx, ty, floor), blood = game.bloodOn(tx, ty, floor);
+      if (!n && !blood) continue;
       const x = (i % this.cols) * TILE_PX, y = Math.floor(i / this.cols) * TILE_PX;
+      // Blood (combat.md, stage 2): dark red drops.
+      if (blood) {
+        this.marks.circle(x + 7, y + 8, 1.4).fill({ color: 0x7a0e0e, alpha: 0.85 });
+        this.marks.circle(x + 11, y + 5, 0.9).fill({ color: 0x7a0e0e, alpha: 0.75 });
+        this.marks.circle(x + 4, y + 12, 0.8).fill({ color: 0x7a0e0e, alpha: 0.7 });
+      }
+      if (!n) continue;
       const a = Math.min(0.55, 0.2 + 0.08 * n);
       this.marks.ellipse(x + 5, y + 6, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
       this.marks.ellipse(x + 10, y + 10, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });

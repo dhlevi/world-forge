@@ -79,6 +79,8 @@ export interface Track {
   kind: string;
   young?: boolean;
   dir: Facing;
+  /** Blood, not a print: left by the wounded on any ground (combat.md, stage 2). */
+  blood?: boolean;
 }
 
 /** Ground that always takes tracks, and ground that takes them when wet. */
@@ -111,6 +113,11 @@ export class Tracks {
     l.push(tr);
     if (l.length > PER_TILE) l.shift();
     this.tiles.set(k, l);
+  }
+
+  /** Whether there is blood on a tile still to be seen (for drawing). */
+  bloodAt(x: number, y: number, z: number | null, now: number): boolean {
+    return this.at(x, y, z, now).some((t) => t.blood);
   }
 
   /** The tracks on a tile still to be seen at a time, newest last. */
@@ -169,6 +176,22 @@ const KIND_WORD: Record<string, string> = { human: 'a person', elf: 'an elf', dw
  */
 export function readTracks(ts: Track[], now: number, tracking: number): string | null {
   if (!ts.length) return null;
+  // Blood: anyone sees it; Tracking reads whose, how fresh, and which way it went.
+  const blood = ts.filter((t) => t.blood);
+  const prints = ts.filter((t) => !t.blood);
+  let bloodText = '';
+  if (blood.length) {
+    const b = blood[blood.length - 1];
+    const sp = b.kind.startsWith('animal:') ? SPECIES_BY_ID.get(b.kind.slice(7)) : null;
+    const whose = b.by === 'player' ? ' (your own)' : tracking >= 25 && sp ? ` (a wounded ${sp.name}'s)` : '';
+    bloodText = `Blood on the ground${whose}${tracking >= 15 ? `, ${ageWords(now - b.t)}` : ''}${tracking >= 30 ? `, the trail going ${WAY[b.dir]}` : ''}.`;
+  }
+  if (!prints.length) return bloodText;
+  const printText = readPrints(prints, now, tracking);
+  return bloodText ? `${bloodText} ${printText}` : printText;
+}
+
+function readPrints(ts: Track[], now: number, tracking: number): string {
   if (tracking < 15) return ts.every((t) => t.kind.startsWith('animal:')) ? 'Tracks in the ground.' : 'Footprints in the ground.';
   const by = new Set(ts.map((t) => t.by));
   const newest = ts[ts.length - 1];

@@ -69,6 +69,76 @@ export const HUMANOID: BodyPartDef[] = [
 export const PART = new Map(HUMANOID.map((p) => [p.id, p]));
 
 /**
+ * The bodies of beasts (combat.md, stage 2): a four-footed beast's, a bird's and a serpent's, with
+ * the same organs within; sizes and toughness for a beast of about a person's weight (actors/
+ * health.ts scales toughness by the beast's weight). The small, four-footed beasts use the
+ * four-footed plan.
+ */
+const ORGANS = (torso: string, lungs: 2 | 1): BodyPartDef[] => [
+  { id: 'ribs', name: 'ribs', parent: torso, size: 6, hp: 20, inside: true },
+  { id: 'heart', name: 'heart', parent: torso, size: 1, hp: 15, vital: true, inside: true, bleed: 6 },
+  ...(lungs === 2
+    ? [{ id: 'lung.l', name: 'left lung', parent: torso, size: 2, hp: 15, inside: true, bleed: 2 }, { id: 'lung.r', name: 'right lung', parent: torso, size: 2, hp: 15, inside: true, bleed: 2 }]
+    : [{ id: 'lung.l', name: 'lung', parent: torso, size: 3, hp: 18, inside: true, bleed: 2 }]),
+  { id: 'liver', name: 'liver', parent: torso, size: 1.5, hp: 15, vital: true, inside: true, bleed: 3 },
+  { id: 'stomach', name: 'stomach', parent: torso, size: 1.5, hp: 15, inside: true, bleed: 1.5 },
+  { id: 'spine', name: 'spine', parent: torso, size: 1.5, hp: 20, inside: true, bleed: 1 },
+];
+const HEAD = (o: { ears: boolean; snout: string; jaw: string }): BodyPartDef[] => [
+  { id: 'head', name: 'head', parent: 'neck', size: 8, hp: 25, bleed: 1.5 },
+  { id: 'skull', name: 'skull', parent: 'head', size: 3, hp: 25, inside: true },
+  { id: 'brain', name: 'brain', parent: 'skull', size: 1, hp: 10, vital: true, inside: true, bleed: 2 },
+  { id: 'eye.l', name: 'left eye', parent: 'head', size: 0.5, hp: 10, bleed: 0.5 },
+  { id: 'eye.r', name: 'right eye', parent: 'head', size: 0.5, hp: 10, bleed: 0.5 },
+  ...(o.ears ? [{ id: 'ear.l', name: 'left ear', parent: 'head', size: 0.6, hp: 12, sever: true, bleed: 0.8 }, { id: 'ear.r', name: 'right ear', parent: 'head', size: 0.6, hp: 12, sever: true, bleed: 0.8 }] : []),
+  { id: 'nose', name: o.snout, parent: 'head', size: 0.8, hp: 12, bleed: 1 },
+  { id: 'jaw', name: o.jaw, parent: 'head', size: 1.5, hp: 15, bleed: 1 },
+  { id: 'teeth', name: 'teeth', parent: 'jaw', size: 1, hp: 10, inside: true },
+];
+
+export const QUADRUPED: BodyPartDef[] = [
+  { id: 'torso', name: 'body', size: 30, hp: 40, bleed: 1.2 },
+  { id: 'neck', name: 'neck', parent: 'torso', size: 4, hp: 25, vital: true, bleed: 4 },
+  ...HEAD({ ears: true, snout: 'muzzle', jaw: 'jaw' }),
+  ...ORGANS('torso', 2),
+  ...(['fl', 'fr', 'hl', 'hr'] as const).flatMap((s): BodyPartDef[] => {
+    const name = { fl: 'left foreleg', fr: 'right foreleg', hl: 'left hind leg', hr: 'right hind leg' }[s];
+    const foot = { fl: 'left forefoot', fr: 'right forefoot', hl: 'left hind foot', hr: 'right hind foot' }[s];
+    return [
+      { id: `leg.${s}`, name, parent: 'torso', size: 5, hp: 30, sever: true },
+      { id: `foot.${s}`, name: foot, parent: `leg.${s}`, size: 1, hp: 15, sever: true, bleed: 0.8 },
+    ];
+  }),
+  { id: 'tail', name: 'tail', parent: 'torso', size: 1.5, hp: 10, sever: true, bleed: 0.6 },
+];
+
+export const BIRD: BodyPartDef[] = [
+  { id: 'torso', name: 'body', size: 30, hp: 40, bleed: 1.2 },
+  { id: 'neck', name: 'neck', parent: 'torso', size: 5, hp: 20, vital: true, bleed: 3 },
+  ...HEAD({ ears: false, snout: 'beak', jaw: 'bill' }).filter((p) => p.id !== 'teeth').map((p) => (p.id === 'head' ? { ...p, size: 10 } : p)),
+  ...ORGANS('torso', 2),
+  { id: 'wing.l', name: 'left wing', parent: 'torso', size: 12, hp: 20, sever: true },
+  { id: 'wing.r', name: 'right wing', parent: 'torso', size: 12, hp: 20, sever: true },
+  { id: 'leg.l', name: 'left leg', parent: 'torso', size: 4, hp: 15, sever: true, bleed: 0.6 },
+  { id: 'leg.r', name: 'right leg', parent: 'torso', size: 4, hp: 15, sever: true, bleed: 0.6 },
+  { id: 'tail', name: 'tail feathers', parent: 'torso', size: 3, hp: 8, sever: true, bleed: 0.2 },
+];
+
+export const SERPENT: BodyPartDef[] = [
+  { id: 'torso', name: 'body', size: 50, hp: 40, bleed: 1.2 },
+  { id: 'neck', name: 'neck', parent: 'torso', size: 8, hp: 25, vital: true, bleed: 3 },
+  ...HEAD({ ears: false, snout: 'snout', jaw: 'jaws' }).map((p) => (p.id === 'teeth' ? { ...p, name: 'fangs' } : p.id === 'head' ? { ...p, size: 10 } : p)),
+  ...ORGANS('torso', 1),
+  { id: 'tail', name: 'tail', parent: 'torso', size: 20, hp: 25, sever: true },
+];
+
+export type PlanId = 'humanoid' | 'quad' | 'bird' | 'serpent';
+export const PLANS: Record<PlanId, BodyPartDef[]> = { humanoid: HUMANOID, quad: QUADRUPED, bird: BIRD, serpent: SERPENT };
+export const PLAN_PARTS: Record<PlanId, Map<string, BodyPartDef>> = {
+  humanoid: PART, quad: new Map(QUADRUPED.map((p) => [p.id, p])), bird: new Map(BIRD.map((p) => [p.id, p])), serpent: new Map(SERPENT.map((p) => [p.id, p])),
+};
+
+/**
  * A wound of the past, kept as a mark (a scar, a brand) or lasting harm: from the character's
  * life before play (actors/creation/resolve.ts) and from wounds healed in play (actors/health.ts).
  */

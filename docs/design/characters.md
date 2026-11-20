@@ -174,7 +174,8 @@ food and water, scars, crooked bones and lasting harm; festering in the first tw
 immunity; the conditions of dehydration, starvation, hypothermia, heatstroke and drowning, and
 frostbite; and first aid with Medicine (bandage, clean, stitch, splint, poultice). Harm so far comes
 from thorns, brush cutting, falls, fords, cold and heat, hunger and thirst, and the water; the
-blows of beasts and people come with combat (stages 2 to 4). Not yet: surgery, setting bones by
+blows of beasts came with combat stage 2 (beasts have bodies of their own plans), those of people
+come with stage 4. Not yet: surgery, setting bones by
 another's hand, illness, healers in towns, and treating another person.
 
 ## The two-bar pools

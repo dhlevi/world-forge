@@ -457,7 +457,8 @@ nations, regions and cities; factions. **Proposed:**
 **Stage 2: animals.** Species and populations, bodies and temperaments, grazing and herds,
 fleeing, predators, birds across levels, smell and wind, hunting with tracks; the street animals
 of towns (dogs, cats, rats, pigeons). *(Built. Decided with the user: predators are threats
-only until combat (they stalk, growl and bluff-charge, then back off); hunting is tracking,
+only until combat (they stalk, growl and bluff-charge, then back off; since combat stage 2 they
+fight, [combat.md](combat.md#stages-decided-order)); hunting is tracking,
 sneaking, snares and butchery (shooting waits for combat); each species has its own template
 frames. `core local/fauna.ts` lists 47 species, wild (the everyday hare, rabbit, squirrel, fox,
 badger, roe deer and the birds; the bestiary's beasts only where the region's bestiary has them),

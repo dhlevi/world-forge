@@ -36,6 +36,8 @@ export interface Item {
   name?: string;
   /** Its cloth's colour ("#rrggbb"), where it differs from the kind's (a resident's dyed tunic). */
   colour?: string;
+  /** Its own weight each (kg), where it differs from the kind's (a carcass, by its beast). */
+  kg?: number;
   loc?: Loc;
 }
 
@@ -88,7 +90,7 @@ export function itemValue(it: Item): number {
 }
 
 /** Its own weight (kg), without what it holds. */
-export const ownWeight = (it: Item): number => defOf(it).weight * it.qty;
+export const ownWeight = (it: Item): number => (it.kg ?? defOf(it).weight) * it.qty;
 /** Its own room taken (litres). */
 export const ownBulk = (it: Item): number => defOf(it).bulk * it.qty;
 export const sizeOf = (it: Item): Size => defOf(it).size;

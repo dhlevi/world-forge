@@ -46,7 +46,7 @@ export interface Hud {
   place: string;
   where: string;
   clock: string;
-  log: { t: string; text: string }[];
+  log: { t: string; text: string; tip?: string }[];
   look: string[];
   mode: 'play' | 'look' | 'open' | 'close' | 'cut' | 'talk';
   loading: number;
@@ -149,7 +149,10 @@ export class Game {
   /** An animal on a tile, in words (world/fauna.ts); none if none (or only a bird flying over). */
   animalAt: (x: number, y: number) => string[] | null = () => null;
   /** The wanderer walks into an animal: what happens, in words (none: there is none there). */
-  onBumpAnimal: (x: number, y: number) => string | null = () => null;
+  /** Walking into a beast (running: `quiet`): what happens in words, or true when the wanderer strikes it (or, running, stops). */
+  onBumpAnimal: (x: number, y: number, quiet?: boolean) => string | true | null = () => null;
+  /** Whether there is blood on a tile (combat.md, stage 2), for drawing. */
+  bloodOn: (x: number, y: number, z: number | null) => boolean = () => false;
   /** The animals about, to be drawn. */
   animals: () => Iterable<ShownAnimal> = () => [];
   /** The people about, to be drawn (world/population.ts). */
@@ -291,8 +294,9 @@ export class Game {
     return { level: Math.abs(v), fire: v < 0 };
   }
 
-  say(text: string): void {
-    this.hud.log.push({ t: this.clockText(), text });
+  /** Tells something in the log; a tip holds the numbers behind it (a blow's chance), shown on hover. */
+  say(text: string, tip?: string): void {
+    this.hud.log.push({ t: this.clockText(), text, ...(tip ? { tip } : {}) });
     if (this.hud.log.length > 60) this.hud.log.splice(0, this.hud.log.length - 60);
   }
 
@@ -327,7 +331,9 @@ export class Game {
       if (!quiet) this.say(this.onBump(nx, ny, this.z) ?? `${who.name} is in the way.`);
       return false;
     }
-    const beast = this.z === null ? this.onBumpAnimal(nx, ny) : null;
+    // Walking into a beast: it gives way, or (in a fight) the wanderer strikes it, which takes its own time.
+    const beast = this.z === null ? this.onBumpAnimal(nx, ny, quiet) : null;
+    if (beast === true) return !quiet;
     if (beast) {
       if (!quiet) this.say(beast);
       this.time += STEP_S;

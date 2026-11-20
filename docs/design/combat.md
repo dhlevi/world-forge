@@ -124,9 +124,37 @@ animals, fear and flight, the watch, predators that are threats only until this 
    `actors/health.ts`, `game/treatment.ts`). Decided for it: every finger and toe in the body;
    full first aid (bandage, clean, stitch, splint, poultice) with infection; harm from thorns and
    brush, cold and heat, hunger and thirst, falls and drowning; permadeath with a developer's
-   escape. The body is the wanderer's alone so far: residents and animals take it on with stages
-   2 and 4, and a beast's body plan with stage 2.
+   escape. Beasts took on bodies of their own plans with stage 2; residents take it on with
+   stage 4.
 2. **Melee with beasts**: strike, block, dodge, flee; predators attacking; hunting with the spear.
+   **Built** (20 November 2026; `game/combat.ts`, `world/beasts.ts`, `world/fauna.ts`).
+   Decided for it:
+   - *Controls: both.* Walking into a beast that is fighting the wanderer strikes it with the
+     standing aim, blow and stance; Shift+F opens the blow menu for one exchange (the beast in
+     reach, the part to aim at, the blow, the stance, each with its chance), from which the
+     standing choices can be kept. With no weapon in hand, the best carried is drawn first.
+   - *Aggression: realistic.* Most beasts avoid people (bold ones still bluff). A hungry pack hunts
+     a lone wanderer by dusk and dark or in winter; a bear surprised close, or a mother with young,
+     attacks to drive off; the great cats stalk the weak and the sleeping in the dark; a crocodile
+     takes what comes to the water; a viper strikes when trodden near; a boar, an aurochs, a bison,
+     an elk, an elephant or a goose charges when pressed. Struck, a beast fights back (to kill, or
+     to drive off), stands at bay when cornered, or flees, by its kind; a pack joins in.
+   - *Wounded beasts* have bodies of their plan (four-footed, bird, serpent; toughness by weight),
+     bleed, limp, leave a trail of blood read with Tracking, break off when their courage fails,
+     and may die of their wounds where they run; one that leaves the bubble is kept, and found
+     again lying up (or dead) later. A beast killed leaves a carcass as heavy as it was, butchered
+     where it lies.
+   - *Numbers: words, numbers on hover.* Each exchange is told in plain words; the log line's tip
+     holds the chance, the roll, the severity and the armour; the blow menu shows the chances.
+
+   The rules: a blow is the weapon's skill against the beast's dodging (counted at 0.7 of a level),
+   shifted by the stance (aggressive +10/-15, defensive -15/+15), the aim (a smaller part, harder),
+   the beast's size, the dark and the water, and the wanderer's own wounds; the margin sets the
+   severity, with Strength; the hide takes some; a heavy bash breaks bone. A beast's blow is its
+   attack against the wanderer's best defence (Dodge, a parry, which a great beast's weight makes
+   hard, or a shield), goes for the parts its kind goes for, and armour worn there takes some.
+   Each beast strikes at most twice for each of the wanderer's actions; a sleeper's first blow is
+   undefended and wakes them. Venom (a viper's) is a condition of the body that spreads, then fades.
 3. **Ranged and thrown**: bows, slings, crossbows, and throwing anything held (rocks, branches,
    axes, knives, bottles), ammunition; hunting with the bow.
 4. **People**: intent and morale, yielding, brawls, robbers who maim and rob, the watch and the

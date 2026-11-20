@@ -31,7 +31,7 @@
  */
 import { Component } from './actor';
 import type { Message } from '../engine/messages';
-import { Body, HUMANOID, Mood, PART, Skills, Traits, type Activity, type BodyPartDef, type TimeCtx } from './components';
+import { Body, HUMANOID, Mood, PART, PLANS, PLAN_PARTS, Skills, Traits, type Activity, type BodyPartDef, type PlanId, type TimeCtx } from './components';
 import { Needs } from './needs';
 import { Inventory } from './items/inventory';
 import { defOf } from './items/item';
@@ -45,9 +45,9 @@ export const CAPACITY_NAMES: Record<Capacity, string> = {
   pumping: 'Blood pumping', filtering: 'Blood filtering', talking: 'Talking', eating: 'Eating',
 };
 
-export type ConditionId = 'dehydration' | 'starvation' | 'hypothermia' | 'heatstroke' | 'drowning';
+export type ConditionId = 'dehydration' | 'starvation' | 'hypothermia' | 'heatstroke' | 'drowning' | 'venom';
 export const CONDITION_NAMES: Record<ConditionId, string> = {
-  dehydration: 'Dehydration', starvation: 'Starvation', hypothermia: 'Hypothermia', heatstroke: 'Heatstroke', drowning: 'Drowning',
+  dehydration: 'Dehydration', starvation: 'Starvation', hypothermia: 'Hypothermia', heatstroke: 'Heatstroke', drowning: 'Drowning', venom: 'Venom',
 };
 
 export interface HealthWound {
@@ -81,6 +81,9 @@ export interface Lasting {
 }
 
 export interface HealthData {
+  /** The body's plan (a person's, a beast's: actors/components/body.ts), and a beast's weight (kg); a person's comes from their Body. */
+  plan?: PlanId;
+  kg?: number;
   /** Blood (litres). */
   blood: number;
   wounds: HealthWound[];
@@ -90,6 +93,8 @@ export interface HealthData {
   cond: Partial<Record<ConditionId, number>>;
   /** Pain eased by a remedy until this time (game seconds). */
   eased?: number;
+  /** Venom still spreading from a bite (shares of the condition yet to come). */
+  venomLeft?: number;
   nextId: number;
   /** Dead: of what, and when. */
   dead?: { cause: string; at: number };
@@ -118,10 +123,10 @@ const SCARS = new Set<WoundKind>(['cut', 'stab', 'bite', 'burn', 'frostbite', 'c
 const KIND_WORD: Record<WoundKind, string> = { cut: 'cut', stab: 'stab wound', bite: 'bite', bruise: 'bruise', fracture: 'broken bone', crush: 'crushing wound', burn: 'burn', frostbite: 'frostbite' };
 
 /** The wound's name in words, with how bad it is ("a deep cut", "a bruise"). */
-export function woundWords(w: HealthWound): string {
-  const hp = PART.get(w.part)?.hp ?? 20;
+export function woundWords(w: HealthWound, def: BodyPartDef | undefined = PART.get(w.part)): string {
+  const hp = def?.hp ?? 20;
   const r = w.sev / hp;
-  if (w.ruin) return w.kind === 'fracture' || w.kind === 'crush' ? 'crushed' : PART.get(w.part)?.sever ? 'stump' : 'destroyed';
+  if (w.ruin) return w.kind === 'fracture' || w.kind === 'crush' ? 'crushed' : def?.sever ? 'stump' : 'destroyed';
   if (w.kind === 'fracture') return r >= 0.5 ? 'shattered bone' : r >= 0.25 ? 'broken bone' : 'cracked bone';
   if (w.kind === 'bruise') return r >= 0.4 ? 'heavy bruise' : r >= 0.15 ? 'bruise' : 'light bruise';
   if (w.kind === 'burn') return r >= 0.4 ? 'deep burn' : r >= 0.15 ? 'burn' : 'scald';
@@ -137,27 +142,29 @@ export function splintable(id: string): boolean {
 }
 
 /** The parts within (and below) a part. */
-function within(id: string): string[] {
+function within(id: string, plan: BodyPartDef[] = HUMANOID): string[] {
   const out: string[] = [];
-  for (const p of HUMANOID) if (p.parent === id) out.push(p.id, ...within(p.id));
+  for (const p of plan) if (p.parent === id) out.push(p.id, ...within(p.id, plan));
   return out;
 }
 
 /** A part's ancestors, nearest first. */
-function ancestors(id: string): string[] {
+function ancestors(id: string, parts: Map<string, BodyPartDef> = PART): string[] {
   const out: string[] = [];
-  let p = PART.get(id)?.parent;
+  let p = parts.get(id)?.parent;
   while (p) {
     out.push(p);
-    p = PART.get(p)?.parent;
+    p = parts.get(p)?.parent;
   }
   return out;
 }
 
 /** A part that does not lie inside another, picked by size (within a region, if one is given). */
-export function outerPart(r: () => number, region?: BodyPartDef['region'] | BodyPartDef['region'][]): BodyPartDef {
+export function outerPart(r: () => number, region?: BodyPartDef['region'] | BodyPartDef['region'][], plan: BodyPartDef[] = HUMANOID): BodyPartDef {
   const regions = region === undefined ? null : Array.isArray(region) ? region : [region];
-  const list = HUMANOID.filter((p) => !p.inside && (!regions || regions.includes(p.region)));
+  let list = plan.filter((p) => !p.inside && (!regions || regions.includes(p.region)));
+  // A beast's parts have no clothing regions: any part outside.
+  if (!list.length) list = plan.filter((p) => !p.inside);
   const total = list.reduce((s, p) => s + p.size, 0);
   let x = r() * total;
   for (const p of list) if ((x -= p.size) <= 0) return p;
@@ -165,8 +172,8 @@ export function outerPart(r: () => number, region?: BodyPartDef['region'] | Body
 }
 
 /** A part inside a part (an organ in the torso, the brain in the skull), by size; none if nothing lies inside. */
-function innerPart(r: () => number, id: string): BodyPartDef | null {
-  const list = HUMANOID.filter((p) => p.parent === id && p.inside);
+function innerPart(r: () => number, id: string, plan: BodyPartDef[] = HUMANOID): BodyPartDef | null {
+  const list = plan.filter((p) => p.parent === id && p.inside);
   if (!list.length) return null;
   const total = list.reduce((s, p) => s + p.size, 0);
   let x = r() * total;
@@ -200,16 +207,61 @@ export class Health extends Component {
     return { blood: Health.bloodMaxFor(weightKg), wounds: [], lost: [], lasting: [], cond: {}, nextId: 1 };
   }
 
+  /** A beast's health: its body plan and weight. */
+  static beast(plan: PlanId, kg: number): HealthData {
+    return { ...Health.fresh(kg), plan, kg };
+  }
+
+  /** The dice, for a body with no Skills of its own to roll them (a beast's); set by whoever keeps it. */
+  rng: (() => number) | null = null;
+  private scaled = new Map<string, BodyPartDef>();
+
+  get planId(): PlanId {
+    return this.d.plan ?? 'humanoid';
+  }
+
+  /** The parts of the body's plan. */
+  get plan(): BodyPartDef[] {
+    return PLANS[this.planId];
+  }
+
+  /** How tough the parts are against a person's: a beast's by its weight (a hare's far less, a bear's more). */
+  get scale(): number {
+    return this.planId === 'humanoid' ? 1 : clamp(Math.cbrt((this.d.kg ?? 70) / 70), 0.2, 2.6);
+  }
+
+  /** A part of the plan, with its toughness as this body has it. */
+  partOf(id: string): BodyPartDef | undefined {
+    let p = this.scaled.get(id);
+    if (!p) {
+      const b = PLAN_PARTS[this.planId].get(id);
+      if (!b) return undefined;
+      p = this.scale === 1 ? b : { ...b, hp: b.hp * this.scale };
+      this.scaled.set(id, p);
+    }
+    return p;
+  }
+
+  /** A wound in words, as this body has it. */
+  woundWords(w: HealthWound): string {
+    return woundWords(w, this.partOf(w.part));
+  }
+
+  /** The time the body was last told of (game seconds). */
+  get time(): number {
+    return this.now;
+  }
+
   static bloodMaxFor(kg: number): number {
     return Math.round(kg * 0.07 * 100) / 100;
   }
 
   bloodMax(): number {
-    return Health.bloodMaxFor(this.actor?.get(Body)?.d.weightKg ?? 70);
+    return Health.bloodMaxFor(this.d.kg ?? this.actor?.get(Body)?.d.weightKg ?? 70);
   }
 
   private random(): number {
-    return this.actor?.get(Skills)?.random() ?? Math.random();
+    return this.rng?.() ?? this.actor?.get(Skills)?.random() ?? Math.random();
   }
 
   get dead(): boolean {
@@ -220,12 +272,12 @@ export class Health extends Component {
 
   /** Lost, or below a lost part. */
   isLost(id: string): boolean {
-    return this.d.lost.includes(id) || ancestors(id).some((a) => this.d.lost.includes(a) && PART.get(a)?.sever);
+    return this.d.lost.includes(id) || ancestors(id, PLAN_PARTS[this.planId]).some((a) => this.d.lost.includes(a) && this.partOf(a)?.sever);
   }
 
   /** How well a part works now, 0 to 1: its wounds, broken bones, lasting harm, and whether it is there. */
   eff(id: string): number {
-    const def = PART.get(id);
+    const def = this.partOf(id);
     if (!def || this.isLost(id)) return 0;
     let harm = 0, broken = 1;
     for (const w of this.d.wounds) {
@@ -260,7 +312,7 @@ export class Health extends Component {
   pain(): number {
     let sum = 0;
     for (const w of this.d.wounds) {
-      const def = PART.get(w.part);
+      const def = this.partOf(w.part);
       let p = Math.min(w.sev, def?.hp ?? w.sev) * PAIN[w.kind] * (def?.inside ? 1.2 : 1);
       if (w.kind === 'fracture' && w.splinted) p *= 0.5;
       if (w.poultice !== undefined) p *= 0.85;
@@ -281,6 +333,7 @@ export class Health extends Component {
 
   /** The capacities, 0 to 1 each. */
   capacities(): Record<Capacity, number> {
+    if (this.planId !== 'humanoid') return this.beastCapacities();
     const e = (id: string) => this.eff(id);
     const pair = (a: number, b: number, one: number) => Math.max(a, b) * one + Math.min(a, b) * (1 - one);
     const blood = this.bloodShare();
@@ -315,6 +368,55 @@ export class Health extends Component {
     };
   }
 
+  /** What harms the mind: pain, blood lost, the conditions and fevers (the share of consciousness left). */
+  private mindFactors(breathing: number, pumping: number, filtering: number): number {
+    const blood = this.bloodShare();
+    const bloodC = blood >= 0.85 ? 1 : blood <= 0.5 ? 0.15 : 0.15 + ((blood - 0.5) / 0.35) * 0.85;
+    const pain = this.pain();
+    let cond = 0;
+    for (const v of Object.values(this.d.cond)) cond += Math.max(0, (v ?? 0) - 0.35) * 1.3;
+    for (const w of this.d.wounds) if (w.infection) cond += Math.max(0, w.infection - 0.4) * 1.2;
+    return Math.min(1, 0.3 + 0.7 * pumping) * Math.min(1, 0.25 + 0.75 * breathing) * bloodC * (1 - Math.max(0, pain - 0.35) * 1.1) * (1 - Math.min(0.9, cond)) * Math.min(1, 0.6 + filtering * 0.4);
+  }
+
+  /**
+   * A beast's capacities (combat.md, stage 2): moving on four legs (three carry it, lamely), on two
+   * (a bird's), or on its body (a serpent's); flying on both wings (a bird's `manipulation`, kept for
+   * its wings); biting with its jaws (`eating`).
+   */
+  private beastCapacities(): Record<Capacity, number> {
+    const e = (id: string) => (this.partOf(id) ? this.eff(id) : 0);
+    const pair = (a: number, b: number, one: number) => Math.max(a, b) * one + Math.min(a, b) * (1 - one);
+    const blood = this.bloodShare();
+    const bloodC = blood >= 0.85 ? 1 : blood <= 0.5 ? 0.15 : 0.15 + ((blood - 0.5) / 0.35) * 0.85;
+    const pumping = e('heart');
+    const lungs = this.partOf('lung.r') ? (e('lung.l') + e('lung.r')) / 2 : e('lung.l');
+    const breathing = clamp((lungs * 0.8 + e('ribs') * 0.2) * Math.min(1, 0.4 + e('neck')) * (1 - (this.d.cond.drowning ?? 0) * 0.9), 0, 1);
+    const filtering = clamp(e('liver') * 0.7 + 0.3, 0, 1);
+    const consciousness = clamp(e('brain') * this.mindFactors(breathing, pumping, filtering), 0, 1);
+    const awake = Math.min(1, consciousness * 1.25), body = Math.min(1, 0.4 + 0.6 * breathing) * Math.min(1, 0.4 + 0.6 * bloodC) * e('spine');
+    let moving: number, wings = 0;
+    if (this.planId === 'quad') {
+      const legs = (['fl', 'fr', 'hl', 'hr'] as const).map((s) => e(`leg.${s}`) * (0.75 + 0.25 * e(`foot.${s}`)));
+      moving = Math.pow(legs.reduce((a, b) => a + b, 0) / 4, 1.6);
+    } else if (this.planId === 'bird') {
+      moving = pair(e('leg.l'), e('leg.r'), 0.4);
+      wings = Math.min(e('wing.l'), e('wing.r'));
+    } else moving = e('torso') * (0.7 + 0.3 * e('tail'));
+    return {
+      consciousness,
+      moving: clamp(moving * body * awake, 0, 1),
+      manipulation: clamp(wings * awake * body, 0, 1),
+      sight: pair(e('eye.l'), e('eye.r'), 0.75) * Math.min(1, consciousness * 1.5),
+      hearing: (this.partOf('ear.l') ? pair(e('ear.l'), e('ear.r'), 0.75) : 1) * Math.min(1, consciousness * 1.5),
+      breathing,
+      pumping,
+      filtering,
+      talking: 0,
+      eating: clamp((e('jaw') * 0.7 + (this.partOf('teeth') ? e('teeth') * 0.3 : 0.3)) * awake, 0, 1),
+    };
+  }
+
   /** Senseless: consciousness too low to act (fainted, or out cold). */
   senseless(c = this.capacities()): boolean {
     return c.consciousness < 0.25;
@@ -322,8 +424,8 @@ export class Health extends Component {
 
   /** Bleeding now (ml an hour), for one wound. */
   bleedOf(w: HealthWound): number {
-    if (!OPEN.has(w.kind) && !(w.kind === 'fracture' && w.sev >= (PART.get(w.part)?.hp ?? 20) * 0.5)) return 0;
-    const def = PART.get(w.part);
+    if (!OPEN.has(w.kind) && !(w.kind === 'fracture' && w.sev >= (this.partOf(w.part)?.hp ?? 20) * 0.5)) return 0;
+    const def = this.partOf(w.part);
     const pb = def?.bleed ?? 1;
     // A ruined part bleeds as much as the part could, no more (a finger's stump, not a torso's worth).
     const sev = Math.min(w.sev, def?.hp ?? w.sev);
@@ -367,10 +469,13 @@ export class Health extends Component {
     const out: { why: string; value: number }[] = [];
     const c = this.capacities();
     const p = this.pain();
-    if (p >= 0.1) out.push({ why: 'pain', value: -Math.round(p * 25) });
-    if (c.consciousness < 0.9) out.push({ why: 'dazed', value: -Math.round((1 - c.consciousness) * 40) });
-    if ((group === 'Crafting' || group === 'Combat' || group === 'Subterfuge') && c.manipulation < 0.95) out.push({ why: 'your hands', value: -Math.round((1 - c.manipulation) * 40) });
-    if ((group === 'Physical' || group === 'Combat') && c.moving < 0.95) out.push({ why: 'your legs', value: -Math.round((1 - c.moving) * 30) });
+    if (p >= 0.1) out.push({ why: 'pain', value: -Math.round(p * 20) });
+    // Dazed beyond what the pain already counts; the hands and legs as the limbs are (not the mind).
+    const mind = Math.max(0.05, Math.min(1, c.consciousness * 1.25));
+    if (c.consciousness < 0.8) out.push({ why: 'dazed', value: -Math.round((0.8 - c.consciousness) * 30) });
+    const hands = Math.min(1, c.manipulation / mind), legs = Math.min(1, c.moving / mind);
+    if ((group === 'Crafting' || group === 'Combat' || group === 'Subterfuge') && hands < 0.95) out.push({ why: 'your hands', value: -Math.round((1 - hands) * 25) });
+    if ((group === 'Physical' || group === 'Combat') && legs < 0.95) out.push({ why: 'your legs', value: -Math.round((1 - legs) * 20) });
     return out;
   }
 
@@ -385,23 +490,25 @@ export class Health extends Component {
     if (this.d.dead || h.sev <= 0) return [];
     if (h.now !== undefined) this.now = h.now;
     const r = () => this.random();
-    let part = h.part ? PART.get(h.part) : outerPart(r, h.region);
+    let part = h.part ? this.partOf(h.part) : this.partOf(outerPart(r, h.region, this.plan).id);
     if (!part) return [];
     // A lost part cannot be hurt; the blow falls on what is left above it.
-    while (part && this.isLost(part.id)) part = part.parent ? PART.get(part.parent) : undefined;
+    while (part && this.isLost(part.id)) part = part.parent ? this.partOf(part.parent) : undefined;
     if (!part) return [];
     const made: HealthWound[] = [];
     let sev = h.sev;
     // A deep blow: part of it goes on inside (a stab into the chest, a blow through the skull).
     if (h.deep && r() < h.deep) {
-      const inner = innerPart(r, part.id);
+      const innerDef = innerPart(r, part.id, this.plan);
+      const inner = innerDef ? this.partOf(innerDef.id) : undefined;
       if (inner && !this.isLost(inner.id)) {
         const share = sev * (0.4 + r() * 0.3);
         sev -= share;
         const deeperKind: WoundKind = h.kind === 'bruise' || h.kind === 'crush' ? (inner.id === 'ribs' || inner.id === 'skull' || inner.id === 'spine' || inner.id === 'teeth' ? 'fracture' : 'crush') : h.kind === 'fracture' ? 'crush' : h.kind;
         made.push(...this.wound(inner, deeperKind, share, h.cause));
         // Through the skull to the brain.
-        const deeper = r() < h.deep * 0.5 ? innerPart(r, inner.id) : null;
+        const deeperDef = r() < h.deep * 0.5 ? innerPart(r, inner.id, this.plan) : null;
+        const deeper = deeperDef ? this.partOf(deeperDef.id) : null;
         if (deeper) made.push(...this.wound(deeper, h.kind === 'stab' ? 'stab' : 'crush', share * 0.5, h.cause));
       }
     }
@@ -426,7 +533,7 @@ export class Health extends Component {
     w.ruin = true;
     // The wounds below a lost part go with it.
     if (part.sever) {
-      const gone = new Set(within(part.id));
+      const gone = new Set(within(part.id, this.plan));
       this.d.wounds = this.d.wounds.filter((x) => !gone.has(x.part));
       this.note(`Your ${part.name} is ${w.kind === 'crush' || w.kind === 'fracture' ? 'crushed beyond saving' : w.kind === 'frostbite' ? 'black with frostbite, and lost' : 'torn away'}.`, true);
     } else this.note(`Your ${part.name} is ${part.id.startsWith('eye') ? 'blinded' : 'ruined'}.`, true);
@@ -458,6 +565,18 @@ export class Health extends Component {
     return out;
   }
 
+  /**
+   * Venom from a bite (a viper's): it spreads for an hour or so, then the body throws it off, slowly.
+   * Enough of it kills; a small body takes it worse.
+   */
+  envenom(amount: number): void {
+    const kg = this.d.kg ?? this.actor?.get(Body)?.d.weightKg ?? 70;
+    const dose = amount * clamp(Math.pow(70 / kg, 0.5), 0.5, 4);
+    this.d.cond.venom = clamp((this.d.cond.venom ?? 0) + dose * 0.4, 0, 1);
+    this.d.venomLeft = (this.d.venomLeft ?? 0) + dose * 0.6;
+    this.note('Burning pain spreads from the bite: venom.', true);
+  }
+
   /** Swallowing water, going under (to 1: drowned). */
   choke(amount: number): void {
     this.d.cond.drowning = clamp((this.d.cond.drowning ?? 0) + amount, 0, 1);
@@ -469,6 +588,16 @@ export class Health extends Component {
   onMessage(m: Message): boolean {
     if (m.type !== 'time.passed') return false;
     const { dt, ctx, now } = (m as Message<'time.passed'>).payload;
+    this.advance(dt, ctx ?? {}, now);
+    return true;
+  }
+
+  /** Lets time pass for the body (a beast's is told by whoever keeps it, a person's by the cast's clock). */
+  advance(dt: number, ctx: TimeCtx, now: number): void {
+    if (dt <= 0) {
+      this.now = Math.max(this.now, now);
+      return;
+    }
     let left = dt;
     let t = now - dt;
     while (left > 0 && !this.d.dead) {
@@ -480,7 +609,6 @@ export class Health extends Component {
     }
     this.now = now;
     this.review();
-    return true;
   }
 
   /** Sets the time without passing any (a game begun or loaded). */
@@ -499,6 +627,18 @@ export class Health extends Component {
     const fed = n ? clamp(Math.min(n.nourish, n.hydrated) / 60, 0.2, 1) : 1;
     d.blood = clamp(d.blood - lost * h + (lost < 0.02 ? 0.02 * fed * h : 0), 0, max);
     if (d.blood / max < 0.45) return this.die(this.bleedCause());
+
+    // ---- Venom: still spreading for a while, then thrown off.
+    if (d.venomLeft) {
+      const take = Math.min(d.venomLeft, 0.5 * h);
+      d.venomLeft -= take;
+      d.cond.venom = clamp((d.cond.venom ?? 0) + take, 0, 1);
+      if (d.venomLeft <= 1e-4) delete d.venomLeft;
+    } else if (d.cond.venom) {
+      d.cond.venom = Math.max(0, d.cond.venom - 0.04 * h);
+      if (!d.cond.venom) delete d.cond.venom;
+    }
+    if ((d.cond.venom ?? 0) >= 1) return this.die('venom');
 
     // ---- Conditions from the needs and the water.
     if (n) {
@@ -535,7 +675,7 @@ export class Health extends Component {
         if (this.random() < (risk / 48) * h) {
           w.infection = 0.02;
           w.immunity = 0;
-          this.note(`Your ${woundWords(w)} on the ${PART.get(w.part)?.name ?? w.part} has begun to fester.`, true);
+          this.note(`Your ${this.woundWords(w)} on the ${this.partOf(w.part)?.name ?? w.part} has begun to fester.`, true);
         }
       }
       if (w.infection !== undefined) {
@@ -545,7 +685,7 @@ export class Health extends Component {
         if (w.immunity >= 1) {
           delete w.infection;
           delete w.immunity;
-          this.note(`The festering in your ${PART.get(w.part)?.name ?? w.part} has gone.`, false);
+          this.note(`The festering in your ${this.partOf(w.part)?.name ?? w.part} has gone.`, false);
         } else if (w.infection >= 1) return this.die('an infected wound');
         continue;
       }
@@ -563,13 +703,13 @@ export class Health extends Component {
   /** What bled the person dry, in words. */
   private bleedCause(): string {
     const w = [...this.d.wounds].sort((a, b) => this.bleedOf(b) - this.bleedOf(a))[0];
-    return w ? `loss of blood (${woundWords(w)} to the ${PART.get(w.part)?.name ?? w.part}, from ${w.cause})` : 'loss of blood';
+    return w ? `loss of blood (${this.woundWords(w)} to the ${this.partOf(w.part)?.name ?? w.part}, from ${w.cause})` : 'loss of blood';
   }
 
   /** A wound healed: gone, leaving a scar if it was bad, or lasting harm if a bone knit crooked. */
   private healed(w: HealthWound): void {
     this.d.wounds = this.d.wounds.filter((x) => x !== w);
-    const def = PART.get(w.part);
+    const def = this.partOf(w.part);
     const name = def?.name ?? w.part;
     const body = this.actor?.get(Body);
     if (w.kind === 'fracture' && w.start >= (def?.hp ?? 20) * 0.15 && w.splinted === undefined && splintable(w.part)) {
@@ -586,7 +726,7 @@ export class Health extends Component {
     }
     if (SCARS.has(w.kind) && w.start >= Math.max(3, (def?.hp ?? 20) * 0.15)) {
       body?.d.wounds.push({ part: w.part, kind: w.kind, severity: Math.round(w.start), scar: `a scar on the ${name}, from ${w.cause}` });
-      this.note(`The ${woundWords({ ...w, sev: w.start })} on your ${name} has healed, leaving a scar.`, false);
+      this.note(`The ${this.woundWords({ ...w, sev: w.start })} on your ${name} has healed, leaving a scar.`, false);
     } else if (w.start >= 2) this.note(`The ${KIND_WORD[w.kind]} on your ${name} has healed.`, false);
   }
 
@@ -598,7 +738,7 @@ export class Health extends Component {
     for (const [region, kind] of spots) {
       const p = (bite / 120) * (hypothermic ? 2 : 1) * (covered.has(region) ? 0.12 : 1) * h;
       if (this.random() >= p) continue;
-      const parts = HUMANOID.filter((x) => x.region === region && !x.inside && (kind === 'hands' ? /^(thumb|f\d)/.test(x.id) : kind === 'feet' ? /^t\d/.test(x.id) : x.id.startsWith(kind)) && !this.isLost(x.id));
+      const parts = this.plan.filter((x) => x.region === region && !x.inside && (kind === 'hands' ? /^(thumb|f\d)/.test(x.id) : kind === 'feet' ? /^t\d/.test(x.id) : x.id.startsWith(kind)) && !this.isLost(x.id));
       if (!parts.length) continue;
       const part = parts[Math.floor(this.random() * parts.length)];
       const w = this.hurt({ kind: 'frostbite', sev: 1.5 + this.random() * 3, part: part.id, cause: 'the cold' })[0];
@@ -609,6 +749,8 @@ export class Health extends Component {
   // ---- Words, notes, moodlets ---------------------------------------------------------------
 
   private note(text: string, bad: boolean): void {
+    // A beast's body says nothing of itself (the fight tells what is seen of it).
+    if (this.planId !== 'humanoid') return;
     this.notes.push({ text, bad });
   }
 
@@ -616,6 +758,7 @@ export class Health extends Component {
 
   /** Notes of changes in pain, bleeding and blood (and moodlets for the pain). */
   private review(): void {
+    if (this.planId !== 'humanoid') return;
     const checks: [string, string, Record<string, string>][] = [
       ['pain', this.painWord(), { 'Minor pain': 'You are in some pain.', 'Serious pain': 'You are in serious pain.', 'Intense pain': 'The pain is intense.', 'Unbearable pain': 'The pain is past bearing.' }],
       ['bleed', this.bleedWord(), { 'Bleeding a little': 'You are bleeding a little.', Bleeding: 'You are bleeding.', 'Bleeding heavily': 'You are bleeding heavily!' }],
@@ -686,5 +829,5 @@ export class Health extends Component {
 
 /** The death each condition brings, in words. */
 const CONDITION_DEATH: Record<ConditionId, string> = {
-  dehydration: 'thirst', starvation: 'hunger', hypothermia: 'the cold', heatstroke: 'heatstroke', drowning: 'drowning',
+  dehydration: 'thirst', starvation: 'hunger', hypothermia: 'the cold', heatstroke: 'heatstroke', drowning: 'drowning', venom: 'venom',
 };
