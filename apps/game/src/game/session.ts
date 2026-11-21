@@ -47,6 +47,7 @@ import { Fauna, animalLines, type Presence } from '../world/fauna';
 import { Snares, carcassOf } from '../world/hunting';
 import { aimables, armsOf, beastStrikes, readyWeapon, strikeBeast, strikeChance, type Arms, type Blow, type BlowId, type Stance, type Target } from './combat';
 import { fightOf } from '../world/beasts';
+import { fire, inTheWay, missilesOf, readyLauncher, shotChance, type FireWorld, type Missile } from './ranged';
 import type { Animal } from '../world/fauna';
 import type { Mod } from '../actors/checks';
 import type { Species } from '@worldforge/core/local/fauna';
@@ -307,7 +308,7 @@ export class PlaySession {
     };
     // A beast's blow at the wanderer (game/combat.ts), and a beast dead of its wounds.
     this.fauna.onStrike = (a, blow) => this.beastBlow(a, blow);
-    this.fauna.onDied = (s, x, y, seen) => this.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null);
+    this.fauna.onDied = (s, x, y, seen, lodged) => this.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null, undefined, lodged);
     game.bloodOn = (x, y, z) => this.people.tracks.bloodAt(x, y, z, game.time);
     if (o.restore?.people) {
       this.people.opinions.import(o.restore.people.opinions);
@@ -886,10 +887,162 @@ export class PlaySession {
   /** Woken by an attack while sleeping (the rest of the night's blows are fought). */
   private woken = false;
 
-  /** A dead beast: its carcass left where it fell (world/hunting.ts), told if seen. */
-  private carcass(s: Species, x: number, y: number, text: string | null, a?: Animal): void {
+  /**
+   * Gathering (M): stones on stony ground or in a stream bed (for the sling, or to throw), sticks
+   * under trees (to throw, to club, to make arrows of). A Survival check finds more or fewer good
+   * ones in a quarter of an hour.
+   */
+  gather(): void {
+    const g = this.game, a = this.player, inv = a?.get(Inventory);
+    if (!a || !inv || this.state.dead) return;
+    const STONY = new Set(['gravel', 'rock', 'scree', 'cave_floor', 'river', 'water_shallow', 'track', 'path', 'dry_earth']);
+    const WOODY = new Set(['forest_floor', 'needle_floor', 'jungle_floor']);
+    let stones = false, sticks = false;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      const x = g.px + dx, y = g.py + dy;
+      const gn = GROUND_TILES[g.map.groundAt(x, y, g.z)]?.name ?? '';
+      const on = OBJECT_TILES[g.map.objectAt(x, y, g.z)]?.name ?? '';
+      if (STONY.has(gn) || on === 'boulder' || on.startsWith('rock')) stones = true;
+      if (WOODY.has(gn) || on.startsWith('tree') || on === 'tree_trunk' || on === 'bush') sticks = true;
+    }
+    if (!stones && !sticks) {
+      g.say('There is nothing here worth gathering: stones lie on stony ground and in stream beds, sticks under trees.');
+      return;
+    }
+    const r = check(a, 'survival', { difficulty: DC.trivial + 5, now: g.time });
+    const n = { fine: 6, success: 4, near: 3, fail: 2, fumble: 1 }[r.grade];
+    const got: Item[] = [];
+    if (stones) got.push(makeItem('stone', { qty: n }));
+    if (sticks) got.push(makeItem('stick', { qty: Math.max(1, Math.round(n / 2)) }));
+    g.time += 15 * 60;
+    g.activity = 'work';
+    let left = 0;
+    for (const it of got) if (inv.stow(it)) {
+      g.ground.put(g.px, g.py, [it]);
+      left++;
+    }
+    g.say(`You gather ${got.map((it) => `${it.qty} ${itemName(it)}`).join(' and ')}${left ? ', leaving on the ground what you cannot carry' : ''}.`);
+    this.practice.flush();
+    g.refresh();
+  }
+
+  // ---- Shooting and throwing (combat.md, stage 3; game/ranged.ts) --------------------------------
+
+  /** The ways the wanderer can loose something now (a bow and its arrows, things to throw). */
+  missiles(): Missile[] {
+    const inv = this.player?.get(Inventory);
+    return inv ? missilesOf(inv) : [];
+  }
+
+  /** The line of fire's view of the map, the beasts (a bird in flight only if it is the target) and the people. */
+  private fireWorld(targetId: string | null): FireWorld {
+    const g = this.game;
+    return {
+      objectAt: (x, y) => g.map.objectAt(x, y, g.z),
+      passable: (x, y) => g.map.passableAt(x, y, g.z),
+      beastAt: (x, y) => {
+        const a = this.fauna.at(x, y);
+        return a && (a.alt === 0 || a.id === targetId) ? { id: a.id, t: this.targetOf(a) } : null;
+      },
+      personAt: (x, y) => this.people.at(x, y, g.z)?.p.name ?? null,
+    };
+  }
+
+  /** Beasts the wanderer can see to shoot at, nearest first, within a missile's reach (on the ground, perched, or flying). */
+  shootable(max = 60): Animal[] {
+    const g = this.game, out: Animal[] = [];
+    if (g.z !== null || this.state.mode !== 'local') return out;
+    for (const a of this.fauna.all()) {
+      const d = Math.max(Math.abs(a.x - g.px), Math.abs(a.y - g.py));
+      if (d >= 1 && d <= max && g.isVisible(a.x, a.y)) out.push(a);
+    }
+    return out.sort((p, q) => Math.max(Math.abs(p.x - g.px), Math.abs(p.y - g.py)) - Math.max(Math.abs(q.x - g.px), Math.abs(q.y - g.py)));
+  }
+
+  /** What makes a shot harder now: the dark, a cross wind, the target moving or flying. */
+  private shotMods(a: Animal, m: Missile): Mod[] {
+    const g = this.game, out = this.fightMods();
+    const w = this.skyNow.w;
+    if (!this.indoors() && w.windMs > 2 && m.sev > 0) {
+      // The wind across the line of fire carries the missile off (a heavy one less).
+      const dx = a.x - g.px, dy = a.y - g.py, d = Math.hypot(dx, dy) || 1;
+      const toward = (((w.windFrom + 180) % 360) * Math.PI) / 180, wx = Math.sin(toward), wy = -Math.cos(toward);
+      const cross = Math.abs((dx / d) * wy - (dy / d) * wx);
+      const pen = Math.round(Math.min(15, w.windMs * cross * (m.how === 'throw' ? 0.7 : 1.1) * Math.min(1, d / 8)));
+      if (pen) out.push({ why: 'the wind', value: -pen });
+    }
+    if (a.alt > 0 && !a.perched) out.push({ why: 'in flight', value: -25 });
+    else if (a.state === 'flee' || a.state === 'chase' || a.state === 'attack') out.push({ why: 'running', value: -18 });
+    else if (a.state === 'walk' || a.state === 'stalk') out.push({ why: 'moving', value: -8 });
+    return out;
+  }
+
+  /** The chance of a missile at a beast now, and what lies in the way. */
+  shotAt(a: Animal, m: Missile, aim: string | null): { chance: number; mods: Mod[]; dist: number; inRange: boolean; cover: string[]; person: string | null; blocked: string | null } {
+    const p = this.player, g = this.game;
+    const dist = Math.max(Math.abs(a.x - g.px), Math.abs(a.y - g.py));
+    const way = inTheWay(this.fireWorld(a.id), [g.px, g.py], [a.x, a.y]);
+    if (!p) return { chance: 0, mods: [], dist, inRange: false, ...way };
+    const c = shotChance(p, m, this.targetOf(a), dist, aim, this.shotMods(a, m));
+    return { chance: c.chance, mods: c.mods, dist, inRange: dist <= m.max, ...way };
+  }
+
+  /**
+   * Shoots (or throws) at a beast: takes up the bow first if it is not in hand (that takes this
+   * turn), then looses one missile along the line of fire (game/ranged.ts). The missile lands where
+   * it falls, stays in the beast, or breaks; the beast struck bolts, turns at bay or comes on
+   * (world/fauna.ts), and those near a miss start. Returns whether time passed.
+   */
+  shoot(a: Animal, m: Missile, aim: string | null = null): boolean {
+    const p = this.player, g = this.game, inv = p?.get(Inventory), h = this.health();
+    if (!p || !inv || !h || this.state.dead || h.senseless()) return false;
+    if (m.launcher) {
+      const ready = readyLauncher(inv, m.launcher);
+      if (ready) {
+        g.time += ready.seconds;
+        g.say(ready.text);
+        g.refresh();
+        return true;
+      }
+    }
+    const shot = this.shotAt(a, m, aim);
+    if (!shot.inRange) {
+      g.say(`The ${a.s.name} is beyond the reach of your ${m.launcher ? itemName(m.launcher) : 'arm'}.`);
+      return false;
+    }
+    if (shot.person) {
+      g.say(`${shot.person} is in the way.`);
+      return false;
+    }
+    // The missile leaves the pack: one arrow from the stack, or the thing thrown.
+    let missile: Item;
+    if (m.item.qty > 1) missile = inv.split(m.item.uid, 1) ?? m.item;
+    else missile = m.item;
+    if (inv.get(missile.uid)) inv.drop(missile.uid);
+    missile.loc = undefined;
+    const res = fire(p, m, this.fireWorld(a.id), [g.px, g.py], [a.x, a.y], a.id, aim, g.time, this.shotMods(a, m));
+    g.facing = a.x > g.px ? 'e' : a.x < g.px ? 'w' : a.y < g.py ? 'n' : 's';
+    g.time += res.seconds;
+    g.activity = 'work';
+    g.say(res.text, res.tip);
+    if (res.landed) g.ground.put(res.landed[0], res.landed[1], [missile]);
+    const hit = res.struck ? [...this.fauna.all()].find((x) => x.id === res.struck!.id) ?? null : null;
+    if (hit) {
+      if (res.lodged) (hit.lodged ??= []).push(missile);
+      if (this.fauna.healthOf(hit, g.time).dead) this.carcass(hit.s, hit.x, hit.y, `The ${hit.s.name} falls dead.`, hit);
+      else this.fauna.provoke(hit, g);
+    }
+    // A miss lands near others, and they start.
+    if (res.landed && (!hit || res.landed[0] !== hit.x || res.landed[1] !== hit.y)) this.fauna.startle(res.landed[0], res.landed[1], g);
+    this.practice.flush();
+    g.refresh();
+    return true;
+  }
+
+  /** A dead beast: its carcass left where it fell (world/hunting.ts), with what was still in its wounds, told if seen. */
+  private carcass(s: Species, x: number, y: number, text: string | null, a?: Animal, lodged: Item[] = a?.lodged ?? []): void {
     if (a) this.fauna.kill(a);
-    this.game.ground.put(x, y, [carcassOf(s)]);
+    this.game.ground.put(x, y, [carcassOf(s), ...lodged.map((it) => ({ ...it, loc: undefined }))]);
     if (text) this.game.say(text);
     this.redraw();
   }

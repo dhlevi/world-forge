@@ -9,6 +9,7 @@
  * (Cooking), and reading a book that teaches (actors/learning.ts).
  */
 import { butcher } from '../world/hunting';
+import { fletch, fletchingNeeds } from '../game/ranged';
 import { BRUSH_TOOLS } from '../game/tasks';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
@@ -44,7 +45,7 @@ export type Target = Dest | { at: 'ground'; x: number; y: number };
 
 export interface ItemAction {
   label: string;
-  target: Target | 'split' | 'consume' | 'cook' | 'mend' | 'read' | 'butcher';
+  target: Target | 'split' | 'consume' | 'cook' | 'mend' | 'read' | 'butcher' | 'fletch';
   why?: string | null;
 }
 
@@ -279,6 +280,23 @@ export class InventoryScreen extends Screen {
     this.done(o.text);
   }
 
+  /** Makes arrows from feathers and sticks (game/ranged.ts). */
+  fletch(): void {
+    const res = fletch(this.actor, this.inv, this.play.now() + 3600);
+    if (typeof res === 'string') {
+      this.state.message = res;
+      return;
+    }
+    let dropped = 0;
+    for (const y of res.items) if (this.inv.stow(y)) {
+      this.game.ground.put(this.game.px, this.game.py, [y]);
+      dropped++;
+    }
+    this.state.selected = null;
+    this.play.advance(res.seconds);
+    this.done(`${res.text}${dropped ? ' What you cannot carry you leave on the ground.' : ''}`);
+  }
+
   /** Butchers a carcass (world/hunting.ts): its yields to the pack, or the ground if there is no room. */
   butcher(r: Ref): void {
     const it = this.item(r);
@@ -388,6 +406,10 @@ export class InventoryScreen extends Screen {
       const blade = BRUSH_TOOLS.some(([id]) => this.inv.d.items.some((i) => i.def === id));
       out.unshift({ label: 'Butcher (Survival)', target: 'butcher', why: blade ? null : 'You need a blade: a knife, a machete, an axe or a sword.' });
     }
+    if (it.def === 'feathers' && r.from === 'inv') {
+      const need = fletchingNeeds(this.inv);
+      out.unshift({ label: 'Make arrows (Carpentry)', target: 'fletch', why: typeof need === 'string' ? need : null });
+    }
     if (d.mend && d.durable !== false && it.condition < 95 && r.from === 'inv') {
       out.push({ label: `Mend (${SKILL.get(d.mend.skill)?.name ?? d.mend.skill})`, target: 'mend', why: this.mendNeeds(it).why });
     }
@@ -403,6 +425,7 @@ export class InventoryScreen extends Screen {
     else if (a.target === 'mend') this.mend(r);
     else if (a.target === 'read') this.read(r);
     else if (a.target === 'butcher') this.butcher(r);
+    else if (a.target === 'fletch') this.fletch();
     else this.move(r, a.target);
   }
 

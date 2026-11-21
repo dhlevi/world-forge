@@ -86,6 +86,36 @@ export interface MeleeDef {
   hands?: 1 | 2;
 }
 
+/**
+ * Shooting with a thing (combat.md, stage 3; game/ranged.ts): the skill, the missile it shoots (an
+ * item id), the range it is good to and the farthest it carries (tiles), the seconds a shot takes
+ * (drawing, or loading a crossbow), the wound its missile makes and how bad, how deep it goes, and
+ * the Strength it needs to draw well (a long bow).
+ */
+export interface RangedDef {
+  skill: string;
+  ammo: string;
+  range: number;
+  max: number;
+  seconds: number;
+  kind: 'cut' | 'stab' | 'bruise';
+  sev: number;
+  deep: number;
+  strength?: number;
+}
+
+/**
+ * Thrown well (combat.md, stage 3): the wound it makes, how bad, the range it is good to (tiles),
+ * and the seconds a throw takes. Anything can be thrown; things without this are thrown as their
+ * weight and edge allow (game/ranged.ts, `thrownOf`).
+ */
+export interface ThrowDef {
+  kind: 'cut' | 'stab' | 'bruise';
+  sev: number;
+  range: number;
+  seconds: number;
+}
+
 export interface ContainerDef {
   /** Room inside (litres) and the most weight it will bear (kg). */
   litres: number;
@@ -123,6 +153,10 @@ export interface ItemDef {
   wear?: WearDef;
   /** Weapons (and things that serve as one): fighting with it hand to hand. */
   melee?: MeleeDef;
+  /** Bows, crossbows and slings: shooting with it. */
+  ranged?: RangedDef;
+  /** Made (or fit) for throwing. */
+  throw?: ThrowDef;
   /** Worn things: the shape it is drawn as on the figure (core local/figures.ts), and its cloth's colour ("#rrggbb"). */
   figure?: string;
   colour?: string;
@@ -158,7 +192,7 @@ export function itemDef(id: string): ItemDef {
 }
 
 const KINDS: readonly ItemKind[] = ['clothing', 'armour', 'jewellery', 'container', 'weapon', 'tool', 'food', 'drink', 'medicine', 'light', 'goods', 'book', 'music'];
-const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'melee', 'figure', 'colour', 'container', 'stack', 'uses', 'useWord', 'food', 'teaches', 'mend', 'durable', 'sold', 'about']);
+const FIELDS = new Set(['id', 'name', 'plural', 'kind', 'weight', 'bulk', 'size', 'value', 'hands', 'belt', 'back', 'strap', 'loops', 'wear', 'melee', 'ranged', 'throw', 'figure', 'colour', 'container', 'stack', 'uses', 'useWord', 'food', 'teaches', 'mend', 'durable', 'sold', 'about']);
 
 /** What is wrong with one item as read from a file (empty when it is sound). */
 export function checkItem(o: unknown): string[] {
@@ -216,6 +250,25 @@ export function checkItem(o: unknown): string[] {
       for (const k of ['cut', 'thrust', 'bash', 'parry', 'block']) if (me[k] !== undefined) num(`melee.${k}`, me[k]);
       if (!me.cut && !me.thrust && !me.bash) bad.push('melee needs a cut, thrust or bash');
       if (me.hands !== undefined && me.hands !== 1 && me.hands !== 2) bad.push('melee.hands must be 1 or 2');
+    }
+  }
+  const ra = r.ranged as Record<string, unknown> | undefined;
+  if (ra !== undefined) {
+    if (!ra || typeof ra !== 'object') bad.push('ranged must be an object');
+    else {
+      if (typeof ra.skill !== 'string' || !SKILL.has(ra.skill)) bad.push('ranged.skill must be a skill id');
+      if (typeof ra.ammo !== 'string') bad.push('ranged.ammo must be an item id');
+      for (const k of ['range', 'max', 'seconds', 'sev', 'deep']) num(`ranged.${k}`, ra[k]);
+      if (!['cut', 'stab', 'bruise'].includes(ra.kind as string)) bad.push('ranged.kind must be cut, stab or bruise');
+      if (ra.strength !== undefined) num('ranged.strength', ra.strength);
+    }
+  }
+  const th = r.throw as Record<string, unknown> | undefined;
+  if (th !== undefined) {
+    if (!th || typeof th !== 'object') bad.push('throw must be an object');
+    else {
+      for (const k of ['range', 'seconds', 'sev']) num(`throw.${k}`, th[k]);
+      if (!['cut', 'stab', 'bruise'].includes(th.kind as string)) bad.push('throw.kind must be cut, stab or bruise');
     }
   }
   const c = r.container as Record<string, unknown> | undefined;
@@ -291,6 +344,7 @@ export function checkReferences(): string[] {
   for (const d of ITEMS) for (const id of d.container?.only ?? []) if (!ITEM.has(id)) errors.push(`item "${d.id}": container.only names "${id}", which is not an item`);
   for (const d of ITEMS) {
     if (d.mend?.kit && !ITEM.has(d.mend.kit)) errors.push(`item "${d.id}": mend.kit names "${d.mend.kit}", which is not an item`);
+    if (d.ranged && !ITEM.has(d.ranged.ammo)) errors.push(`item "${d.id}": ranged.ammo names "${d.ranged.ammo}", which is not an item`);
     for (const sk of [d.mend?.skill, d.teaches?.skill]) if (sk && !SKILL.has(sk)) errors.push(`item "${d.id}": no skill "${sk}"`);
   }
   for (const [g, list] of Object.entries(GEAR_ITEMS)) for (const x of list) if (!ITEM.has(x.id)) errors.push(`gear "${g}": no item "${x.id}"`);

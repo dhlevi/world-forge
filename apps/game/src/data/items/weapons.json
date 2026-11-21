@@ -12,6 +12,7 @@
       "value": 8,
       "belt": true,
       "melee": { "skill": "shortblades", "reach": 1, "seconds": 1.1, "cut": 3, "thrust": 4, "parry": 0.2 },
+      "throw": { "kind": "stab", "sev": 3, "range": 6, "seconds": 1.2 },
       "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy", "market"]
     },
@@ -25,6 +26,7 @@
       "value": 30,
       "belt": true,
       "melee": { "skill": "shortblades", "reach": 1, "seconds": 1.1, "cut": 3.5, "thrust": 5.5, "parry": 0.3 },
+      "throw": { "kind": "stab", "sev": 4.5, "range": 8, "seconds": 1.2 },
       "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy"]
     },
@@ -66,6 +68,7 @@
       "value": 15,
       "belt": true,
       "melee": { "skill": "axes", "reach": 1, "seconds": 1.5, "cut": 6, "bash": 3, "parry": 0.2 },
+      "throw": { "kind": "cut", "sev": 6, "range": 7, "seconds": 1.5 },
       "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy", "market"]
     },
@@ -80,6 +83,7 @@
       "belt": true,
       "strap": true,
       "melee": { "skill": "axes", "reach": 1, "seconds": 2.2, "cut": 10, "bash": 5, "parry": 0.3, "hands": 2 },
+      "throw": { "kind": "cut", "sev": 8, "range": 5, "seconds": 2 },
       "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy", "market"]
     },
@@ -94,6 +98,7 @@
       "back": true,
       "strap": true,
       "melee": { "skill": "polearms", "reach": 2, "seconds": 1.6, "thrust": 9, "bash": 2.5, "parry": 0.6, "hands": 2 },
+      "throw": { "kind": "stab", "sev": 9, "range": 10, "seconds": 1.8 },
       "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "sold": ["smithy"],
       "about": "Too long for any pack: carried, slung or strapped to one."
@@ -151,6 +156,7 @@
       "belt": true,
       "back": true,
       "strap": true,
+      "ranged": { "skill": "archery", "ammo": "arrows", "range": 12, "max": 30, "seconds": 3, "kind": "stab", "sev": 7, "deep": 0.5 },
       "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "sold": ["market"],
       "about": "Short enough to hang from a belt in a bow case."
@@ -165,6 +171,7 @@
       "value": 60,
       "back": true,
       "strap": true,
+      "ranged": { "skill": "archery", "ammo": "arrows", "range": 16, "max": 40, "seconds": 3.2, "kind": "stab", "sev": 8.5, "deep": 0.55 },
       "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "sold": ["market"]
     },
@@ -178,8 +185,51 @@
       "value": 60,
       "back": true,
       "strap": true,
+      "ranged": { "skill": "archery", "ammo": "arrows", "range": 22, "max": 55, "seconds": 3.8, "kind": "stab", "sev": 11, "deep": 0.6, "strength": 13 },
       "mend": { "skill": "carpentry", "kit": "tool_roll" },
       "sold": ["market"]
+    },
+    {
+      "id": "crossbow",
+      "name": "crossbow",
+      "kind": "weapon",
+      "weight": 3.5,
+      "bulk": 6,
+      "size": "large",
+      "value": 120,
+      "back": true,
+      "strap": true,
+      "ranged": { "skill": "crossbow", "ammo": "bolts", "range": 18, "max": 45, "seconds": 9, "kind": "stab", "sev": 11, "deep": 0.6 },
+      "mend": { "skill": "carpentry", "kit": "tool_roll" },
+      "sold": ["smithy"],
+      "about": "A stock and a steel bow, spanned with a stirrup and a hook: slow to load, but anyone can loose it straight."
+    },
+    {
+      "id": "bolts",
+      "name": "crossbow bolt",
+      "plural": "crossbow bolts",
+      "kind": "weapon",
+      "weight": 0.06,
+      "bulk": 0.05,
+      "size": "small",
+      "value": 2,
+      "stack": 30,
+      "durable": false,
+      "sold": ["smithy"]
+    },
+    {
+      "id": "sling",
+      "name": "sling",
+      "kind": "weapon",
+      "weight": 0.1,
+      "bulk": 0.1,
+      "size": "small",
+      "value": 2,
+      "belt": true,
+      "ranged": { "skill": "sling", "ammo": "stone", "range": 14, "max": 40, "seconds": 3, "kind": "bruise", "sev": 5, "deep": 0.3 },
+      "mend": { "skill": "hideworking", "kit": "awl" },
+      "sold": ["market"],
+      "about": "Two cords and a leather pouch: whirled, it sends a stone hard enough to kill a hare or crack a skull."
     },
     {
       "id": "arrows",

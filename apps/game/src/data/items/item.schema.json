@@ -50,6 +50,35 @@
             "hands": { "enum": [1, 2] }
           }
         },
+        "ranged": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["skill", "ammo", "range", "max", "seconds", "kind", "sev", "deep"],
+          "description": "Shooting with it (game/ranged.ts): the skill, the missile it shoots (an item id), the range it is good to and the farthest it carries (tiles), the seconds a shot takes, the wound its missile makes, how bad and how deep, and the Strength it needs to draw well.",
+          "properties": {
+            "skill": { "type": "string" },
+            "ammo": { "type": "string" },
+            "range": { "type": "number", "minimum": 1 },
+            "max": { "type": "number", "minimum": 1 },
+            "seconds": { "type": "number", "minimum": 0.3 },
+            "kind": { "enum": ["cut", "stab", "bruise"] },
+            "sev": { "type": "number", "minimum": 0 },
+            "deep": { "type": "number", "minimum": 0, "maximum": 1 },
+            "strength": { "type": "number", "minimum": 0 }
+          }
+        },
+        "throw": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["kind", "sev", "range", "seconds"],
+          "description": "Made (or fit) for throwing: the wound it makes, how bad, the range it is good to (tiles), the seconds a throw takes. Anything else is thrown as its weight and edge allow.",
+          "properties": {
+            "kind": { "enum": ["cut", "stab", "bruise"] },
+            "sev": { "type": "number", "minimum": 0 },
+            "range": { "type": "number", "minimum": 1 },
+            "seconds": { "type": "number", "minimum": 0.3 }
+          }
+        },
         "wear": {
           "type": "object",
           "additionalProperties": false,

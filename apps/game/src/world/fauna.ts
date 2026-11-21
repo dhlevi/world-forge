@@ -35,6 +35,7 @@ import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { AnimalGroup, Spot } from '../worker/protocol';
 import { heardLevel, takesTracks, type Noise, type Tracks } from './senses';
 import { Health, type HealthData } from '../actors/health';
+import type { Item } from '../actors/items/item';
 import { morale, type Stance } from '../game/combat';
 import { fightOf, planOf, type NaturalBlow } from './beasts';
 
@@ -102,6 +103,7 @@ export interface WoundedBeast {
   health: HealthData;
   /** When it was last seen (game seconds): its body's time. */
   t: number;
+  lodged?: Item[];
 }
 
 export interface Animal {
@@ -130,6 +132,8 @@ export interface Animal {
   /** Its body, once it has been hurt or has fought (actors/health.ts); its fight with the wanderer. */
   health?: Health;
   fight?: BeastFightState | null;
+  /** Arrows, bolts and blades still in its wounds (game/ranged.ts): found on its carcass. */
+  lodged?: Item[];
 }
 
 export interface Herd {
@@ -174,7 +178,7 @@ export class Fauna {
   /** A beast's blow at the wanderer: the session works it out (game/combat.ts). */
   onStrike: (a: Animal, blow: NaturalBlow) => void = () => {};
   /** A beast dead of its wounds (or found so): its carcass is the session's to leave where it lies. */
-  onDied: (species: Species, x: number, y: number, seen: boolean) => void = () => {};
+  onDied: (species: Species, x: number, y: number, seen: boolean, lodged: Item[]) => void = () => {};
   /** Blows struck this update, per beast (a beast strikes at most twice for each of the wanderer's actions). */
   private blows = new Map<Animal, number>();
 
@@ -265,7 +269,7 @@ export class Fauna {
     const h = a.health;
     if (!h || h.dead || !h.d.wounds.length) return;
     this.wounded = this.wounded.filter((w) => w.id !== a.id);
-    this.wounded.push({ id: a.id, species: a.s.id, x: a.x, y: a.y, health: h.toJSON(), t: h.time });
+    this.wounded.push({ id: a.id, species: a.s.id, x: a.x, y: a.y, health: h.toJSON(), t: h.time, ...(a.lodged?.length ? { lodged: a.lodged } : {}) });
     if (this.wounded.length > 40) this.wounded.shift();
   }
 
@@ -342,6 +346,16 @@ export class Fauna {
     }
   }
 
+  /** Something lands near (a missile that missed): those within a few tiles start, and the timid flee. */
+  startle(x: number, y: number, g: FaunaView): void {
+    for (const a of this.all()) {
+      if (a.fight || cheb(a, x, y) > 4) continue;
+      a.noticed = g.time;
+      if (a.state === 'sleep' || a.state === 'lying') a.state = 'idle';
+      if (a.s.temper !== 'tame' && a.s.temper !== 'aggressive') this.frighten(a.g, { x, y, z: null }, g);
+    }
+  }
+
   /** The wanderer killed a beast (game/combat.ts): it is taken from the map. */
   kill(a: Animal): void {
     a.fight = null;
@@ -353,7 +367,7 @@ export class Fauna {
   private died(a: Animal, g: FaunaView): void {
     const seen = g.isVisible(a.x, a.y);
     this.kill(a);
-    this.onDied(a.s, a.x, a.y, seen);
+    this.onDied(a.s, a.x, a.y, seen, a.lodged ?? []);
   }
 
   /** Takes an animal from the map for good (caught, killed). */
@@ -802,13 +816,13 @@ export class Fauna {
       body.rng = mulberry32(hashString(`${w.id}#body`));
       body.advance(g.time - body.time, {}, g.time);
       if (body.dead) {
-        this.onDied(s, w.x, w.y, g.isVisible(w.x, w.y));
+        this.onDied(s, w.x, w.y, g.isVisible(w.x, w.y), w.lodged ?? []);
         changed = true;
         continue;
       }
       if (this.byTile.has(key(w.x, w.y)) || !g.map.loaded(w.x, w.y)) continue;
       const h: Herd = { id: `wounded:${w.id}`, s, home: { x: w.x, y: w.y, r: 4 }, water: null, members: [], fearUntil: 0, fearFrom: null, planAt: g.time + 3600, gone: false };
-      const a: Animal = { id: w.id, s, g: h, x: w.x, y: w.y, alt: 0, perched: false, facing: 's', state: 'lying', to: null, nextAt: g.time, ate: g.time, quarry: null, chase: 0, calledAt: g.time, threatAt: 0, noticed: -1, health: body };
+      const a: Animal = { id: w.id, s, g: h, x: w.x, y: w.y, alt: 0, perched: false, facing: 's', state: 'lying', to: null, nextAt: g.time, ate: g.time, quarry: null, chase: 0, calledAt: g.time, threatAt: 0, noticed: -1, health: body, ...(w.lodged?.length ? { lodged: w.lodged } : {}) };
       h.members.push(a);
       this.byTile.set(key(w.x, w.y), a);
       this.herds.set(h.id, h);
@@ -820,7 +834,7 @@ export class Fauna {
   /** The wounded kept, for saving (with those in the bubble now). */
   exportWounded(): WoundedBeast[] {
     const out = [...this.wounded];
-    for (const a of this.all()) if (a.health && !a.health.dead && a.health.d.wounds.length) out.push({ id: a.id, species: a.s.id, x: a.x, y: a.y, health: a.health.toJSON(), t: a.health.time });
+    for (const a of this.all()) if (a.health && !a.health.dead && a.health.d.wounds.length) out.push({ id: a.id, species: a.s.id, x: a.x, y: a.y, health: a.health.toJSON(), t: a.health.time, ...(a.lodged?.length ? { lodged: a.lodged } : {}) });
     return out;
   }
 

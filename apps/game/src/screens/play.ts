@@ -21,6 +21,7 @@ import type { PersonCard } from '../game/person-card';
 import { Inventory } from '../actors/items/inventory';
 import { defOf } from '../actors/items/item';
 import { FightScreen } from './fight';
+import { ShootScreen } from './shoot';
 import DeathView from './views/DeathView.vue';
 import { Body } from '../actors/components';
 import type { Dead } from '../game/save';
@@ -97,6 +98,16 @@ export class PlayScreen extends Screen {
       this.showCamp();
       return true;
     }
+    // Shooting and throwing (combat.md, stage 3).
+    if (e.code === 'KeyR' && !e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
+      this.showShoot();
+      return true;
+    }
+    // Gathering stones and sticks.
+    if (e.code === 'KeyM' && !e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
+      this.session.gather();
+      return true;
+    }
     // The fight menu (combat.md, stage 2): a blow at a beast in reach, with its aim, blow and stance.
     if (e.code === 'KeyF' && e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
       this.showFight();
@@ -167,6 +178,16 @@ export class PlayScreen extends Screen {
 
   showInventory(): void {
     if (this.player) this.manager?.push(new InventoryScreen(this, this.player));
+  }
+
+  showShoot(): void {
+    const s = this.session;
+    const targets = s.shootable(Math.max(4, ...s.missiles().map((m) => m.max)));
+    if (!targets.length) {
+      s.say('There is no beast in sight to shoot at.');
+      return;
+    }
+    this.manager?.push(new ShootScreen(this, targets));
   }
 
   showFight(): void {

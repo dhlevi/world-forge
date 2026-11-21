@@ -45,9 +45,9 @@ export const CAPACITY_NAMES: Record<Capacity, string> = {
   pumping: 'Blood pumping', filtering: 'Blood filtering', talking: 'Talking', eating: 'Eating',
 };
 
-export type ConditionId = 'dehydration' | 'starvation' | 'hypothermia' | 'heatstroke' | 'drowning' | 'venom';
+export type ConditionId = 'dehydration' | 'starvation' | 'hypothermia' | 'heatstroke' | 'drowning' | 'venom' | 'concussion';
 export const CONDITION_NAMES: Record<ConditionId, string> = {
-  dehydration: 'Dehydration', starvation: 'Starvation', hypothermia: 'Hypothermia', heatstroke: 'Heatstroke', drowning: 'Drowning', venom: 'Venom',
+  dehydration: 'Dehydration', starvation: 'Starvation', hypothermia: 'Hypothermia', heatstroke: 'Heatstroke', drowning: 'Drowning', venom: 'Venom', concussion: 'Concussion',
 };
 
 export interface HealthWound {
@@ -354,10 +354,10 @@ export class Health extends Component {
     const filtering = e('liver') * 0.5 + e('kidneys') * 0.5;
     const pain = this.pain();
     let cond = 0;
-    for (const v of Object.values(this.d.cond)) cond += Math.max(0, (v ?? 0) - 0.35) * 1.3;
+    for (const [k, v] of Object.entries(this.d.cond)) if (k !== 'concussion') cond += Math.max(0, (v ?? 0) - 0.35) * 1.3;
     for (const w of this.d.wounds) if (w.infection) cond += Math.max(0, w.infection - 0.4) * 1.2;
     const consciousness = clamp(
-      e('brain') * Math.min(1, 0.3 + 0.7 * pumping) * Math.min(1, 0.25 + 0.75 * breathing) * bloodC * (1 - Math.max(0, pain - 0.35) * 1.1) * (1 - Math.min(0.9, cond)) * Math.min(1, 0.6 + filtering * 0.4),
+      e('brain') * (1 - (this.d.cond.concussion ?? 0)) * Math.min(1, 0.3 + 0.7 * pumping) * Math.min(1, 0.25 + 0.75 * breathing) * bloodC * (1 - Math.max(0, pain - 0.35) * 1.1) * (1 - Math.min(0.9, cond)) * Math.min(1, 0.6 + filtering * 0.4),
       0, 1,
     );
     const side = (s: 'l' | 'r') => this.limb(`leg.${s}`, `foot.${s}`, ['t1', 't2', 't3', 't4', 't5'].map((t) => `${t}.${s}`), 0.5, 0.35);
@@ -385,9 +385,9 @@ export class Health extends Component {
     const bloodC = blood >= 0.85 ? 1 : blood <= 0.5 ? 0.15 : 0.15 + ((blood - 0.5) / 0.35) * 0.85;
     const pain = this.pain();
     let cond = 0;
-    for (const v of Object.values(this.d.cond)) cond += Math.max(0, (v ?? 0) - 0.35) * 1.3;
+    for (const [k, v] of Object.entries(this.d.cond)) if (k !== 'concussion') cond += Math.max(0, (v ?? 0) - 0.35) * 1.3;
     for (const w of this.d.wounds) if (w.infection) cond += Math.max(0, w.infection - 0.4) * 1.2;
-    return Math.min(1, 0.3 + 0.7 * pumping) * Math.min(1, 0.25 + 0.75 * breathing) * bloodC * (1 - Math.max(0, pain - 0.35) * 1.1) * (1 - Math.min(0.9, cond)) * Math.min(1, 0.6 + filtering * 0.4);
+    return (1 - (this.d.cond.concussion ?? 0)) * Math.min(1, 0.3 + 0.7 * pumping) * Math.min(1, 0.25 + 0.75 * breathing) * bloodC * (1 - Math.max(0, pain - 0.35) * 1.1) * (1 - Math.min(0.9, cond)) * Math.min(1, 0.6 + filtering * 0.4);
   }
 
   /**
@@ -533,6 +533,12 @@ export class Health extends Component {
     if (sev <= 0) return [];
     const w: HealthWound = { id: this.d.nextId++, part: part.id, kind, sev, start: sev, at: this.now, cause };
     this.d.wounds.push(w);
+    // A blow to the head stuns (combat.md, stage 3): a concussion that dims the mind, and passes.
+    if ((part.id === 'head' || part.id === 'skull' || part.id === 'brain' || part.id === 'jaw') && (kind === 'bruise' || kind === 'fracture' || kind === 'crush')) {
+      const was = this.d.cond.concussion ?? 0;
+      this.d.cond.concussion = clamp(was + (sev / part.hp) * 1.6, 0, 0.95);
+      if (this.d.cond.concussion >= 0.3 && was < 0.3) this.note('Your head rings from the blow.', true);
+    }
     // Ruined: the part's wounds reach its toughness.
     const harm = this.d.wounds.filter((x) => x.part === part.id).reduce((s, x) => s + x.sev, 0);
     if (harm >= part.hp && !this.d.lost.includes(part.id)) this.ruin(part, w);
@@ -639,6 +645,12 @@ export class Health extends Component {
     const fed = n ? clamp(Math.min(n.nourish, n.hydrated) / 60, 0.2, 1) : 1;
     d.blood = clamp(d.blood - lost * h + (lost < 0.02 ? 0.02 * fed * h : 0), 0, max);
     if (d.blood / max < 0.45) return this.die(this.bleedCause());
+
+    // ---- A concussion passes in an hour or two.
+    if (d.cond.concussion) {
+      d.cond.concussion = Math.max(0, d.cond.concussion - 0.5 * h);
+      if (!d.cond.concussion) delete d.cond.concussion;
+    }
 
     // ---- Venom: still spreading for a while, then thrown off.
     if (d.venomLeft) {
@@ -843,5 +855,5 @@ export class Health extends Component {
 
 /** The death each condition brings, in words. */
 const CONDITION_DEATH: Record<ConditionId, string> = {
-  dehydration: 'thirst', starvation: 'hunger', hypothermia: 'the cold', heatstroke: 'heatstroke', drowning: 'drowning', venom: 'venom',
+  dehydration: 'thirst', starvation: 'hunger', hypothermia: 'the cold', heatstroke: 'heatstroke', drowning: 'drowning', venom: 'venom', concussion: 'a blow to the head',
 };

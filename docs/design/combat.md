@@ -156,7 +156,32 @@ animals, fear and flight, the watch, predators that are threats only until this 
    Each beast strikes at most twice for each of the wanderer's actions; a sleeper's first blow is
    undefended and wakes them. Venom (a viper's) is a condition of the body that spreads, then fades.
 3. **Ranged and thrown**: bows, slings, crossbows, and throwing anything held (rocks, branches,
-   axes, knives, bottles), ammunition; hunting with the bow.
+   axes, knives, bottles), ammunition; hunting with the bow. **Built** (20 November 2026;
+   `game/ranged.ts`, `screens/shoot.ts`). Decided for it:
+   - *A real line of fire.* The missile flies along the line through the target and on to the
+     farthest it carries: walls stop it, a tree or a boulder may take it, a bush may turn it, a
+     beast in the way may be struck instead, and a person in the way stops the shot being taken
+     (until people fight, stage 4). A miss lands beyond the target. Range, the target's size, its
+     moving or flying, the dark, a cross wind, the aim and a long bow's pull shift the chance.
+   - *Recover and craft.* Arrows, bolts and thrown things land where they fall (some arrows and
+     bolts break; glass shatters) or stay in the beast, found on its carcass. Arrows are made from
+     feathers and a stick (or firewood) with a knife, in an hour (Carpentry).
+   - *Anything, and gather.* Anything carried can be thrown, its weight, balance and edge setting
+     its range and harm (things made for throwing, such as knives, hatchets, spears and stones, do
+     best). M gathers stones on stony ground and in stream beds, and sticks under trees (Survival).
+   - *Stalk and shoot.* A beast that does not know the wanderer is there is far easier to hit (sneak
+     up, keep downwind); a hit beast bolts, comes on, or turns at bay, and is followed by its blood;
+     birds can be shot perched, or in flight (hard).
+
+   The rules: the chance is the skill (Archery, Crossbow, Sling, Throwing) against 15 and 1.5 a tile
+   within the weapon's good range (3 a tile beyond it), shifted by the target's size (a hare -8, a
+   deer +6), unaware +15, lying still +10, moving -8, running -18, in flight -25, the dark -15, a
+   cross wind (up to -15), the aim, and a long bow's pull (-4 for each point of Strength short of
+   13). The margin sets the severity with the missile's harm (a thrown thing's, with Strength). A
+   blow to the head of any kind stuns: a concussion that dims the mind and passes in an hour or two.
+   R opens the menu (the beast, nearest first; what to loose; the aim; the chance and what is in the
+   way); a bow not in hand is taken up first, which takes the turn. New items: the crossbow and its
+   bolts, the sling, stones and stout sticks.
 4. **People**: intent and morale, yielding, brawls, robbers who maim and rob, the watch and the
    law, reputation.
 5. **Later**: mounted fighting, companions in fights, war and sieges.
