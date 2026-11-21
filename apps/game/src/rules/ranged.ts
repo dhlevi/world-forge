@@ -25,7 +25,7 @@
  */
 import type { Actor } from '../actors/actor';
 import { check, chanceFor, DC, type Mod } from '../actors/checks';
-import { Skills, Traits } from '../actors/components';
+import { Skills, Traits } from '../actors/components/index';
 import { outerPart, type HealthWound, type WoundKind } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
 import { defOf, itemName, makeItem, type Item } from '../actors/items/item';

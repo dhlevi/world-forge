@@ -8,7 +8,7 @@ import { Container, Rectangle, RenderTexture, Sprite, Texture, type Renderer as 
 import { SHORTEN_ROWS, WEAR_SHAPES, YOUNG_SCALE, figureKey, type FigureSpec } from '@worldforge/core/local/figures';
 import type { Facing } from '@worldforge/core/local/tiles';
 import { TILE_PX, type Look, type Tileset } from './tileset';
-import { kindScale } from './figure';
+import { kindScale } from '../actors/figure';
 
 /** The picture's box: room above the tile for a tall figure, and to either side. */
 const BOX_W = 2 * TILE_PX, BOX_H = 2 * TILE_PX, OX = TILE_PX / 2, OY = TILE_PX;

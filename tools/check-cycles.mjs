@@ -1,5 +1,6 @@
 // Fails when modules import one another in a circle (value imports; `import type` is free), in the
-// core, the game and the atlas. Circles work only by the luck of load order, so they are kept out:
+// core, the game and the atlas, or when a folder of the game imports from a folder above it (its
+// layers: docs/architecture.md). Circles work only by the luck of load order, so they are kept out:
 // move what both sides need into a module of its own. Run by `npm run typecheck`.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -25,6 +26,17 @@ function resolve(from, spec) {
 }
 
 let found = 0;
+/** For each folder of the game, the folders it may not import from (value imports; types are free). */
+const ABOVE_WORLD = ['game', 'screens', 'components', 'app'];
+const LAYERS = {
+  'util.ts': ['actors', 'rules', 'world', 'worker', 'engine', ...ABOVE_WORLD],
+  engine: ['actors', 'rules', 'world', 'worker', ...ABOVE_WORLD],
+  actors: ['rules', 'world', 'worker', ...ABOVE_WORLD],
+  rules: ['world', 'worker', ...ABOVE_WORLD],
+  world: ABOVE_WORLD,
+  worker: ['world', 'engine', ...ABOVE_WORLD],
+  game: ['screens', 'components'],
+};
 for (const src of SOURCES) {
   const dir = path.join(root, src);
   const edges = new Map();
@@ -69,9 +81,21 @@ for (const src of SOURCES) {
     }
   };
   for (const v of edges.keys()) if (!idx.has(v)) visit(v);
+  // The game's layers (docs/architecture.md): each folder may use those below it, never those above.
+  if (src === 'apps/game/src') {
+    const top = (f) => path.relative(dir, f).split(path.sep)[0];
+    for (const [f, to] of edges) {
+      const banned = LAYERS[top(f)];
+      if (!banned) continue;
+      for (const t of to) if (banned.includes(top(t))) {
+        found++;
+        console.error(`Layer broken in the game: ${path.relative(dir, f)} imports ${path.relative(dir, t)} (${top(f)}/ may not use ${top(t)}/; see docs/architecture.md).`);
+      }
+    }
+  }
 }
 if (found) {
-  console.error(`${found} import cycle(s): move what both sides need into a module of its own.`);
+  console.error(`${found} import cycle(s) or broken layer(s): move what both sides need into a module of its own, or lower.`);
   process.exit(1);
 }
-console.log('Import cycles: none in the core, the game or the atlas.');
+console.log('Import cycles: none in the core, the game or the atlas; the game\'s layers hold.');

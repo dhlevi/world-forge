@@ -56,3 +56,12 @@ export class Dice {
     return r;
   }
 }
+
+/** A phrase with its first letter made a capital ("the guard" to "The guard"). */
+export const cap = (s: string): string => (s ? s[0].toUpperCase() + s.slice(1) : s);
+
+/** The distance between a tile and another in steps, diagonals counting as one (Chebyshev). */
+export const cheb = (a: { x: number; y: number }, x: number, y: number): number => Math.max(Math.abs(a.x - x), Math.abs(a.y - y));
+
+/** One of a list, by a random number source. */
+export const pickOf = <T>(r: () => number, xs: readonly T[]): T => xs[Math.floor(r() * xs.length) % xs.length];

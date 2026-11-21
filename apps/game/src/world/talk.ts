@@ -6,8 +6,8 @@
  */
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { Resident } from './population';
+import { pickOf } from '../util';
 
-const pick = <T>(r: () => number, xs: readonly T[]): T => xs[Math.floor(r() * xs.length) % xs.length];
 
 /** A greeting, by the hour, how they regard the wanderer, and whether they have met. */
 export function greeting(r: Resident, opinion: number, met: boolean, hour: number, player: string): string {
@@ -85,7 +85,7 @@ export function lineOf(r: Resident, day: number, n: number, raining: boolean): s
   // Someone in their life, now and then.
   const ties = r.p.ties ?? [];
   if (ties.length && rnd() < 0.5) {
-    const tl = tieLine(...((tie) => [tie.kind, tie.text] as const)(pick(rnd, ties)));
+    const tl = tieLine(...((tie) => [tie.kind, tie.text] as const)(pickOf(rnd, ties)));
     if (tl) options.push(tl, tl);
   }
   if (r.p.template === 'child') options.push('Are you a soldier?', 'Mother says I must not talk to strangers.');

@@ -15,16 +15,16 @@
  * - **Brawls** between two people are fought the same way, with fists, until one yields or falls,
  *   and are broken up by the watch.
  *
- * The blows themselves, and what the wanderer does, are the session's (game/session.ts); the law
+ * The blows themselves, and what the wanderer does, are game/fights.ts's; the law
  * that follows a crime is world/law.ts's.
  */
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
-import { morale } from '../game/combat';
+import { morale } from '../rules/combat';
 import { Health } from '../actors/health';
-import type { NaturalBlow } from './beasts';
+import type { NaturalBlow } from '../rules/beasts';
 import { callName, courage, folkFight, folkReady, folkSkills, healthOf, isWatch, type Intent } from './folk-fight';
 import type { Population, PopulationView, Resident } from './population';
-import { clamp } from '../util';
+import { cap, cheb, clamp } from '../util';
 
 /** The wanderer, as the people in a fight need them. */
 export interface Wanderer {
@@ -36,7 +36,6 @@ export interface Wanderer {
   struckAt?: number;
 }
 
-const cheb = (a: { x: number; y: number }, x: number, y: number) => Math.max(Math.abs(a.x - x), Math.abs(a.y - y));
 
 /** Minutes the yielded kneel before getting up and going home, if the wanderer leaves them be. */
 const YIELD_S = 10 * 60;
@@ -63,7 +62,7 @@ export class Strife {
   private robbedBy = new Map<string, number>();
   /** The last hour a tavern brawl was looked for. */
   private brawlHour = -1;
-  /** A band lying in wait on the road (game/session.ts): when its people come, they rise about the wanderer. */
+  /** A band lying in wait on the road (game/justice.ts): when its people come, they rise about the wanderer. */
   ambush: { band: string; until: number } | null = null;
 
   constructor(readonly pop: Population) {
@@ -85,53 +84,64 @@ export class Strife {
    * night in a tavern, drink starts a brawl now and then.
    */
   private lookout(g: PopulationView, w: Wanderer): void {
-    const slot = Math.floor(g.time / 60);
-    // An ambush: once the band's people have come, they rise from cover about the wanderer.
-    const am = this.ambush;
-    if (am && g.time >= am.until) this.ambush = null;
-    else if (am) {
-      const band = [...this.pop.everyone()].filter((o) => o.p.homeId === am.band && o.p.template === 'bandit' && !o.plight && !o.fight);
-      if (band.length) {
-        this.ambush = null;
-        const roll = mulberry32(hashString(`${am.band}#ambush`));
-        let n = 0;
-        for (const o of band) {
-          if (!this.pop.setNear(o, g, { x: g.px, y: g.py, z: g.z }, 3, 7, roll)) continue;
-          this.start(o, 'rob', 'player', g.time);
-          o.fight!.began = true;
-          n++;
-        }
-        if (n) this.onSee(`Robbers! ${n > 1 ? `${n} of them rise` : 'One rises'} from the cover by the way, and close about you.`, band[0]);
-      }
-    }
+    this.springAmbush(g);
     for (const r of this.pop.all()) {
       if (r.fight || r.plight || (r.where === 'asleep' && cheb(r, g.px, g.py) > 2)) continue;
-      const d = cheb(r, g.px, g.py);
-      if (r.p.template === 'bandit') {
-        const band = r.p.homeId;
-        const was = this.robbedBy.get(band);
-        if (was !== undefined && g.time - was < 86400) continue;
-        if (d > 14 || g.z !== r.z || !g.isVisible(r.x, r.y)) continue;
-        let n = 0;
-        for (const o of this.pop.all()) if (o.p.homeId === band && !o.fight && !o.plight && o.p.template === 'bandit') {
-          this.start(o, 'rob', 'player', g.time);
-          o.fight!.began = true;
-          n++;
-        }
-        this.onSee(n > 1 ? `Robbers! ${n} of them come at you from about their camp.` : `${cap(callName(r, this.pop.opinions))} comes at you, a weapon in hand.`, r);
-        continue;
-      }
-      // Hatred, close by: now and then (a minute's chance), a fist.
-      if (d <= 2 && !w.helpless && r.p.age >= 14 && !isWatch(r) && r.where !== 'asleep' && this.pop.opinions.of(r.p.id, g.time) <= -50) {
-        const roll = mulberry32(hashString(`${r.p.id}#hate#${slot}`))();
-        if (roll < 0.2 && (courage(r) <= 0.5 || r.p.traits.includes('Wrathful'))) {
-          this.start(r, 'brawl', 'player', g.time);
-          r.fight!.began = true;
-          if (g.isVisible(r.x, r.y)) this.onSee(`${cap(callName(r, this.pop.opinions))} spits, and comes at you with fists.`, r);
-        }
-      }
+      if (r.p.template === 'bandit') this.bandSees(r, g);
+      else this.hatred(r, g, w);
     }
-    // A tavern brawl: once an hour, from dusk to the small hours, among those drinking.
+    this.tavernBrawl(g);
+  }
+
+  /** An ambush on the road (game/justice.ts sets it): once the band's people have come, they rise from cover about the wanderer. */
+  private springAmbush(g: PopulationView): void {
+    const am = this.ambush;
+    if (!am) return;
+    if (g.time >= am.until) {
+      this.ambush = null;
+      return;
+    }
+    const band = [...this.pop.everyone()].filter((o) => o.p.homeId === am.band && o.p.template === 'bandit' && !o.plight && !o.fight);
+    if (!band.length) return;
+    this.ambush = null;
+    const roll = mulberry32(hashString(`${am.band}#ambush`));
+    let n = 0;
+    for (const o of band) {
+      if (!this.pop.setNear(o, g, { x: g.px, y: g.py, z: g.z }, 3, 7, roll)) continue;
+      this.start(o, 'rob', 'player', g.time);
+      o.fight!.began = true;
+      n++;
+    }
+    if (n) this.onSee(`Robbers! ${n > 1 ? `${n} of them rise` : 'One rises'} from the cover by the way, and close about you.`, band[0]);
+  }
+
+  /** A robber who sees the wanderer near brings the whole band to rob them (unless the band robbed them within the day). */
+  private bandSees(r: Resident, g: PopulationView): void {
+    const band = r.p.homeId;
+    const was = this.robbedBy.get(band);
+    if (was !== undefined && g.time - was < 86400) return;
+    if (cheb(r, g.px, g.py) > 14 || g.z !== r.z || !g.isVisible(r.x, r.y)) return;
+    let n = 0;
+    for (const o of this.pop.all()) if (o.p.homeId === band && !o.fight && !o.plight && o.p.template === 'bandit') {
+      this.start(o, 'rob', 'player', g.time);
+      o.fight!.began = true;
+      n++;
+    }
+    this.onSee(n > 1 ? `Robbers! ${n} of them come at you from about their camp.` : `${cap(callName(r, this.pop.opinions))} comes at you, a weapon in hand.`, r);
+  }
+
+  /** One who hates the wanderer (an opinion of -50 or worse), close by and with the nerve for it: now and then (a minute's chance), a fist. */
+  private hatred(r: Resident, g: PopulationView, w: Wanderer): void {
+    if (cheb(r, g.px, g.py) > 2 || w.helpless || r.p.age < 14 || isWatch(r) || r.where === 'asleep' || this.pop.opinions.of(r.p.id, g.time) > -50) return;
+    const roll = mulberry32(hashString(`${r.p.id}#hate#${Math.floor(g.time / 60)}`))();
+    if (roll >= 0.2 || !(courage(r) <= 0.5 || r.p.traits.includes('Wrathful'))) return;
+    this.start(r, 'brawl', 'player', g.time);
+    r.fight!.began = true;
+    if (g.isVisible(r.x, r.y)) this.onSee(`${cap(callName(r, this.pop.opinions))} spits, and comes at you with fists.`, r);
+  }
+
+  /** A tavern brawl: looked for once an hour, from dusk to the small hours, among four or more drinking; the quarrelsome start it with whoever is nearest. */
+  private tavernBrawl(g: PopulationView): void {
     const hour = Math.floor(g.time / 3600), h = hour % 24;
     if (hour === this.brawlHour || (h < 20 && h > 1)) return;
     this.brawlHour = hour;
@@ -139,12 +149,12 @@ export class Strife {
     if (drinking.length < 4) return;
     const rr = mulberry32(hashString(`brawl#${hour}#${drinking[0].p.homeId}`));
     if (rr() >= 0.12) return;
-    // The quarrelsome start it, with whoever is nearest.
     const hot = drinking.filter((r) => r.p.traits.includes('Wrathful') || courage(r) <= 0.5);
     const a = (hot.length ? hot : drinking)[Math.floor(rr() * (hot.length || drinking.length))];
     const b = drinking.filter((o) => o !== a && o.z === a.z && cheb(o, a.x, a.y) <= 5).sort((p, q) => cheb(p, a.x, a.y) - cheb(q, a.x, a.y))[0];
     if (a && b) this.brawl(a, b, g);
   }
+
 
   /** Begins a person's fight (drawing a weapon if they mean to use one). */
   start(r: Resident, intent: Intent, foe: string, now: number): void {
@@ -178,7 +188,7 @@ export class Strife {
   }
 
   /**
-   * Those who saw the wanderer set on someone (game/session.ts, a crime): the watch among them
+   * Those who saw the wanderer set on someone (game/justice.ts, a crime): the watch among them
    * come to arrest; the bold (and the victim's household, kin and friends, who need less courage)
    * come to their aid, two at most, with fists against fists and whatever they have against a
    * blade; the rest scatter, crying for the watch; children run. Returns how many cried out.
@@ -483,4 +493,3 @@ export class Strife {
   }
 }
 
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1);

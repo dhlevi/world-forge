@@ -21,11 +21,11 @@ export class MercyScreen extends Screen {
 
   options() {
     void this.state.rev;
-    return this.play.session.mercyOptions(this.r);
+    return this.play.session.justice.mercyOptions(this.r);
   }
 
   act(m: Mercy): void {
-    this.state.message = this.play.session.mercy(this.r, m);
+    this.state.message = this.play.session.justice.mercy(this.r, m);
     this.state.rev++;
     // Tending may be done again; the rest end it.
     if (m !== 'tend' || !this.r.present) this.close();

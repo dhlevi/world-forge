@@ -25,7 +25,7 @@ import { GROUND_TILES, OBJECT_TILES, objectId, type Facing } from '@worldforge/c
 import { blockAt } from '@worldforge/core/people/routine';
 import { Actor } from '../actors/actor';
 import { Body, Identity, type StandingId } from '../actors/components';
-import { figureOf } from '../game/figure';
+import { figureOf } from '../actors/figure';
 import type { PlacedPerson, PlanStop, Spot } from '../worker/protocol';
 import { belongingsOf } from './belongings';
 import { Inventory } from '../actors/items/inventory';
@@ -36,6 +36,7 @@ import { findPath, OPENABLE, walkable, type PathMap, type Step } from './paths';
 import { LOUD, Tracks, heardLevel, hearingThreshold, takesTracks, type Noise, type NoiseKind } from './senses';
 import { Opinions } from './opinions';
 import type { FolkFight, Plight } from './folk-fight';
+import { cheb } from '../util';
 
 /** Within this many tiles of the wanderer, people walk tile by tile. */
 export const ACTIVE = 40;
@@ -136,7 +137,6 @@ const DIRS8: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1
 
 const tileKey = (x: number, y: number, z: number | null) => `${x},${y},${z ?? 'g'}`;
 const same = (a: Spot | null, b: Spot | null) => !!a && !!b && a.x === b.x && a.y === b.y && a.z === b.z;
-const cheb = (a: { x: number; y: number }, x: number, y: number) => Math.max(Math.abs(a.x - x), Math.abs(a.y - y));
 
 export class Population {
   private byId = new Map<string, Resident>();
@@ -177,7 +177,7 @@ export class Population {
   readonly dead = new Set<string>();
   /** Extra people the session places (bandits in their camps: world/strife.ts), by id, asked for with each new bubble. */
   extra: (g: PopulationView) => PlacedPerson[] = () => [];
-  /** A band cell where robbers lie in wait for the wanderer (game/session.ts): asked for with the people, set beside them. */
+  /** A band cell where robbers lie in wait for the wanderer (game/justice.ts): asked for with the people, set beside them. */
   ambushAt: [number, number] | null = null;
   /** Asks again for the people at once (an ambush on the road). */
   reask(): void {
@@ -435,7 +435,7 @@ export class Population {
   }
 
   /**
-   * Someone come from beyond the bubble (the watch called from their post: game/session.ts), set
+   * Someone come from beyond the bubble (the watch called from their post: game/justice.ts), set
    * down out of sight between `min` and `max` tiles from a spot. Returns them, or null if there was
    * nowhere to set them.
    */

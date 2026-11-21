@@ -4,7 +4,8 @@
  * the weather and the skills at work, and runs what happens as time passes: needs and the body,
  * the weather and the light, fires and torches, the log. It sleeps, drinks, reads the sky,
  * collapses and faints, treats wounds, and dies; it remembers what the character knew of the world;
- * it saves.
+ * it saves. Its larger parts are modules of their own, working on its state: the wanderer's fights
+ * (game/fights.ts) and the law and the people at the wanderer's mercy (game/justice.ts).
  *
  * It needs no browser to run: the world worker is reached through `SessionWorld`, and the
  * screens (the city view, the title) through `SessionHost`, so that scripts/session-test.ts can
@@ -13,15 +14,15 @@
 import { reactive } from 'vue';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, type Season } from '@worldforge/core/local/tiles';
-import { BRUSH_TOOLS, clearBrush, usePortion } from './tasks';
-import { figureOf } from './figure';
+import { BRUSH_TOOLS, clearBrush, usePortion } from '../rules/tasks';
+import { figureOf } from '../actors/figure';
 import { portraitOf, type PortraitSpec } from './portrait';
 import { residentCard, residentLines, type PersonCard } from './person-card';
-import { makeItem } from '../actors/items/item';
+import { makeItem, defOf, itemName, type Item } from '../actors/items/item';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Weather } from '@worldforge/core/weather/weather';
 import type { MessageDispatcher } from '../engine/messages';
-import type { ChunkData, LocalSite, PlacedPerson, RouteStep, StartSite } from '../worker/protocol';
+import type { ChunkData, LocalSite, StartSite } from '../worker/protocol';
 import type { RouteResult, WorkerClient } from '../app/worker-client';
 import { background, onError } from '../app/errors';
 import { desktop } from '../desktop';
@@ -30,10 +31,9 @@ import { Cast } from '../actors/cast';
 import { check, DC } from '../actors/checks';
 import { Body, Identity, Knowledge, Mood, Skills, Traits, type Moodlet } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
-import { defOf, itemName, type Item } from '../actors/items/item';
 import { Needs, type NeedId } from '../actors/needs';
 import { Health } from '../actors/health';
-import { takeRemedy, treat, unsuited, type Treat } from './treatment';
+import { takeRemedy, treat, type Treat } from '../rules/treatment';
 import { airWord, seasonOf, type PlaceClimate } from './calendar';
 import { SHELTERS } from './camp';
 import { HOME_KNOWN_M } from './discovery';
@@ -42,29 +42,23 @@ import { GameMap } from './map';
 import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type Dead, type SaveFile } from './save';
 import { Travel } from './travel';
-import { bandCell, bandId, bandRoll } from '../world/bands';
+import { Fights } from './fights';
+import { Justice } from './justice';
 import { Population } from '../world/population';
 import { Fauna, animalLines, type Presence } from '../world/fauna';
 import { Snares, carcassOf } from '../world/hunting';
-import { aimables, armsOf, beastStrikes, readyWeapon, strikeBeast, strikeChance, type Arms, type Blow, type BlowId, type Stance, type Target } from './combat';
-import { fightOf, type BeastFight, type NaturalBlow } from '../world/beasts';
-import { foeId, foeXY, type Foe } from './foes';
-import { callName, folkFight, folkTarget, fullName, healthOf, isWatch, plunder, type Mercy } from '../world/folk-fight';
+import { type BlowId, type Stance } from '../rules/combat';
+import { callName, isWatch } from '../world/folk-fight';
 import { Strife } from '../world/strife';
-import { CRIME_WORDS, Law, harshness, type CrimeKind } from '../world/law';
+import { Law } from '../world/law';
 import type { Resident } from '../world/population';
-import { fire, inTheWay, missilesOf, readyLauncher, shotChance, type FireWorld, type Missile } from './ranged';
-import type { Animal } from '../world/fauna';
-import type { Mod } from '../actors/checks';
-import type { Species } from '@worldforge/core/local/fauna';
 import { SPECIES_BY_ID } from '@worldforge/core/local/fauna';
 import { LOUD, directionWords, heardLevel, hearingThreshold, readTracks, takesTracks, type Noise } from '../world/senses';
 import { greeting, lineOf } from '../world/talk';
 import { sunTimes } from '@worldforge/core/weather/weather';
 import { WeatherService, type Sky, type SkyPicture } from './weather';
 import type { RoofMode } from './roofs-mode';
-import { hash32 } from '../util';
-import { hashString } from '@worldforge/core/gen/rng';
+import { cap, hash32 } from '../util';
 
 /** What a game is begun or carried on from. */
 export interface PlayOptions {
@@ -121,7 +115,6 @@ const NEED_LABEL: Record<NeedId, string> = { hunger: 'Food', thirst: 'Water', sl
 /** Real minutes between autosaves (when something has happened). */
 const AUTOSAVE_MS = 3 * 60 * 1000;
 
-const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 
 /** How far each light held reaches (tiles). */
 const LIGHT_REACH: Record<string, number> = { torch: 7, lantern: 6, candle: 3 };
@@ -138,6 +131,10 @@ export class PlaySession {
   /** People in fights (world/strife.ts), and the law (world/law.ts). */
   readonly strife: Strife;
   readonly law = new Law();
+  /** The wanderer's fights: blows, yielding, shooting (game/fights.ts). */
+  readonly fights = new Fights(this);
+  /** People struck and at the wanderer's mercy, and the law (game/justice.ts). */
+  readonly justice = new Justice(this);
   /** When the wanderer last practised Sneak near animals (game seconds). */
   private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
@@ -194,7 +191,8 @@ export class PlaySession {
   /** Called when something on screen has changed (set by the view). */
   onRedraw: () => void = () => {};
 
-  private skyNow: Sky;
+  /** The sky now (the light, the weather): what fights and shots see by. */
+  skyNow: Sky;
   private lastSky: Sky | null = null;
   private lastT: number;
   private climateAt: [number, number] | null = null;
@@ -203,6 +201,11 @@ export class PlaySession {
   private collapsing = false;
   /** Something about the body worth waking for (bleeding, a festering wound) since last asked. */
   private alarm = false;
+
+  /** Something has befallen the wanderer: rest and sleep are broken off, and a journey stopped. */
+  raiseAlarm(): void {
+    this.alarm = true;
+  }
   /** After travelling, the wanderer is set on open ground once the chunks there have come. */
   private needFooting = false;
   /** Game time at the last save (-1: never), to know whether there is anything new to save. */
@@ -280,7 +283,7 @@ export class PlaySession {
       if (!r) return null;
       // A person fighting the wanderer is struck; one yielded, fallen or bound is at their mercy.
       if (r.fight?.foe === 'player') {
-        this.attack({ kind: 'person', r });
+        this.fights.attack({ kind: 'person', r });
         return '';
       }
       if (r.plight === 'yielded' || r.plight === 'down' || r.plight === 'bound') {
@@ -310,12 +313,12 @@ export class PlaySession {
     this.people.onSee = (text) => game.say(text);
     // People in fights (world/strife.ts): their blows, what is seen, the dead, robbers and the watch.
     this.strife = new Strife(this.people);
-    this.strife.onStrike = (r, blow) => this.personBlow(r, blow);
+    this.strife.onStrike = (r, blow) => this.fights.personBlow(r, blow);
     this.strife.onSee = (text) => game.say(text);
-    this.strife.onDied = (r) => this.personDied(r, game.isVisible(r.x, r.y) ? `${cap(callName(r, this.people.opinions))} dies.` : null);
-    this.strife.onRob = (r) => this.robbed(r);
-    this.strife.onArrest = (r) => this.arrest(r);
-    this.strife.onCallWatch = (r) => this.callWatch(r, 2);
+    this.strife.onDied = (r) => this.justice.personDied(r, game.isVisible(r.x, r.y) ? `${cap(callName(r, this.people.opinions))} dies.` : null);
+    this.strife.onRob = (r) => this.justice.robbed(r);
+    this.strife.onArrest = (r) => this.justice.arrest(r);
+    this.strife.onCallWatch = (r) => this.justice.callWatch(r, 2);
     // The animals about (world/fauna.ts), their noises and tracks, and the wanderer's snares (world/hunting.ts).
     const askA = world.requestAnimals;
     this.fauna = new Fauna(askA ? (x, y, t, w) => askA(x, y, t, w) : () => Promise.resolve({ groups: [], radius: 0 }), this.people.tracks);
@@ -336,14 +339,14 @@ export class PlaySession {
       if (!a || a.alt !== 0) return null;
       // A beast fighting the wanderer: walking into it strikes it with the standing aim and blow.
       if (a.fight) {
-        if (!quiet) this.attack({ kind: 'beast', a });
+        if (!quiet) this.fights.attack({ kind: 'beast', a });
         return true;
       }
       return this.fauna.bumped(game, a);
     };
     // A beast's blow at the wanderer (game/combat.ts), and a beast dead of its wounds.
-    this.fauna.onStrike = (a, blow) => this.beastBlow(a, blow);
-    this.fauna.onDied = (s, x, y, seen, lodged) => this.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null, undefined, lodged);
+    this.fauna.onStrike = (a, blow) => this.fights.beastBlow(a, blow);
+    this.fauna.onDied = (s, x, y, seen, lodged) => this.fights.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null, undefined, lodged);
     game.bloodOn = (x, y, z) => this.people.tracks.bloodAt(x, y, z, game.time);
     if (o.restore?.people) {
       this.people.opinions.import(o.restore.people.opinions);
@@ -360,7 +363,7 @@ export class PlaySession {
     travel.requestSite = world.site;
     travel.onStep = (st) => {
       const extra = this.practice.travelStep(st, this.invSlow());
-      this.roadside(st);
+      this.justice.roadside(st);
       return extra;
     };
     travel.sightFactor = () => {
@@ -448,7 +451,7 @@ export class PlaySession {
     return this.travel.party();
   }
 
-  private needs(): Needs | undefined {
+  needs(): Needs | undefined {
     return this.player?.get(Needs);
   }
 
@@ -462,7 +465,7 @@ export class PlaySession {
     return 1 + Math.min(1.2, Math.max(0, s.snowCm - 5) / 40) + s.mud * 0.2;
   }
 
-  private indoors(): boolean {
+  indoors(): boolean {
     const g = this.game;
     // On a floor above or below the ground (a storey, a cellar, a cave, a dungeon): under cover.
     if (g.z !== null) return true;
@@ -506,7 +509,7 @@ export class PlaySession {
   }
 
   /** A torch, lantern or candle held, still burning. */
-  private heldLight(): Item | undefined {
+  heldLight(): Item | undefined {
     const h = this.player?.get(Inventory)?.hands();
     return [h?.left, h?.right, h?.both].find((i) => i && i.def in LIGHT_REACH && (i.uses ?? 1) > 0);
   }
@@ -616,9 +619,9 @@ export class PlaySession {
       this.people.update(game);
       // People in fights, the fallen and the fleeing; the watch who know a wanted wanderer.
       const hh = this.health();
-      if (this.strife.run(game, { helpless: game.activity === 'sleep' || !!hh?.senseless() || this.state.bound, yielded: this.state.yielded, struckAt: this.struckAt })) this.redraw();
-      this.recognise();
-      this.watchArrives();
+      if (this.strife.run(game, { helpless: game.activity === 'sleep' || !!hh?.senseless() || this.state.bound, yielded: this.state.yielded, struckAt: this.justice.struckAt })) this.redraw();
+      this.justice.recognise();
+      this.justice.watchArrives();
       // The animals, and the snares set for them.
       this.fauna.update(game, this.presence());
       for (const sn of this.snares.run(this.fauna, game, this.player?.get(Skills)?.effective('survival') ?? 0)) {
@@ -784,219 +787,6 @@ export class PlaySession {
     game.updateHud();
   }
 
-  // ---- Fighting (combat.md, stages 2 and 4; game/combat.ts, world/strife.ts) ------------------------
-
-  /** A foe (a beast, or a person) as the blow sees it. */
-  targetOf(f: Foe): Target {
-    if (f.kind === 'beast') {
-      const a = f.a;
-      return {
-        name: `the ${a.s.name}`, health: this.fauna.healthOf(a, this.game.time), fight: fightOf(a.s), size: a.s.size,
-        asleep: a.state === 'sleep' || (a.health?.senseless() ?? false), unaware: !a.fight && this.game.time - a.noticed > 60,
-      };
-    }
-    const r = f.r;
-    const helpless = r.where === 'asleep' || r.plight === 'down' || r.plight === 'bound';
-    return folkTarget(r, r.fight?.intent ?? 'defend', this.people.opinions, this.game.time, helpless, !r.fight && r.where === 'asleep');
-  }
-
-  /** A foe's name in the telling ("the wolf", "the guard", "Ana"). */
-  foeName(f: Foe): string {
-    return f.kind === 'beast' ? `the ${f.a.s.name}` : callName(f.r, this.people.opinions);
-  }
-
-  /** What is seen of a foe, in lines (for the menus). */
-  foeLines(f: Foe): string[] {
-    if (f.kind === 'beast') return animalLines(f.a, this.game.time);
-    const r = f.r, h = r.actor.get(Health);
-    const out = [...residentLines(r, this.people, this.game.time)];
-    if (h && h.d.wounds.length) out.push(`${r.p.female ? 'She' : 'He'} is hurt${h.bleeding() > 40 ? ', and bleeding' : ''}.`);
-    return out;
-  }
-
-  /** What makes a blow harder now, beyond the body: the dark, the water underfoot. */
-  private fightMods(): Mod[] {
-    const g = this.game, out: Mod[] = [];
-    if (this.skyNow.light < 0.3 && !this.heldLight() && !this.indoors()) out.push({ why: 'the dark', value: -15 });
-    if (g.z === null && GROUND_TILES[g.map.ground(g.px, g.py)]?.water) out.push({ why: 'in the water', value: -10 });
-    return out;
-  }
-
-  /** The wanderer's arms now (what they hold), or null. */
-  arms(): Arms | null {
-    const inv = this.player?.get(Inventory);
-    return inv ? armsOf(inv) : null;
-  }
-
-  /**
-   * The arms the wanderer would fight with: those held, or, with no weapon in hand, the best
-   * carried, as if drawn (`drawn`: its name; drawing it takes the next blow's turn).
-   */
-  armsReady(): { arms: Arms; drawn: string | null } | null {
-    const inv = this.player?.get(Inventory);
-    if (!inv) return null;
-    const copy = new Inventory(JSON.parse(JSON.stringify(inv.d)));
-    const r = readyWeapon(copy);
-    return { arms: armsOf(copy), drawn: r ? itemName(r.item) : null };
-  }
-
-  /** Whether a tile two off can be reached with a long weapon: straight (or straight on the diagonal), over open ground. */
-  private reachable(x: number, y: number, d: number): boolean {
-    const g = this.game;
-    if (d !== 2) return true;
-    const dx = x - g.px, dy = y - g.py;
-    if ((dx && dy && Math.abs(dx) !== Math.abs(dy)) || (Math.abs(dx) !== 2 && dx !== 0) || (Math.abs(dy) !== 2 && dy !== 0)) return false;
-    const mx = g.px + Math.sign(dx), my = g.py + Math.sign(dy);
-    return g.map.passableAt(mx, my, g.z) && !this.fauna.at(mx, my) && !this.people.at(mx, my, g.z);
-  }
-
-  /** The beasts and people the wanderer can strike from here with a blow's reach (beside; a spear's, two tiles off with nothing between). */
-  inReach(reach = 2): Foe[] {
-    const g = this.game, out: Foe[] = [];
-    if (this.state.mode !== 'local') return out;
-    const dist = (p: { x: number; y: number }) => Math.max(Math.abs(p.x - g.px), Math.abs(p.y - g.py));
-    if (g.z === null) for (const a of this.fauna.all()) {
-      const d = dist(a);
-      // Out of reach in the air or up a tree, or not seen.
-      if (a.alt > 0 || d < 1 || d > reach || !g.isVisible(a.x, a.y) || !this.reachable(a.x, a.y, d)) continue;
-      out.push({ kind: 'beast', a });
-    }
-    for (const r of this.people.all()) {
-      const d = dist(r);
-      if (r.z !== g.z || d < 1 || d > reach || !g.isVisible(r.x, r.y) || !this.reachable(r.x, r.y, d)) continue;
-      out.push({ kind: 'person', r });
-    }
-    // Those fighting the wanderer first, then the nearest.
-    const fighting = (f: Foe) => (f.kind === 'beast' ? !!f.a.fight : f.r.fight?.foe === 'player');
-    return out.sort((p, q) => Number(fighting(q)) - Number(fighting(p)) || dist(foeXY(p)) - dist(foeXY(q)));
-  }
-
-  /** The blow to use: the one asked for, the standing one, or the weapon's first (its best). */
-  private pickBlow(arms: Arms, id?: BlowId | null): Blow {
-    const want = id ?? this.state.fight.blow;
-    return arms.blows.find((b) => b.id === want) ?? arms.blows[0];
-  }
-
-  /** The chance of each blow at a foe, at an aim (for the fight menu). */
-  blowChances(f: Foe, aim: string | null, stance: Stance): { blow: Blow; chance: number; mods: Mod[]; reach: boolean }[] {
-    const p = this.player, arms = this.armsReady()?.arms;
-    if (!p || !arms) return [];
-    const t = this.targetOf(f), g = this.game, at = foeXY(f);
-    const d = Math.max(Math.abs(at.x - g.px), Math.abs(at.y - g.py));
-    return arms.blows.map((b) => ({ blow: b, ...strikeChance(p, t, b, aim, stance, this.fightMods()), reach: d <= b.reach }));
-  }
-
-  /** The parts of a foe that can be aimed at, with how much harder each is to hit. */
-  aimsAt(f: Foe): { id: string; name: string; mod: number }[] {
-    return aimables(this.targetOf(f).health);
-  }
-
-  /**
-   * Strikes a foe: readies a weapon first if none is in hand (that takes its own time), then the
-   * blow (the one asked for, else the standing one), at the aim and in the stance asked for (else the
-   * standing ones). A beast fights back, stands at bay or flees (world/fauna.ts); a person fights
-   * back, or runs crying for the watch (world/strife.ts), and the law hears of it (world/law.ts).
-   * Returns whether time passed.
-   */
-  attack(f: Foe, o: { blow?: BlowId | null; aim?: string | null; stance?: Stance } = {}): boolean {
-    const p = this.player, g = this.game, inv = p?.get(Inventory), h = this.health();
-    if (!p || !inv || !h || this.state.dead) return false;
-    if (h.senseless()) return false;
-    this.state.yielded = false;
-    // Hands empty of any weapon: draw the best carried (not when a blow without one was asked for).
-    if (!o.blow || (o.blow !== 'punch' && o.blow !== 'kick')) {
-      const drawn = readyWeapon(inv);
-      if (drawn) {
-        g.time += drawn.seconds;
-        g.say(drawn.text);
-        g.refresh();
-        return true;
-      }
-    }
-    const arms = armsOf(inv);
-    const blow = this.pickBlow(arms, o.blow);
-    const at = foeXY(f);
-    const d = Math.max(Math.abs(at.x - g.px), Math.abs(at.y - g.py));
-    if (d > blow.reach) {
-      g.say(`${cap(this.foeName(f))} is out of reach.`);
-      return false;
-    }
-    const aim = o.aim !== undefined ? o.aim : this.state.fight.aim;
-    const stance = o.stance ?? this.state.fight.stance;
-    const t = this.targetOf(f);
-    const ex = strikeBeast(p, t, blow, aim && t.health.partOf(aim) ? aim : null, stance, g.time, this.fightMods());
-    g.facing = at.x > g.px ? 'e' : at.x < g.px ? 'w' : at.y < g.py ? 'n' : 's';
-    g.time += ex.seconds;
-    g.activity = 'work';
-    g.say(ex.text, ex.tip);
-    // Striking someone who was not fighting you is a crime (and remembered), seen by those about.
-    if (f.kind === 'person') this.struckPerson(f.r);
-    // Blood drawn close to gets on the one who drew it.
-    const drawn = ex.wounds.filter((w) => w.kind !== 'bruise' && w.kind !== 'fracture').reduce((sum, w) => sum + w.start, 0);
-    if (drawn && d <= 1) this.needs()?.stain(Math.min(25, 2 + drawn * 0.8));
-    // Noise: a fight is loud.
-    this.onNoiseOfFight(at.x, at.y);
-    if (f.kind === 'beast') {
-      if (t.health.dead) this.carcass(f.a.s, f.a.x, f.a.y, `The ${f.a.s.name} falls dead.`, f.a);
-      else this.fauna.provoke(f.a, g);
-    } else if (t.health.dead) this.personDied(f.r, `${cap(this.foeName(f))} falls dead.`);
-    else this.strife.provoke(f.r, g, blow.id !== 'punch' && blow.id !== 'kick');
-    this.practice.flush();
-    g.refresh();
-    return true;
-  }
-
-  /** A fight is heard by those about (residents look round; beasts start). */
-  private onNoiseOfFight(x: number, y: number): void {
-    const n = { x, y, z: this.game.z, loud: LOUD.door + 15, kind: 'shout' as const, what: 'the noise of a fight' };
-    this.people.hearPlayer(this.game, n);
-  }
-
-  /** A beast's blow at the wanderer (world/fauna.ts calls it). */
-  private beastBlow(a: Animal, blow: NaturalBlow): void {
-    this.takeBlow(`the ${a.s.name}`, fightOf(a.s), a.health ?? null, a.fight?.stance, blow);
-  }
-
-  /** A person's blow at the wanderer (world/strife.ts calls it). */
-  private personBlow(r: Resident, blow: NaturalBlow): void {
-    const f = r.fight;
-    this.takeBlow(callName(r, this.people.opinions), folkFight(r, f?.intent ?? 'defend'), r.actor.get(Health) ?? null, f?.stance, blow, r.p.female ? 'her' : 'his');
-  }
-
-  /** A blow at the wanderer: their defence, the wound, waking them if asleep. */
-  private takeBlow(name: string, fight: BeastFight, health: Health | null, stance: Stance | undefined, blow: NaturalBlow, its = 'its'): void {
-    const p = this.player, g = this.game, h = this.health();
-    if (!p || !h || this.state.dead) return;
-    // Asleep, the first blow lands unopposed, and wakes them; senseless or bound, none is opposed.
-    const asleep = g.activity === 'sleep' && !this.woken;
-    const ex = beastStrikes({ name, fight, health, stance, its }, p, blow, this.state.fight.stance, g.time, { helpless: asleep || h.senseless() || this.state.bound, extra: this.fightMods() });
-    if (asleep) {
-      this.woken = true;
-      g.say('You wake to an attack!');
-    }
-    g.say(ex.text, ex.tip);
-    this.alarm = true;
-    this.travel.stop();
-    this.practice.flush();
-  }
-
-  /** Woken by an attack while sleeping (the rest of the night's blows are fought). */
-  private woken = false;
-
-  /**
-   * The wanderer yields (the fight menu, Y): robbers take what they want, the watch makes the
-   * arrest, those fighting with fists let them be. Stays so until the wanderer strikes again.
-   */
-  yieldUp(): void {
-    const g = this.game;
-    if (this.state.dead) return;
-    this.state.yielded = true;
-    g.say('You throw up your hands and yield.');
-    for (const line of this.strife.wandererYields(g)) g.say(line);
-    g.time += 1;
-    g.refresh();
-  }
-
   /**
    * Gathering (M): stones on stony ground or in a stream bed (for the sling, or to throw), sticks
    * under trees (to throw, to club, to make arrows of). A Survival check finds more or fewer good
@@ -1034,587 +824,6 @@ export class PlaySession {
     g.say(`You gather ${got.map((it) => `${it.qty} ${itemName(it)}`).join(' and ')}${left ? ', leaving on the ground what you cannot carry' : ''}.`);
     this.practice.flush();
     g.refresh();
-  }
-
-  // ---- Shooting and throwing (combat.md, stage 3; game/ranged.ts) --------------------------------
-
-  /** The ways the wanderer can loose something now (a bow and its arrows, things to throw). */
-  missiles(): Missile[] {
-    const inv = this.player?.get(Inventory);
-    return inv ? missilesOf(inv) : [];
-  }
-
-  /** The line of fire's view of the map, the beasts (a bird in flight only if it is the target) and the people (only the one aimed at is a target; the rest stop the shot). */
-  private fireWorld(targetId: string | null): FireWorld {
-    const g = this.game;
-    const personTarget = (x: number, y: number) => {
-      const r = this.people.at(x, y, g.z);
-      return r && `p:${r.p.id}` === targetId ? r : null;
-    };
-    return {
-      objectAt: (x, y) => g.map.objectAt(x, y, g.z),
-      passable: (x, y) => g.map.passableAt(x, y, g.z),
-      beastAt: (x, y) => {
-        const r = personTarget(x, y);
-        if (r) return { id: `p:${r.p.id}`, t: this.targetOf({ kind: 'person', r }) };
-        const a = g.z === null ? this.fauna.at(x, y) : null;
-        return a && (a.alt === 0 || a.id === targetId) ? { id: a.id, t: this.targetOf({ kind: 'beast', a }) } : null;
-      },
-      personAt: (x, y) => (personTarget(x, y) ? null : this.people.at(x, y, g.z)?.p.name ?? null),
-    };
-  }
-
-  /** Beasts and people the wanderer can see to shoot at, nearest first, within a missile's reach (beasts on the ground, perched, or flying). */
-  shootable(max = 60): Foe[] {
-    const g = this.game, out: Foe[] = [];
-    if (this.state.mode !== 'local') return out;
-    const dist = (p: { x: number; y: number }) => Math.max(Math.abs(p.x - g.px), Math.abs(p.y - g.py));
-    if (g.z === null) for (const a of this.fauna.all()) {
-      const d = dist(a);
-      if (d >= 1 && d <= max && g.isVisible(a.x, a.y)) out.push({ kind: 'beast', a });
-    }
-    for (const r of this.people.all()) {
-      const d = dist(r);
-      if (r.z === g.z && d >= 1 && d <= max && g.isVisible(r.x, r.y)) out.push({ kind: 'person', r });
-    }
-    const fighting = (f: Foe) => (f.kind === 'beast' ? !!f.a.fight : f.r.fight?.foe === 'player');
-    return out.sort((p, q) => Number(fighting(q)) - Number(fighting(p)) || dist(foeXY(p)) - dist(foeXY(q)));
-  }
-
-  /** What makes a shot harder now: the dark, a cross wind, the target moving or flying. */
-  private shotMods(f: Foe, m: Missile): Mod[] {
-    const g = this.game, out = this.fightMods();
-    const w = this.skyNow.w, at = foeXY(f);
-    if (!this.indoors() && w.windMs > 2 && m.sev > 0) {
-      // The wind across the line of fire carries the missile off (a heavy one less).
-      const dx = at.x - g.px, dy = at.y - g.py, d = Math.hypot(dx, dy) || 1;
-      const toward = (((w.windFrom + 180) % 360) * Math.PI) / 180, wx = Math.sin(toward), wy = -Math.cos(toward);
-      const cross = Math.abs((dx / d) * wy - (dy / d) * wx);
-      const pen = Math.round(Math.min(15, w.windMs * cross * (m.how === 'throw' ? 0.7 : 1.1) * Math.min(1, d / 8)));
-      if (pen) out.push({ why: 'the wind', value: -pen });
-    }
-    if (f.kind === 'beast') {
-      const a = f.a;
-      if (a.alt > 0 && !a.perched) out.push({ why: 'in flight', value: -25 });
-      else if (a.state === 'flee' || a.state === 'chase' || a.state === 'attack') out.push({ why: 'running', value: -18 });
-      else if (a.state === 'walk' || a.state === 'stalk') out.push({ why: 'moving', value: -8 });
-    } else {
-      const r = f.r;
-      if (r.plight === 'fleeing' || r.fight) out.push({ why: 'moving', value: -12 });
-      else if (r.where === 'walking') out.push({ why: 'walking', value: -6 });
-    }
-    return out;
-  }
-
-  /** The chance of a missile at a foe now, and what lies in the way. */
-  shotAt(f: Foe, m: Missile, aim: string | null): { chance: number; mods: Mod[]; dist: number; inRange: boolean; cover: string[]; person: string | null; blocked: string | null } {
-    const p = this.player, g = this.game, at = foeXY(f);
-    const dist = Math.max(Math.abs(at.x - g.px), Math.abs(at.y - g.py));
-    const way = inTheWay(this.fireWorld(foeId(f)), [g.px, g.py], [at.x, at.y]);
-    if (!p) return { chance: 0, mods: [], dist, inRange: false, ...way };
-    const c = shotChance(p, m, this.targetOf(f), dist, aim, this.shotMods(f, m));
-    return { chance: c.chance, mods: c.mods, dist, inRange: dist <= m.max, ...way };
-  }
-
-  /**
-   * Shoots (or throws) at a foe: takes up the bow first if it is not in hand (that takes this turn),
-   * then looses one missile along the line of fire (game/ranged.ts). The missile lands where it
-   * falls, stays in the one struck, or breaks; a beast struck bolts, turns at bay or comes on
-   * (world/fauna.ts), a person fights or runs (world/strife.ts), and those near a miss start.
-   * Returns whether time passed.
-   */
-  shoot(f: Foe, m: Missile, aim: string | null = null): boolean {
-    const p = this.player, g = this.game, inv = p?.get(Inventory), h = this.health();
-    if (!p || !inv || !h || this.state.dead || h.senseless()) return false;
-    this.state.yielded = false;
-    if (m.launcher) {
-      const ready = readyLauncher(inv, m.launcher);
-      if (ready) {
-        g.time += ready.seconds;
-        g.say(ready.text);
-        g.refresh();
-        return true;
-      }
-    }
-    const shot = this.shotAt(f, m, aim);
-    if (!shot.inRange) {
-      g.say(`${cap(this.foeName(f))} is beyond the reach of your ${m.launcher ? itemName(m.launcher) : 'arm'}.`);
-      return false;
-    }
-    if (shot.person) {
-      g.say(`${shot.person} is in the way.`);
-      return false;
-    }
-    // The missile leaves the pack: one arrow from the stack, or the thing thrown.
-    let missile: Item;
-    if (m.item.qty > 1) missile = inv.split(m.item.uid, 1) ?? m.item;
-    else missile = m.item;
-    if (inv.get(missile.uid)) inv.drop(missile.uid);
-    missile.loc = undefined;
-    const at = foeXY(f);
-    const res = fire(p, m, this.fireWorld(foeId(f)), [g.px, g.py], [at.x, at.y], foeId(f), aim, g.time, this.shotMods(f, m));
-    g.facing = at.x > g.px ? 'e' : at.x < g.px ? 'w' : at.y < g.py ? 'n' : 's';
-    g.time += res.seconds;
-    g.activity = 'work';
-    g.say(res.text, res.tip);
-    // Shooting at someone who was not fighting you is a crime, seen by those about.
-    if (f.kind === 'person') this.struckPerson(f.r);
-    if (res.landed) g.ground.put(res.landed[0], res.landed[1], [missile]);
-    const sid = res.struck?.id;
-    if (sid?.startsWith('p:')) {
-      const r = [...this.people.all()].find((x) => `p:${x.p.id}` === sid);
-      if (r) {
-        if (res.lodged && r.actor.get(Inventory)?.stow(missile)) g.ground.put(r.x, r.y, [missile]);
-        if (healthOf(r, g.time).dead) this.personDied(r, `${cap(callName(r, this.people.opinions))} falls dead.`);
-        else this.strife.provoke(r, g, true);
-      }
-    } else if (sid) {
-      const hit = [...this.fauna.all()].find((x) => x.id === sid) ?? null;
-      if (hit) {
-        if (res.lodged) (hit.lodged ??= []).push(missile);
-        if (this.fauna.healthOf(hit, g.time).dead) this.carcass(hit.s, hit.x, hit.y, `The ${hit.s.name} falls dead.`, hit);
-        else this.fauna.provoke(hit, g);
-      }
-    }
-    // A miss lands near others, and they start.
-    if (res.landed && g.z === null) this.fauna.startle(res.landed[0], res.landed[1], g);
-    this.practice.flush();
-    g.refresh();
-    return true;
-  }
-
-  /** A dead beast: its carcass left where it fell (world/hunting.ts), with what was still in its wounds, told if seen. */
-  private carcass(s: Species, x: number, y: number, text: string | null, a?: Animal, lodged: Item[] = a?.lodged ?? []): void {
-    if (a) this.fauna.kill(a);
-    this.game.ground.put(x, y, [carcassOf(s), ...lodged.map((it) => ({ ...it, loc: undefined }))]);
-    if (text) this.game.say(text);
-    this.redraw();
-  }
-
-  // ---- People struck, dead, and at the wanderer's mercy (world/strife.ts, world/law.ts) -------------
-
-  /**
-   * The wanderer strikes (or shoots at) a person. Unless they were already fighting the wanderer
-   * (or are a robber), it is an assault: they remember it, and if it is seen, the law hears of it.
-   */
-  /** When the wanderer last struck or shot at a person (for those who came to stop them: world/strife.ts). */
-  private struckAt = -1e9;
-
-  private struckPerson(r: Resident): void {
-    const g = this.game;
-    this.struckAt = g.time;
-    const theirs = r.fight?.foe === 'player' && (r.fight.intent !== 'brawl' || !!r.fight.began);
-    if (r.p.template !== 'bandit' && !theirs && r.harmedBy !== 'player') {
-      this.people.opinions.add(r.p.id, r.p.name, 'attacked me', -60, g.time, 60, false);
-      this.crime('assault', r);
-    }
-    r.harmedBy = 'player';
-  }
-
-  /** A person has died (by the wanderer's hand, or of their wounds): their body where they fell, with what they carried; murder, if it was the wanderer's doing. */
-  personDied(r: Resident, text: string | null): void {
-    const g = this.game, inv = r.actor.get(Inventory);
-    const body = makeItem('corpse', { name: `body of ${fullName(r)}` });
-    body.kg = r.actor.get(Body)?.d.weightKg ?? 70;
-    const things: Item[] = [];
-    for (const it of inv?.d.items ?? []) if (!it.loc || it.loc.at !== 'in') things.push({ ...it, loc: { at: 'in', parent: body.uid } });
-    for (const it of inv?.d.items ?? []) if (it.loc?.at === 'in') things.push({ ...it });
-    // Their coin, as coins on the body (taken up, they are counted into the purse).
-    if (inv?.d.copper) things.push({ ...makeItem('coins', { qty: inv.d.copper }), loc: { at: 'in', parent: body.uid } });
-    g.ground.put(r.x, r.y, [body, ...things]);
-    const by = r.harmedBy === 'player';
-    this.people.kill(r);
-    if (text) g.say(text);
-    if (by && r.p.template !== 'bandit') this.crime('murder', r);
-    if (by && r.p.template === 'bandit') this.law.deed(this.settlement(), 'killed a robber', 5, g.time);
-    this.redraw();
-  }
-
-  /** What the wanderer can do with a person yielded, fallen or bound (Shift+F on them, or walking into them). */
-  mercyOptions(r: Resident): { act: Mercy; label: string; why: string | null }[] {
-    const inv = this.player?.get(Inventory);
-    const rope = inv?.d.items.some((i) => i.def === 'rope');
-    const h = r.actor.get(Health);
-    const out: { act: Mercy; label: string; why: string | null }[] = [
-      { act: 'spare', label: r.plight === 'bound' ? 'Untie them and let them go' : 'Let them go', why: null },
-      { act: 'rob', label: 'Take what they carry', why: null },
-      { act: 'bind', label: 'Bind them (rope)', why: r.plight === 'bound' ? 'They are bound already.' : rope ? null : 'You have no rope.' },
-      { act: 'tend', label: 'Tend their wounds (Medicine)', why: h && h.d.wounds.length ? null : 'They have no wounds to tend.' },
-      { act: 'kill', label: 'Kill them', why: null },
-    ];
-    // A bound robber can be handed to the watch, if one is near.
-    if (r.plight === 'bound' && r.p.template === 'bandit') out.push({ act: 'hand', label: 'Hand them over to the watch', why: this.watchNear(r) ? null : 'There is none of the watch near.' });
-    return out;
-  }
-
-  /** Deals with a person at the wanderer's mercy. Returns what happened, in words. */
-  mercy(r: Resident, act: Mercy): string {
-    const g = this.game, p = this.player, inv = p?.get(Inventory);
-    if (!p || !inv) return '';
-    const name = callName(r, this.people.opinions);
-    let text = '';
-    switch (act) {
-      case 'spare':
-        this.people.opinions.add(r.p.id, r.p.name, 'spared me', 15, g.time, 30, false);
-        this.strife.flee(r, g, false);
-        text = `You let ${name} go, and ${r.p.female ? 'she' : 'he'} makes off.`;
-        break;
-      case 'rob': {
-        const got = plunder(r);
-        const theirs = r.actor.get(Inventory)!;
-        let left = 0;
-        for (const it of got.items) {
-          theirs.drop(it.uid);
-          it.loc = undefined;
-          if (inv.stow(it)) {
-            g.ground.put(g.px, g.py, [it]);
-            left++;
-          }
-        }
-        inv.earn(got.copper);
-        theirs.d.copper = 0;
-        g.time += 60;
-        text = `You go through ${name}'s things, and take ${got.items.length ? `${got.items.length} thing${got.items.length === 1 ? '' : 's'}` : 'nothing much'}${got.copper ? ` and ${got.copper} copper` : ''}${left ? ' (what you cannot carry you leave on the ground)' : ''}.`;
-        this.people.opinions.add(r.p.id, r.p.name, 'robbed me', -50, g.time, 90, false);
-        if (r.p.template !== 'bandit') this.crime('theft', r, got.copper + got.items.length * 10);
-        break;
-      }
-      case 'bind': {
-        const rope = inv.d.items.find((i) => i.def === 'rope');
-        if (!rope) return 'You have no rope.';
-        usePortion(inv, rope);
-        r.fight = null;
-        r.plight = 'bound';
-        r.plightAt = g.time;
-        r.where = 'bound';
-        g.time += 60;
-        text = `You bind ${name} hand and foot.`;
-        if (r.p.template !== 'bandit') this.crime('assault', r);
-        break;
-      }
-      case 'tend': {
-        const h = healthOf(r, g.time);
-        const w = [...h.d.wounds].sort((x, y) => h.bleedOf(y) - h.bleedOf(x))[0];
-        if (!w) return 'They have no wounds to tend.';
-        const how = (['bandage', 'clean', 'splint', 'stitch'] as Treat[]).find((t) => !unsuited(w, t)) ?? 'bandage';
-        const res = treat(p, r.actor, w, how, g.time, this.waterBeside());
-        g.time += res.seconds;
-        text = res.text.replace(/\byour\b/g, 'the').replace(/^You (\w+) the/, `You $1 ${name}'s`);
-        if (res.ok) this.people.opinions.add(r.p.id, r.p.name, 'tended my wounds', 20, g.time, 30);
-        break;
-      }
-      case 'kill':
-        healthOf(r, g.time).die(`killed by the wanderer as ${r.p.female ? 'she' : 'he'} lay helpless`);
-        r.harmedBy = 'player';
-        g.time += 5;
-        this.personDied(r, `You kill ${name} where ${r.p.female ? 'she' : 'he'} lies.`);
-        if (r.p.template === 'bandit' && this.witnesses(r).length) this.law.deed(this.settlement(), 'killed a prisoner', -8, g.time);
-        return `You kill ${name}.`;
-      case 'hand': {
-        this.people.kill(r);
-        this.law.deed(this.settlement(), 'gave a robber to the watch', 10, g.time);
-        const reward = 50;
-        inv.earn(reward);
-        text = `The watch take ${name} away, and pay you ${reward} copper for your trouble.`;
-        break;
-      }
-    }
-    g.say(text);
-    this.practice.flush();
-    g.refresh();
-    return text;
-  }
-
-  // ---- The law (world/law.ts) ---------------------------------------------------------------------
-
-  /** The settlement the wanderer is in (any village, town or city), or null in the wilds. */
-  settlement(): { id: string; name: string } | null {
-    const s = this.game.hud.settlement;
-    return s ? { id: s.id, name: s.name } : null;
-  }
-
-  /** How harsh the law is here: by the people most of the residents about belong to. */
-  harshness(): number {
-    const n = new Map<number, number>();
-    for (const r of this.people.all()) if (r.p.template !== 'bandit') n.set(r.p.culture, (n.get(r.p.culture) ?? 0) + 1);
-    const main = [...n].sort((a, b) => b[1] - a[1])[0]?.[0];
-    return harshness(main);
-  }
-
-  /** Those who see a person (awake, on the same floor, near, with a clear line to them): witnesses to what is done to them. */
-  witnesses(r: Resident): Resident[] {
-    const out: Resident[] = [];
-    for (const w of this.people.all()) {
-      if (w === r || w.z !== r.z || w.where === 'asleep' || w.plight === 'down' || w.plight === 'bound' || w.p.template === 'bandit') continue;
-      const d = Math.max(Math.abs(w.x - r.x), Math.abs(w.y - r.y));
-      if (d > 14) continue;
-      if (this.clearLine(w, r, r.z)) out.push(w);
-    }
-    return out;
-  }
-
-  /** Whether nothing that blocks sight lies between two tiles on a floor. */
-  private clearLine(a: { x: number; y: number }, b: { x: number; y: number }, z: number | null): boolean {
-    const n = Math.max(Math.abs(b.x - a.x), Math.abs(b.y - a.y));
-    for (let i = 1; i < n; i++) {
-      const x = Math.round(a.x + ((b.x - a.x) * i) / n), y = Math.round(a.y + ((b.y - a.y) * i) / n);
-      if (!this.game.map.transparentAt(x, y, z)) return false;
-    }
-    return true;
-  }
-
-  /** One of the watch near a person (to hand a prisoner to, or to come at a cry). */
-  private watchNear(r: Resident, d = 25): Resident | null {
-    let best: Resident | null = null, bd = Infinity;
-    for (const w of this.people.all()) {
-      if (!isWatch(w) || w.fight || w.plight || w.where === 'asleep' || w.z !== r.z) continue;
-      const dd = Math.max(Math.abs(w.x - r.x), Math.abs(w.y - r.y));
-      if (dd <= d && dd < bd) {
-        bd = dd;
-        best = w;
-      }
-    }
-    return best;
-  }
-
-  /**
-   * A crime against a person (world/law.ts): those who see it (and the victim, if they live to tell
-   * it) think the worse of the wanderer and cry out; the watch near come to arrest them; the
-   * settlement records it, and the wanderer is wanted there.
-   */
-  crime(kind: CrimeKind, victim: Resident, value?: number): void {
-    const g = this.game, place = this.settlement();
-    const seen = this.witnesses(victim);
-    const victimTells = !healthOf(victim, g.time).dead;
-    for (const w of seen) this.people.opinions.add(w.p.id, w.p.name, `saw you commit ${CRIME_WORDS[kind]}`, kind === 'murder' ? -50 : -25, g.time, 60, false);
-    // Those who saw it come to the victim's aid, or scatter crying for the watch (world/strife.ts).
-    const inv = this.player?.get(Inventory);
-    if (kind !== 'theft') this.strife.witnessed(seen, victim, g, !!(inv && armsOf(inv).weapon));
-    const count = seen.length + (victimTells ? 1 : 0);
-    if (!place) return;
-    if (!this.law.crime(place, kind, victim.p.name, count, g.time, value)) return;
-    if (seen.length || victimTells) this.callWatch(victim, kind === 'murder' ? 4 : 2);
-  }
-
-  /** The watch sent for from their post, on their way (none: none sent for). */
-  private watchComing: { at: number; n: number; place: { id: string; name: string } } | null = null;
-  private watchSent = 0;
-
-  /**
-   * The watch sent for arrive: set down out of sight, from the way they come, and make for the
-   * wanderer. In a town or city a patrol of the watch (a sergeant leading); in a village, the
-   * reeve's men. They are of the settlement's people, armed and dressed by their trade.
-   */
-  private watchArrives(): void {
-    const c = this.watchComing, g = this.game;
-    if (!c || g.time < c.at || this.state.mode !== 'local') return;
-    this.watchComing = null;
-    const place = this.settlement();
-    if (!place || place.id !== c.place.id || !this.law.wanted(place.id) || this.state.dead) return;
-    const locals = [...this.people.all()].filter((r) => r.p.template !== 'bandit');
-    const like = locals[Math.floor(g.dice.random() * locals.length)]?.p;
-    if (!like) return;
-    const village = this.game.hud.settlement?.tier === 'village';
-    const go = (names: string[]) => {
-      let came = 0;
-      for (let i = 0; i < c.n; i++) {
-        const nm = names[i] ?? `${like.given}`;
-        const look = locals[Math.floor(g.dice.random() * locals.length)]?.p.look ?? like.look;
-        const id = `watch:${place.id}:${++this.watchSent}:${Math.floor(g.time)}`;
-        const trade = village ? (i ? 'bailiff' : 'reeve') : i ? 'guard' : 'sergeant';
-        const p: PlacedPerson = {
-          ...like, id, name: nm, given: nm.split(' ')[0], female: false, age: 22 + Math.floor(g.dice.random() * 20), trade, role: 'head', traits: [],
-          means: 'middling', household: `the watch of ${place.name}`, homeId: `watch:${place.id}`, homeName: `the watch-house of ${place.name}`, ties: [], template: 'guard', day: 0,
-          plan: [{ from: 0, to: 24, act: 'work', place: 'out', at: null }], home: { x: g.px, y: g.py, z: null }, at: null, facing: 's',
-          look: { ...look, hairStyle: 'short', cloth: like.look.cloth },
-        };
-        const r = this.people.summon(p, g, { x: g.px, y: g.py, z: g.z }, 22, 40, () => g.dice.random());
-        if (!r) continue;
-        this.strife.start(r, 'arrest', 'player', g.time);
-        came++;
-      }
-      if (came) g.say(village ? 'Shouts nearby: the reeve and his men are coming.' : 'A whistle shrills, and boots ring on the stones: the watch are coming.');
-    };
-    const ask = this.world.names;
-    if (ask) background(ask(like.culture, `${place.id}#watch#${this.watchSent}`, c.n).then((n) => go(n.male.map((x) => x.full))).catch(() => go([])), 'the watch');
-    else go([]);
-  }
-
-  /**
-   * The watch come at a cry: up to so many of those about set out to arrest the wanderer; if there
-   * are too few, more are sent for from their post, and come in a few minutes (a village's men take
-   * longer). Those already fighting the wanderer count.
-   */
-  private callWatch(at: Resident, n: number): void {
-    const g = this.game;
-    const already = [...this.people.all()].filter((w) => isWatch(w) && w.fight?.foe === 'player').length;
-    // Those of the watch about who hear the cry (within a long street's reach); the rest are sent for.
-    const watch = [...this.people.all()].filter((w) => isWatch(w) && !w.fight && !w.plight && w.where !== 'asleep' && w.z === g.z && Math.max(Math.abs(w.x - at.x), Math.abs(w.y - at.y)) <= 50);
-    watch.sort((a, b) => Math.max(Math.abs(a.x - at.x), Math.abs(a.y - at.y)) - Math.max(Math.abs(b.x - at.x), Math.abs(b.y - at.y)));
-    const go = watch.slice(0, Math.max(0, n - already));
-    for (const w of go) this.strife.start(w, 'arrest', 'player', g.time);
-    if (go.length && g.isVisible(go[0].x, go[0].y)) g.say(`${cap(callName(go[0], this.people.opinions))} shouts and comes running.`);
-    // More are sent for only when none of the watch is yet at the wanderer.
-    const short = already ? 0 : n - go.length, place = this.settlement();
-    if (short > 0 && place && !this.watchComing) {
-      const village = g.hud.settlement?.tier === 'village';
-      this.watchComing = { at: g.time + (village ? 180 : 60) + g.dice.random() * (village ? 300 : 90), n: Math.min(short, village ? 2 : 3), place };
-    }
-  }
-
-  /** The watch see a wanted wanderer: they may know them, and come to arrest them. */
-  private recognise(): void {
-    const g = this.game, place = this.settlement();
-    if (!place || !this.law.wanted(place.id) || this.state.dead) return;
-    const slot = Math.floor(g.time / 30);
-    if (slot === this.lastLook) return;
-    this.lastLook = slot;
-    for (const w of this.people.all()) {
-      if (!isWatch(w) || w.fight || w.plight || w.where === 'asleep' || w.z !== g.z) continue;
-      const d = Math.max(Math.abs(w.x - g.px), Math.abs(w.y - g.py));
-      if (d > 10 || !g.isVisible(w.x, w.y)) continue;
-      const roll = (hashString(`${w.p.id}#know#${slot}`) % 100) / 100;
-      if (roll < 0.25) {
-        g.say(`"That is the one!" ${callName(w, this.people.opinions)} cries, and comes for you.`);
-        this.callWatch(w, 3);
-        return;
-      }
-    }
-  }
-  private lastLook = -1;
-
-  /**
-   * Arrested (the wanderer has yielded to the watch, or been beaten down by them): taken before the
-   * law and sentenced for every crime not yet answered for in this settlement (world/law.ts): the
-   * fine from the purse (days in the cells for what cannot be paid), days in the cells, the stocks,
-   * the brand, or the rope.
-   */
-  arrest(by: Resident): void {
-    const g = this.game, p = this.player, place = this.settlement(), inv = p?.get(Inventory), n = this.needs(), h = this.health();
-    if (!p || !inv || this.state.dead) return;
-    // Every fight with the wanderer ends: they are in the hands of the law.
-    for (const r of this.people.everyone()) if (r.fight?.foe === 'player') this.people.release(r);
-    this.state.yielded = false;
-    const name = callName(by, this.people.opinions);
-    g.say(`${cap(name)} takes you by the arm. You are under arrest.`);
-    if (!place) {
-      g.say('There is no court here: you are let go with a warning.');
-      return;
-    }
-    const harsh = this.harshness();
-    const s = this.law.sentence(place.id, harsh);
-    const lines: string[] = [];
-    if (!s.for) lines.push(`Before the magistrate of ${place.name}, there is nothing on the record against you: you are let go.`);
-    else lines.push(`You are brought before the magistrate of ${place.name}, charged with ${s.for}.`);
-    if (s.hang) {
-      g.say(lines[0]);
-      g.say('You are found guilty, and sentenced to hang. At dawn, it is done.');
-      g.time = Math.ceil(g.time / 86400) * 86400 + 6 * 3600;
-      h?.die(`hanged for murder in ${place.name}`);
-      g.updateHud();
-      return;
-    }
-    let days = s.days;
-    if (s.fine) {
-      const paid = Law.pay(s.fine, inv.d.copper);
-      inv.d.copper -= paid.paid;
-      days += paid.days;
-      lines.push(paid.days ? `You are fined ${s.fine} copper, and can pay only ${paid.paid}: ${paid.days} more day${paid.days === 1 ? '' : 's'} in the cells.` : `You are fined ${s.fine} copper, and pay it.`);
-    }
-    if (days) lines.push(`You are held ${days} day${days === 1 ? '' : 's'} in the cells, on bread and water.`);
-    if (s.stocks) lines.push('You are put in the stocks for a day, to be jeered at and pelted with filth.');
-    if (s.brand) lines.push('You are branded on the hand, a thief\'s mark for all to see.');
-    for (const l of lines) g.say(l);
-    // The days pass: fed on bread and water, rested on straw.
-    this.travel.stop();
-    for (let d = 0; d < days + (s.stocks ? 1 : 0); d++) {
-      for (let hr = 0; hr < 24; hr++) {
-        g.time += 3600;
-        g.activity = hr < 9 ? 'sleep' : 'rest';
-        if (hr === 8 || hr === 18) {
-          n?.eat(600, 0.6);
-        }
-        g.updateHud();
-        if (this.state.dead) return;
-      }
-    }
-    if (s.stocks) {
-      this.player?.get(Mood)?.add({ id: 'stocks', text: 'Shamed in the stocks', value: -10, until: g.time + 5 * 86400 });
-      n?.stain(40);
-      this.law.deed(place, 'put in the stocks', -5, g.time);
-    }
-    if (s.brand) {
-      h?.hurt({ kind: 'burn', sev: 3, part: 'hand.r', cause: 'the branding iron', now: g.time });
-      p.get(Body)?.d.wounds.push({ part: 'hand', kind: 'burn', severity: 3, scar: `a thief's brand on the hand, from ${place.name}` });
-    }
-    this.law.served(place.id);
-    g.say(days ? 'At last you are let out, and told to mind yourself.' : 'You are let go, and told to mind yourself.');
-    g.refresh();
-  }
-
-  /** A robber stands over the yielded or fallen wanderer: they take the purse and what is worth taking. */
-  private robbed(r: Resident): void {
-    const g = this.game, inv = this.player?.get(Inventory);
-    if (!inv) return;
-    const theirs = r.actor.get(Inventory);
-    const copper = inv.d.copper;
-    inv.d.copper = 0;
-    theirs?.earn(copper);
-    // Rings and fine things, and the best weapon.
-    const taken: Item[] = [];
-    for (const it of [...inv.d.items]) {
-      const d = defOf(it);
-      if (d.wear?.jewel || (d.melee && !taken.some((x) => defOf(x).melee) && it.loc?.at === 'hand')) {
-        const tree = inv.drop(it.uid);
-        for (const t of tree) {
-          t.loc = undefined;
-          if (!theirs || theirs.stow(t)) g.ground.put(r.x, r.y, [t]);
-        }
-        taken.push(it);
-      }
-    }
-    this.state.yielded = false;
-    g.say(`${cap(callName(r, this.people.opinions))} takes ${copper ? `your purse (${copper} copper)` : 'your empty purse'}${taken.length ? ` and your ${taken.map((x) => itemName(x)).join(' and ')}` : ''}, and makes off.`);
-    this.player?.get(Mood)?.add({ id: 'robbed', text: 'Robbed on the road', value: -8, until: g.time + 3 * 86400 });
-    // One who fought them, or now and then anyone, gets a beating for it.
-    const h = this.health();
-    if (h && (r.harmedBy === 'player' || g.dice.random() < 0.25)) {
-      for (let i = 0; i < 2 + Math.floor(g.dice.random() * 2); i++) h.hurt({ kind: 'bruise', sev: 1.5 + g.dice.random() * 2.5, part: g.dice.random() < 0.6 ? 'torso' : 'head', cause: 'a robber\'s boots', now: g.time });
-      g.say(`${cap(callName(r, this.people.opinions))} puts the boot in before going, for good measure.`);
-    }
-  }
-
-  // ---- Robbers on the road --------------------------------------------------------------------
-
-  /** Bands passed this week (once a band's cell is crossed, it is not met again that week). */
-  private bandsPassed = new Set<string>();
-
-  /**
-   * A step of a journey through a band cell where robbers camp this week (worker/bandits.ts): they
-   * may spring on the wanderer (more likely on a road, where they watch). The journey stops, and
-   * the wanderer is set down on the local map with the band about them.
-   */
-  private roadside(st: RouteStep): void {
-    const p = st.banditry ?? 0;
-    if (p <= 0 || this.state.dead) return;
-    const g = this.game, [bx, by] = bandCell(st.cx, st.cy), week = Math.floor(g.time / (7 * 86400)), id = bandId(bx, by, week);
-    if (this.bandsPassed.has(id)) return;
-    this.bandsPassed.add(id);
-    if (this.bandsPassed.size > 400) this.bandsPassed.clear();
-    if (!bandRoll(this.o.settings.seed, bx, by, week, p).here) return;
-    const meet = st.way === 'road' ? 0.15 : st.way === 'track' ? 0.1 : 0.06;
-    if (g.dice.random() >= meet) return;
-    this.travel.stop();
-    setTimeout(() => this.ambushed(id, [bx, by]), 0);
-  }
-
-  private ambushed(id: string, cell: [number, number]): void {
-    if (this.state.mode !== 'travel' || this.state.dead) return;
-    this.game.say('Figures rise from the cover beside the way: you are set upon!');
-    this.strife.ambush = { band: id, until: this.game.time + 600 };
-    this.people.ambushAt = cell;
-    this.toLocal();
-    this.people.ambushAt = null;
   }
 
   /** The wanderer's health (actors/health.ts). */
@@ -1748,7 +957,7 @@ export class PlaySession {
     const n = this.needs(), game = this.game;
     this.travel.stop();
     this.alarm = false;
-    this.woken = false;
+    this.fights.woken = false;
     game.say(o.awake ? 'You sit and rest.' : 'You lie down to sleep.');
     // Sleeping rough, Survival makes a better or worse bed of it.
     if (!o.awake && quality < 1) quality = this.practice.roughSleep(quality);
@@ -1936,7 +1145,7 @@ export class PlaySession {
     }
     const met = ops.knows(r.p.id);
     // What they think of the wanderer: their own regard, and half their town's (world/law.ts).
-    const place = this.settlement();
+    const place = this.justice.settlement();
     const opinion = ops.of(r.p.id, t) + (place && r.p.template !== 'bandit' ? this.law.standing(place.id, t) * 0.5 : 0);
     r.facing = dx > 0 ? 'w' : dx < 0 ? 'e' : dy > 0 ? 'n' : 's';
     // The watch know a wanted face when it speaks to them.

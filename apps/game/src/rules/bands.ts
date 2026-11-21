@@ -1,5 +1,5 @@
 /**
- * Where robber bands camp (worker/bandits.ts places them; game/session.ts meets them on the road):
+ * Where robber bands camp (worker/bandits.ts places them; game/justice.ts meets them on the road):
  * the country in band cells, and whether a cell holds a band in a week, by its banditry.
  */
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';

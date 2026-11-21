@@ -17,9 +17,9 @@ import { Needs } from '../src/actors/needs';
 import { Health } from '../src/actors/health';
 import { MessageDispatcher } from '../src/engine/messages';
 import { Cast } from '../src/actors/cast';
-import type { Target } from '../src/game/combat';
-import { fire, fletch, inTheWay, lineOfFire, missilesOf, readyLauncher, shotChance, thrownOf, type FireWorld } from '../src/game/ranged';
-import { fightOf, planOf } from '../src/world/beasts';
+import type { Target } from '../src/rules/combat';
+import { fire, fletch, inTheWay, lineOfFire, missilesOf, readyLauncher, shotChance, thrownOf, type FireWorld } from '../src/rules/ranged';
+import { fightOf, planOf } from '../src/rules/beasts';
 
 let failures = 0;
 const ok = (cond: boolean, what: string) => {

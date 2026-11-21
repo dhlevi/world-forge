@@ -5,7 +5,7 @@
  */
 import type { Actor } from '../actors/actor';
 import { check, DC, type Grade } from '../actors/checks';
-import type { Moodlet } from '../actors/components';
+import type { Moodlet } from '../actors/components/index';
 import { SKILL } from '../actors/data/skills';
 import { ITEM } from '../actors/items/defs';
 import type { Inventory } from '../actors/items/inventory';

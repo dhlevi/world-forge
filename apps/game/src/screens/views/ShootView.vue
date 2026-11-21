@@ -17,7 +17,7 @@ const view = computed(() => {
   const shot = screen.shot();
   const g = screen.play.session.game;
   return {
-    lines: screen.play.session.foeLines(b),
+    lines: screen.play.session.fights.foeLines(b),
     dist: Math.max(Math.abs(foeXY(b).x - g.px), Math.abs(foeXY(b).y - g.py)),
     shot,
     m,
@@ -37,7 +37,7 @@ const view = computed(() => {
     </header>
     <div v-if="view" class="body">
       <div class="row targets">
-        <button v-for="(t, i) in screen.targets.slice(0, 8)" :key="foeId(t)" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null; st.rev++">{{ screen.play.session.foeName(t) }}</button>
+        <button v-for="(t, i) in screen.targets.slice(0, 8)" :key="foeId(t)" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null; st.rev++">{{ screen.play.session.fights.foeName(t) }}</button>
         <span v-if="screen.targets.length > 1" class="dim">(Tab)</span>
       </div>
       <p class="dim">{{ view.lines.join(' ') }} {{ view.dist }} tiles off.</p>

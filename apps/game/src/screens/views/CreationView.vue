@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cap } from '../../util';
 /**
  * Character creation: the steps down the left, the step in the middle, and the character as it
  * stands on the right. Everything shown is worked out from the screen's choices.
@@ -52,7 +53,6 @@ const worlds = computed(() => {
 const homes = computed(() => app.state.starts.filter((s) => s.cultureIndex === ch.value.culture).slice(0, 80));
 const options = computed(() => (res.value ? trackOptions(res.value) : []));
 const names = computed(() => (ch.value.female ? screen.names.value?.female : screen.names.value?.male)?.slice(0, 8) ?? []);
-const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const a = (w: string) => (/^[aeiou]/i.test(w) ? `an ${w}` : `a ${w}`);
 
 function cardEffect(p: Position, id: string, reversed: boolean): string {

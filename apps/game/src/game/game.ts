@@ -16,6 +16,8 @@ import { bearing, compassWord, Dice } from '../util';
 import { levelWords, overGround, stepBetween } from './levels';
 import { treeAt, treeWords } from './trees';
 import type { FigureSpec } from '@worldforge/core/local/figures';
+import { STAIRS_DOWN, STAIRS_UP } from '../world/paths';
+
 
 /** Seconds an action takes. */
 export const STEP_S = 1.2;
@@ -57,13 +59,6 @@ export interface Hud {
 }
 
 const vkey = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);
-/**
- * Ways up and down, by the way they lead: stairs and ladders, and the ways down into caves,
- * dungeons and sewers from the surface. A way up always meets a way down at the same tile above
- * (local/under.ts), however many levels lie between.
- */
-export const STAIRS_UP = new Set(['stairs_up', 'ladder_up', 'stairs_spiral']);
-export const STAIRS_DOWN = new Set(['stairs_down', 'ladder_down', 'stairs_spiral', 'dungeon_entrance', 'mine_entrance', 'cave_mouth', 'grate', 'well']);
 /** Ways in from the land, pointed out when first seen (and marked on the map). */
 export const WAYS_IN = new Set(['dungeon_entrance', 'mine_entrance', 'cave_mouth']);
 /** How far up or down (levels) a way may lead. */

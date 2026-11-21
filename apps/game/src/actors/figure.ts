@@ -8,11 +8,11 @@
  */
 import { FIGURE_KINDS, WEAR_SHAPE, WEAR_SLOTS, type BeardStyle, type FigureKind, type FigureSpec, type HairStyle } from '@worldforge/core/local/figures';
 import type { Facing } from '@worldforge/core/local/tiles';
-import type { Actor } from '../actors/actor';
-import { Body, Identity } from '../actors/components';
-import { Inventory } from '../actors/items/inventory';
-import { defOf } from '../actors/items/item';
-import { LAYERS } from '../actors/items/defs';
+import type { Actor } from './actor';
+import { Body, Identity } from './components/index';
+import { Inventory } from './items/inventory';
+import { defOf } from './items/item';
+import { LAYERS } from './items/defs';
 
 const KINDS = new Set<string>(FIGURE_KINDS.map((k) => k.name));
 const HAIRS = new Set(['short', 'long', 'braids', 'topknot', 'shaved', 'bald', 'crest', 'bun', 'curly', 'tied', 'loose']);

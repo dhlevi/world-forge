@@ -14,7 +14,7 @@ import { Health } from '../src/actors/health';
 import { bodyMods } from '../src/actors/checks';
 import { MessageDispatcher } from '../src/engine/messages';
 import { Cast } from '../src/actors/cast';
-import { clearBrush, eatPortion } from '../src/game/tasks';
+import { clearBrush, eatPortion } from '../src/rules/tasks';
 
 let failures = 0;
 const ok = (cond: boolean, what: string) => {

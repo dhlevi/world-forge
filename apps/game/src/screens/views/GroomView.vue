@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cap } from '../../util';
 /** Grooming: the wanderer's portrait as they are, how hair and beard are worn, and the ways they could be. */
 import { computed } from 'vue';
 import type { GroomScreen } from '../groom';
@@ -23,7 +24,6 @@ const view = computed(() => {
     beards: screen.options('beard'),
   };
 });
-const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 </script>
 
 <template>

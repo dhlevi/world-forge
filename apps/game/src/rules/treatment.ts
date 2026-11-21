@@ -16,7 +16,7 @@
  */
 import type { Actor } from '../actors/actor';
 import { check, DC, type Grade, type Mod } from '../actors/checks';
-import { PART } from '../actors/components';
+import { PART } from '../actors/components/index';
 import { Health, splintable, woundWords, type HealthWound } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
 import type { Item } from '../actors/items/item';

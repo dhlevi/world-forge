@@ -13,7 +13,7 @@
  * Proposed numbers, to tune in play.
  */
 import type { AnimalSize, BodyPlan, Species } from '@worldforge/core/local/fauna';
-import type { PlanId } from '../actors/components';
+import type { PlanId } from '../actors/components/index';
 import type { WoundKind } from '../actors/health';
 
 /** A natural weapon: how it wounds, how badly (severity points), how long a blow takes, how deep it goes. */

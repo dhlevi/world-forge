@@ -9,7 +9,7 @@ const st = screen.state;
 const s = screen.play.session;
 const view = computed(() => {
   void st.rev;
-  return { name: s.foeName({ kind: 'person', r: screen.r }), lines: s.foeLines({ kind: 'person', r: screen.r }), options: screen.options() };
+  return { name: s.fights.foeName({ kind: 'person', r: screen.r }), lines: s.fights.foeLines({ kind: 'person', r: screen.r }), options: screen.options() };
 });
 </script>
 

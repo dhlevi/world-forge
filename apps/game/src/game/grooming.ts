@@ -11,7 +11,7 @@ import type { Actor } from '../actors/actor';
 import { BEARD_GROWTH, Body, HAIR_GROWTH, type GrowthDef } from '../actors/components';
 import { Health } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
-import { usePortion } from './tasks';
+import { usePortion } from '../rules/tasks';
 
 /** Each way of wearing the hair and the beard: what to call choosing it, and the doing of it in words. */
 const HAIR_WAYS: Record<string, [string, string]> = {

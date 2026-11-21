@@ -9,7 +9,7 @@ import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
 import type { Foe } from '../game/foes';
 import { foeXY } from '../game/foes';
-import type { Missile } from '../game/ranged';
+import type { Missile } from '../rules/ranged';
 import ShootView from './views/ShootView.vue';
 
 export class ShootScreen extends Screen {
@@ -20,7 +20,7 @@ export class ShootScreen extends Screen {
 
   constructor(readonly play: PlayScreen, readonly targets: Foe[]) {
     super();
-    this.missiles = play.session.missiles();
+    this.missiles = play.session.fights.missiles();
     // The best way to shoot first: a bow with arrows before a thrown stone.
     this.state.missile = Math.max(0, this.missiles.findIndex((m) => m.how === 'shoot'));
   }
@@ -50,20 +50,20 @@ export class ShootScreen extends Screen {
 
   aims(): { id: string | null; name: string; mod: number }[] {
     const b = this.beast;
-    return b ? [{ id: null, name: 'Anywhere', mod: 0 }, ...this.play.session.aimsAt(b).sort((x, y) => y.mod - x.mod)] : [];
+    return b ? [{ id: null, name: 'Anywhere', mod: 0 }, ...this.play.session.fights.aimsAt(b).sort((x, y) => y.mod - x.mod)] : [];
   }
 
   /** The chance now, with the range and what is in the way. */
   shot() {
     const b = this.beast, m = this.missile;
-    return b && m ? this.play.session.shotAt(b, m, this.state.aim) : null;
+    return b && m ? this.play.session.fights.shotAt(b, m, this.state.aim) : null;
   }
 
   fire(): void {
     const b = this.beast, m = this.missile;
     if (!b || !m) return;
     this.close();
-    this.play.session.shoot(b, m, this.state.aim);
+    this.play.session.fights.shoot(b, m, this.state.aim);
   }
 
   key(e: KeyboardEvent): boolean {

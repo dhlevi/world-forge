@@ -12,7 +12,7 @@ import { catalogue, cultureOf, regionAt } from '../src/worker/catalogue';
 import { quickStart } from '../src/actors/creation/random';
 import { resolve, buildActor, trackOptions } from '../src/actors/creation/resolve';
 import { Actor } from '../src/actors/actor';
-import { figureOf } from '../src/game/figure';
+import { figureOf } from '../src/actors/figure';
 import { FIGURE_KINDS, WEAR_SHAPE as SHAPE, WEAR_SHAPES, WEAR_SLOTS as SLOTS, figureLayers } from '@worldforge/core/local/figures';
 import { ITEMS } from '../src/actors/items/defs';
 const KINDS = new Set<string>(FIGURE_KINDS.map((k) => k.name));

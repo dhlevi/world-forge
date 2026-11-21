@@ -36,8 +36,9 @@ import type { AnimalGroup, Spot } from '../worker/protocol';
 import { heardLevel, takesTracks, type Noise, type Tracks } from './senses';
 import { Health, type HealthData } from '../actors/health';
 import type { Item } from '../actors/items/item';
-import { morale, type Stance } from '../game/combat';
-import { fightOf, planOf, type NaturalBlow } from './beasts';
+import { morale, type Stance } from '../rules/combat';
+import { fightOf, planOf, type NaturalBlow } from '../rules/beasts';
+import { cheb } from '../util';
 
 /** Within this many tiles of the wanderer, animals act. */
 export const ANIMAL_ACTIVE = 40;
@@ -153,7 +154,6 @@ export interface Herd {
 
 const key = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);
 const DIRS8: [number, number][] = [[0, -1], [1, 0], [0, 1], [-1, 0], [1, -1], [1, 1], [-1, 1], [-1, -1]];
-const cheb = (a: { x: number; y: number }, x: number, y: number) => Math.max(Math.abs(a.x - x), Math.abs(a.y - y));
 const facingOf = (dx: number, dy: number): Facing => (Math.abs(dx) > Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy < 0 ? 'n' : 's');
 
 export class Fauna {

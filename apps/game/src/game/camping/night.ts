@@ -3,7 +3,7 @@ import { Skills } from '../../actors/components';
 import { defOf, itemName, type Item } from '../../actors/items/item';
 import { Needs } from '../../actors/needs';
 import { type CampData } from '../camp';
-import { cookPortion, mendNeeds, mendThing } from '../tasks';
+import { cookPortion, mendNeeds, mendThing } from '../../rules/tasks';
 import { inv, notes, pass, type CampCtx } from './context';
 import { snareCatches } from './food';
 

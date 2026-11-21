@@ -18,8 +18,8 @@ import type { Inventory } from '../actors/items/inventory';
 import { makeItem, type Item } from '../actors/items/item';
 import { ITEM } from '../actors/items/defs';
 import { Needs } from '../actors/needs';
-import { BRUSH_TOOLS } from '../game/tasks';
-import { fightOf } from './beasts';
+import { BRUSH_TOOLS } from '../rules/tasks';
+import { fightOf } from '../rules/beasts';
 import type { Fauna, FaunaView } from './fauna';
 
 export interface Snare {

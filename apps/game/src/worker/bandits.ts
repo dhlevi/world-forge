@@ -6,7 +6,7 @@
  * The country is cut into band cells (three chunks square); each week each cell may hold a band,
  * with a chance from its danger (banditry(); world/bands.ts). The same world, cell and week always give the same
  * band in the same camp. They are met on foot in the bubble (world/strife.ts: they see the
- * wanderer and come to rob them), and as ambushes on the road (game/session.ts, from each route
+ * wanderer and come to rob them), and as ambushes on the road (game/justice.ts, from each route
  * step's danger).
  *
  * Proposed numbers, to tune in play.
@@ -14,13 +14,12 @@
 import type { GeneratedWorld } from '@worldforge/core/gen/world';
 import { CHUNK, TILE_M, type LocalWorld } from '@worldforge/core/local/chunk';
 import { townContext } from '@worldforge/core/people/town-context';
-import { LOOKS } from '@worldforge/core/people/appearance';
 import { CULTURES } from '@worldforge/core/names/cultures';
 import { personName } from '@worldforge/core/lore/names';
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
-import { BAND_CELL, bandId, bandRoll } from '../world/bands';
+import { BAND_CELL, bandId, bandRoll } from '../rules/bands';
 import { cultureOf } from './catalogue';
-import { cultureLook, openGround } from './people';
+import { lookFor, openGround } from './people';
 import type { PlacedPerson, PlanStop, Spot } from './protocol';
 
 /** The chance of a band in a cell in a week, at the usual danger. */
@@ -87,7 +86,7 @@ export function banditsIn(w: GeneratedWorld, local: LocalWorld, x: number, y: nu
     if (p <= 0) continue;
     const { here, r } = bandRoll(seed, bx, by, week, p);
     if (!here) continue;
-    // Lying in wait for the wanderer on the road (game/session.ts): they wait beside them, not at the camp.
+    // Lying in wait for the wanderer on the road (game/justice.ts): they wait beside them, not at the camp.
     const waiting = ambush && ambush[0] === bx && ambush[1] === by;
     const camp = waiting ? coverNear(local, x, y, r) : campIn(local, bx, by, r);
     if (!camp || (!waiting && Math.max(Math.abs(camp.x - x), Math.abs(camp.y - y)) > radius + 16)) continue;
@@ -145,12 +144,6 @@ function band(w: GeneratedWorld, local: LocalWorld, id: string, camp: Spot): Pla
 }
 
 function robber(seed: string, id: string, nm: { given: string; full: string }, female: boolean, age: number, ci: number, trade: string, household: string, homeId: string, at: Spot, r: () => number): PlacedPerson {
-  const lk = cultureLook(seed, ci);
-  const spec = LOOKS[CULTURES[ci]?.id ?? ''] ?? LOOKS.anglo;
-  const pick = <T>(xs: readonly T[], fb: T): T => (xs.length ? xs[Math.floor(r() * xs.length) % xs.length] : fb);
-  const skins = lk ? [...new Set(lk.figures.map((f) => f.skin[0]))] : [];
-  const hairs = lk ? [...new Set(lk.figures.map((f) => f.hair[0]).filter((c) => c !== '#00000000'))] : [];
-  const dull = spec.dull.map((c) => c[0]);
   // The day: sleeping at the camp by night, idling about it by day (and watching the road).
   const plan: PlanStop[] = [
     { from: 0, to: 6, act: 'sleep', place: 'bed', at },
@@ -160,6 +153,6 @@ function robber(seed: string, id: string, nm: { given: string; full: string }, f
   return {
     id, name: nm.full, given: nm.given, female, age, culture: ci, people: CULTURES[ci]?.people ?? 'unknown folk', trade, role: 'head', traits: r() < 0.3 ? ['Wrathful'] : [],
     means: 'poor', household, homeId, homeName: 'a robbers\' camp', ties: [], template: 'bandit', day: 0, plan, home: at, at, facing: 's',
-    look: { kind: lk?.kind ?? 'human', skin: pick(skins, spec.skin[0]?.[0] ?? '#d3a878'), hair: pick(hairs, spec.hair[0]?.[0] ?? '#45301f'), hairStyle: pick(female ? spec.hairF : spec.hairM, 'short'), beard: female ? 'none' : pick(spec.beard, 'none'), cloth: [pick(dull, '#6a5a46'), pick(dull, '#5a4a36'), pick(dull, '#4e5a3e')] },
+    look: lookFor(seed, ci, { female, age }, 'rough', r),
   };
 }

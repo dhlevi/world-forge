@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { cap } from '../../util';
 /**
  * The city view: the illustrated plan to pan (drag) and zoom (wheel), with the places of note
  * marked; the places by kind beside it, the chosen one's details, and the scene where the party
@@ -175,7 +176,6 @@ watch(screen.image, () => {
   redraw();
 });
 watch(() => [ui.selected, ui.at], () => redraw());
-const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 </script>
 
 <template>

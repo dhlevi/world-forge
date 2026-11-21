@@ -15,7 +15,7 @@ import type { FromWorker, StartSite, ToWorker, LocalSite, TravelArea } from './p
 import { catalogue, cultureOf, regionAt, resetCatalogue } from './catalogue';
 import { bubbleAt, forgetPeople, peopleIn } from './people';
 import { banditry, banditsIn } from './bandits';
-import { bandCell } from '../world/bands';
+import { bandCell } from '../rules/bands';
 import { animalsIn } from './fauna';
 import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo } from './sites';
 

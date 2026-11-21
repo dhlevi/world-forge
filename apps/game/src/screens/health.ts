@@ -8,7 +8,7 @@ import type { PlayScreen } from './play';
 import type { Actor } from '../actors/actor';
 import { Health } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
-import { materials, TREATS, TREAT_NAMES, unsuited, type Treat } from '../game/treatment';
+import { materials, TREATS, TREAT_NAMES, unsuited, type Treat } from '../rules/treatment';
 import HealthView from './views/HealthView.vue';
 
 export class HealthScreen extends Screen {

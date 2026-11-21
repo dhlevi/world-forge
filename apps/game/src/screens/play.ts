@@ -189,7 +189,7 @@ export class PlayScreen extends Screen {
 
   showShoot(): void {
     const s = this.session;
-    const targets = s.shootable(Math.max(4, ...s.missiles().map((m) => m.max)));
+    const targets = s.fights.shootable(Math.max(4, ...s.fights.missiles().map((m) => m.max)));
     if (!targets.length) {
       s.say('There is no beast in sight to shoot at.');
       return;
@@ -201,8 +201,8 @@ export class PlayScreen extends Screen {
     const s = this.session;
     // The reach of what is held, or of the best weapon carried (drawn when the blow is struck).
     const inv = this.player?.get(Inventory);
-    const reach = Math.max(1, ...(s.arms()?.blows.map((b) => b.reach) ?? [1]), ...(inv?.d.items.map((i) => defOf(i).melee?.reach ?? 1) ?? [1]));
-    const targets = s.inReach(reach);
+    const reach = Math.max(1, ...(s.fights.arms()?.blows.map((b) => b.reach) ?? [1]), ...(inv?.d.items.map((i) => defOf(i).melee?.reach ?? 1) ?? [1]));
+    const targets = s.fights.inReach(reach);
     if (!targets.length) {
       s.say(reach > 1 ? 'There is no beast within reach of your weapon.' : 'There is no beast beside you to strike.');
       return;

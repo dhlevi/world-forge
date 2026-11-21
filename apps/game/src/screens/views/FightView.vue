@@ -3,7 +3,7 @@
 import { computed } from 'vue';
 import type { FightScreen } from '../fight';
 import { foeId } from '../../game/foes';
-import { STANCES, STANCE_MODS } from '../../game/combat';
+import { STANCES, STANCE_MODS } from '../../rules/combat';
 
 const props = defineProps<{ screen: FightScreen }>();
 const screen = props.screen;
@@ -17,9 +17,9 @@ const view = computed(() => {
   const chosen = screen.blowId();
   const cur = blows.find((x) => x.blow.id === chosen);
   return {
-    name: screen.play.session.foeName(b),
-    drawn: screen.play.session.armsReady()?.drawn ?? null,
-    lines: screen.play.session.foeLines(b),
+    name: screen.play.session.fights.foeName(b),
+    drawn: screen.play.session.fights.armsReady()?.drawn ?? null,
+    lines: screen.play.session.fights.foeLines(b),
     aims: screen.aims(),
     blows,
     chosen,
@@ -39,7 +39,7 @@ const word = (c: number) => (c >= 80 ? 'very likely' : c >= 60 ? 'a good chance'
     </header>
     <div v-if="view" class="body">
       <div v-if="screen.targets.length > 1" class="row targets">
-        <button v-for="(t, i) in screen.targets" :key="foeId(t)" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null">{{ screen.play.session.foeName(t) }}</button>
+        <button v-for="(t, i) in screen.targets" :key="foeId(t)" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null">{{ screen.play.session.fights.foeName(t) }}</button>
         <span class="dim">(Tab)</span>
       </div>
       <p class="dim">{{ view.lines.join(' ') }}</p>

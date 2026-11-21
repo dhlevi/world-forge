@@ -78,7 +78,7 @@ function homeOf(w: GeneratedWorld, b: PlanBuilding): Home {
   return h;
 }
 
-export function cultureLook(seed: string, ci: number): Look | null {
+function cultureLook(seed: string, ci: number): Look | null {
   if (looks.has(ci)) return looks.get(ci)!;
   let lk: Look | null = null;
   try {
@@ -383,24 +383,8 @@ function outdoors(local: LocalWorld, b: PlanBuilding, r: () => number): Building
 
 /** A resident as the game gets them: who they are, their looks, where they stand. */
 function person(seed: string, id: string, p: Household['members'][number], h: Household, b: PlanBuilding, work: Work, kind: RKind, day: number, plan: PlanStop[], home: Spot, at: Spot | null, r: () => number): PlacedPerson {
-  const lr = mulberry32(hashString(`${seed}#looks#${id}`));
-  const pick = <T>(xs: readonly T[], fb: T): T => (xs.length ? xs[Math.floor(lr() * xs.length) % xs.length] : fb);
-  const lk = cultureLook(seed, p.culture);
-  const spec = LOOKS[CULTURES[p.culture]?.id ?? ''] ?? LOOKS.anglo;
-  const skins = lk ? [...new Set(lk.figures.map((f) => f.skin[0]))] : [];
-  const hairs = lk ? [...new Set(lk.figures.map((f) => f.hair[0]).filter((c) => c !== '#00000000'))] : [];
-  const skin = pick(skins, spec.skin[0]?.[0] ?? '#d3a878');
-  const hair = p.age > 55 ? (lr() < 0.5 ? '#9b9a96' : '#d8dde2') : pick(hairs, spec.hair[0]?.[0] ?? '#45301f');
-  const hairStyle = pick(p.female ? spec.hairF : spec.hairM, 'short');
-  const beard = p.female || p.age < 17 ? 'none' : pick(spec.beard, 'none');
-  // Cloth: dyed for those with the means, homespun for the rest.
   const rich = h.means === 'rich' || h.means === 'comfortable';
-  const cloth = (rich ? spec.bright : spec.dull).map((c) => c[0]);
-  const dull = spec.dull.map((c) => c[0]);
-  const outfit = lk?.figures[rich ? 1 : 0]?.outfit;
-  let head = outfit ? HEAD_SHAPE[outfit.head] : undefined;
-  if (head === 'veil' && !p.female) head = undefined;
-  if (p.age < 12 || lr() < 0.35) head = undefined;
+  const look = lookFor(seed, p.culture, p, rich ? 'fine' : 'plain', mulberry32(hashString(`${seed}#looks#${id}`)));
   const facings = ['n', 'e', 's', 'w'] as const;
   return {
     id, name: p.name, given: p.given, female: p.female, age: p.age, culture: p.culture, people: p.people, trade: p.trade, role: p.role, traits: [...p.traits],
@@ -408,10 +392,40 @@ function person(seed: string, id: string, p: Household['members'][number], h: Ho
     ...(typeof b.f.properties.label === 'string' ? { homeName: b.f.properties.label } : {}),
     ties: p.ties.map((t) => ({ kind: t.kind, text: t.text })),
     template: templateOf(p, work, kind), day, plan, home, at, facing: facings[Math.floor(r() * 4) % 4],
-    look: {
-      kind: lk?.kind ?? 'human', skin, hair, hairStyle, beard,
-      cloth: [pick(cloth, '#7a6a50'), pick(dull, '#6a5a46'), pick(dull, '#4e5a3e')],
-      ...(head ? { head } : {}),
-    },
+    look,
+  };
+}
+
+/**
+ * How a person of a people looks (every resident, robber and stranger the worker places): skin
+ * and hair from the people's figures, grey past 55, their hair and beard styles, their cloth (dyed
+ * for those with the means, homespun for the rest, and drab for the rough), and the people's
+ * headwear on some (never on the rough, who wear what they have). `lr` draws in a fixed order, so
+ * the same person always looks the same.
+ */
+export function lookFor(seed: string, ci: number, who: { female: boolean; age: number }, dress: 'fine' | 'plain' | 'rough', lr: () => number): PlacedPerson['look'] {
+  const pick = <T>(xs: readonly T[], fb: T): T => (xs.length ? xs[Math.floor(lr() * xs.length) % xs.length] : fb);
+  const lk = cultureLook(seed, ci);
+  const spec = LOOKS[CULTURES[ci]?.id ?? ''] ?? LOOKS.anglo;
+  const skins = lk ? [...new Set(lk.figures.map((f) => f.skin[0]))] : [];
+  const hairs = lk ? [...new Set(lk.figures.map((f) => f.hair[0]).filter((c) => c !== '#00000000'))] : [];
+  const skin = pick(skins, spec.skin[0]?.[0] ?? '#d3a878');
+  const hair = who.age > 55 ? (lr() < 0.5 ? '#9b9a96' : '#d8dde2') : pick(hairs, spec.hair[0]?.[0] ?? '#45301f');
+  const hairStyle = pick(who.female ? spec.hairF : spec.hairM, 'short');
+  const beard = who.female || who.age < 17 ? 'none' : pick(spec.beard, 'none');
+  const fine = dress === 'fine';
+  const cloth = (fine ? spec.bright : spec.dull).map((c) => c[0]);
+  const dull = spec.dull.map((c) => c[0]);
+  let head: string | undefined;
+  if (dress !== 'rough') {
+    const outfit = lk?.figures[fine ? 1 : 0]?.outfit;
+    head = outfit ? HEAD_SHAPE[outfit.head] : undefined;
+    if (head === 'veil' && !who.female) head = undefined;
+    if (who.age < 12 || lr() < 0.35) head = undefined;
+  }
+  return {
+    kind: lk?.kind ?? 'human', skin, hair, hairStyle, beard,
+    cloth: [pick(cloth, '#7a6a50'), pick(dull, '#6a5a46'), pick(dull, '#4e5a3e')],
+    ...(head ? { head } : {}),
   };
 }

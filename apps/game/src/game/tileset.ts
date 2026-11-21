@@ -9,7 +9,7 @@ import { DECOR, GROUND_TILES, OBJECT_TILES, TERRAINS, type DecorDef, type Facing
 import { figureFrameNames } from '@worldforge/core/local/figures';
 import { SPECIES_BY_ID, animalFrameNames } from '@worldforge/core/local/fauna';
 import { drawAnimal } from './animal-art';
-import { drawLayer } from './figure';
+import { drawLayer } from '../actors/figure';
 import { edgeInside } from './terrain';
 import { TREE_KINDS, type TreeKind } from '@worldforge/core/local/trees';
 import { ROOF_MATERIALS, ROOF_PLANES, type RoofMaterial, type RoofPlane } from '@worldforge/core/local/roofs';

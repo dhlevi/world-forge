@@ -14,8 +14,8 @@ import { Health } from '../actors/health';
 import { Body, Identity } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
 import { defOf, itemName, type Item } from '../actors/items/item';
-import { armourOn, armsOf, readyWeapon, type Target } from '../game/combat';
-import type { BeastFight, NaturalBlow } from './beasts';
+import { armourOn, armsOf, readyWeapon, type Target } from '../rules/combat';
+import type { BeastFight, NaturalBlow } from '../rules/beasts';
 import type { Resident } from './population';
 import type { Opinions } from './opinions';
 
@@ -50,7 +50,7 @@ export interface FolkFight {
   rescue?: string;
 }
 
-/** What the wanderer can do with a person at their mercy (game/session.ts). */
+/** What the wanderer can do with a person at their mercy (game/justice.ts). */
 export type Mercy = 'spare' | 'rob' | 'bind' | 'tend' | 'kill' | 'hand';
 
 /** How a person stands now, out of the ordinary run of their day. */

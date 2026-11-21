@@ -14,7 +14,7 @@ import { bodyMods } from '../src/actors/checks';
 import { MessageDispatcher } from '../src/engine/messages';
 import { Cast } from '../src/actors/cast';
 import { Inventory } from '../src/actors/items/inventory';
-import { treat, takeRemedy, unsuited } from '../src/game/treatment';
+import { treat, takeRemedy, unsuited } from '../src/rules/treatment';
 import { mulberry32 } from '@worldforge/core/gen/rng';
 
 let failures = 0;

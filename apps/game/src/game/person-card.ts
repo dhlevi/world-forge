@@ -10,6 +10,7 @@ import { defOf, itemName } from '../actors/items/item';
 import { opinionWords } from '../world/opinions';
 import { doingWords, type Population, type Resident } from '../world/population';
 import { portraitOf, portraitOfTie, type PortraitSpec } from './portrait';
+import { cap } from '../util';
 
 export interface PersonCard {
   name: string;
@@ -21,7 +22,6 @@ export interface PersonCard {
   sections: { label: string; lines: string[] }[];
 }
 
-const cap = (s: string) => (s ? s[0].toUpperCase() + s.slice(1) : s);
 const an = (w: string) => (/^[aeiou]/i.test(w) ? `an ${w}` : `a ${w}`);
 const BUILD = { ectomorph: 'lean', mesomorph: 'broad-shouldered', endomorph: 'heavy-set' };
 

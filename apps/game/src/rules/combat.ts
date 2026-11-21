@@ -22,14 +22,14 @@
  */
 import type { Actor } from '../actors/actor';
 import { check, chanceFor, DC, type Mod } from '../actors/checks';
-import { Skills, Traits, type BodyPartDef } from '../actors/components';
+import { Skills, Traits, type BodyPartDef } from '../actors/components/index';
 import { Health, outerPart, type HealthWound, type WoundKind } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
 import { defOf, itemName, type Item } from '../actors/items/item';
 import type { MeleeDef } from '../actors/items/defs';
 import type { AnimalSize } from '@worldforge/core/local/fauna';
-import type { BeastFight, NaturalBlow } from '../world/beasts';
-import { clamp } from '../util';
+import type { BeastFight, NaturalBlow } from './beasts';
+import { cap, clamp } from '../util';
 
 export type Stance = 'aggressive' | 'balanced' | 'defensive';
 export const STANCES: Stance[] = ['aggressive', 'balanced', 'defensive'];
@@ -172,7 +172,6 @@ const SIZE_MOD: Record<AnimalSize, number> = { tiny: -15, small: -5, medium: 0, 
 const pct = (x: number) => `${Math.round(x)}%`;
 const fmt = (x: number) => (Math.round(x * 10) / 10).toString();
 const possessive = (name: string) => `${name}'s`;
-const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
 
 /** The wanderer's chance with a blow at a target now (for the menu), and the modifiers behind it. */
 export function strikeChance(a: Actor, t: Target, blow: Blow, aim: string | null, stance: Stance, extra: Mod[] = []): { chance: number; mods: Mod[]; difficulty: number } {

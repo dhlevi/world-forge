@@ -9,8 +9,8 @@
  * (Cooking), and reading a book that teaches (actors/learning.ts).
  */
 import { butcher } from '../world/hunting';
-import { fletch, fletchingNeeds } from '../game/ranged';
-import { BRUSH_TOOLS } from '../game/tasks';
+import { fletch, fletchingNeeds } from '../rules/ranged';
+import { BRUSH_TOOLS } from '../rules/tasks';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
@@ -20,7 +20,7 @@ import { defOf, itemName, fitsSize, ownBulk, type Item } from '../actors/items/i
 import { storageAt } from '../game/ground';
 import InventoryView from './views/InventoryView.vue';
 import { Needs } from '../actors/needs';
-import { cookPortion, eatPortion, mendNeeds, mendThing } from '../game/tasks';
+import { cookPortion, eatPortion, mendNeeds, mendThing } from '../rules/tasks';
 import { Skills, type Moodlet } from '../actors/components';
 import { readBook } from '../actors/learning';
 import { SKILL } from '../actors/data/skills';

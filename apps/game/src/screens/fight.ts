@@ -7,7 +7,7 @@ import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
 import type { Foe } from '../game/foes';
-import { STANCES, type BlowId, type Stance } from '../game/combat';
+import { STANCES, type BlowId, type Stance } from '../rules/combat';
 import FightView from './views/FightView.vue';
 
 export class FightScreen extends Screen {
@@ -39,12 +39,12 @@ export class FightScreen extends Screen {
   aims(): { id: string | null; name: string; mod: number }[] {
     const b = this.beast;
     if (!b) return [];
-    return [{ id: null, name: 'Anywhere', mod: 0 }, ...this.play.session.aimsAt(b).sort((x, y) => y.mod - x.mod)];
+    return [{ id: null, name: 'Anywhere', mod: 0 }, ...this.play.session.fights.aimsAt(b).sort((x, y) => y.mod - x.mod)];
   }
 
   blows() {
     const b = this.beast;
-    return b ? this.play.session.blowChances(b, this.state.aim, this.state.stance) : [];
+    return b ? this.play.session.fights.blowChances(b, this.state.aim, this.state.stance) : [];
   }
 
   /** The blow chosen (or the first that reaches). */
@@ -56,14 +56,14 @@ export class FightScreen extends Screen {
   /** The wanderer yields (to robbers, or the law). */
   yieldUp(): void {
     this.close();
-    this.play.session.yieldUp();
+    this.play.session.fights.yieldUp();
   }
 
   strike(): void {
     const b = this.beast;
     if (!b) return;
     this.close();
-    this.play.session.attack(b, { blow: this.blowId(), aim: this.state.aim, stance: this.state.stance });
+    this.play.session.fights.attack(b, { blow: this.blowId(), aim: this.state.aim, stance: this.state.stance });
   }
 
   /** Keeps these as the standing aim, blow and stance. */

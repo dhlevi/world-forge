@@ -26,6 +26,7 @@ import { TRACK, TRACKS, type TrackCtx, type TrackDef, type TrackId } from '../da
 import { CARD, type FateCard, type Position } from '../data/cards';
 import { pickEvent, SCAR_PARTS, WOUND_ANY, WOUND_HOW, type TermEventKind } from './events';
 import type { Catalogue, CultureInfo, PersonName, RealmInfo, StartSite, WarInfo } from '../../worker/protocol';
+import { pickOf } from '../../util';
 
 export interface CardDraw {
   position: Position;
@@ -134,7 +135,6 @@ export interface Resolved {
 }
 
 const rngOf = (seed: string, tag: string) => mulberry32(hashString(`${seed}|${tag}`));
-const pick = <T>(r: () => number, a: readonly T[]): T => a[Math.floor(r() * a.length) % a.length];
 const between = (r: () => number, lo: number, hi: number) => Math.round(lo + r() * (hi - lo));
 const clampT = (v: number) => Math.max(1, Math.min(20, v));
 const a = (word: string) => (/^[aeiou]/i.test(word) ? `an ${word}` : `a ${word}`);
@@ -233,9 +233,9 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
   const standing = STANDING.get(ch.standing)!;
   const fallen = !!birth?.draw.reversed;
   const tradeByName = (n: string) => standing.trades.find((t) => t.name === n);
-  const fatherTrade = (ch.trades && tradeByName(ch.trades[0])) || pick(fr, standing.trades.filter((t) => t.who !== 'f'));
+  const fatherTrade = (ch.trades && tradeByName(ch.trades[0])) || pickOf(fr, standing.trades.filter((t) => t.who !== 'f'));
   const motherKeeps = fr() < 0.4;
-  const motherPick = pick(fr, standing.trades.filter((t) => t.who !== 'm'));
+  const motherPick = pickOf(fr, standing.trades.filter((t) => t.who !== 'm'));
   const motherTrade = ch.trades ? (tradeByName(ch.trades[1]) ?? null) : motherKeeps ? null : motherPick;
   let fatherAlive = fr() < 0.8, motherAlive = fr() < 0.82;
   if (hearth && !hearth.draw.reversed) fatherAlive = motherAlive = true;
@@ -369,7 +369,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
 
     // Training, and ageing past one's prime.
     if (tr() < 0.5) {
-      const tt = pick(tr, t.lean);
+      const tt = pickOf(tr, t.lean);
       const youngEnough = !PHYSICAL.includes(tt) || startAge < folk.prime;
       if (youngEnough && T.d.traits[tt] < 18) {
         T.d.traits[tt]++;
@@ -377,7 +377,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
       }
     }
     if (startAge + folk.termYears > folk.prime && tr() < 0.5) {
-      const tt = pick(tr, PHYSICAL);
+      const tt = pickOf(tr, PHYSICAL);
       if (T.d.traits[tt] > 3) {
         T.d.traits[tt]--;
         res.traitChanges.push(`-1 ${tt} (age)`);
@@ -398,11 +398,11 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
     const rankName = t.ranks[rank].toLowerCase();
     switch (ev) {
       case 'quiet':
-        res.text.push(pick(tr, ['The years passed quietly.', 'Little happened worth the telling.', 'You kept your head down and learnt your work.']));
+        res.text.push(pickOf(tr, ['The years passed quietly.', 'Little happened worth the telling.', 'You kept your head down and learnt your work.']));
         break;
       case 'wound': {
-        const part = pick(tr, SCAR_PARTS);
-        const how = pick(tr, [...(WOUND_HOW[t.id] ?? []), ...WOUND_ANY]);
+        const part = pickOf(tr, SCAR_PARTS);
+        const how = pickOf(tr, [...(WOUND_HOW[t.id] ?? []), ...WOUND_ANY]);
         const w: Wound = { part, kind: 'cut', severity: 1, scar: `a scar on the ${part}, from ${how}` };
         res.text.push(`You were hurt by ${how}, and carry the scar on your ${part}.`);
         if (tr() < 0.25 && part.includes('leg') && T.d.traits.agility > 3) {
@@ -414,7 +414,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
         break;
       }
       case 'war': {
-        const war: WarInfo = pick(tr, wars);
+        const war: WarInfo = pickOf(tr, wars);
         if (t.id === 'military' || t.id === 'outlaw') {
           res.text.push(`You fought in ${war.name}.`);
           skills.gain('polearms', 4);
@@ -428,7 +428,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
       case 'windfall': {
         const gain = Math.round(t.pay[rank] * 2 + 20 + tr() * 40);
         copper += gain;
-        res.text.push(pick(tr, ['A stroke of luck filled your purse.', 'A grateful patron rewarded you well.', 'You found a forgotten purse, and kept it.']));
+        res.text.push(pickOf(tr, ['A stroke of luck filled your purse.', 'A grateful patron rewarded you well.', 'You found a forgotten purse, and kept it.']));
         break;
       }
       case 'contact': {
@@ -494,7 +494,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
         break;
       }
       case 'calling': {
-        const other = pick(tr, TRACKS.filter((x) => x.id !== t.id));
+        const other = pickOf(tr, TRACKS.filter((x) => x.id !== t.id));
         res.text.push(`You felt the pull of another life: ${other.name.toLowerCase()}.`);
         break;
       }
@@ -546,16 +546,16 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
     const theirAge = tie.kind === 'parent' ? age + 19 + Math.floor(wr() * 16)
       : sib ? Math.max(8, age + (sib.older ? 1 : -1) * (1 + Math.floor(wr() * 7)))
         : tie.kind === 'master' ? age + 8 + Math.floor(wr() * 25) : Math.max(folk.adult, age - 6 + Math.floor(wr() * 16));
-    const theirHair = kin && wr() < 0.6 ? L.hairs[ch.look.hair % L.hairs.length] : pick(wr, L.hairs);
+    const theirHair = kin && wr() < 0.6 ? L.hairs[ch.look.hair % L.hairs.length] : pickOf(wr, L.hairs);
     const styles = known.female ? L.hairF : L.hairM;
     tie.who = {
       female: known.female, age: theirAge, ...(known.trade ? { trade: known.trade } : {}), ...(L.kind ? { kind: L.kind } : {}),
-      skin: (kin ? skin : pick(wr, L.skins) ?? skin)[0],
+      skin: (kin ? skin : pickOf(wr, L.skins) ?? skin)[0],
       hair: theirAge > folk.prime * 1.25 ? '#9b9a96' : (theirHair ?? hair)[0],
-      hairStyle: styles.length ? pick(wr, styles) : 'short',
-      beard: known.female || theirAge < folk.adult || !L.beards.length ? 'none' : pick(wr, L.beards),
-      type: kin && wr() < 0.5 ? type.id : pick(wr, BODY_TYPES).id,
-      cloth: pick(wr, CLOTH), home: home.name,
+      hairStyle: styles.length ? pickOf(wr, styles) : 'short',
+      beard: known.female || theirAge < folk.adult || !L.beards.length ? 'none' : pickOf(wr, L.beards),
+      type: kin && wr() < 0.5 ? type.id : pickOf(wr, BODY_TYPES).id,
+      cloth: pickOf(wr, CLOTH), home: home.name,
     };
   }
 

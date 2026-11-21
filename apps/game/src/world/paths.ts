@@ -7,8 +7,15 @@
  * Paths ignore the people standing about (they step aside, or are waited for, as they are met).
  */
 import { OBJECT_TILES } from '@worldforge/core/local/tiles';
-import { STAIRS_DOWN, STAIRS_UP } from '../game/game';
 import type { Spot } from '../worker/protocol';
+
+/**
+ * Ways up and down, by the way they lead: stairs and ladders, and the ways down into caves,
+ * dungeons and sewers from the surface. A way up always meets a way down at the same tile above
+ * (local/under.ts), however many levels lie between.
+ */
+export const STAIRS_UP = new Set(['stairs_up', 'ladder_up', 'stairs_spiral']);
+export const STAIRS_DOWN = new Set(['stairs_down', 'ladder_down', 'stairs_spiral', 'dungeon_entrance', 'mine_entrance', 'cave_mouth', 'grate', 'well']);
 
 /** What a path needs of the map (game/map.ts). */
 export interface PathMap {

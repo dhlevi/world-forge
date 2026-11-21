@@ -14,7 +14,7 @@ import { Body, Identity, type BodyType, type Tie } from '../actors/components';
 import { Health, type WoundKind } from '../actors/health';
 import { Needs } from '../actors/needs';
 import { clamp } from '../util';
-import { figureOf } from './figure';
+import { figureOf } from '../actors/figure';
 
 /** The picture is this many pixels square. */
 export const PORTRAIT_PX = 32;
