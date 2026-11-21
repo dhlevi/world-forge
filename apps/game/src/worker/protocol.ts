@@ -214,6 +214,8 @@ export interface RouteStep {
   sight: number;
   /** How steep the step into it is (rise over run, either way). */
   slope?: number;
+  /** The chance of a robber band camped about it in any week (worker/bandits.ts). */
+  banditry?: number;
 }
 
 /** What the travel map draws over the tiles: ways and places in an area. */
@@ -298,7 +300,7 @@ export type ToWorker =
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
   | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean }
   /** The residents about a tile at a time (game seconds), placed by their day plan (worker/people.ts). */
-  | { type: 'people'; id: number; x: number; y: number; time: number; rise: number; set: number }
+  | { type: 'people'; id: number; x: number; y: number; time: number; rise: number; set: number; ambush?: [number, number] }
   /** The animals about a tile in the week of a time (worker/fauna.ts). */
   | { type: 'animals'; id: number; x: number; y: number; time: number; winter: boolean };
 

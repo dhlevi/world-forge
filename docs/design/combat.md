@@ -183,5 +183,54 @@ animals, fear and flight, the watch, predators that are threats only until this 
    way); a bow not in hand is taken up first, which takes the turn. New items: the crossbow and its
    bolts, the sling, stones and stout sticks.
 4. **People**: intent and morale, yielding, brawls, robbers who maim and rob, the watch and the
-   law, reputation.
+   law, reputation. **Built** (21 November 2026; `world/folk-fight.ts`, `world/strife.ts`,
+   `world/law.ts`, `world/bands.ts`, `worker/bandits.ts`, `screens/mercy.ts`). Decided for it:
+   - *Robbers: bands in the wilds.* Small bands of two to five, a chief and the rest, camp away
+     from the towns for a week at a time: none within 1.5 km of a town or 600 m of a village, more
+     where the nearest town is lawless or poor, more by a road. They are met on foot (a band that
+     sees the wanderer comes, all together, demands the purse, and strikes if it is not handed
+     over), and as ambushes on the road: crossing a band's ground on a journey, the band may spring
+     out (more likely on a road), the journey stops, and the wanderer is set down on the local map
+     with the band about them.
+   - *The law: full justice.* A crime counts only if it is seen: assault (striking one who was not
+     fighting the wanderer), theft (robbing the fallen), murder, killing another's beast and
+     resisting arrest. Witnesses think the worse of the wanderer and act: the watch among them
+     come to arrest; the bold, and the victim's household, kin and friends (who need less courage),
+     come to the victim's aid, two at most (fists against fists; it takes more nerve against a
+     blade), and hold off once the wanderer stops striking, leaving them to the watch; the rest
+     scatter crying for the watch, and children run. The watch within a long street's reach come at
+     the cry; if none are near, more are sent for from their post and arrive in a minute or two (a
+     village's reeve and bailiffs take longer), finding their way round walls and through the
+     crowd, which stands aside for them.
+     Each settlement keeps a record, and the wanderer is wanted where a crime is not answered for;
+     the watch who see or speak to a wanted wanderer may know them. The watch call on the wanderer
+     to yield, then beat them down with blunt blows to hold them. The sentence is by the place's
+     laws (harsher for Legalists, a warrior people and the Insular, milder for the cosmopolitan):
+     fines (three times what was taken, for theft), days in the cells for what cannot be paid, the
+     stocks for the brawler taken a third time, the brand for the thief taken again, and the rope
+     for murder (sixty days and the brand under the mildest laws).
+   - *Yielding: full choices.* Anyone can yield, the wanderer too (Y in the blow menu): robbers
+     take the purse, rings and weapon in hand (and may put the boot in, more so if fought), the
+     watch make the arrest, and a brawl ends. People whose courage fails yield (the watch, the
+     brave, those cornered) or run crying for the watch; those beaten senseless fall, and come round
+     in time. Walking into one who has yielded, fallen or been bound gives the choices: let them
+     go, take what they carry, bind them (rope), tend their wounds, kill them, or hand a robber to
+     the watch for a reward. Each is seen by those about and remembered.
+   - *Brawls: provoked and tavern.* A hot-tempered or hardy person jostled again and again swings
+     at the wanderer; one who hates the wanderer (an opinion of -50 or worse), close by, may come at
+     them with fists; and from dusk to the small hours a tavern with four or more drinking sees a
+     brawl now and then (an even chance in about six hours). Bruises alone never ruin a part of the
+     body, however many (a hard enough blow breaks the bone instead). Brawls are fought with fists until one
+     yields or falls, are rarely deadly, and the watch near pulls them apart. Fists answered with
+     fists are no crime against one who began it.
+   - *Standing:* each settlement's regard for the wanderer rises and falls with the deeds it sees
+     or hears of (a crime; robbers killed or handed over) and fades by half in 45 days; half of it
+     colours how its people greet the wanderer. The character sheet lists the towns' regard and
+     where the wanderer is wanted.
+
+   The rules: people fight as beasts do in form (the same blow, game/combat.ts), with skills by
+   trade (the watch 45, their officers 55, robbers 40, a hunter 25, the hardy trades 20, the rest
+   10, less for the young and old), courage by trade and traits (Brave, Craven, Wrathful), the
+   blows of what they hold (or fists and feet), and armour where they wear it. A person's body is
+   the wanderer's plan, by their sex and weight. The dead leave a body with what they carried.
 5. **Later**: mounted fighting, companions in fights, war and sieges.

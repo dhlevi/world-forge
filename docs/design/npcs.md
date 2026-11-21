@@ -249,6 +249,10 @@ nations, regions and cities; factions. **Proposed:**
   deeds that are seen or told of (a crime witnessed, a monster slain, a festival sponsored); it
   sets how strangers greet the player, prices, and the watch's suspicion. It too drifts back,
   more slowly.
+  *Built for settlements* (21 November 2026, with combat stage 4; `world/law.ts`): each
+  settlement's regard from the deeds seen there (crimes, robbers killed or handed over), fading by
+  half in 45 days; half of it colours its people's greetings, and the watch know a wanted face.
+  Regions, nations and prices are still to come.
 - **Factions.** Guilds, orders, temples, the thieves' guild, the watch, a lord's household
   (`packages/core/src/lore/orders.ts` and the town's institutions): membership and rank, standing
   with each, and how factions regard one another (helping the thieves angers the watch).

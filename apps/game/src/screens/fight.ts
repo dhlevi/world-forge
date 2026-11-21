@@ -1,12 +1,12 @@
 /**
- * The fight menu (Shift+F; combat.md, stage 2): for one exchange, the beast to strike (those in
- * reach), the part to aim at, the blow and the stance, each with the chance it gives; the standing
+ * The fight menu (Shift+F; combat.md, stages 2 and 4): for one exchange, the beast or person to
+ * strike (those in reach), the part to aim at, the blow and the stance, each with the chance it gives; the standing
  * choices (what walking into a beast in a fight strikes with) can be kept from it.
  */
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
-import type { Animal } from '../world/fauna';
+import type { Foe } from '../game/foes';
 import { STANCES, type BlowId, type Stance } from '../game/combat';
 import FightView from './views/FightView.vue';
 
@@ -23,7 +23,7 @@ export class FightScreen extends Screen {
     rev: 0,
   });
 
-  constructor(readonly play: PlayScreen, readonly targets: Animal[]) {
+  constructor(readonly play: PlayScreen, readonly targets: Foe[]) {
     super();
     const f = play.session.state.fight;
     this.state.aim = f.aim;
@@ -31,7 +31,7 @@ export class FightScreen extends Screen {
     this.state.stance = f.stance;
   }
 
-  get beast(): Animal | null {
+  get beast(): Foe | null {
     return this.targets[this.state.target] ?? null;
   }
 
@@ -51,6 +51,12 @@ export class FightScreen extends Screen {
   blowId(): BlowId | null {
     const list = this.blows();
     return (list.find((x) => x.blow.id === this.state.blow && x.reach) ?? list.find((x) => x.reach))?.blow.id ?? null;
+  }
+
+  /** The wanderer yields (to robbers, or the law). */
+  yieldUp(): void {
+    this.close();
+    this.play.session.yieldUp();
   }
 
   strike(): void {
@@ -94,6 +100,7 @@ export class FightScreen extends Screen {
       this.state.target = (this.state.target + 1) % Math.max(1, this.targets.length);
       this.state.aim = null;
     } else if (e.code === 'KeyK') this.keep();
+    else if (e.code === 'KeyY') this.yieldUp();
     else return true;
     return true;
   }

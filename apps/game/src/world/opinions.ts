@@ -22,6 +22,8 @@ export interface OpinionData {
   name: string;
   /** When they first met the wanderer (game seconds). */
   met: number;
+  /** Known of, not met: they think of the wanderer (struck by them, or saw them do wrong) but have not been introduced. */
+  unmet?: boolean;
   causes: Cause[];
 }
 
@@ -33,7 +35,8 @@ export class Opinions {
 
   /** Whether the wanderer has met them. */
   knows(id: string): boolean {
-    return this.d.has(id);
+    const o = this.d.get(id);
+    return !!o && !o.unmet;
   }
 
   get size(): number {
@@ -42,12 +45,18 @@ export class Opinions {
 
   /** Marks a first meeting (nothing more if they have met). */
   meet(id: string, name: string, t: number): void {
-    if (!this.d.has(id)) this.d.set(id, { name, met: t, causes: [] });
+    const o = this.d.get(id);
+    if (!o) this.d.set(id, { name, met: t, causes: [] });
+    else if (o.unmet) {
+      o.unmet = undefined;
+      o.met = t;
+    }
   }
 
-  /** Adds a cause (meeting them if not met). */
-  add(id: string, name: string, why: string, value: number, t: number, half = 7): void {
-    this.meet(id, name, t);
+  /** Adds a cause (meeting them if not met; `meet` false: they think of the wanderer without having met). */
+  add(id: string, name: string, why: string, value: number, t: number, half = 7, meet = true): void {
+    if (meet) this.meet(id, name, t);
+    else if (!this.d.has(id)) this.d.set(id, { name, met: t, unmet: true, causes: [] });
     this.d.get(id)!.causes.push({ why, value, t, half });
   }
 
@@ -80,7 +89,7 @@ export class Opinions {
 
   export(): Record<string, OpinionData> {
     const out: Record<string, OpinionData> = {};
-    for (const [k, o] of this.d) out[k] = { name: o.name, met: o.met, causes: o.causes.map((c) => ({ ...c })) };
+    for (const [k, o] of this.d) out[k] = { name: o.name, met: o.met, ...(o.unmet ? { unmet: true } : {}), causes: o.causes.map((c) => ({ ...c })) };
     return out;
   }
 
@@ -88,7 +97,7 @@ export class Opinions {
     this.d.clear();
     for (const [k, o] of Object.entries(data ?? {})) {
       if (!o || typeof o.name !== 'string' || typeof o.met !== 'number' || !Array.isArray(o.causes)) continue;
-      this.d.set(k, { name: o.name, met: o.met, causes: o.causes.filter((c) => c && typeof c.value === 'number' && typeof c.t === 'number').map((c) => ({ why: String(c.why), value: c.value, t: c.t, half: typeof c.half === 'number' && c.half > 0 ? c.half : 7 })) });
+      this.d.set(k, { name: o.name, met: o.met, ...(o.unmet ? { unmet: true } : {}), causes: o.causes.filter((c) => c && typeof c.value === 'number' && typeof c.t === 'number').map((c) => ({ why: String(c.why), value: c.value, t: c.t, half: typeof c.half === 'number' && c.half > 0 ? c.half : 7 })) });
     }
   }
 }

@@ -52,6 +52,8 @@ export interface Hud {
   loading: number;
   /** The town or city the wanderer is in (for its city view), if any. */
   town?: { id: string; name: string; tier: string } | null;
+  /** The settlement the wanderer is in, any village, town or city (for the law), if any. */
+  settlement?: { id: string; name: string; tier: string } | null;
 }
 
 const vkey = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);
@@ -328,7 +330,9 @@ export class Game {
     const obj = OBJECT_TILES[this.map.object(nx, ny)];
     const who = this.personAt(nx, ny, this.z);
     if (who) {
-      if (!quiet) this.say(this.onBump(nx, ny, this.z) ?? `${who.name} is in the way.`);
+      // Walking into someone: they step aside (or say so), or, in a fight, are struck (the session says what happens, and the time it takes).
+      const said = quiet ? null : this.onBump(nx, ny, this.z);
+      if (!quiet && said !== '') this.say(said ?? `${who.name} is in the way.`);
       return false;
     }
     // Walking into a beast: it gives way, or (in a fight) the wanderer strikes it, which takes its own time.
@@ -602,6 +606,7 @@ export class Game {
     }
     this.hud.place = t?.area ? cap(t.area) : inside ? `${inside.name}` : 'The wilds';
     this.hud.town = inside && inside.tier !== 'village' ? { id: inside.id, name: inside.name, tier: inside.tier } : null;
+    this.hud.settlement = inside ? { id: inside.id, name: inside.name, tier: inside.tier } : null;
     if (inside) this.hud.where = `${inside.name}, a ${inside.tier}`;
     else if (nearest) {
       const dx = nearest.x - mx, dy = nearest.y - my;

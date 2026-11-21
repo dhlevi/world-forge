@@ -7,7 +7,8 @@
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
-import type { Animal } from '../world/fauna';
+import type { Foe } from '../game/foes';
+import { foeXY } from '../game/foes';
 import type { Missile } from '../game/ranged';
 import ShootView from './views/ShootView.vue';
 
@@ -17,14 +18,14 @@ export class ShootScreen extends Screen {
   readonly state = reactive({ target: 0, missile: 0, aim: null as string | null, rev: 0 });
   readonly missiles: Missile[];
 
-  constructor(readonly play: PlayScreen, readonly targets: Animal[]) {
+  constructor(readonly play: PlayScreen, readonly targets: Foe[]) {
     super();
     this.missiles = play.session.missiles();
     // The best way to shoot first: a bow with arrows before a thrown stone.
     this.state.missile = Math.max(0, this.missiles.findIndex((m) => m.how === 'shoot'));
   }
 
-  get beast(): Animal | null {
+  get beast(): Foe | null {
     return this.targets[this.state.target] ?? null;
   }
   get missile(): Missile | null {
@@ -43,7 +44,7 @@ export class ShootScreen extends Screen {
   /** Marks the target on the map. */
   private mark(): void {
     const b = this.beast, g = this.play.session.game;
-    g.cursor = b ? [b.x, b.y] : null;
+    g.cursor = b ? [foeXY(b).x, foeXY(b).y] : null;
     this.play.session.redraw();
   }
 

@@ -78,7 +78,7 @@ function homeOf(w: GeneratedWorld, b: PlanBuilding): Home {
   return h;
 }
 
-function cultureLook(seed: string, ci: number): Look | null {
+export function cultureLook(seed: string, ci: number): Look | null {
   if (looks.has(ci)) return looks.get(ci)!;
   let lk: Look | null = null;
   try {

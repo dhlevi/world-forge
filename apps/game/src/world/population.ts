@@ -35,6 +35,7 @@ import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import { findPath, OPENABLE, walkable, type PathMap, type Step } from './paths';
 import { LOUD, Tracks, heardLevel, hearingThreshold, takesTracks, type Noise, type NoiseKind } from './senses';
 import { Opinions } from './opinions';
+import type { FolkFight, Plight } from './folk-fight';
 
 /** Within this many tiles of the wanderer, people walk tile by tile. */
 export const ACTIVE = 40;
@@ -110,6 +111,15 @@ export interface Resident {
   exit: Spot | null;
   /** Gone from the bubble for good (to be dropped once out of sight). */
   gone: boolean;
+  /**
+   * Out of the ordinary run of their day (combat.md, stage 4; world/strife.ts): in a fight, and
+   * to what end; yielded, down, bound or fleeing, and since when; and whether the wanderer has
+   * hurt them (for the law). While either is set, the day's plan waits.
+   */
+  fight?: FolkFight | null;
+  plight?: Plight;
+  plightAt?: number;
+  harmedBy?: string;
 }
 
 /** Noisy work: the trade, its loudness a tile away, and the noise in words. */
@@ -163,9 +173,21 @@ export class Population {
   sun = { rise: 6, set: 18 };
   /** Called when the people shown may have changed. */
   onChange: () => void = () => {};
+  /** The dead (killed in the bubble, or hanged): never placed again (saved with the game). */
+  readonly dead = new Set<string>();
+  /** Extra people the session places (bandits in their camps: world/strife.ts), by id, asked for with each new bubble. */
+  extra: (g: PopulationView) => PlacedPerson[] = () => [];
+  /** A band cell where robbers lie in wait for the wanderer (game/session.ts): asked for with the people, set beside them. */
+  ambushAt: [number, number] | null = null;
+  /** Asks again for the people at once (an ambush on the road). */
+  reask(): void {
+    this.asked = null;
+  }
+  /** A person pushed too far by the wanderer (jostled again and again): whether they swing, in words (world/strife.ts). */
+  onTemper: (r: Resident, g: PopulationView) => string | null = () => null;
 
   constructor(
-    private ask: (x: number, y: number, time: number, rise: number, set: number) => Promise<{ people: PlacedPerson[]; radius: number }>,
+    private ask: (x: number, y: number, time: number, rise: number, set: number, ambush?: [number, number]) => Promise<{ people: PlacedPerson[]; radius: number }>,
     private seed: string,
   ) {}
 
@@ -207,7 +229,7 @@ export class Population {
     if (a && a.day === day && Math.max(Math.abs(g.px - a.x), Math.abs(g.py - a.y)) < Math.max(8, a.radius / 4)) return;
     this.busy = true;
     const at = { x: g.px, y: g.py, day };
-    this.ask(g.px, g.py, g.time, this.sun.rise, this.sun.set)
+    this.ask(g.px, g.py, g.time, this.sun.rise, this.sun.set, this.ambushAt ?? undefined)
       .then((res) => {
         this.asked = { ...at, radius: res.radius };
         this.take(res.people, g);
@@ -222,7 +244,8 @@ export class Population {
   /** Takes the worker's people: new ones placed (out of sight), known ones given their new plans, the rest sent off. */
   take(list: PlacedPerson[], g: PopulationView): void {
     const seen = new Set<string>();
-    for (const p of list) {
+    for (const p of [...list, ...this.extra(g)]) {
+      if (this.dead.has(p.id)) continue;
       seen.add(p.id);
       const r = this.byId.get(p.id);
       if (r) {
@@ -230,18 +253,13 @@ export class Population {
         r.gone = false;
         continue;
       }
-      const actor = this.actorOf(p);
-      const nr: Resident = {
-        p, actor, present: false, x: 0, y: 0, z: null, facing: p.facing, where: 'home', figure: figureOf(actor),
-        want: undefined, goal: null, stop: null, path: null, nextAt: g.time, eta: g.time, door: null, waits: 0, stuck: 0, noPath: false, exit: null, gone: false,
-      };
-      this.byId.set(p.id, nr);
-      this.byName.set(p.name, nr);
+      const nr = this.admit(p, g);
       // Placed where the plan has them, unless that is in sight (then they come in, out of sight).
       if (p.at && !this.inSight(g, p.at) && this.free(g, p.at)) this.place(nr, p.at);
     }
     for (const [id, r] of this.byId) {
-      if (seen.has(id)) continue;
+      // Those in a fight, down or bound stay while the wanderer is about.
+      if (seen.has(id) || r.fight || (r.plight && r.plight !== 'fleeing')) continue;
       if (!r.present || !this.inSight(g, r)) this.drop(r);
       else r.gone = true;
     }
@@ -295,7 +313,8 @@ export class Population {
     near.sort((a, b) => a[0] - b[0]);
     const walkers = new Set(near.slice(0, MAX_WALKERS).filter(([d]) => d < 0 || !jump).map(([, r]) => r));
     let changed = false;
-    for (const r of [...this.byId.values()]) if (this.act(r, g, walkers.has(r))) changed = true;
+    // Those in a fight, yielded, down, bound or fleeing are world/strife.ts's to move.
+    for (const r of [...this.byId.values()]) if (!r.fight && !r.plight && this.act(r, g, walkers.has(r))) changed = true;
     this.workNoises(g, near);
     if (this.greetings(g, near)) changed = true;
     return changed;
@@ -349,7 +368,7 @@ export class Population {
         }
       }
       // A nod to the wanderer from those who think well of them.
-      if (cheb(r, g.px, g.py) <= 2 && r.z === g.z && this.opinions.of(r.p.id, g.time) >= 12 && (r.greetedAt === undefined || g.time - r.greetedAt > 4 * 3600)) {
+      if (!r.fight && !r.plight && cheb(r, g.px, g.py) <= 2 && r.z === g.z && this.opinions.of(r.p.id, g.time) >= 12 && (r.greetedAt === undefined || g.time - r.greetedAt > 4 * 3600)) {
         r.greetedAt = g.time;
         this.onSee(`${r.p.given} nods to you.`);
         any = true;
@@ -392,10 +411,156 @@ export class Population {
     if (r.where === 'asleep') return `${r.p.name} is asleep there.`;
     if (this.opinions.recent(r.p.id, 'jostled me', g.time, 600) >= 2) {
       this.opinions.add(r.p.id, r.p.name, 'jostled me', -3, g.time, 2);
+      // Shoved once too often, a hot-tempered one swings (world/strife.ts).
+      const swung = this.opinions.recent(r.p.id, 'jostled me', g.time, 600) >= 4 ? this.onTemper(r, g) : null;
+      if (swung) return swung;
       return `"Watch where you are going!" ${r.p.given} snaps.`;
     }
     this.opinions.add(r.p.id, r.p.name, 'jostled me', -0.5, g.time, 1);
     return `"Mind your step," says ${r.p.given}.`;
+  }
+
+  // ---- For world/strife.ts: moving those out of their day, and the dead -----------------------
+
+  /** A new person among them, not yet placed. */
+  private admit(p: PlacedPerson, g: PopulationView): Resident {
+    const actor = this.actorOf(p);
+    const nr: Resident = {
+      p, actor, present: false, x: 0, y: 0, z: null, facing: p.facing, where: 'home', figure: figureOf(actor),
+      want: undefined, goal: null, stop: null, path: null, nextAt: g.time, eta: g.time, door: null, waits: 0, stuck: 0, noPath: false, exit: null, gone: false,
+    };
+    this.byId.set(p.id, nr);
+    this.byName.set(p.name, nr);
+    return nr;
+  }
+
+  /**
+   * Someone come from beyond the bubble (the watch called from their post: game/session.ts), set
+   * down out of sight between `min` and `max` tiles from a spot. Returns them, or null if there was
+   * nowhere to set them.
+   */
+  summon(p: PlacedPerson, g: PopulationView, at: { x: number; y: number; z: number | null }, min: number, max: number, roll: () => number): Resident | null {
+    if (this.byId.has(p.id) || this.dead.has(p.id)) return null;
+    const r = this.admit(p, g);
+    // Somewhere with a way to the spot (not shut in among the stalls, or in a yard).
+    for (let i = 0; i < 8; i++) {
+      if (!this.setNear(r, g, at, min, max, roll, true)) break;
+      const way = findPath(g.map, r, at, 5000);
+      if (way) {
+        r.path = way;
+        return r;
+      }
+    }
+    this.drop(r);
+    return null;
+  }
+
+  /** Sets a person down on a free open tile `near` to `min`..`max` tiles from a spot (robbers rising from cover). Returns whether a place was found. */
+  setNear(r: Resident, g: PopulationView, at: { x: number; y: number; z: number | null }, min: number, max: number, roll: () => number, unseen = false): boolean {
+    for (let i = 0; i < 80; i++) {
+      const a = roll() * Math.PI * 2, d = min + roll() * (max - min);
+      const t = { x: Math.round(at.x + Math.cos(a) * d), y: Math.round(at.y + Math.sin(a) * d), z: at.z };
+      if (!g.map.loaded(t.x, t.y) || !this.free(g, t, r) || !walkable(g.map, t.x, t.y, t.z).ok) continue;
+      if (unseen && this.inSight(g, t)) continue;
+      this.place(r, t);
+      r.path = null;
+      return true;
+    }
+    return false;
+  }
+
+  /**
+   * A step on the way to a spot, round walls and through doors (a path, found again when the spot
+   * has moved on); close by, or with no way found, straight at it. Returns whether they moved.
+   */
+  chase(r: Resident, g: PopulationView, to: { x: number; y: number; z: number | null }): boolean {
+    const d = Math.max(Math.abs(r.x - to.x), Math.abs(r.y - to.y));
+    if (r.z !== to.z) return this.stepToward(r, g, to);
+    // Close by, straight at them if the way is clear; else round, or through the crowd.
+    if (d <= 2 && this.stepToward(r, g, to)) return true;
+    let p = r.path;
+    const end = p?.[p.length - 1];
+    if (!p?.length || !end || end.z !== to.z || Math.max(Math.abs(end.x - to.x), Math.abs(end.y - to.y)) > 2 || Math.max(Math.abs(p[0].x - r.x), Math.abs(p[0].y - r.y)) > 1) {
+      // Round those who will not stand aside (others in the fight, the fallen).
+      const held = (x: number, y: number, z: number | null) => {
+        const o = this.byTile.get(tileKey(x, y, z));
+        return !!o && o !== r && !!(o.fight || o.plight) && !(x === to.x && y === to.y);
+      };
+      const m = g.map;
+      const round: PathMap = {
+        loaded: (x, y) => m.loaded(x, y), hasFloor: (x, y, z) => m.hasFloor(x, y, z), level: (x, y) => m.level(x, y),
+        passableAt: (x, y, z) => !held(x, y, z) && m.passableAt(x, y, z), objectAt: (x, y, z) => (held(x, y, z) ? 0 : m.objectAt(x, y, z)),
+      };
+      // With no way round them, as near as the way goes (a spear may reach past them).
+      p = findPath(round, r, to, 6000) ?? findPath(m, r, to, 6000);
+      r.path = p;
+    }
+    const next = p?.[0];
+    if (!p || !next || next.z !== r.z) return this.stepToward(r, g, to);
+    if (!this.free(g, next, r)) {
+      // Someone in the way, out of the fight: they are shouldered aside (or stood aside for).
+      const o = this.byTile.get(tileKey(next.x, next.y, next.z));
+      if (!o || o.fight || o.plight || !this.stepAside(o, g, { x: r.x, y: r.y, path: [{ x: r.x, y: r.y, z: r.z }, ...p] })) {
+        if (!o || !(o.fight || o.plight)) r.path = null;
+        return this.stepToward(r, g, to);
+      }
+    }
+    p.shift();
+    this.stepOnto(r, g, next.x, next.y);
+    return true;
+  }
+
+  /** Whether a blow can reach from one to a tile two away: the tile between is walkable (people may stand in it). */
+  reachable(g: PopulationView, from: { x: number; y: number; z: number | null }, to: { x: number; y: number }): boolean {
+    const mx = Math.round((from.x + to.x) / 2), my = Math.round((from.y + to.y) / 2);
+    return walkable(g.map, mx, my, from.z).ok;
+  }
+
+  /** Onto a neighbouring tile, opening a door there as walking does. */
+  private stepOnto(r: Resident, g: PopulationView, x: number, y: number): void {
+    const o = OBJECT_TILES[g.map.objectAt(x, y, r.z)];
+    if (o && OPENABLE.has(o.name) && o.toggle) {
+      const open = objectId(o.toggle);
+      if (open) g.map.setObjectAt(x, y, r.z, open);
+    }
+    r.facing = Math.abs(x - r.x) >= Math.abs(y - r.y) ? (x > r.x ? 'e' : 'w') : y > r.y ? 's' : 'n';
+    this.place(r, { x, y, z: r.z });
+    r.where = 'walking';
+  }
+
+  /** A step toward a tile (or, `away`, from it): the free walkable neighbour that best closes (or opens) the distance. Returns whether they moved. */
+  stepToward(r: Resident, g: PopulationView, to: { x: number; y: number }, away = false): boolean {
+    let best: [number, number] | null = null, bd = away ? -Infinity : Infinity;
+    for (const [dx, dy] of DIRS8) {
+      const x = r.x + dx, y = r.y + dy, t = { x, y, z: r.z };
+      if (!g.map.loaded(x, y) || !this.free(g, t, r) || !walkable(g.map, x, y, r.z).ok) continue;
+      if (dx && dy && !walkable(g.map, r.x + dx, r.y, r.z).ok && !walkable(g.map, r.x, r.y + dy, r.z).ok) continue;
+      const d = Math.hypot(to.x - x, to.y - y) + (dx && dy ? 0.05 : 0);
+      if (away ? d > bd : d < bd) {
+        bd = d;
+        best = [x, y];
+      }
+    }
+    if (!best || (!away && bd >= Math.hypot(to.x - r.x, to.y - r.y))) return false;
+    this.stepOnto(r, g, best[0], best[1]);
+    return true;
+  }
+
+  /** Back to the ordinary run of their day (a fight over, let go, come round). */
+  release(r: Resident): void {
+    r.fight = null;
+    r.plight = undefined;
+    r.plightAt = undefined;
+    r.want = undefined;
+    r.path = null;
+    r.where = 'home';
+  }
+
+  /** Someone has died: taken from the map, and never placed again. */
+  kill(r: Resident): void {
+    this.dead.add(r.p.id);
+    r.fight = null;
+    this.drop(r);
   }
 
   /** The block of a person's plan at a game time, and its place (the rain sends them home from out of doors). */
@@ -783,6 +948,12 @@ export function dressFor(f: FigureSpec, where: 'asleep' | 'home' | 'out'): Figur
 /** What a person is about, in words (for looking at them). */
 export function doingWords(r: Resident): string | null {
   const st = r.stop;
+  // Out of the run of their day (world/strife.ts).
+  if (r.fight) return r.fight.foe === 'player' ? ({ kill: 'Fighting you, to kill.', rob: 'Out to rob you.', arrest: 'Out to arrest you.', brawl: 'Squaring up to you.', defend: 'Fighting you off.' } as const)[r.fight.intent] : 'Brawling.';
+  if (r.plight === 'yielded') return 'On their knees, begging for mercy.';
+  if (r.plight === 'down') return 'Lying senseless.';
+  if (r.plight === 'bound') return 'Bound hand and foot.';
+  if (r.plight === 'fleeing') return 'Running.';
   if (r.where === 'walking') {
     if (!r.goal) return 'On their way out of the quarter.';
     const to: Record<string, string> = { bed: 'home', home: 'home', table: 'home', work: 'work', out: 'work', tavern: 'the tavern', square: 'the square', temple: 'the temple', market: 'the market', warehouse: 'the warehouse', gate: 'the gate' };

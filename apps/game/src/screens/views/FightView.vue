@@ -2,13 +2,12 @@
 /** The fight menu: the beast, the aim, the blow and the stance, with the chance of each. */
 import { computed } from 'vue';
 import type { FightScreen } from '../fight';
+import { foeId } from '../../game/foes';
 import { STANCES, STANCE_MODS } from '../../game/combat';
-import { animalLines } from '../../world/fauna';
 
 const props = defineProps<{ screen: FightScreen }>();
 const screen = props.screen;
 const st = screen.state;
-const now = () => screen.play.session.now();
 
 const view = computed(() => {
   void st.rev;
@@ -18,9 +17,9 @@ const view = computed(() => {
   const chosen = screen.blowId();
   const cur = blows.find((x) => x.blow.id === chosen);
   return {
-    name: b.s.name,
+    name: screen.play.session.foeName(b),
     drawn: screen.play.session.armsReady()?.drawn ?? null,
-    lines: animalLines(b, now()),
+    lines: screen.play.session.foeLines(b),
     aims: screen.aims(),
     blows,
     chosen,
@@ -40,7 +39,7 @@ const word = (c: number) => (c >= 80 ? 'very likely' : c >= 60 ? 'a good chance'
     </header>
     <div v-if="view" class="body">
       <div v-if="screen.targets.length > 1" class="row targets">
-        <button v-for="(t, i) in screen.targets" :key="t.id" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null">{{ t.s.name }}</button>
+        <button v-for="(t, i) in screen.targets" :key="foeId(t)" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null">{{ screen.play.session.foeName(t) }}</button>
         <span class="dim">(Tab)</span>
       </div>
       <p class="dim">{{ view.lines.join(' ') }}</p>
@@ -73,9 +72,10 @@ const word = (c: number) => (c >= 80 ? 'very likely' : c >= 60 ? 'a good chance'
       <div class="row acts">
         <button class="primary" :disabled="!view.chosen" @click="screen.strike()">Strike (Enter)</button>
         <button @click="screen.keep()">Keep as my standing choices (K)</button>
+        <button @click="screen.yieldUp()">Yield (Y)</button>
       </div>
       <p v-if="st.message" class="dim">{{ st.message }}</p>
-      <p class="dim small">Walking into a beast that is fighting you strikes with your standing choices.</p>
+      <p class="dim small">Walking into a beast or person fighting you strikes with your standing choices. Yielding hands robbers your purse, and gives you up to the watch.</p>
     </div>
   </div>
 </template>

@@ -100,8 +100,8 @@ export class WorkerClient {
     this.ask((id) => ({ type: 'route', id, from, to }), (m) => (m.type === 'route' ? { steps: m.steps, partial: m.partial } : { steps: null, partial: false }));
 
   /** The residents about a tile at a time, placed by their day plan (worker/people.ts). */
-  requestPeople = (x: number, y: number, time: number, rise: number, set: number): Promise<{ people: PlacedPerson[]; radius: number }> =>
-    this.ask((id) => ({ type: 'people', id, x, y, time, rise, set }), (m) => (m.type === 'people' ? { people: m.people, radius: m.radius } : { people: [], radius: 0 }));
+  requestPeople = (x: number, y: number, time: number, rise: number, set: number, ambush?: [number, number]): Promise<{ people: PlacedPerson[]; radius: number }> =>
+    this.ask((id) => ({ type: 'people', id, x, y, time, rise, set, ...(ambush ? { ambush } : {}) }), (m) => (m.type === 'people' ? { people: m.people, radius: m.radius } : { people: [], radius: 0 }));
 
   /** The animals about a tile in the week of a time (worker/fauna.ts). */
   requestAnimals = (x: number, y: number, time: number, winter: boolean): Promise<{ groups: AnimalGroup[]; radius: number }> =>

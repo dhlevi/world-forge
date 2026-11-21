@@ -174,6 +174,18 @@ export class InventoryScreen extends Screen {
       }
       secs = t.at === 'worn' ? defOf(top).wear?.seconds ?? 5 : 3;
       said = t.at === 'worn' ? `You pick up the ${itemName(top)} and put it on.` : `You pick up the ${itemName(top)}.`;
+      // Coins picked up go into the purse.
+      if (top.def === 'coins') {
+        this.inv.drop(top.uid);
+        this.inv.earn(top.qty);
+        said = `You pick up ${top.qty} copper.`;
+        this.state.selected = null;
+        this.play.advance(secs);
+        this.state.message = said;
+        this.play.say(said);
+        this.play.session.redraw();
+        return true;
+      }
     }
     this.play.advance(secs);
     this.state.message = said;

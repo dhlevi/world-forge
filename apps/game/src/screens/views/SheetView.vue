@@ -31,6 +31,8 @@ const inv = a.get(Inventory);
 const pools = a.get(Pools)?.d;
 const needs = a.get(Needs);
 const mood = a.get(Mood);
+/** The towns' regard, and where the wanderer is wanted. */
+const places = screen.places();
 const ui = screen.state;
 const age = computed(() => a.need(Identity).ageAt(screen.now()));
 /** When a skill was last used, and how much more practice will teach today. */
@@ -74,6 +76,10 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
       <PeopleList :cards="people.cards" @open="screen.openPerson" />
       <ul v-if="people.others.length"><li v-for="(t, i) in people.others" :key="i">{{ t.text }}</li></ul>
       <div v-if="hist?.spread.length" class="dim">The cards: {{ hist.spread.map((s) => `${s.card}${s.reversed ? ' (reversed)' : ''}`).join(', ') }}.</div>
+      <template v-if="places.length">
+        <div class="cc-label">Your name in the towns</div>
+        <div v-for="p in places" :key="p.id" class="kv" :title="`Regard ${p.standing > 0 ? '+' : ''}${p.standing}`"><span>{{ p.name }}</span><span>{{ p.words }}<span v-if="p.wanted" class="warn">; wanted for {{ p.wanted }}</span></span></div>
+      </template>
       <div v-if="mood?.moodlets.length" class="cc-label">Mood</div>
       <div v-for="m in mood?.moodlets ?? []" :key="m.id" class="dim">{{ m.text }} ({{ m.value > 0 ? '+' : '' }}{{ m.value }})</div>
     </div>
@@ -126,6 +132,7 @@ const bySkillGroup = computed(() => SKILL_GROUPS.map((g) => ({ g, list: SKILLS.f
 </template>
 
 <style scoped>
+.warn { color: #d9a441; }
 .sheet { width: min(860px, 92vw); max-height: 86vh; overflow: auto; }
 .sheet-name { font-size: 1.3em; color: var(--accent); }
 .tabs button.on { border-color: var(--accent); color: var(--accent); }

@@ -14,6 +14,8 @@ import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { FromWorker, StartSite, ToWorker, LocalSite, TravelArea } from './protocol';
 import { catalogue, cultureOf, regionAt, resetCatalogue } from './catalogue';
 import { bubbleAt, forgetPeople, peopleIn } from './people';
+import { banditry, banditsIn } from './bandits';
+import { bandCell } from '../world/bands';
 import { animalsIn } from './fauna';
 import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo } from './sites';
 
@@ -99,7 +101,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         const a = travel!.cell(prev[0], prev[1]);
         const run = STEP_M * (prev[0] !== cx && prev[1] !== cy ? Math.SQRT2 : 1);
         const slope = Math.round((Math.abs(c.elev - a.elev) / run) * 1000) / 1000;
-        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, biome: c.biome, sight: travel!.sightM(cx, cy), slope };
+        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, biome: c.biome, sight: travel!.sightM(cx, cy), slope, banditry: banditry(world!, local!, ...bandCell(cx, cy), c.way) };
         prev = [cx, cy];
         return st;
       }) : null;
@@ -132,7 +134,9 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     } else if (m.type === 'people') {
       if (!world || !local) throw new Error('No game started.');
       const radius = bubbleAt(local, m.x, m.y);
-      post({ type: 'people', id: m.id, people: peopleIn(world, local, m.x, m.y, radius, m.time, m.rise, m.set), radius });
+      const grid = travel;
+      const bands = banditsIn(world, local, m.x, m.y, radius, m.time, (cx, cy) => grid?.cell(cx, cy).way, m.ambush);
+      post({ type: 'people', id: m.id, people: [...peopleIn(world, local, m.x, m.y, radius, m.time, m.rise, m.set), ...bands], radius });
     } else if (m.type === 'animals') {
       if (!world || !local) throw new Error('No game started.');
       const radius = bubbleAt(local, m.x, m.y);

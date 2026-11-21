@@ -27,6 +27,8 @@ export interface NaturalBlow {
   deep: number;
   /** Venom given with it (the condition's share, 0 to 1). */
   venom?: number;
+  /** How far it reaches (tiles; 1 if not given): a person's spear reaches two. */
+  reach?: number;
   /** Where on a person it goes for (clothing regions); any if none. */
   goes?: ('head' | 'face' | 'torso' | 'arms' | 'hands' | 'waist' | 'legs' | 'feet')[];
 }

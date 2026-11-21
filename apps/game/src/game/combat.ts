@@ -150,6 +150,11 @@ export interface Target {
   /** Asleep (or senseless), or not yet aware of the wanderer. */
   asleep: boolean;
   unaware: boolean;
+  /** A person: the armour they wear over a region (points, with the things' names), in place of a hide (world/folk-fight.ts). */
+  armour?: (region: string | undefined) => { points: number; names: string[] };
+  /** How the telling names them after the first time ('it', 'its' for a beast; 'he', 'his' or 'she', 'her' for a person). */
+  it?: string;
+  its?: string;
 }
 
 export interface Exchange {
@@ -198,7 +203,7 @@ export function strikeBeast(a: Actor, t: Target, blow: Blow, aim: string | null,
   const verb = BLOW_VERB[blow.id];
   const tipHead = `${blow.name}: chance ${pct(r.chance)} (skill score ${Math.round(r.score)} against ${possessive(t.name.replace(/^the /, ''))} dodging ${difficulty}${r.mods.length ? `; ${r.mods.map((m) => `${m.why} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ')}` : ''}); rolled ${r.roll}.`;
   if (!r.ok) {
-    const miss = r.grade === 'fumble' ? `You ${verb} wildly at ${t.name} and stumble.` : t.asleep ? `You ${verb} at ${t.name}, and miss.` : r.grade === 'near' ? `You ${verb} at ${t.name}; it twists away, just.` : `You ${verb} at ${t.name}; it dodges.`;
+    const miss = r.grade === 'fumble' ? `You ${verb} wildly at ${t.name} and stumble.` : t.asleep ? `You ${verb} at ${t.name}, and miss.` : r.grade === 'near' ? `You ${verb} at ${t.name}; ${t.it ?? 'it'} twists away, just.` : `You ${verb} at ${t.name}; ${t.it ?? 'it'} dodges.`;
     return { text: miss, tip: tipHead, hit: false, wounds: [], seconds: blow.seconds * (r.grade === 'fumble' ? 1.6 : 1), killed: false };
   }
   const h = t.health, rng = () => h.rng?.() ?? Math.random();
@@ -209,11 +214,13 @@ export function strikeBeast(a: Actor, t: Target, blow: Blow, aim: string | null,
   const str = a.get(Traits)?.get('strength') ?? 10;
   let sev = blow.sev * Math.pow(str / 10, blow.skill === 'shortblades' ? 0.3 : 0.6) * (0.6 + margin / 60) * (r.grade === 'fine' ? 1.25 : 1) * (0.85 + rng() * 0.3);
   // The hide takes some (most against a cut; less against a thrust).
+  const worn = t.armour?.(part.region);
   const hideF = blow.kind === 'cut' ? 1 : blow.kind === 'stab' ? 0.35 : 0.5;
-  const prot = t.fight.hide * hideF * (0.5 + rng() * 0.5);
+  const prot = (worn ? worn.points * ARMOUR_F[blow.kind] : t.fight.hide * hideF) * (0.5 + rng() * 0.5);
   sev -= prot;
-  const tip = `${tipHead} Hit by ${Math.round(margin)}: severity ${fmt(sev + prot)}${prot > 0.05 ? `, less ${fmt(prot)} for the hide` : ''}, against the ${part.name}'s ${fmt(part.hp)}.`;
-  if (sev <= 0.3) return { text: `You ${verb} ${t.name} on the ${part.name}, but the blow does not get through its hide.`, tip, hit: true, wounds: [], seconds: blow.seconds, killed: false };
+  const covering = worn?.names.length ? `${worn.names[0]}` : 'hide';
+  const tip = `${tipHead} Hit by ${Math.round(margin)}: severity ${fmt(sev + prot)}${prot > 0.05 ? `, less ${fmt(prot)} for the ${covering}` : ''}, against the ${part.name}'s ${fmt(part.hp)}.`;
+  if (sev <= 0.3) return { text: worn || !t.armour ? `You ${verb} ${t.name} on the ${part.name}, but the blow does not get through ${worn ? `the ${covering}` : `${t.its ?? 'its'} hide`}.` : `You ${verb} ${t.name} on the ${part.name}, but it does no harm.`, tip, hit: true, wounds: [], seconds: blow.seconds, killed: false };
   // A heavy blow breaks bone.
   let kind = blow.kind;
   if (kind === 'bruise' && sev >= part.hp * 0.3 && !/^(eye|ear|nose|tail)/.test(part.id)) kind = 'fracture';
@@ -223,7 +230,7 @@ export function strikeBeast(a: Actor, t: Target, blow: Blow, aim: string | null,
   let text = `You ${verb} ${t.name} on the ${part.name}`;
   if (main) text += main.ruin ? (part.sever ? `, and cut it off.` : `: it is ruined.`) : `: ${/^[aeiou]/.test(h.woundWords(main)) ? 'an' : 'a'} ${h.woundWords(main)}.`;
   else text += '.';
-  if (deeper.length) text += ` The blow goes deep, into its ${deeper.map((w) => h.partOf(w.part)?.name ?? w.part).join(' and ')}.`;
+  if (deeper.length) text += ` The blow goes deep, into ${t.its ?? 'its'} ${deeper.map((w) => h.partOf(w.part)?.name ?? w.part).join(' and ')}.`;
   return { text, tip, hit: true, wounds, seconds: blow.seconds, killed: h.dead };
 }
 
@@ -260,12 +267,13 @@ const ARMOUR_F: Record<WoundKind, number> = { cut: 1, bite: 0.8, stab: 0.6, brui
  * against its attack; if it lands, where (where it goes for), what is worn there, the wound, and
  * any venom.
  */
-export function beastStrikes(beast: { name: string; fight: BeastFight; health: Health | null; stance?: Stance }, a: Actor, blow: NaturalBlow, stance: Stance, now: number, o: { helpless?: boolean; extra?: Mod[] } = {}): Exchange {
+export function beastStrikes(beast: { name: string; fight: BeastFight; health: Health | null; stance?: Stance; its?: string }, a: Actor, blow: NaturalBlow, stance: Stance, now: number, o: { helpless?: boolean; extra?: Mod[] } = {}): Exchange {
   const h = a.need(Health), inv = a.get(Inventory), arms = inv ? armsOf(inv) : null;
   const caps = beast.health?.capacities();
   const attack = Math.round(beast.fight.attack * 0.7 * (caps ? 0.4 + 0.6 * Math.min(caps.moving + 0.3, caps.consciousness, 1) : 1) + (beast.stance ? STANCE_MODS[beast.stance].strike : 0));
   const rng = () => a.get(Skills)?.random() ?? Math.random();
-  let tip = `${cap(beast.name)}: its ${blow.name}, attack ${attack}.`;
+  const its = beast.its ?? 'its';
+  let tip = `${cap(beast.name)}: ${its} ${blow.name}, attack ${attack}.`;
   let glance = 1;
   if (!o.helpless) {
     const opts = defences(arms, beast.fight.kg).map((d) => {
@@ -276,7 +284,7 @@ export function beastStrikes(beast: { name: string; fight: BeastFight; health: H
     const r = check(a, best.skill, { difficulty: attack, mods: best.mods, now });
     tip += ` Your best defence, ${best.how === 'dodge' ? 'dodging' : best.how === 'parry' ? 'a parry' : 'your shield'}: chance ${pct(r.chance)}${r.mods.length ? ` (${r.mods.map((m) => `${m.why} ${m.value > 0 ? '+' : ''}${m.value}`).join(', ')})` : ''}; rolled ${r.roll}.`;
     if (r.ok) {
-      const how = best.how === 'dodge' ? `${cap(beast.name)} goes for you with its ${blow.name}; you leap aside.`
+      const how = best.how === 'dodge' ? `${cap(beast.name)} goes for you with ${its} ${blow.name}; you leap aside.`
         : best.how === 'parry' ? `You turn ${possessive(beast.name)} ${blow.name} aside with your ${arms?.weapon ? itemName(arms.weapon) : 'weapon'}.`
         : `You catch ${possessive(beast.name)} ${blow.name} on your ${arms?.shield ? itemName(arms.shield) : 'shield'}.`;
       return { text: how, tip, hit: false, wounds: [], seconds: blow.seconds, killed: false };

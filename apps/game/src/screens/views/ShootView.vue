@@ -2,13 +2,12 @@
 /** Shooting and throwing: the beast, what to loose, the aim, the chance and what is in the way. */
 import { computed } from 'vue';
 import type { ShootScreen } from '../shoot';
-import { animalLines } from '../../world/fauna';
+import { foeId, foeXY } from '../../game/foes';
 import { itemName } from '../../actors/items/item';
 
 const props = defineProps<{ screen: ShootScreen }>();
 const screen = props.screen;
 const st = screen.state;
-const now = () => screen.play.session.now();
 const word = (c: number) => (c >= 80 ? 'very likely' : c >= 60 ? 'a good chance' : c >= 40 ? 'an even chance' : c >= 20 ? 'a poor chance' : 'hardly a chance');
 
 const view = computed(() => {
@@ -18,8 +17,8 @@ const view = computed(() => {
   const shot = screen.shot();
   const g = screen.play.session.game;
   return {
-    lines: animalLines(b, now()),
-    dist: Math.max(Math.abs(b.x - g.px), Math.abs(b.y - g.py)),
+    lines: screen.play.session.foeLines(b),
+    dist: Math.max(Math.abs(foeXY(b).x - g.px), Math.abs(foeXY(b).y - g.py)),
     shot,
     m,
     ammo: m ? (m.how === 'shoot' ? `${m.item.qty} left` : m.item.qty > 1 ? `${m.item.qty} carried` : '') : '',
@@ -38,7 +37,7 @@ const view = computed(() => {
     </header>
     <div v-if="view" class="body">
       <div class="row targets">
-        <button v-for="(t, i) in screen.targets.slice(0, 8)" :key="t.id" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null; st.rev++">{{ t.s.name }}</button>
+        <button v-for="(t, i) in screen.targets.slice(0, 8)" :key="foeId(t)" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null; st.rev++">{{ screen.play.session.foeName(t) }}</button>
         <span v-if="screen.targets.length > 1" class="dim">(Tab)</span>
       </div>
       <p class="dim">{{ view.lines.join(' ') }} {{ view.dist }} tiles off.</p>

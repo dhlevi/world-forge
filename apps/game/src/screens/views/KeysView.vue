@@ -34,7 +34,7 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
       ['Talk', 'E: to the one beside you (then a direction, if there are more)'],
       ['Shoot or throw', 'R: loose an arrow, a bolt or a sling stone, or throw anything you carry, at a beast in sight (Tab: the next; Left and Right: what; Up and Down: the aim). Unaware game is far easier to hit'],
       ['Gather', 'M: stones on stony ground or in a stream bed, sticks under trees (Survival)'],
-      ['Fight', 'Shift+F: strike a beast within reach, choosing the aim, the blow and the stance (with the chance of each); walking into a beast that is fighting you strikes with your standing choices. Your weapon is drawn first if none is in hand'],
+      ['Fight', 'Shift+F: strike a beast or person within reach (Y in it: yield to robbers or the watch), choosing the aim, the blow and the stance (with the chance of each); walking into a beast or person that is fighting you strikes with your standing choices, and walking into one who has yielded, fallen or been bound gives the choices of mercy (let go, rob, bind, tend, kill, hand to the watch). Your weapon is drawn first if none is in hand'],
       ['Sneak', 'Shift+S: move quietly and slowly (Sneak); animals see and hear you less'],
       ['Snare', 'P: set a snare wire here for small game, or lift one; walk onto it to take a catch'],
       ['Cut brush', 'A, then a direction: clear a bush or scrub with a machete, axe, hatchet, sword or knife (Survival)'],

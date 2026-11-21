@@ -22,10 +22,13 @@ import { Inventory } from '../actors/items/inventory';
 import { defOf } from '../actors/items/item';
 import { FightScreen } from './fight';
 import { ShootScreen } from './shoot';
+import { MercyScreen } from './mercy';
+import type { Resident } from '../world/population';
 import DeathView from './views/DeathView.vue';
 import { Body } from '../actors/components';
 import type { Dead } from '../game/save';
 import { PlaySession, type PlayOptions } from '../game/session';
+import type { Law } from '../world/law';
 
 export type { PlayOptions };
 
@@ -43,8 +46,8 @@ export class PlayScreen extends Screen {
     super();
     const w = app.worker;
     this.session = new PlaySession(
-      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, site: w.site, starts: () => app.state.starts },
-      { openCity: (id, at) => this.openCity(id, at), toTitle: () => app.toTitle(), onDeath: () => this.showDeath() },
+      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, names: (c, s, n) => w.names(c, s, n), site: w.site, starts: () => app.state.starts },
+      { openCity: (id, at) => this.openCity(id, at), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r) },
       o,
     );
   }
@@ -180,6 +183,10 @@ export class PlayScreen extends Screen {
     if (this.player) this.manager?.push(new InventoryScreen(this, this.player));
   }
 
+  showMercy(r: Resident): void {
+    if (this.active) this.manager?.push(new MercyScreen(this, r));
+  }
+
   showShoot(): void {
     const s = this.session;
     const targets = s.shootable(Math.max(4, ...s.missiles().map((m) => m.max)));
@@ -239,7 +246,7 @@ export class PlayScreen extends Screen {
   }
 
   showSheet(): void {
-    if (this.player) this.manager?.push(new SheetScreen(this.player, () => this.app.bus.now, (card) => this.showPerson(card)));
+    if (this.player) this.manager?.push(new SheetScreen(this.player, () => this.app.bus.now, (card) => this.showPerson(card), () => this.session.law.places(this.session.game.time)));
   }
 
   showKeys(): void {
@@ -287,7 +294,8 @@ export class SheetScreen extends Screen {
   popup = true;
   readonly state = reactive({ tab: 'life' as 'life' | 'skills' | 'gear' });
   /** `openPerson`: shows the card of one of the people of their life. */
-  constructor(readonly actor: Actor, readonly now: () => number, readonly openPerson: (card: PersonCard) => void = () => {}) {
+  /** `places`: the settlements' regard for the wanderer, and where they are wanted (world/law.ts). */
+  constructor(readonly actor: Actor, readonly now: () => number, readonly openPerson: (card: PersonCard) => void = () => {}, readonly places: () => ReturnType<Law['places']> = () => []) {
     super();
   }
   key(e: KeyboardEvent): boolean {

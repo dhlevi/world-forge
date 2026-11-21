@@ -275,14 +275,15 @@ function hitBeast(a: Actor, m: Missile, b: { id: string; t: Target }, aim: strin
   const str = a.get(Traits)?.get('strength') ?? 10;
   const pull = m.how === 'throw' ? Math.pow(str / 10, 0.5) : m.strength ? Math.min(1, Math.pow(str / m.strength, 0.5)) : 1;
   let sev = m.sev * pull * (0.7 + margin / 80) * (0.85 + rng() * 0.3);
+  const worn = b.t.armour?.(part.region);
   const hideF = m.kind === 'cut' ? 1 : m.kind === 'stab' ? 0.4 : 0.5;
-  const prot = b.t.fight.hide * hideF * (0.5 + rng() * 0.5);
+  const prot = (worn ? worn.points * (m.kind === 'cut' ? 1 : m.kind === 'stab' ? 0.6 : 0.5) : b.t.fight.hide * hideF) * (0.5 + rng() * 0.5);
   sev -= prot;
-  tip += ` Severity ${fmt(sev + prot)}${prot > 0.05 ? `, less ${fmt(prot)} for the hide` : ''}, against the ${part.name}'s ${fmt(part.hp)}.`;
+  tip += ` Severity ${fmt(sev + prot)}${prot > 0.05 ? `, less ${fmt(prot)} for ${worn ? 'what is worn' : 'the hide'}` : ''}, against the ${part.name}'s ${fmt(part.hp)}.`;
   const beastName = b.t.name;
   if (sev <= 0.3) {
     const broke = rng() < m.breaks;
-    return { text: `${opener}. ${lead === 'It strikes' ? `It strikes ${beastName} on the ${part.name}, but does not get through its hide` : `${lead}, but does no harm`}.${broke ? ` ${what[0].toUpperCase()}${what.slice(1)} ${m.breaks >= 1 ? 'shatters' : 'breaks'}.` : ''}`, tip, seconds: m.seconds, struck: { id: b.id, wounds: [], killed: false }, lodged: false, landed: broke ? null : at, broke };
+    return { text: `${opener}. ${lead === 'It strikes' ? `It strikes ${beastName} on the ${part.name}, but does not get through ${worn?.names[0] ? `the ${worn.names[0]}` : `${b.t.its ?? 'its'} ${b.t.armour ? 'clothes' : 'hide'}`}` : `${lead}, but does no harm`}.${broke ? ` ${what[0].toUpperCase()}${what.slice(1)} ${m.breaks >= 1 ? 'shatters' : 'breaks'}.` : ''}`, tip, seconds: m.seconds, struck: { id: b.id, wounds: [], killed: false }, lodged: false, landed: broke ? null : at, broke };
   }
   let kind = m.kind;
   if (kind === 'bruise' && sev >= part.hp * 0.3 && !/^(eye|ear|nose|tail)/.test(part.id)) kind = 'fracture';

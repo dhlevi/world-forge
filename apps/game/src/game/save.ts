@@ -20,6 +20,7 @@ import type { OpinionData } from '../world/opinions';
 import type { Track } from '../world/senses';
 import type { Snare } from '../world/hunting';
 import type { WoundedBeast } from '../world/fauna';
+import type { LawData } from '../world/law';
 import type { Item } from '../actors/items/item';
 import { Health, type HealthData } from '../actors/health';
 
@@ -74,7 +75,7 @@ export interface SaveFile {
    * The people of the bubble as they stand toward the wanderer, and the tracks about (world/
    * opinions.ts, world/senses.ts); none in games saved before people.
    */
-  people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][]; snares?: Snare[]; gone?: string[]; wounded?: WoundedBeast[] };
+  people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][]; snares?: Snare[]; gone?: string[]; wounded?: WoundedBeast[]; dead?: string[]; law?: LawData };
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
   /**

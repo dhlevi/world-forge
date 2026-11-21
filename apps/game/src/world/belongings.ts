@@ -95,7 +95,8 @@ export function belongingsOf(p: PlacedPerson, seed: string): Inventory {
     inv.d.copper = lo + Math.floor(r() * (hi - lo + 1));
     const key = makeItem('key', { make, name: `key to ${p.homeName ?? `the home of ${p.household.replace(/^the household of /, '')}`}` });
     if (inv.put(key, { at: 'in', parent: pouch.uid })) inv.stow(key);
-    if (LEADS.test(t)) inv.put(makeItem('sword', { quality: q, make }), { at: 'belt' });
+    if (p.template === 'bandit') banditArms(inv, p, r, make);
+    else if (LEADS.test(t)) inv.put(makeItem('sword', { quality: q, make }), { at: 'belt' });
     else if (ARMED.test(t)) inv.put(makeItem('spear', { quality: q, make }), { at: 'hand', hand: 'both' });
     // The tools of the trade.
     for (const [re, ids] of TOOLS) {
@@ -114,4 +115,27 @@ export function belongingsOf(p: PlacedPerson, seed: string): Inventory {
     }
   }
   return inv;
+}
+
+/**
+ * A robber's arms (worker/bandits.ts): the chief a sword and a jerkin, the rest an axe, a spear, a
+ * hatchet or a club of a staff, and one in three a bow; most a padded coat or a jerkin; a hood to
+ * hide the face. What they have stolen is in their purse.
+ */
+function banditArms(inv: Inventory, p: PlacedPerson, r: () => number, make: string | undefined): void {
+  const chief = /chief|leader/.test(p.trade);
+  const wear = (id: string) => {
+    if (ITEM.has(id)) inv.put(makeItem(id, { quality: 'poor', make }), { at: 'worn' });
+  };
+  if (chief || r() < 0.4) wear('leather_jerkin');
+  else if (r() < 0.6) wear('padded_coat');
+  if (r() < 0.5) wear('hood');
+  const arm = chief ? 'sword' : (['axe', 'spear', 'hatchet', 'staff', 'machete'] as const)[Math.floor(r() * 5) % 5];
+  inv.put(makeItem(arm, { quality: 'poor', make }), arm === 'spear' || arm === 'staff' || arm === 'axe' ? { at: 'hand', hand: 'both' } : { at: 'belt' });
+  if (!chief && r() < 0.35) {
+    const bow = makeItem('short_bow', { quality: 'poor', make });
+    if (inv.put(bow, { at: 'worn' })) inv.stow(bow);
+    inv.stow(makeItem('arrows', { make, qty: 8 + Math.floor(r() * 10) }));
+  }
+  inv.d.copper += Math.floor(r() * (chief ? 120 : 40));
 }

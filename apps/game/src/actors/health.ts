@@ -539,8 +539,11 @@ export class Health extends Component {
       this.d.cond.concussion = clamp(was + (sev / part.hp) * 1.6, 0, 0.95);
       if (this.d.cond.concussion >= 0.3 && was < 0.3) this.note('Your head rings from the blow.', true);
     }
-    // Ruined: the part's wounds reach its toughness.
-    const harm = this.d.wounds.filter((x) => x.part === part.id).reduce((s, x) => s + x.sev, 0);
+    // Ruined: the part's wounds reach its toughness. Bruises alone never ruin a part, however many
+    // (they hurt, and a hard enough blow breaks the bone beneath instead): at most 0.6 of it.
+    const mine = this.d.wounds.filter((x) => x.part === part.id);
+    const bruised = mine.filter((x) => x.kind === 'bruise').reduce((s, x) => s + x.sev, 0);
+    const harm = mine.filter((x) => x.kind !== 'bruise').reduce((s, x) => s + x.sev, 0) + Math.min(bruised, part.hp * 0.6);
     if (harm >= part.hp && !this.d.lost.includes(part.id)) this.ruin(part, w);
     return [w];
   }

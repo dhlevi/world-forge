@@ -336,6 +336,32 @@
       "about": "A straight length of seasoned wood: a club at need, a throwing stick, or an arrow's shaft for the fletcher."
     },
     {
+      "id": "coins",
+      "name": "copper coin",
+      "plural": "copper coins",
+      "kind": "goods",
+      "weight": 0.004,
+      "bulk": 0.002,
+      "size": "tiny",
+      "value": 1,
+      "stack": 100000,
+      "durable": false,
+      "about": "Coin, dropped or taken: picked up, it goes into your purse."
+    },
+    {
+      "id": "corpse",
+      "name": "body",
+      "plural": "bodies",
+      "kind": "goods",
+      "weight": 70,
+      "bulk": 80,
+      "size": "huge",
+      "value": 0,
+      "durable": false,
+      "container": { "litres": 60, "maxKg": 80, "maxSize": "large" },
+      "about": "A body, and what it carried."
+    },
+    {
       "id": "feathers",
       "name": "bunch of feathers",
       "plural": "bunches of feathers",
