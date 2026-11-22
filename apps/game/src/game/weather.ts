@@ -44,6 +44,9 @@ export interface SkyPicture {
   season: Sky['season'];
   /** Seen from indoors. */
   inside: boolean;
+  /** Below the land (a cellar, a cave, a delve): no sky, only the rock (backlog W11); `lit`, by a light carried. */
+  under?: boolean;
+  lit?: boolean;
   /** The air where the wanderer is, and what it feels like when that differs. */
   tempC: number;
   feltC?: number;
@@ -125,7 +128,7 @@ export class WeatherService {
   }
 
   /** The sky as the panel's picture needs it, with the air where the wanderer is. */
-  picture(s: Sky, here: Pick<SkyPicture, 'inside' | 'tempC' | 'feltC'>): SkyPicture {
+  picture(s: Sky, here: Pick<SkyPicture, 'inside' | 'tempC' | 'feltC' | 'under' | 'lit'>): SkyPicture {
     const st = sunTimes(this.place.lat, s.doy), w = s.w;
     const [rise, set] = 'polar' in st ? (st.polar === 'day' ? [0, 24] : [12, 12]) : [st.rise, st.set];
     return {

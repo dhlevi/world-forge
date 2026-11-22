@@ -51,6 +51,12 @@ const DEG = Math.PI / 180;
 
 interface Seg { ax: number; ay: number; bx: number; by: number; cls: 'road' | 'track' }
 
+/** How a route is chosen (the travel map's choices): the quickest (default), the most direct, or keeping to the roads; and whether to go round rivers to be forded. */
+export interface RouteOptions {
+  mode?: 'fastest' | 'direct' | 'roads';
+  avoidFords?: boolean;
+}
+
 export class TravelGrid {
   private cells = new Map<number, TravelCell>();
   private roadIdx: Map<number, Seg[]> | null = null;
@@ -189,10 +195,10 @@ export class TravelGrid {
    * steps toward it (ending on open ground near the straight line), to be followed by the next
    * when it is walked. `partial` says whether b is still ahead.
    */
-  routeToward(ax: number, ay: number, bx: number, by: number, legCells = 600): { cells: [number, number][]; minutes: number; partial: boolean } | null {
+  routeToward(ax: number, ay: number, bx: number, by: number, legCells = 600, o: RouteOptions = {}): { cells: [number, number][]; minutes: number; partial: boolean } | null {
     const d = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
     if (d <= legCells) {
-      const r = this.route(ax, ay, bx, by);
+      const r = this.route(ax, ay, bx, by, 250000, o);
       return r ? { ...r, partial: false } : null;
     }
     const f = legCells / d;
@@ -201,7 +207,7 @@ export class TravelGrid {
     for (let r = 0; r <= 40; r++) {
       for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || this.cell(mx + dx, my + dy).blocked) continue;
-        const leg = this.route(ax, ay, mx + dx, my + dy);
+        const leg = this.route(ax, ay, mx + dx, my + dy, 250000, o);
         if (leg) return { ...leg, partial: true };
       }
       if (r >= 2) r += 3;
@@ -210,17 +216,18 @@ export class TravelGrid {
   }
 
   /**
-   * The quickest route from cell a to cell b: the cells in order (without a), and the minutes.
-   * Searches at most `maxNodes` cells; null if there is no way within that.
+   * The route from cell a to cell b by the options' choice (the quickest, by default): the cells in
+   * order (without a), and the minutes it takes to walk. Searches at most `maxNodes` cells; null if
+   * there is no way within that.
    */
-  route(ax: number, ay: number, bx: number, by: number, maxNodes = 250000): { cells: [number, number][]; minutes: number } | null {
+  route(ax: number, ay: number, bx: number, by: number, maxNodes = 250000, o: RouteOptions = {}): { cells: [number, number][]; minutes: number } | null {
     if (this.cell(bx, by).blocked) return null;
     const span = Math.max(Math.abs(bx - ax), Math.abs(by - ay));
     const pad = Math.max(24, Math.ceil(span * 0.35));
     const x0 = Math.min(ax, bx) - pad, y0 = Math.min(ay, by) - pad;
     const w = Math.abs(bx - ax) + 2 * pad + 1, h = Math.abs(by - ay) + 2 * pad + 1;
     if (w * h > 9e6) return null;
-    const g = new Float64Array(w * h).fill(Infinity);
+    const g = new Float64Array(w * h).fill(Infinity), time = new Float64Array(w * h);
     const from = new Int32Array(w * h).fill(-1);
     const closed = new Uint8Array(w * h);
     const idx = (x: number, y: number) => (y - y0) * w + (x - x0);
@@ -250,9 +257,10 @@ export class TravelGrid {
         if (closed[k2]) continue;
         const m = this.stepMinutes(x, y, nx, ny);
         if (m === Infinity) continue;
-        const ng = g[k] + m;
+        const ng = g[k] + this.stepCost(nx, ny, m, dx && dy ? Math.SQRT2 : 1, best, o);
         if (ng >= g[k2]) continue;
         g[k2] = ng;
+        time[k2] = time[k] + m;
         from[k2] = k;
         heap.push(k2, ng + hEst(nx, ny));
       }
@@ -261,6 +269,21 @@ export class TravelGrid {
     const cells: [number, number][] = [];
     for (let k = t; k !== s; k = from[k]) cells.push([x0 + (k % w), y0 + Math.floor(k / w)]);
     cells.reverse();
-    return { cells, minutes: g[t] };
+    return { cells, minutes: time[t] };
+  }
+
+  /**
+   * What a step costs the search, by the route's choice: its minutes (the quickest); nearly its
+   * length alone (the most direct, over rough ground and all); its minutes off the roads and tracks
+   * three times over (keeping to the roads); and a ford four hours' worth (going round rivers).
+   * Never less than the quickest pace's minutes for its length, so the search's estimate holds.
+   */
+  private stepCost(x: number, y: number, minutes: number, run: number, best: number, o: RouteOptions): number {
+    const c = this.cell(x, y);
+    let cost = minutes;
+    if (o.mode === 'direct') cost = best * run * 1.5 + minutes * 0.1;
+    else if (o.mode === 'roads' && c.way !== 'road' && c.way !== 'track' && c.way !== 'street') cost = minutes * 3;
+    if (o.avoidFords && c.ford) cost += 240;
+    return cost;
   }
 }

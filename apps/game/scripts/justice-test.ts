@@ -13,10 +13,12 @@ import { G } from '@worldforge/core/local/tiles';
 import { MessageDispatcher } from '../src/engine/messages';
 import '../src/actors/cast';
 import { Inventory } from '../src/actors/items/inventory';
+import { Skills } from '../src/actors/components';
+import { bandRoll } from '../src/rules/bands';
 import { readSave } from '../src/game/save';
 import { PlaySession, type PlayOptions, type SessionHost, type SessionWorld } from '../src/game/session';
 import type { Resident } from '../src/world/population';
-import type { ChunkData, LocalSite, PlacedPerson, StartSite } from '../src/worker/protocol';
+import type { ChunkData, LocalSite, PlacedPerson, RouteStep, StartSite } from '../src/worker/protocol';
 
 let failures = 0;
 const ok = (cond: boolean, what: string) => {
@@ -146,6 +148,37 @@ console.log('\nrobbers on the road');
   s.fights.yieldUp();
   for (let i = 0; i < 20 && copper(s) === purse; i++) s.advance(2);
   ok(purse > 0 && copper(s) === 0 && /takes your purse/.test(log(s)), 'yielding, the wanderer is robbed of their purse');
+}
+
+console.log('\nseeing them first');
+{
+  const s = await play([]);
+  const seed = s.o.settings.seed, week = Math.floor(s.now() / (7 * 86400));
+  const sk = s.player!.need(Skills);
+  /** Journeys through many band cells with robbers in them: how often the band is seen first. */
+  const trial = (level: number) => {
+    sk.d.levels.tracking = level;
+    sk.d.levels.survival = level;
+    let seen = 0, met = 0;
+    for (let bx = 0; bx < 4000 && seen + met < 60; bx++) {
+      if (!bandRoll(seed, bx, 7, week, 0.6).here) continue;
+      const before = s.hud.log.length;
+      let stopped = false;
+      const stop = s.travel.stop.bind(s.travel);
+      s.travel.stop = () => {
+        stopped = true;
+        stop();
+      };
+      (s.justice as unknown as { roadside(st: RouteStep): void }).roadside({ cx: bx * 3, cy: 21, min: 2, way: 'road', ford: false, biome: 0, sight: 3000, banditry: 0.6 });
+      const said = s.hud.log.slice(before).map((l) => l.text).join(' ');
+      if (/lie in wait ahead|go round it/.test(said)) seen++;
+      else if (stopped) met++;
+      s.travel.stop = stop;
+    }
+    return { seen, met };
+  };
+  const novice = trial(0), tracker = trial(85);
+  ok(tracker.seen > novice.seen && tracker.seen > 0, `a skilled tracker sees robbers lying in wait more often than a novice (${tracker.seen} of ${tracker.seen + tracker.met}, against ${novice.seen} of ${novice.seen + novice.met})`);
 }
 
 console.log(failures ? `\n${failures} failed` : '\nall justice tests passed');

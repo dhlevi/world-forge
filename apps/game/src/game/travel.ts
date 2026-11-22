@@ -3,6 +3,7 @@
  * after another with the clock running, until the party arrives, the player stops, or something
  * happens on the way. Long journeys come in legs, each planned when the last is walked.
  */
+import type { RouteOptions } from '@worldforge/core/local/travel';
 import { background } from '../app/errors';
 import { LocalFrame } from '@worldforge/core/towns/plan';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
@@ -71,6 +72,9 @@ export class Travel {
   planning = false;
   speed = 1;
   stopAtDusk = true;
+  /** How the route is chosen (backlog T2): the quickest, the most direct, or keeping to the roads; and whether to go round fords. */
+  routeMode: 'fastest' | 'direct' | 'roads' = 'fastest';
+  avoidFords = false;
   /** How far the party sees where it stands now (m). */
   sightM = TRAVEL_SIGHT_M;
   /** The settlement being travelled to, if the destination is one. */
@@ -89,7 +93,7 @@ export class Travel {
   constructor(
     readonly game: Game,
     origin: LL,
-    private requestRoute: (from: [number, number], to: LL) => Promise<{ steps: RouteStep[] | null; partial: boolean }>,
+    private requestRoute: (from: [number, number], to: LL, options: RouteOptions) => Promise<{ steps: RouteStep[] | null; partial: boolean }>,
   ) {
     this.frame = new LocalFrame(origin[0], origin[1]);
   }
@@ -152,6 +156,15 @@ export class Travel {
     await this.plan();
   }
 
+  /** The route found again (the route's choices changed): from where the party stands now. */
+  async replan(): Promise<void> {
+    if (!this.dest) return;
+    const was = this.running;
+    this.stop();
+    await this.plan();
+    if (was && this.steps.length) this.start();
+  }
+
   private async plan(): Promise<void> {
     if (!this.dest) return;
     this.planning = true;
@@ -159,7 +172,7 @@ export class Travel {
     const from: [number, number] = [Math.floor(this.game.px / CHUNK), Math.floor(this.game.py / CHUNK)];
     let r: Awaited<ReturnType<typeof this.requestRoute>>;
     try {
-      r = await this.requestRoute(from, this.goal ?? this.dest);
+      r = await this.requestRoute(from, this.goal ?? this.dest, { mode: this.routeMode, avoidFords: this.avoidFords });
     } catch (err) {
       // No route came back: say so, and leave the journey where it was.
       this.planning = false;

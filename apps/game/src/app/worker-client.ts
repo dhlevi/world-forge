@@ -3,6 +3,7 @@
  * routes, areas, the catalogue, names) as promises, and the worker's own news (progress, a world
  * made, a game started, chunks, errors) as messages on the bus.
  */
+import type { RouteOptions } from '@worldforge/core/local/travel';
 import type { PlaceClimate } from '../game/calendar';
 import type { MessageDispatcher } from '../engine/messages';
 import type { WorldSettings } from '@worldforge/core/settings';
@@ -96,8 +97,8 @@ export class WorkerClient {
   requestTile = (z: number, x: number, y: number, layer: ViewLayer): Promise<ImageBitmap | null> =>
     this.ask((id) => ({ type: 'tile', id, z, x, y, layer }), (m) => (m.type === 'tile' ? m.bitmap : null));
 
-  requestRoute = (from: [number, number], to: [number, number]): Promise<RouteResult> =>
-    this.ask((id) => ({ type: 'route', id, from, to }), (m) => (m.type === 'route' ? { steps: m.steps, partial: m.partial } : { steps: null, partial: false }));
+  requestRoute = (from: [number, number], to: [number, number], options?: RouteOptions): Promise<RouteResult> =>
+    this.ask((id) => ({ type: 'route', id, from, to, ...(options ? { options } : {}) }), (m) => (m.type === 'route' ? { steps: m.steps, partial: m.partial } : { steps: null, partial: false }));
 
   /** The residents about a tile at a time, placed by their day plan (worker/people.ts). */
   requestPeople = (x: number, y: number, time: number, rise: number, set: number, ambush?: [number, number]): Promise<{ people: PlacedPerson[]; radius: number }> =>

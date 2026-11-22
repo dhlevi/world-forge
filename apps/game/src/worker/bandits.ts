@@ -26,6 +26,8 @@ import type { PlacedPerson, PlanStop, Spot } from './protocol';
 const BASE = 0.02;
 /** How far (m) the watch of a town or city keep the roads clear, and a village's folk. */
 const TOWN_CLEAR = 1500, VILLAGE_CLEAR = 600;
+/** How much of the usual danger is left in the deep wilds, far from any town's roads. */
+const WILDS = 0.15;
 /** How far (m) a town's lawlessness reaches into the country about it. */
 const TOWN_REACH = 25000;
 
@@ -34,7 +36,8 @@ let memoFor: LocalWorld | null = null;
 
 /**
  * The chance of a robber band camped in a band cell in any week (0 to 0.6): none near a town or
- * a village; more as the nearest town is lawless, and in the wilds far from any; more by a road.
+ * a village; more as the nearest town is lawless or poor; most within a day's walk of a town (more
+ * of a city), fewer farther out, few in the deep wilds; more by a road.
  * `way` is the travel grid's way through the cell's middle chunk ('road', 'track', or none).
  */
 export function banditry(w: GeneratedWorld, local: LocalWorld, bx: number, by: number, way?: string): number {
@@ -55,7 +58,7 @@ export function banditry(w: GeneratedWorld, local: LocalWorld, bx: number, by: n
   });
   if (!clear) {
     // The nearest town or city within reach: its lawlessness (crime, 0 to 100) spills over.
-    let best: { d: number; crime: number; poor: number } | null = null;
+    let best: { d: number; crime: number; poor: number; city: boolean } | null = null;
     for (const s of local.sitesNear(mx, my, mx, my, TOWN_REACH)) {
       if (s.tier === 'village' || !w.settlements.some((x) => x.id === s.id)) continue;
       const c = local.frame.fromLL(s.lon, s.lat);
@@ -63,14 +66,17 @@ export function banditry(w: GeneratedWorld, local: LocalWorld, bx: number, by: n
       if (best && best.d <= d) continue;
       try {
         const st = townContext(w, s.id).stats;
-        best = { d, crime: st.crime.value, poor: st.prosperity.value };
+        best = { d, crime: st.crime.value, poor: st.prosperity.value, city: s.tier === 'city' };
       } catch {
-        best = { d, crime: 30, poor: 50 };
+        best = { d, crime: 30, poor: 50, city: s.tier === 'city' };
       }
     }
-    const lawless = best ? 0.4 + best.crime / 50 + Math.max(0, 45 - best.poor) / 60 : 0.8;
+    const lawless = best ? 0.4 + best.crime / 50 + Math.max(0, 45 - best.poor) / 60 : 0;
+    // Robbers live off the travellers of the towns' roads (backlog W10): most within a day's walk
+    // of a town (10 km), fewer beyond, few in the deep wilds; more about a city, whose roads are busier.
+    const trade = !best ? WILDS : (best.city ? 1.3 : 1) * (best.d <= 10000 ? 1 : Math.max(WILDS, 1 - (best.d - 10000) / 15000));
     const road = way === 'road' ? 1.6 : way === 'track' ? 1.2 : 0.7;
-    p = Math.min(0.6, BASE * lawless * road);
+    p = Math.min(0.6, BASE * Math.max(lawless, 0.5) * road * trade);
   }
   memo.set(key, p);
   return p;

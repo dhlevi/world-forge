@@ -41,6 +41,8 @@ import { Game, SIGHT, type Hud } from './game';
 import { GameMap } from './map';
 import { Practice } from './practice';
 import { applySave, exportSave, makeSave, writeSave, type Dead, type SaveFile } from './save';
+import { speech } from '../world/speech';
+import type { RouteOptions } from '@worldforge/core/local/travel';
 import { Travel } from './travel';
 import { Fights } from './fights';
 import { Justice } from './justice';
@@ -78,7 +80,7 @@ export interface SessionWorld {
   bus: MessageDispatcher;
   requestChunk(cx: number, cy: number): void;
   climate(lon: number, lat: number): Promise<PlaceClimate>;
-  requestRoute(from: [number, number], to: [number, number]): Promise<RouteResult>;
+  requestRoute(from: [number, number], to: [number, number], options?: RouteOptions): Promise<RouteResult>;
   /** The residents about a tile at a time, placed by their day plan (none: nobody is placed). */
   requestPeople?: WorkerClient['requestPeople'];
   /** The animals about a tile (none: no animals). */
@@ -244,7 +246,7 @@ export class PlaySession {
     this.weather = new WeatherService(o.settings.seed, o.site.lon, o.site.lat);
     this.skyNow = this.weather.sky(game.time);
     this.practice = new Practice(() => this.player, world.bus, game);
-    this.travel = new Travel(game, [o.site.lon, o.site.lat], (from, to) => world.requestRoute(from, to));
+    this.travel = new Travel(game, [o.site.lon, o.site.lat], (from, to, options) => world.requestRoute(from, to, options));
 
     // The game's hooks: what slows the wanderer, what they carry for light, what happens as time passes.
     game.loadSlow = () => this.invSlow() * (this.needs()?.slow() ?? 1) * (this.health()?.slow() ?? 1) * this.groundSlow() * (game.sneaking ? 1.6 : 1);
@@ -319,6 +321,9 @@ export class PlaySession {
     this.strife.onRob = (r) => this.justice.robbed(r);
     this.strife.onArrest = (r) => this.justice.arrest(r);
     this.strife.onCallWatch = (r) => this.justice.callWatch(r, 2);
+    this.strife.onPickpocket = (r) => this.justice.pickpocket(r);
+    // What people say is said in their language (world/speech.ts).
+    this.people.voice = (r, line, name) => speech(r, line, this.player?.get(Skills), this.townCulture(), name);
     // The animals about (world/fauna.ts), their noises and tracks, and the wanderer's snares (world/hunting.ts).
     const askA = world.requestAnimals;
     this.fauna = new Fauna(askA ? (x, y, t, w) => askA(x, y, t, w) : () => Promise.resolve({ groups: [], radius: 0 }), this.people.tracks);
@@ -463,6 +468,19 @@ export class PlaySession {
   private groundSlow(): number {
     const s = this.skyNow;
     return 1 + Math.min(1.2, Math.max(0, s.snowCm - 5) / 40) + s.mud * 0.2;
+  }
+
+  /** The people most of those about belong to (their town's language and law), or null with nobody about. */
+  townCulture(): number | null {
+    const n = new Map<number, number>();
+    for (const r of this.people.all()) if (r.p.template !== 'bandit') n.set(r.p.culture, (n.get(r.p.culture) ?? 0) + 1);
+    return [...n].sort((a, b) => b[1] - a[1])[0]?.[0] ?? null;
+  }
+
+  /** Below the land: on a level under the ground's own (a cellar, a cave, a dungeon, a delve). */
+  belowLand(): boolean {
+    const g = this.game;
+    return g.z !== null && g.z < g.map.level(g.px, g.py);
   }
 
   indoors(): boolean {
@@ -616,12 +634,14 @@ export class PlaySession {
       this.people.sun = 'polar' in st ? (st.polar === 'day' ? { rise: 4, set: 22 } : { rise: 9, set: 15 }) : { rise: st.rise, set: st.set };
       this.people.raining = sky.w.rainMm > 0.5;
       this.people.wet = this.people.raining || sky.mud > 0.2 || sky.snowCm > 0;
+      this.people.tracks.snowy = sky.snowCm >= 2;
       this.people.update(game);
       // People in fights, the fallen and the fleeing; the watch who know a wanted wanderer.
       const hh = this.health();
       if (this.strife.run(game, { helpless: game.activity === 'sleep' || !!hh?.senseless() || this.state.bound, yielded: this.state.yielded, struckAt: this.justice.struckAt })) this.redraw();
       this.justice.recognise();
       this.justice.watchArrives();
+      this.justice.purseNotice();
       // The animals, and the snares set for them.
       this.fauna.update(game, this.presence());
       for (const sn of this.snares.run(this.fauna, game, this.player?.get(Skills)?.effective('survival') ?? 0)) {
@@ -651,7 +671,8 @@ export class PlaySession {
       }
     }
     // The air, out of doors or in; a camp's fire and shelter warm it.
-    const air = inside ? w.tempC + (16 - w.tempC) * 0.6 : w.tempC;
+    // Below the land the rock keeps the air near the year's mean (about 11°C), whatever the weather above.
+    const air = this.belowLand() ? 11 + (w.tempC - 11) * 0.1 : inside ? w.tempC + (16 - w.tempC) * 0.6 : w.tempC;
     const resting = game.activity === 'sleep' || game.activity === 'rest';
     const shelter = camp?.shelter && resting ? SHELTERS[camp.shelter.kind] : null;
     const cover = inside ? 1 : shelter?.rain ? 0.95 : 0;
@@ -753,13 +774,14 @@ export class PlaySession {
     const n = this.needs();
     const airC = n?.d.airC ?? w.tempC, felt = n?.d.feltC;
     const part = WeatherService.partOfDay(s);
+    const under = this.belowLand();
     this.state.weather = {
-      when: `${cap(part)}; ${WeatherService.skyWords(s)}`,
-      wind: inside ? 'Indoors' : cap(WeatherService.windWords(w)),
+      when: under ? `Below the land; ${part} above` : `${cap(part)}; ${WeatherService.skyWords(s)}`,
+      wind: under ? 'Under the rock, the air is still' : inside ? 'Indoors' : cap(WeatherService.windWords(w)),
       air: `${Math.round(airC)}°C${felt !== undefined && Math.abs(felt - airC) >= 3 ? ` (feels ${Math.round(felt)}°C)` : ''}, ${airWord(airC)}; ${s.season}${s.snowCm >= 2 ? `; snow ${s.snowCm} cm deep` : s.mud > 0.5 ? '; the ground is muddy' : ''}`,
       sun: this.weather.sunWords(s.t),
     };
-    this.state.sky = this.weather.picture(s, { inside, tempC: Math.round(airC), ...(felt !== undefined && Math.abs(felt - airC) >= 3 ? { feltC: Math.round(felt) } : {}) });
+    this.state.sky = this.weather.picture(s, { inside, under, lit: !!this.heldLight(), tempC: Math.round(airC), ...(felt !== undefined && Math.abs(felt - airC) >= 3 ? { feltC: Math.round(felt) } : {}) });
     this.redraw();
   }
 
@@ -1151,7 +1173,7 @@ export class PlaySession {
     // The watch know a wanted face when it speaks to them.
     if (place && isWatch(r) && !r.fight && this.law.wanted(place.id)) {
       const why = this.law.wantedIn().find((x) => x.id === place.id)?.for ?? 'your crimes';
-      g.say(`${r.p.name}: "I know your face. You are wanted in ${place.name}, for ${why}. Come quietly." (Yield to go with them.)`);
+      g.say(`${this.people.voice(r, `I know your face. You are wanted in ${place.name}, for ${why}. Come quietly.`, r.p.name)} (Yield to go with them.)`);
       this.strife.start(r, 'arrest', 'player', t);
       r.fight!.warned = true;
       r.fight!.said = t;
@@ -1161,10 +1183,19 @@ export class PlaySession {
     if (!said && this.talks.size > 500) this.talks.clear();
     this.talks.set(tk, said + 1);
     const me = this.player?.get(Identity)?.d.given ?? 'traveller';
-    g.say(`${r.p.name}: "${greeting(r, opinion, met, (t % 86400) / 3600, me)} ${lineOf(r, Math.floor(t / 86400), said, this.people.raining)}"`);
+    g.say(this.people.voice(r, `${greeting(r, opinion, met, (t % 86400) / 3600, me)} ${lineOf(r, Math.floor(t / 86400), said, this.people.raining)}`, r.p.name));
     // A civil word warms a little (no more than once a day); being pestered cools.
     if (said >= 4) ops.add(r.p.id, r.p.name, 'pestered me', -1, t, 1);
     else if (!met || ops.recent(r.p.id, 'spoke civilly', t, 86400) === 0) ops.add(r.p.id, r.p.name, 'spoke civilly', 3, t, 5);
+    // Filth and blood put people off (backlog C5): the well-to-do most, the poor and the rough hardly.
+    const clean = this.needs()?.words().clean;
+    if ((clean === 'Filthy' || clean === 'Bloodied') && ops.recent(r.p.id, 'you were filthy', t, 86400) === 0) {
+      const fussy = r.p.means === 'rich' || r.p.means === 'comfortable' ? 2 : r.p.means === 'destitute' || r.p.template === 'bandit' ? 0 : 1;
+      if (fussy) {
+        ops.add(r.p.id, r.p.name, 'you were filthy', -2 * fussy, t, 3);
+        g.say(`${r.p.given} ${clean === 'Bloodied' ? 'eyes the blood on you, and keeps a step back' : 'wrinkles their nose at the state of you'}.`);
+      }
+    }
     this.people.noises.push({ x: g.px, y: g.py, z: g.z, loud: LOUD.speech, kind: 'speech', by: 'player', what: 'voices' });
     this.redraw();
   }

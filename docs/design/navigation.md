@@ -153,6 +153,16 @@ occupation set what the character knows of the world at the start.
 
 **Decided.** Travel can trigger events that force a zoom in (other travellers, and so on).
 
+*Route choices* (backlog T2, 21 November 2026; decided: all four; core `local/travel.ts`): the
+travel bar chooses how the way is found: Fastest (the quickest by the ground), Direct (as straight
+as the land allows, slower over rough ground), or Keep to roads (roads and tracks wherever they
+go); and Avoid rivers goes round fords where there is a way. Changing a choice finds the way again
+from where the party stands. *Robbers* (combat.md, stage 4): a band's danger is greatest within a
+day's walk of a town (more of a city) and falls off beyond, to little in the deep wilds; Tracking
+or Survival may see a band lying in wait first, stopping the journey short so the party can go
+round it. *Below the land,* the weather panel shows the rock and the light carried, and the air
+keeps near 11°C whatever the weather above.
+
 **Proposed.**
 
 - **Each step rolls for events** by where and when: the region's danger (war, banditry, the

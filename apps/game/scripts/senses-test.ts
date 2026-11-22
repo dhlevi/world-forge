@@ -109,5 +109,17 @@ const lines = new Set(Array.from({ length: 12 }, (_, i) => lineOf(resident(), 3,
 ok(lines.size >= 3, `a smith at work has several things to say (${lines.size})`);
 ok([...lines].every((l) => !/n't|'re|'ll|'ve|'m\b/.test(l)), 'in plain words, without contractions');
 
+console.log('\nsnow');
+{
+  const st = new Tracks();
+  st.snowy = true;
+  st.add(5, 5, null, { t: 1000, by: 'r1', kind: 'human', dir: 'n' });
+  const inSnow = readTracks(st.at(5, 5, null, 1000 + 3 * 86400), 1000 + 3 * 86400, 0);
+  ok(!!inSnow && /one walker/.test(inSnow), `prints in snow are plain to anyone, three days on (${inSnow})`);
+  st.snowy = false;
+  st.weather(1000 + 3 * 86400, false);
+  ok(st.at(5, 5, null, 1000 + 3 * 86400).length === 0, 'and go with the thaw');
+}
+
 console.log(failures ? `\n${failures} failed` : '\nall senses tests passed');
 process.exit(failures ? 1 : 0);

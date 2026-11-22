@@ -378,7 +378,13 @@ Traits move far more slowly than skills, so that a season's labour shows, a week
   broken, fluent, native. Related languages in the same family come more easily (the generator
   knows the families and cognates).
 - **In play,** speech in a language the person barely knows shows partly in that language
-  itself, filling in as they learn it.
+  itself, filling in as they learn it. *Built* (backlog N2, 21 November 2026; decided: both the
+  words and the language named; `world/speech.ts`): people speak their own language and their
+  town's, and those whose work brings strangers (merchants, innkeepers, the watch, sailors) often
+  the wanderer's own; a speaker uses the language the wanderer knows best. The log shows
+  `Ana (in Varskish): "…"`: fluent (60 and over) the line in plain English; known a little (20 to
+  59) the words as said and what is caught of them; not at all, the words alone. The wanderer's
+  native tongue needs no note. Hearing a language teaches a little of it.
 - **Literacy** is separate, one script at a time; many people cannot read at all.
 
 ## Carrying and inventory

@@ -1,4 +1,5 @@
 /** Messages between the game and its worker (worker/game.worker.ts), which holds the world. */
+import type { RouteOptions } from '@worldforge/core/local/travel';
 import type { Roof } from '@worldforge/core/local/roofs';
 import type { ChunkLayer } from '@worldforge/core/local/chunk';
 import type { WorldSettings } from '@worldforge/core/settings';
@@ -286,7 +287,7 @@ export type ToWorker =
   /** A 256 px map tile of the world (Web Mercator z/x/y), for the world view. */
   | { type: 'tile'; id: number; z: number; x: number; y: number; layer: ViewLayer }
   /** A route on the travel map from a chunk toward a point (lon/lat). */
-  | { type: 'route'; id: number; from: [number, number]; to: [number, number] }
+  | { type: 'route'; id: number; from: [number, number]; to: [number, number]; options?: RouteOptions }
   /** Roads, tracks and places in a box (lon/lat), with tracks and villages only when `fine`. */
   | { type: 'area'; id: number; west: number; south: number; east: number; north: number; fine: boolean }
   /** What character creation needs of the world. */

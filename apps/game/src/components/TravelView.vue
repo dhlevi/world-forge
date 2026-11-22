@@ -108,6 +108,12 @@ function pick(ll: LL): void {
   background(journey.setDest(ll, s?.name ?? p?.name ?? '', site), 'the travel map');
 }
 
+/** The route's choices changed: find the way again. */
+function replan(): void {
+  tick.value++;
+  background(journey.replan(), 'the travel map');
+}
+
 function go(): void {
   if (journey.running) journey.stop();
   else {
@@ -175,6 +181,12 @@ onBeforeUnmount(() => journey.stop());
             <option v-for="(s, i) in SPEEDS" :key="s.label" :value="i">{{ s.label }}</option>
           </select>
           <label class="check"><input v-model="journey.stopAtDusk" type="checkbox" /> Stop at dusk</label>
+          <select v-model="journey.routeMode" title="How the way is chosen" @change="replan">
+            <option value="fastest">Fastest</option>
+            <option value="direct">Direct</option>
+            <option value="roads">Keep to roads</option>
+          </select>
+          <label class="check" title="Go round rivers to be forded, where there is a way"><input v-model="journey.avoidFords" type="checkbox" @change="replan" /> Avoid rivers</label>
           <button v-if="journey.dest" @click="journey.clear()">Clear</button>
           <span class="sep" />
           <button @click="mapRef?.centreOnParty()">Find party (F)</button>

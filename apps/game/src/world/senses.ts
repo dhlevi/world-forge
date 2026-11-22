@@ -81,6 +81,8 @@ export interface Track {
   dir: Facing;
   /** Blood, not a print: left by the wounded on any ground (combat.md, stage 2). */
   blood?: boolean;
+  /** Pressed into lying snow (backlog W2): plain to anyone, and kept until fresh snow or a thaw. */
+  snow?: boolean;
 }
 
 /** Ground that always takes tracks, and ground that takes them when wet. */
@@ -88,6 +90,9 @@ const SOFT = new Set(['mud', 'marsh', 'sand', 'desert_sand', 'snow', 'dirt', 'dr
 const SOFT_WET = new Set(['grass', 'grass_lush', 'grass_dry', 'lawn', 'path', 'track', 'road', 'moss', 'tundra', 'needle_floor']);
 /** How long tracks last (seconds), and how long fresh ones last under rain or falling snow. */
 const LAST_S = 2 * 86400, WASHED_S = 3600;
+/** How long a print in snow lasts, if no fresh snow falls on it. */
+const SNOW_S = 6 * 86400;
+const lasts = (t: Track) => (t.snow ? SNOW_S : LAST_S);
 /** At most this many tracks a tile (the newest kept). */
 const PER_TILE = 6;
 
@@ -107,7 +112,11 @@ export class Tracks {
   }
 
   /** Leaves a track on a tile. */
+  /** Snow lies on the ground (the session sets it as the weather changes): prints out of doors are made in it. */
+  snowy = false;
+
   add(x: number, y: number, z: number | null, tr: Track): void {
+    if (this.snowy && z === null && !tr.blood) tr = { ...tr, snow: true };
     const k = key(x, y, z);
     const l = this.tiles.get(k) ?? [];
     l.push(tr);
@@ -122,13 +131,13 @@ export class Tracks {
 
   /** The tracks on a tile still to be seen at a time, newest last. */
   at(x: number, y: number, z: number | null, now: number): Track[] {
-    return (this.tiles.get(key(x, y, z)) ?? []).filter((t) => now - t.t < LAST_S && t.t <= now);
+    return (this.tiles.get(key(x, y, z)) ?? []).filter((t) => now - t.t < lasts(t) && t.t <= now);
   }
 
   /** Lets old tracks go; rain or falling snow wash out (or cover) all but the freshest. */
   weather(now: number, washing: boolean): void {
     for (const [k, l] of this.tiles) {
-      const keep = l.filter((t) => now - t.t < (washing ? WASHED_S : LAST_S));
+      const keep = l.filter((t) => now - t.t < (washing ? WASHED_S : lasts(t)) && (t.snow ? this.snowy : true));
       if (keep.length) this.tiles.set(k, keep);
       else this.tiles.delete(k);
     }
@@ -192,6 +201,8 @@ export function readTracks(ts: Track[], now: number, tracking: number): string |
 }
 
 function readPrints(ts: Track[], now: number, tracking: number): string {
+  // In snow the prints are plain: anyone reads them as a fair tracker would.
+  if (ts.some((t) => t.snow)) tracking = Math.max(tracking + 30, 45);
   if (tracking < 15) return ts.every((t) => t.kind.startsWith('animal:')) ? 'Tracks in the ground.' : 'Footprints in the ground.';
   const by = new Set(ts.map((t) => t.by));
   const newest = ts[ts.length - 1];

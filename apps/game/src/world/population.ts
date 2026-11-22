@@ -109,6 +109,8 @@ export interface Resident {
   greetedAt?: number;
   /** Stood aside for the wanderer: they keep out of the way until then (game seconds), and do not walk back to their place at once. */
   asideUntil?: number;
+  /** A cutpurse caught with a hand at the wanderer's purse (game seconds). */
+  caughtAt?: number;
   stirredAt?: number;
   /** The tile out of sight they walk to on leaving the bubble, or come in from. */
   exit: Spot | null;
@@ -187,6 +189,8 @@ export class Population {
   }
   /** A person pushed too far by the wanderer (jostled again and again): whether they swing, in words (world/strife.ts). */
   onTemper: (r: Resident, g: PopulationView) => string | null = () => null;
+  /** A line said to the wanderer, as the log shows it (in the speaker's language: world/speech.ts, set by the session). */
+  voice: (r: Resident, line: string, name: string) => string = (_r, line, name) => `${name}: "${line}"`;
 
   constructor(
     private ask: (x: number, y: number, time: number, rise: number, set: number, ambush?: [number, number]) => Promise<{ people: PlacedPerson[]; radius: number }>,
@@ -435,10 +439,10 @@ export class Population {
       // Shoved once too often, a hot-tempered one swings (world/strife.ts).
       const swung = this.opinions.recent(r.p.id, 'jostled me', g.time, 600) >= 4 ? this.onTemper(r, g) : null;
       if (swung) return swung;
-      return `"Watch where you are going!" ${r.p.given} snaps.`;
+      return `${this.voice(r, 'Watch where you are going!', r.p.given)} ${r.p.female ? 'She' : 'He'} snaps it.`;
     }
     this.opinions.add(r.p.id, r.p.name, 'jostled me', -0.5, g.time, 1);
-    return `"Mind your step," says ${r.p.given}.`;
+    return this.voice(r, 'Mind your step.', r.p.given);
   }
 
   // ---- For world/strife.ts: moving those out of their day, and the dead -----------------------

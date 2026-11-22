@@ -55,6 +55,10 @@ export class Strife {
   onArrest: (r: Resident) => void = () => {};
   /** Someone cries out for the watch (a victim, a witness): those of the watch near come. */
   onCallWatch: (r: Resident) => void = () => {};
+  /** A cutpurse beside the wanderer in a crowd tries for their purse (game/justice.ts works out what comes of it). */
+  onPickpocket: (r: Resident) => void = () => {};
+  /** When each cutpurse last tried (game seconds). */
+  private tried = new Map<string, number>();
   /** Blows struck this update, per person. */
   private blows = new Map<Resident, number>();
 
@@ -75,7 +79,7 @@ export class Strife {
     if (!(r.p.traits.includes('Wrathful') || courage(r) <= 0.5)) return null;
     this.start(r, 'brawl', 'player', g.time);
     r.fight!.began = true;
-    return `"That is enough!" ${r.p.given} snarls, and swings at you.`;
+    return `${this.pop.voice(r, 'That is enough!', r.p.given)} ${r.p.female ? 'She' : 'He'} swings at you.`;
   }
 
   /**
@@ -88,6 +92,7 @@ export class Strife {
     for (const r of this.pop.all()) {
       if (r.fight || r.plight || (r.where === 'asleep' && cheb(r, g.px, g.py) > 2)) continue;
       if (r.p.template === 'bandit') this.bandSees(r, g);
+      else if (r.p.template === 'thief') this.cutpurse(r, g, w);
       else this.hatred(r, g, w);
     }
     this.tavernBrawl(g);
@@ -121,6 +126,18 @@ export class Strife {
     const was = this.robbedBy.get(band);
     if (was !== undefined && g.time - was < 86400) return;
     if (cheb(r, g.px, g.py) > 14 || g.z !== r.z || !g.isVisible(r.x, r.y)) return;
+    // Brigands in a town's streets (worker/streets.ts) strike only at one alone: no watch in sight
+    // of the wanderer, and no more than one other about.
+    if (band.startsWith('brigands:')) {
+      let others = 0;
+      for (const o of this.pop.all()) {
+        if (o.p.homeId === band || o.z !== g.z) continue;
+        const d = cheb(o, g.px, g.py);
+        if (isWatch(o) && d <= 15 && o.where !== 'asleep') return;
+        if (d <= 8 && o.where !== 'asleep') others++;
+      }
+      if (others > 1) return;
+    }
     let n = 0;
     for (const o of this.pop.all()) if (o.p.homeId === band && !o.fight && !o.plight && o.p.template === 'bandit') {
       this.start(o, 'rob', 'player', g.time);
@@ -128,6 +145,22 @@ export class Strife {
       n++;
     }
     this.onSee(n > 1 ? `Robbers! ${n} of them come at you from about their camp.` : `${cap(callName(r, this.pop.opinions))} comes at you, a weapon in hand.`, r);
+  }
+
+  /**
+   * A cutpurse (worker/streets.ts) beside the wanderer in a crowd (three or more others within four
+   * tiles): now and then (a minute's chance), a hand at the purse; no more than once an hour each.
+   */
+  private cutpurse(r: Resident, g: PopulationView, w: Wanderer): void {
+    if (w.helpless || cheb(r, g.px, g.py) > 1 || g.z !== r.z) return;
+    const was = this.tried.get(r.p.id);
+    if (was !== undefined && g.time - was < 3600) return;
+    let crowd = 0;
+    for (const o of this.pop.all()) if (o !== r && o.z === g.z && cheb(o, g.px, g.py) <= 4 && o.where !== 'asleep') crowd++;
+    if (crowd < 3) return;
+    if (mulberry32(hashString(`${r.p.id}#purse#${Math.floor(g.time / 60)}`))() >= 0.25) return;
+    this.tried.set(r.p.id, g.time);
+    this.onPickpocket(r);
   }
 
   /** One who hates the wanderer (an opinion of -50 or worse), close by and with the nerve for it: now and then (a minute's chance), a fist. */
@@ -412,7 +445,7 @@ export class Strife {
             r.nextAt = g.time + ANSWER_S;
             return true;
           }
-          this.onSee(f.intent === 'rob' ? `"Your purse, and be quick about it!" says ${callName(r, this.pop.opinions)}. (Yield to hand it over.)` : `"Yield, in the name of the law!" cries ${callName(r, this.pop.opinions)}. (Yield to go quietly.)`, r);
+          this.onSee(f.intent === 'rob' ? `${this.pop.voice(r, 'Your purse, and be quick about it!', cap(callName(r, this.pop.opinions)))} (Yield to hand it over.)` : `${this.pop.voice(r, 'Yield, in the name of the law!', cap(callName(r, this.pop.opinions)))} (Yield to go quietly.)`, r);
           r.nextAt = g.time + ANSWER_S;
           return true;
         }

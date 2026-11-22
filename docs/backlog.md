@@ -37,15 +37,15 @@ design round); XL, several stages (a new system that others build on).
 
 | ID | Item | Size |
 |---|---|---|
-| W9 | Tracking and Survival let the wanderer avoid a road ambush. | S |
-| W10 | The risk of robbers falls farther from the large towns. | S |
-| W11 | The weather panel shows an underground view below the land. | S |
-| W2 | Snow leaves trails that are very easy to follow. | S |
-| C5 | Being dirty, or wearing dirty clothes, makes social checks harder. | S |
-| N4 | Beggars, the homeless and brigands in the streets, by the town's figures. | M |
-| N3 | Streets feel more alive: more people about, some simply walking. | M |
-| N2 | People speak their own language, or one they share with the wanderer. | M |
-| T2 | Route choices on the travel map: fastest, direct, keep to roads, cross rivers or not. | M |
+| W9 | Tracking and Survival let the wanderer avoid a road ambush. **Done** (21 November 2026). | S |
+| W10 | The risk of robbers falls farther from the large towns. **Done** (21 November 2026). | S |
+| W11 | The weather panel shows an underground view below the land. **Done** (21 November 2026). | S |
+| W2 | Snow leaves trails that are very easy to follow. **Done** (21 November 2026). | S |
+| C5 | Being dirty, or wearing dirty clothes, makes social checks harder. **Done** (21 November 2026). | S |
+| N4 | Beggars, the homeless and brigands in the streets, by the town's figures. **Done** (21 November 2026). | M |
+| N3 | Streets feel more alive: more people about, some simply walking. **Done** (21 November 2026). | M |
+| N2 | People speak their own language, or one they share with the wanderer. **Done** (21 November 2026). | M |
+| T2 | Route choices on the travel map: fastest, direct, keep to roads, cross rivers or not. **Done** (21 November 2026). | M |
 
 ### Phase 3: systems on what exists
 
@@ -99,7 +99,7 @@ See survival.md (weather) and navigation.md.
 
 **W2. Snow trails.** *Partial.* Snow already slows walking by its depth. Tracks are kept and read
 (`world/senses.ts`); in snow they should be plain to anyone (a large bonus to read, long-lasting
-until fresh snow falls). *Phase 2, S.*
+until fresh snow falls). *Phase 2, S.* **Done** (21 November 2026): see npcs.md, Tracks.
 
 **W3. Frozen waterways.** *New.* In a hard frost, still and slow water freezes: shallow first, then
 deep, over days. Ice can be walked on (thin ice may break: a fall into freezing water); it thaws.
@@ -119,16 +119,18 @@ once, and the way ahead along the road the party is on should show further. *Pha
 **W9. Skills against ambushes.** *New.* Road ambushes are rolled by the danger of the ground alone
 (`game/justice.ts`). Tracking (signs of the band) and Survival (choosing the way) should give a
 chance to see them first: the journey stops with a warning, and the wanderer can go round, wait,
-or go on. *Phase 2, S.* See combat.md, stage 4.
+or go on. *Phase 2, S.* See combat.md, stage 4. **Done** (21 November 2026): seen first, the
+journey stops short and the band is gone round.
 
 **W10. Fewer robbers far from the towns.** *Partial.* A band cell's danger rises with the nearest
 town's lawlessness and near roads, but deep in the wilds it is still four fifths of the usual
 (`worker/bandits.ts`). Robbers live off travellers, so their numbers should fall with distance from
-the large towns and their roads. *Phase 2, S.*
+the large towns and their roads. *Phase 2, S.* **Done** (21 November 2026): see navigation.md, Events on the road.
 
 **W11. An underground view in the weather panel.** *New.* The panel shows the sky outdoors and an
 indoor view indoors; below the land (cellars, caves, delves) it should show the rock: no sky, the
-light of what the wanderer carries, the cold or warmth of the deep. *Phase 2, S.*
+light of what the wanderer carries, the cold or warmth of the deep. *Phase 2, S.* **Done** (21
+November 2026).
 
 **W12. Hospitals.** *New.* No town or city has a hospital; physicians exist among the residents.
 Large towns and cities should have one (a hospital, an infirmary, or a temple's house of healing,
@@ -171,7 +173,9 @@ water), and keep stains that lower their worth for good. Dirty clothes sell for 
 
 **C5. Dirt and social checks.** *New.* Being dirty or wearing dirty clothes should make the social
 skills harder (more so among the rich, less among labourers and in the wilds). The dirt is already
-measured. *Phase 2, S.*
+measured. *Phase 2, S.* **Done** (21 November 2026): dirt, blood and an unkempt head already
+made social checks harder (actors/checks.ts); now filth and blood also sour a first impression in
+talk, the well-to-do most. Dirty clothes wait on C4.
 
 **C6. Attraction.** *New.* Each person is drawn more or less to each sex and body type. Those who
 find the wanderer attractive are easier to persuade and like them sooner; the wanderer attracted to
@@ -199,14 +203,17 @@ November 2026): see npcs.md, Talking and dealing.
 (`actors/components/skills.ts`), and each people has its language (core `lang/`). People should
 speak their own language, or one they share with the wanderer; what is not understood shows as
 the language's words, and what is half understood, in part. *Phase 2, M.* See characters.md.
+**Done** (21 November 2026): see characters.md, Languages.
 
 **N3. Livelier streets.** *Partial.* People keep their day's plan, and many days keep them indoors.
 More should be out (errands, visits, idling in the square), and some should simply walk about the
-town. *Phase 2, M.* See npcs.md.
+town. *Phase 2, M.* See npcs.md. **Done** (21 November 2026): passers-by; see npcs.md, People
+of the streets.
 
 **N4. Beggars, the homeless and brigands.** *Partial.* Beggars exist as a kind of resident. Their
 numbers, the homeless sleeping rough, and brigands in the streets by night should follow the town's
-poverty and crime (core `people/town.ts`). *Phase 2, M.*
+poverty and crime (core `people/town.ts`). *Phase 2, M.* **Done** (21 November 2026), with
+cutpurses by day: see npcs.md, People of the streets.
 
 **N5. A seedier side.** *New.* Behind a world-creation option: brothels and gambling dens by the
 town's crime and trade, with what goes on there kept off-screen and in good taste. *Phase 4, M.*
@@ -265,7 +272,8 @@ need random encounters and events: caravans, lost travellers, pilgrims, patrols,
 on the road. *Phase 4, L.* The ones that give quests depend on quests.md.
 
 **T2. Route choices.** *New.* The route is the fastest by the travel grid. The player should choose:
-fastest, most direct, keep to roads, and whether to cross rivers. *Phase 2, M.*
+fastest, most direct, keep to roads, and whether to cross rivers. *Phase 2, M.* **Done** (21
+November 2026): see navigation.md, Events on the road.
 `game/travel.ts` and the worker's route.
 
 **T3. Deep rivers.** *Partial.* Fords take an Athletics check and can soak or sweep the wanderer.

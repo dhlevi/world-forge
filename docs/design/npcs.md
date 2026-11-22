@@ -196,7 +196,9 @@ then varied per person and per day:
 - **Tracks.** Moving over soft ground (mud, snow, sand, earth, wet grass) leaves tracks per tile:
   who or what (by size and kind), which way, when. They fade with time and weather (rain and fresh
   snow cover them). Reading them is the Tracking skill: what made them, how old, how many.
-  Tracks are kept only in the bubble and for a few days.
+  Tracks are kept only in the bubble and for a few days. *Built for snow* (backlog W2, 21 November
+  2026): prints pressed into lying snow are plain to anyone (read as a fair tracker would), last
+  six days, and go with the thaw or under fresh snow.
 - **Smell** (Stage 2, for animals): the wind carries scent; animals with keen noses notice the
   player downwind.
 
@@ -387,6 +389,15 @@ nations, regions and cities; factions. **Proposed:**
 ## Stages
 
 **Proposed.** Each stage ends playable, with its tests.
+
+*People of the streets* (backlog N3 and N4, 21 November 2026; decided for brigands: both;
+`worker/streets.ts`): besides the households, a town's streets have passers-by going from place
+to place by day (more in a city); beggars at their spots by day who sleep rough at night (more
+where the town is poor); cutpurses in the busy streets by day, who try for the purse of a wanderer
+beside them in a crowd (felt by eyesight, wisdom and Sleight of hand: caught, they run, and may be
+struck without crime; unfelt, a share of the coin is gone, found out a while later); and, where
+the town's crime is 50 or more, brigands in the streets after dark, who rob a wanderer alone and
+out of sight of the watch.
 
 *Dwarven delves* (backlog D1, 21 November 2026): the halls under a delve have their people
 (`worker/delve.ts`). Each clan home is given a household, and its grown members trades by the

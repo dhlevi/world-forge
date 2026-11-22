@@ -82,12 +82,28 @@ const v = computed(() => {
   };
 });
 
+/** The rock seen below the land: strata, hanging stone, and a light's glow if one is carried. */
+const STRATA = [14, 27, 41, 55].map((y, i) => `M0,${y} C60,${y - 3 + i} 120,${y + 4} 180,${y - 1} S250,${y + 3} ${W},${y}`);
+const DRIPS = [[22, 9], [58, 6], [97, 12], [141, 7], [176, 10], [214, 5], [248, 9]];
+
 const tip = computed(() => (props.words ? [props.words.when, props.words.wind, props.words.air, props.words.sun].join('\n') : ''));
 </script>
 
 <template>
   <div class="sky" :title="tip">
-    <svg :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="tip" :style="{ background: `linear-gradient(${v.top}, ${v.low} 78%)` }">
+    <!-- Below the land: the rock, not the sky (backlog W11). -->
+    <svg v-if="sky.under" :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="tip" class="rock">
+      <rect :width="W" :height="H" fill="#1c1a19" />
+      <radialGradient id="rock-lamp" cx="0.5" cy="0.7" r="0.6">
+        <stop offset="0" stop-color="#e8b060" stop-opacity="0.55" />
+        <stop offset="1" stop-color="#e8b060" stop-opacity="0" />
+      </radialGradient>
+      <rect v-if="sky.lit" :width="W" :height="H" fill="url(#rock-lamp)" />
+      <path v-for="(d, i) in STRATA" :key="i" :d="d" class="stratum" />
+      <path v-for="(p, i) in DRIPS" :key="'d' + i" :d="`M${p[0] - 4},0 L${p[0]},${p[1]} L${p[0] + 4},0 Z`" fill="#2c2926" />
+      <path :d="`M0,${H - 10} C70,${H - 14} 140,${H - 7} 200,${H - 11} S250,${H - 9} ${W},${H - 12} V${H} H0 Z`" fill="#2a2724" />
+    </svg>
+    <svg v-else :viewBox="`0 0 ${W} ${H}`" role="img" :aria-label="tip" :style="{ background: `linear-gradient(${v.top}, ${v.low} 78%)` }">
       <defs>
         <g id="sky-cloud">
           <ellipse cx="0" cy="4" rx="22" ry="6" />
@@ -143,7 +159,8 @@ const tip = computed(() => (props.words ? [props.words.when, props.words.wind, p
     <div class="readout">
       <span>{{ clock }}</span>
       <span class="grow" />
-      <svg v-if="!sky.inside" class="wind" viewBox="-10 -10 20 20" aria-hidden="true">
+      <span v-if="sky.under" class="dim">below the land</span>
+      <svg v-else-if="!sky.inside" class="wind" viewBox="-10 -10 20 20" aria-hidden="true">
         <circle v-if="!v.feathers" r="2.5" />
         <g v-else :transform="`rotate(${sky.windFrom + 90})`">
           <path d="M-7,0 H4 M7,0 L2,-3 V3 Z" />
@@ -166,6 +183,7 @@ const tip = computed(() => (props.words ? [props.words.when, props.words.wind, p
 .fog { fill: #e6e9ee; }
 .fog ellipse { filter: blur(3px); }
 .hour { font-size: 9px; text-anchor: middle; font-variant-numeric: tabular-nums; }
+.stratum { fill: none; stroke: #34302c; stroke-width: 1.4; }
 .window { fill: none; stroke: #3b2c1f; stroke-width: 4; }
 .window line { stroke-width: 3; }
 .readout { display: flex; align-items: center; gap: 6px; font-size: 0.92em; font-variant-numeric: tabular-nums; }

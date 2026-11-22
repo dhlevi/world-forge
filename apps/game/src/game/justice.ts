@@ -9,7 +9,8 @@ import { usePortion } from '../rules/tasks';
 import { makeItem, defOf, itemName, type Item } from '../actors/items/item';
 import type { PlacedPerson, RouteStep } from '../worker/protocol';
 import { background } from '../app/errors';
-import { Body, Mood } from '../actors/components';
+import { Body, Mood, Skills, Traits } from '../actors/components';
+import { check, DC } from '../actors/checks';
 import { Inventory } from '../actors/items/inventory';
 import { Health } from '../actors/health';
 import { treat, unsuited, type Treat } from '../rules/treatment';
@@ -37,7 +38,9 @@ export class Justice {
   struckPerson(r: Resident): void {
     const g = this.s.game;
     this.struckAt = g.time;
-    const theirs = r.fight?.foe === 'player' && (r.fight.intent !== 'brawl' || !!r.fight.began);
+    // A cutpurse caught at it, within the hour, may be struck without it being a crime.
+    const caught = r.caughtAt !== undefined && g.time - r.caughtAt < 3600;
+    const theirs = caught || (r.fight?.foe === 'player' && (r.fight.intent !== 'brawl' || !!r.fight.began));
     if (r.p.template !== 'bandit' && !theirs && r.harmedBy !== 'player') {
       this.s.people.opinions.add(r.p.id, r.p.name, 'attacked me', -60, g.time, 60, false);
       this.crime('assault', r);
@@ -169,11 +172,9 @@ export class Justice {
 
   /** How harsh the law is here: by the people most of the residents about belong to. */
   harshness(): number {
-    const n = new Map<number, number>();
-    for (const r of this.s.people.all()) if (r.p.template !== 'bandit') n.set(r.p.culture, (n.get(r.p.culture) ?? 0) + 1);
-    const main = [...n].sort((a, b) => b[1] - a[1])[0]?.[0];
-    return harshness(main);
+    return harshness(this.s.townCulture() ?? undefined);
   }
+
 
   /** Those who see a person (awake, on the same floor, near, with a clear line to them): witnesses to what is done to them. */
   witnesses(r: Resident): Resident[] {
@@ -418,6 +419,45 @@ export class Justice {
     }
   }
 
+  // ---- Cutpurses (backlog N4) -----------------------------------------------------------------
+
+  /** A purse lightened unseen: told when the wanderer next notices (game seconds, and how much). */
+  private lightened: { at: number; copper: number } | null = null;
+
+  /**
+   * A cutpurse's hand at the purse: whether the wanderer feels it, by their eyes, their wits and
+   * their own knowledge of the trick (Sleight of hand). Felt, the thief breaks away and runs (and
+   * may be struck or chased without it being a crime); unfelt, a share of the coin is gone, and
+   * the wanderer finds out a while later.
+   */
+  pickpocket(r: Resident): void {
+    const g = this.s.game, a = this.s.player, inv = a?.get(Inventory);
+    if (!a || !inv || this.s.state.dead || !inv.d.copper) return;
+    const t = a.get(Traits), sk = a.get(Skills);
+    const notice = Math.max(5, Math.min(90, 25 + ((t?.get('eyesight') ?? 10) - 10) * 3 + ((t?.get('wisdom') ?? 10) - 10) * 2 + (sk?.effective('sleight') ?? 0) / 2));
+    const name = callName(r, this.s.people.opinions);
+    if (g.dice.random() * 100 < notice) {
+      r.harmedBy = undefined;
+      r.caughtAt = g.time;
+      this.s.strife.flee(r, g, false);
+      g.say(`You feel a hand at your purse, and catch ${name} at it! ${r.p.female ? 'She' : 'He'} twists free and runs.`);
+      return;
+    }
+    const took = Math.max(1, Math.round(inv.d.copper * (0.15 + g.dice.random() * 0.35)));
+    inv.d.copper -= took;
+    r.actor.get(Inventory)?.earn(took);
+    this.lightened = { at: g.time + 600 + g.dice.random() * 1800, copper: (this.lightened?.copper ?? 0) + took };
+  }
+
+  /** The wanderer finds their purse lighter than it was (some while after it happened). */
+  purseNotice(): void {
+    const l = this.lightened, g = this.s.game;
+    if (!l || g.time < l.at) return;
+    this.lightened = null;
+    g.say(`Your purse is lighter than it should be: ${l.copper} copper gone. A cutpurse, somewhere in the crowd.`);
+    this.s.player?.get(Mood)?.add({ id: 'pickpocketed', text: 'Had my purse cut', value: -4, until: g.time + 2 * 86400 });
+  }
+
   // ---- Robbers on the road --------------------------------------------------------------------
 
   /** Bands passed this week (once a band's cell is crossed, it is not met again that week). */
@@ -438,6 +478,22 @@ export class Justice {
     if (!bandRoll(this.s.o.settings.seed, bx, by, week, p).here) return;
     const meet = st.way === 'road' ? 0.15 : st.way === 'track' ? 0.1 : 0.06;
     if (g.dice.random() >= meet) return;
+    // Seen first (backlog W9): Tracking reads their signs, Survival the lie of the land. The
+    // journey stops short of them, and the wanderer can go round (the band is not met again this week).
+    const a = this.s.player, sk = a?.get(Skills);
+    if (a && sk) {
+      const skill = sk.effective('tracking') >= sk.effective('survival') ? 'tracking' : 'survival';
+      const dark = this.s.skyNow.light < 0.3;
+      const r = check(a, skill, { difficulty: DC.hard, now: g.time, mods: dark ? [{ why: 'the dark', value: -15 }] : [] });
+      if (r.ok) {
+        this.s.travel.stop();
+        g.say(skill === 'tracking'
+          ? 'Fresh tracks of several men leave the way and come back to it, and you smell a hidden fire: robbers lie in wait ahead. You stop before they see you, and can go round them.'
+          : 'The way ahead runs through a place made for an ambush, and something there is not right: you stop short, and can go round it.');
+        this.s.practice.flush();
+        return;
+      }
+    }
     this.s.travel.stop();
     setTimeout(() => this.ambushed(id, [bx, by]), 0);
   }
