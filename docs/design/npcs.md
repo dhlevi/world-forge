@@ -289,6 +289,12 @@ nations, regions and cities; factions. **Proposed:**
 - **Look** at a person: who they are if the player knows them, their trade if it shows, what they
   are doing ("hammering at the anvil", "asleep").
 - **Bump** into a person: they step aside if they can, else a line is said ("Mind your step.").
+  *Built* (backlog N1 and B2, 21 November 2026): one who steps aside leaves the way clear and the
+  wanderer walks on into it; they keep out of the way until the wanderer has gone on, then go back
+  to their place. With no room to step aside (a crowded hall, a narrow way), the wanderer squeezes
+  past and they take the wanderer's place. Inside buildings, people are given places that keep the
+  doors and passages one tile wide clear, and a building holds at most about two in three of those
+  places at once (`worker/people.ts`, `roomy`).
 - **Talk** (a key): a greeting and one line from their state, routine or ties ("Off to the Goose;
   Brena's buying tonight."). Rumours and quests come with quests.md.
 - **Trespass:** walking into a home at night, or into rooms not open to the public, is noticed and
@@ -381,6 +387,13 @@ nations, regions and cities; factions. **Proposed:**
 ## Stages
 
 **Proposed.** Each stage ends playable, with its tests.
+
+*Dwarven delves* (backlog D1, 21 November 2026): the halls under a delve have their people
+(`worker/delve.ts`). Each clan home is given a household, and its grown members trades by the
+halls' workplaces: smiths, smelters, armourers, merchants, brewers, alehouse keepers, wardens (who
+keep the peace there), priests of the ancestors, stablehands and porters. Their day is home, work,
+a meal in the great hall or the alehouse, an evening there or at home, and bed; some smiths and
+wardens keep the night. The districts and the full working fortress are backlog D2.
 
 **Stage 1: people on the map.**
 

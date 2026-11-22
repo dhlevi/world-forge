@@ -23,7 +23,7 @@ import { Needs } from '../actors/needs';
 import { Health } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
 import { conditionWord, defOf, itemName, type Item } from '../actors/items/item';
-import { GROUND_TILES, OBJECT_TILES } from '@worldforge/core/local/tiles';
+import { OBJECT_TILES } from '@worldforge/core/local/tiles';
 import { TILE_M } from '@worldforge/core/local/chunk';
 import { STEP_M } from '@worldforge/core/local/travel';
 import { bearing, compassWord } from '../util';
@@ -274,7 +274,7 @@ export class Practice {
         const x = g.px + dx, y = g.py + dy;
         if (!map.loaded(x, y)) continue;
         const od = OBJECT_TILES[map.object(x, y)];
-        const what = od?.name === 'well' ? 'a well' : od?.name === 'fountain' ? 'a fountain' : GROUND_TILES[map.ground(x, y)]?.water ? 'water' : '';
+        const what = od?.name === 'well' ? 'a well' : od?.name === 'fountain' ? 'a fountain' : map.waterAt(x, y) === 'fresh' ? 'water' : '';
         const d = dx * dx + dy * dy;
         if (what && d < bd) {
           bd = d;

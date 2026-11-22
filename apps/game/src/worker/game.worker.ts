@@ -15,6 +15,7 @@ import type { FromWorker, StartSite, ToWorker, LocalSite, TravelArea } from './p
 import { catalogue, cultureOf, regionAt, resetCatalogue } from './catalogue';
 import { bubbleAt, forgetPeople, peopleIn } from './people';
 import { banditry, banditsIn } from './bandits';
+import { delveFolkIn } from './delve';
 import { bandCell } from '../rules/bands';
 import { animalsIn } from './fauna';
 import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo } from './sites';
@@ -136,7 +137,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       const radius = bubbleAt(local, m.x, m.y);
       const grid = travel;
       const bands = banditsIn(world, local, m.x, m.y, radius, m.time, (cx, cy) => grid?.cell(cx, cy).way, m.ambush);
-      post({ type: 'people', id: m.id, people: [...peopleIn(world, local, m.x, m.y, radius, m.time, m.rise, m.set), ...bands], radius });
+      const halls = delveFolkIn(world, local, m.x, m.y, radius, m.time);
+      post({ type: 'people', id: m.id, people: [...peopleIn(world, local, m.x, m.y, radius, m.time, m.rise, m.set), ...bands, ...halls], radius });
     } else if (m.type === 'animals') {
       if (!world || !local) throw new Error('No game started.');
       const radius = bubbleAt(local, m.x, m.y);

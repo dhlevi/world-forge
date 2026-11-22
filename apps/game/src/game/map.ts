@@ -259,6 +259,17 @@ export class GameMap {
     return a ? a[0].elev[a[1]] : 0;
   }
 
+  /**
+   * Fresh water to drink on a ground tile (docs/backlog.md, W4): rivers, and lakes standing above
+   * the sea, are fresh; the sea (open water at or below the sea's level) is salt. Null if no water.
+   */
+  waterAt(tx: number, ty: number): 'fresh' | 'salt' | null {
+    const g = GROUND_TILES[this.ground(tx, ty)];
+    if (!g?.water) return null;
+    if (g.name.startsWith('river')) return 'fresh';
+    return this.elev(tx, ty) <= 0 ? 'salt' : 'fresh';
+  }
+
   /** The ground's level (game/levels.ts). */
   level(tx: number, ty: number): number {
     return levelOf(this.elev(tx, ty));

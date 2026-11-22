@@ -233,4 +233,8 @@ animals, fear and flight, the watch, predators that are threats only until this 
    10, less for the young and old), courage by trade and traits (Brave, Craven, Wrathful), the
    blows of what they hold (or fists and feet), and armour where they wear it. A person's body is
    the wanderer's plan, by their sex and weight. The dead leave a body with what they carried.
-5. **Later**: mounted fighting, companions in fights, war and sieges.
+5. **Later**: mounted fighting, companions in fights, war and sieges. **Deferred** (decided 21
+   November 2026) until the systems it rests on are under way: riding and mounts, companions who
+   follow the wanderer, and a way to take part in the realms' wars (the world has realms at war and
+   army camps, but the game has no part in them yet). Magic in combat waits on the magic systems
+   (decision 4).

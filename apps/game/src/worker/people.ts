@@ -55,6 +55,7 @@ export function forgetPeople(): void {
   besideCache.clear();
   squareCache.clear();
   looks.clear();
+  roomyMemo.clear();
   forWorld = null;
   forLocal = null;
 }
@@ -143,6 +144,8 @@ export function peopleIn(w: GeneratedWorld, local: LocalWorld, x: number, y: num
   const R = radius + MARGIN, R2 = radius + REACH;
   const out: PlacedPerson[] = [];
   const taken = new Set<string>();
+  /** How many are placed in each building now (by its id). */
+  const placedIn = new Map<string, number>();
   const near = (t: Spot, d: number) => Math.abs(t.x - x) <= d && Math.abs(t.y - y) <= d;
   const all = local.buildingsIn(x - R2, y - R2, x + R2, y + R2).map((b) => homeOf(w, b));
   const middle = (b: PlanBuilding) => [b.x0 + b.w / 2, b.y0 + b.h / 2];
@@ -181,10 +184,14 @@ export function peopleIn(w: GeneratedWorld, local: LocalWorld, x: number, y: num
       const work: Work = workOf(p, h, home.kind, shop);
       const plan = dayBlocks(seed, id, day, p, work, home.kind, { rise, set });
       // The places of the day, found once each.
-      const living = b.spots.filter((s) => s.obj !== 'bed' && !s.room.includes('bed'));
+      const ways = roomy(b);
+      const allLiving = b.spots.filter((s) => s.obj !== 'bed' && !s.room.includes('bed'));
+      const clearLiving = allLiving.filter((s) => ways.has(spotKey(s)));
+      const living = clearLiving.length ? clearLiving : allLiving;
       const homeSpot = pickOf(living.filter((s) => s.z === null)) ?? pickOf(living) ?? pickOf(b.spots);
       if (!homeSpot) return;
-      const bed = beds[bedNo++] ?? pickOf(b.spots.filter((s) => s.room.includes('bed') && s.obj !== 'bed')) ?? homeSpot;
+      const bedroom = b.spots.filter((s) => s.room.includes('bed') && s.obj !== 'bed');
+      const bed = beds[bedNo++] ?? pickOf(bedroom.filter((s) => ways.has(spotKey(s)))) ?? pickOf(bedroom) ?? homeSpot;
       const table = pickOf(living.filter((s) => s.z === null && TABLE_ROOMS.has(s.room))) ?? homeSpot;
       let workSpot: Spot | null = null, awayIn: PlanBuilding | null = null;
       if (work === 'shop') workSpot = inside(b, r);
@@ -235,8 +242,14 @@ export function peopleIn(w: GeneratedWorld, local: LocalWorld, x: number, y: num
       // Where they are now: the place of the hour's block (a free tile beside it, if it is taken).
       const now = blockAt(plan, hour);
       let at = stops[plan.indexOf(now)]?.at ?? null;
-      if (at && taken.has(spotKey(at))) at = freeBeside(local, found.get(now.place)?.[1] ?? null, at, taken);
-      if (at) taken.add(spotKey(at));
+      // A building holds only so many at once (B2): the rest are elsewhere for now.
+      const inB = found.get(now.place)?.[1] ?? null;
+      if (at && inB && (placedIn.get(inB.bid) ?? 0) >= roomFor(inB)) at = null;
+      if (at && taken.has(spotKey(at))) at = freeBeside(local, inB, at, taken);
+      if (at) {
+        taken.add(spotKey(at));
+        if (inB) placedIn.set(inB.bid, (placedIn.get(inB.bid) ?? 0) + 1);
+      }
       out.push(person(seed, id, p, h, b, work, home.kind, day, stops, asSpot(homeSpot), at, r));
     }));
   }
@@ -252,18 +265,50 @@ function bedsOf(b: PlanBuilding): BuildingSpot[] {
 
 /** A spot in a building to work or sit in: its work rooms first (on the ground floor), else its ground floor. */
 function inside(b: PlanBuilding, r: () => number): BuildingSpot | null {
-  const open = b.spots.filter((s) => s.obj !== 'bed');
+  const ways = roomy(b);
+  const all = b.spots.filter((s) => s.obj !== 'bed');
+  const clear = all.filter((s) => ways.has(spotKey(s)));
+  const open = clear.length ? clear : all;
   const pickOf = (xs: BuildingSpot[]) => (xs.length ? xs[Math.floor(r() * xs.length) % xs.length] : null);
   return pickOf(open.filter((s) => s.z === null && WORK_ROOMS.has(s.room))) ?? pickOf(open.filter((s) => s.z === null)) ?? pickOf(open);
 }
 
-/** A free tile near a taken one: of its building, or (out of doors) of open ground within a few tiles (null if none). */
+const roomyMemo = new Map<string, Set<string>>();
+
+/**
+ * The tiles of a building where someone may stand and still leave the ways clear (docs/backlog.md,
+ * B2): not beside a door, and not in a passage one tile wide (a tile whose only open sides are two
+ * opposite ones). Corners, the middle of rooms and seats are fine.
+ */
+export function roomy(b: PlanBuilding): Set<string> {
+  const hit = roomyMemo.get(b.bid);
+  if (hit) return hit;
+  const keys = new Set(b.spots.map(spotKey));
+  const open = (x: number, y: number, z: number | null) => keys.has(spotKey({ x, y, z }));
+  const out = new Set<string>();
+  for (const s of b.spots) {
+    if (s.z === null && b.doors.some(([dx, dy]) => Math.max(Math.abs(dx - s.x), Math.abs(dy - s.y)) <= 1)) continue;
+    const n = open(s.x, s.y - 1, s.z), so = open(s.x, s.y + 1, s.z), e = open(s.x + 1, s.y, s.z), w = open(s.x - 1, s.y, s.z);
+    const passage = (n && so && !e && !w) || (e && w && !n && !so);
+    if (passage && !s.obj) continue;
+    out.add(spotKey(s));
+  }
+  if (roomyMemo.size > 4000) roomyMemo.clear();
+  roomyMemo.set(b.bid, out);
+  return out;
+}
+
+/** How many may be in a building at once: about two in three of the tiles that leave the ways clear (at least two). */
+export const roomFor = (b: PlanBuilding): number => Math.max(2, Math.ceil(roomy(b).size * 0.66));
+
+/** A free tile near a taken one: of its building (keeping the ways clear), or (out of doors) of open ground within a few tiles (null if none). */
 function freeBeside(local: LocalWorld, b: PlanBuilding | null, at: Spot, taken: Set<string>): Spot | null {
   if (b) {
-    // The free tile of the building nearest it (on its floor, else any).
+    // The free tile of the building nearest it (on its floor, else any) that leaves the ways clear.
+    const ways = roomy(b);
     let best: BuildingSpot | null = null, bd = Infinity;
     for (const s of b.spots) {
-      if (taken.has(spotKey(s)) || s.obj === 'bed') continue;
+      if (taken.has(spotKey(s)) || s.obj === 'bed' || (ways.size && !ways.has(spotKey(s)))) continue;
       const d = Math.max(Math.abs(s.x - at.x), Math.abs(s.y - at.y)) + (s.z === at.z ? 0 : 1000);
       if (d < bd) {
         bd = d;

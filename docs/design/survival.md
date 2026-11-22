@@ -289,7 +289,10 @@ cooked food is enough; more complex food gives more mood and nutrition.
 - **Spoilage** by food, temperature and preservation (smoked, salted, dried, pickled); spoiled food
   risks illness, which Smell and Taste can warn of.
 - **Water** has a quality: springs and wells good, rivers fair, ponds and marshes risky, sea
-  water undrinkable; boiling makes it safe. Drink (ale, wine) quenches thirst less and brings
+  water undrinkable; boiling makes it safe. *Built in part* (backlog W4, 21 November 2026): the
+  sea (open water at or below the sea's level) is salt and cannot be drunk; rivers and lakes are
+  fresh; the search for water and the choice of a camp go by fresh water only (`game/map.ts`,
+  `waterAt`). Quality and boiling are still to come. Drink (ale, wine) quenches thirst less and brings
   its own effects.
 - **Hot climates** raise thirst; **hard work and cold** raise hunger.
 

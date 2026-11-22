@@ -1203,14 +1203,15 @@ export class PlaySession {
     const n = this.needs(), game = this.game;
     const inv = this.player?.get(Inventory);
     if (!n) return;
-    // A well or fountain, or water, beside.
+    // A well or fountain, or fresh water, beside (the sea is salt: W4).
     const found = game.nearby(1, (x, y) => {
       const od = OBJECT_TILES[game.map.object(x, y)];
       if (od?.name === 'well' || od?.name === 'fountain') return od.look;
-      return GROUND_TILES[game.map.ground(x, y)]?.water ? 'the water' : null;
+      return game.map.waterAt(x, y) === 'fresh' ? 'the water' : null;
     });
     if (!found) {
-      game.say('There is no water here to drink.');
+      const salt = game.nearby(1, (x, y) => (game.map.waterAt(x, y) === 'salt' ? 'sea' : null));
+      game.say(salt ? 'The water here is the sea, and salt: drinking it would only make you thirstier.' : 'There is no water here to drink.');
       // Search the land about for some (Survival).
       if (!this.indoors()) this.practice.findWater();
       return;

@@ -2,7 +2,8 @@
 
 How the code is laid out, which parts may use which, and where new work goes. The design of the
 game itself (what it should do and why) is in [design/](design/); this document is about the code
-that carries it out. The README describes what each feature does.
+that carries it out. The README describes what each feature does, and [backlog.md](backlog.md)
+what is to be built or fixed next.
 
 ## The packages
 

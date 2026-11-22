@@ -328,7 +328,8 @@ export class Game {
       // Walking into someone: they step aside (or say so), or, in a fight, are struck (the session says what happens, and the time it takes).
       const said = quiet ? null : this.onBump(nx, ny, this.z);
       if (!quiet && said !== '') this.say(said ?? `${who.name} is in the way.`);
-      return false;
+      // One who stood aside has left the way clear: the wanderer walks on into it.
+      if (quiet || said === '' || this.personAt(nx, ny, this.z)) return false;
     }
     // Walking into a beast: it gives way, or (in a fight) the wanderer strikes it, which takes its own time.
     const beast = this.z === null ? this.onBumpAnimal(nx, ny, quiet) : null;

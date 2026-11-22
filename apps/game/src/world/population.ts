@@ -107,6 +107,8 @@ export interface Resident {
   noiseAt?: number;
   /** When they last greeted the wanderer, or stirred in their sleep (game seconds). */
   greetedAt?: number;
+  /** Stood aside for the wanderer: they keep out of the way until then (game seconds), and do not walk back to their place at once. */
+  asideUntil?: number;
   stirredAt?: number;
   /** The tile out of sight they walk to on leaving the bubble, or come in from. */
   exit: Spot | null;
@@ -314,7 +316,15 @@ export class Population {
     const walkers = new Set(near.slice(0, MAX_WALKERS).filter(([d]) => d < 0 || !jump).map(([, r]) => r));
     let changed = false;
     // Those in a fight, yielded, down, bound or fleeing are world/strife.ts's to move.
-    for (const r of [...this.byId.values()]) if (!r.fight && !r.plight && this.act(r, g, walkers.has(r))) changed = true;
+    for (const r of [...this.byId.values()]) {
+      if (r.fight || r.plight) continue;
+      // Stood aside for the wanderer: they wait where they stepped to, until the wanderer has passed.
+      if (r.asideUntil !== undefined) {
+        if (T < r.asideUntil && cheb(r, g.px, g.py) <= 2) continue;
+        r.asideUntil = undefined;
+      }
+      if (this.act(r, g, walkers.has(r))) changed = true;
+    }
     this.workNoises(g, near);
     if (this.greetings(g, near)) changed = true;
     return changed;
@@ -407,8 +417,19 @@ export class Population {
    * so, and being jostled again and again sours them a little. Returns what is said.
    */
   bumped(g: PopulationView, r: Resident): string {
-    if (!r.path?.length && r.where !== 'asleep' && this.stepAside(r, g, { x: g.px, y: g.py, path: null })) return `${r.p.given} steps aside.`;
+    if (!r.path?.length && r.where !== 'asleep' && this.stepAside(r, g, { x: g.px, y: g.py, path: null })) {
+      r.asideUntil = g.time + 20;
+      return `${r.p.given} steps aside.`;
+    }
     if (r.where === 'asleep') return `${r.p.name} is asleep there.`;
+    // No room to step aside (a crowded hall, a narrow way): the wanderer squeezes past, and they
+    // take the wanderer's place for a moment (docs/backlog.md, B2).
+    if (!r.path?.length && g.z === r.z) {
+      this.place(r, { x: g.px, y: g.py, z: g.z });
+      r.asideUntil = g.time + 20;
+      this.opinions.add(r.p.id, r.p.name, 'jostled me', -0.5, g.time, 1);
+      return `You squeeze past ${r.p.given}.`;
+    }
     if (this.opinions.recent(r.p.id, 'jostled me', g.time, 600) >= 2) {
       this.opinions.add(r.p.id, r.p.name, 'jostled me', -3, g.time, 2);
       // Shoved once too often, a hot-tempered one swings (world/strife.ts).

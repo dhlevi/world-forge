@@ -73,6 +73,17 @@ function fog(lon: number, lat: number): number {
   const r = journey.sightM;
   return dx * dx + dy * dy <= r * r ? 2 : 1;
 }
+/**
+ * A road is seen further than the land about it (docs/backlog.md, W8): within half again the
+ * sight, and at least 1.5 km, of the party, even where the land is not yet discovered.
+ */
+function roadSeen(lon: number, lat: number): boolean {
+  const g = journey.game;
+  const p = journey.frame.fromLL(lon, lat);
+  const dx = p[0] / TILE_M - g.px - 0.5, dy = -p[1] / TILE_M - g.py - 0.5;
+  const r = Math.max(1500, journey.sightM * 1.5) / TILE_M;
+  return dx * dx + dy * dy <= r * r;
+}
 const fogVersion = computed(() => (tick.value, journey.game.discovery.version * 100000 + journey.game.px + journey.game.py));
 
 let areaKey = '';
@@ -137,6 +148,7 @@ onBeforeUnmount(() => journey.stop());
       :dest="dest"
       :area="area"
       :levels="LEVELS"
+      :road-seen="roadSeen"
       :level="level"
       :follow="running"
       :fog="fog"

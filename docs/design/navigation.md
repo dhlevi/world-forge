@@ -45,6 +45,10 @@ grid invisible beneath for movement and events. This keeps the look of a hand-dr
 suits travel, and needs no second set of tile art. Tiles remain possible if the art direction
 later prefers them; the travel rules do not depend on the look.
 
+*Built* (backlog W8, 21 November 2026): roads show as far as they have been seen, in short steps
+along each stretch, and a road is seen further than the land about it (half again the sight, at
+least 1.5 km), so the road the party is on shows ahead of it (`components/TravelView.vue`).
+
 **Decided: zoom levels.** Three fixed levels, not free zoom:
 
 | Level | Shows | Used for |

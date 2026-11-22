@@ -31,11 +31,13 @@ const props = withDefaults(defineProps<{
    * (dimmed), 2 in sight. None: everything shows.
    */
   fog?: ((lon: number, lat: number) => number) | null;
+  /** Whether a point of a road can be seen (travel map): further than the land, since a road is easy to follow by eye. Falls back to `fog`. */
+  roadSeen?: ((lon: number, lat: number) => boolean) | null;
   /** Changes whenever the fog does, to redraw. */
   fogVersion?: number;
   /** Settlements' plans, drawn over the land (travel map, close in). */
   plans?: PlanImage[];
-}>(), { chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, fogVersion: 0, plans: () => [] });
+}>(), { chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, roadSeen: null, fogVersion: 0, plans: () => [] });
 const emit = defineEmits<{ choose: [id: string]; pick: [ll: LL]; view: [box: { west: number; south: number; east: number; north: number; km: number }]; level: [i: number] }>();
 
 const box = ref<HTMLDivElement>();
@@ -254,12 +256,22 @@ function draw(): void {
       if (r.cls === 'track' && zoom < 10) continue;
       g.beginPath();
       let pen = false;
-      r.pts.forEach((p) => {
-        const [x, y] = toScreen(...merc(p[0], p[1]));
-        const shown = !props.fog || props.fog(p[0], p[1]) > 0;
+      // Each stretch is checked in short steps (about 150 m), so a road shows as far as it has been
+      // seen, not only once both ends of a long stretch have (docs/backlog.md, W8).
+      const at = (lon: number, lat: number) => {
+        const [x, y] = toScreen(...merc(lon, lat));
+        const shown = !props.fog || props.fog(lon, lat) > 0 || !!props.roadSeen?.(lon, lat);
         if (shown && pen) g.lineTo(x, y);
         else if (shown) g.moveTo(x, y);
         pen = shown;
+      };
+      r.pts.forEach((p, i) => {
+        const q = i ? r.pts[i - 1] : null;
+        if (q && props.fog) {
+          const n = Math.min(400, Math.ceil(Math.hypot(p[0] - q[0], p[1] - q[1]) / 0.0015));
+          for (let k = 1; k < n; k++) at(q[0] + ((p[0] - q[0]) * k) / n, q[1] + ((p[1] - q[1]) * k) / n);
+        }
+        at(p[0], p[1]);
       });
       g.setLineDash(r.cls === 'track' ? [3, 3] : []);
       g.lineWidth = r.cls === 'major' ? 2.6 : r.cls === 'minor' ? 1.8 : 1.2;

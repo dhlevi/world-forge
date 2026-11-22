@@ -115,7 +115,7 @@ function nearestWaterM(g: Game, x: number, y: number, reach: number): number {
     for (let dy = -r; dy <= r; dy++) for (let dx = -r; dx <= r; dx++) {
       if (Math.max(Math.abs(dx), Math.abs(dy)) !== r || !g.map.loaded(x + dx, y + dy)) continue;
       const o = objName(g, x + dx, y + dy);
-      if (groundOf(g, x + dx, y + dy)?.water || o === 'well' || o === 'fountain') best = Math.min(best, Math.hypot(dx, dy));
+      if (g.map.waterAt(x + dx, y + dy) === 'fresh' || o === 'well' || o === 'fountain') best = Math.min(best, Math.hypot(dx, dy));
     }
     if (best < Infinity) return Math.round(best * TILE_M);
   }
