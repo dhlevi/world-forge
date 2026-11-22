@@ -34,6 +34,8 @@ const renderer = new Renderer(tiles);
 const rain = new RainLayer();
 let frame = 0;
 let gone = false;
+/** Whether the renderer is set up (a redraw asked for sooner waits for the first one). */
+let ready = false;
 
 /** The pointer over the local map (CSS pixels from its corner), while it is there. */
 let pointer: [number, number] | null = null;
@@ -78,7 +80,7 @@ function onPointerOut(): void {
 
 /** Draws the local map at the next frame (once, however often asked). */
 const redraw = () => {
-  if (frame || gone) return;
+  if (frame || gone || !ready) return;
   frame = requestAnimationFrame(() => {
     frame = 0;
     renderer.zoom = st.zoom;
@@ -261,7 +263,9 @@ onMounted(async () => {
     return false;
   };
   ro.observe(el.value!);
+  ready = true;
   game.refresh();
+  redraw();
   if (import.meta.env.DEV) Object.assign(window, { __renderer: renderer });
 });
 

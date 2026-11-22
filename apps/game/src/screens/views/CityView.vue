@@ -9,6 +9,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import type { CityScreen } from '../city';
 import { KIND_NAMES, KIND_ORDER } from '../places';
 import type { SitePlace } from '../../worker/protocol';
+import { PACES } from '../stroll';
 
 const props = defineProps<{ screen: CityScreen }>();
 const screen = props.screen;
@@ -23,6 +24,7 @@ let vx = 0, vy = 0, scale = 1;
 
 const groups = computed(() => KIND_ORDER.map((k) => ({ kind: k, name: KIND_NAMES[k], list: site.places.filter((p) => p.kind === k) })).filter((g) => g.list.length));
 const here = computed(() => screen.place(ui.at));
+const goal = computed(() => screen.place(ui.walking));
 const chosen = computed(() => screen.place(ui.selected));
 const actions = computed(() => {
   void ui.at;
@@ -51,6 +53,67 @@ function fit(): void {
   [vx, vy] = at ? imgPt(at.lon, at.lat) : [im.bitmap.width / 2, im.bitmap.height / 2];
 }
 
+/**
+ * The party's marker (docs/backlog.md, I3): a pennant on a pole over a gold token, drawn above the
+ * places and their names. Standing at a place, it stands just beside the place's own mark.
+ */
+function drawParty(g: CanvasRenderingContext2D): void {
+  const p = ui.pos ?? here.value;
+  if (!p) return;
+  let [x, y] = toScreen(...imgPt(p.lon, p.lat));
+  if (!ui.pos) {
+    x += 12;
+    y += 9;
+  }
+  g.beginPath();
+  g.ellipse(x, y + 3, 11, 4.5, 0, 0, Math.PI * 2);
+  g.fillStyle = 'rgba(20, 14, 8, 0.35)';
+  g.fill();
+  g.lineCap = 'round';
+  g.strokeStyle = '#2a2018';
+  g.lineWidth = 2.5;
+  g.beginPath();
+  g.moveTo(x, y);
+  g.lineTo(x, y - 36);
+  g.stroke();
+  g.beginPath();
+  g.moveTo(x + 1, y - 36);
+  g.lineTo(x + 21, y - 30);
+  g.lineTo(x + 1, y - 23);
+  g.closePath();
+  g.fillStyle = '#b8322a';
+  g.fill();
+  g.lineWidth = 1.2;
+  g.stroke();
+  g.beginPath();
+  g.arc(x, y, 7.5, 0, Math.PI * 2);
+  g.fillStyle = '#e0b25c';
+  g.fill();
+  g.lineWidth = 2.5;
+  g.strokeStyle = '#2a2018';
+  g.stroke();
+  g.beginPath();
+  g.arc(x, y, 2.5, 0, Math.PI * 2);
+  g.fillStyle = '#2a2018';
+  g.fill();
+  g.lineCap = 'butt';
+}
+
+/** The way being walked: a dashed line from the marker to the place. */
+function drawWay(g: CanvasRenderingContext2D): void {
+  const to = goal.value;
+  if (!ui.pos || !to) return;
+  const [ax, ay] = toScreen(...imgPt(ui.pos.lon, ui.pos.lat)), [bx, by] = toScreen(...imgPt(to.lon, to.lat));
+  g.setLineDash([6, 5]);
+  g.lineWidth = 2.5;
+  g.strokeStyle = 'rgba(42, 32, 24, 0.75)';
+  g.beginPath();
+  g.moveTo(ax, ay);
+  g.lineTo(bx, by);
+  g.stroke();
+  g.setLineDash([]);
+}
+
 function draw(): void {
   const c = cv.value, im = screen.image.value;
   if (!c) return;
@@ -62,6 +125,7 @@ function draw(): void {
   const [x0, y0] = toScreen(0, 0);
   g.imageSmoothingEnabled = true;
   g.drawImage(im.bitmap, x0, y0, im.bitmap.width * scale, im.bitmap.height * scale);
+  drawWay(g);
   g.textAlign = 'center';
   g.textBaseline = 'middle';
   for (const p of site.places) {
@@ -88,6 +152,7 @@ function draw(): void {
       g.fillText(p.name, x, y - r - 9);
     }
   }
+  drawParty(g);
 }
 
 let frame = 0;
@@ -176,6 +241,14 @@ watch(screen.image, () => {
   redraw();
 });
 watch(() => [ui.selected, ui.at], () => redraw());
+// The marker on the way: kept in view as it walks.
+watch(() => ui.pos, (p) => {
+  if (p && screen.image.value) {
+    const [x, y] = toScreen(...imgPt(p.lon, p.lat));
+    if (x < W * 0.12 || x > W * 0.88 || y < H * 0.12 || y > H * 0.88) [vx, vy] = imgPt(p.lon, p.lat);
+  }
+  redraw();
+});
 </script>
 
 <template>
@@ -183,18 +256,32 @@ watch(() => [ui.selected, ui.at], () => redraw());
     <div ref="box" class="city-map">
       <canvas ref="cv" @pointerdown="down" @pointermove="move" @pointerup="up" @wheel="wheel" />
       <div v-if="ui.loading" class="city-wait">Drawing {{ site.name }}…</div>
+      <div v-if="ui.arrival.length" class="city-arrive">
+        <h3>{{ site.name }}</h3>
+        <p v-for="(l, i) in ui.arrival" :key="i">{{ l }}</p>
+        <div class="row"><button class="primary" @click="screen.dismiss()">Go on into {{ site.name }}</button></div>
+      </div>
     </div>
     <aside class="city-panel">
       <h2>{{ site.name }}</h2>
       <div class="dim">{{ cap(site.tier) }} of {{ site.population.toLocaleString() }}<span v-if="site.walls">, walled</span><span v-if="site.quarters.length">; {{ site.quarters.map((q) => q.name).join(', ') }}</span></div>
-      <section v-if="here" class="city-here">
+      <section v-if="goal" class="city-here">
+        <div class="cc-label">Walking to</div>
+        <p><b>{{ goal.name }}</b>{{ screen.minutesTo(goal) >= 1 ? `, about ${screen.minutesTo(goal)} ${screen.minutesTo(goal) === 1 ? 'minute' : 'minutes'} more.` : ', close by now.' }}</p>
+        <div class="city-pace">
+          <span class="dim">Pace</span>
+          <button v-for="p in PACES" :key="p.id" :class="{ primary: ui.pace === p.id }" @click="screen.setPace(p.id)">{{ p.label }}</button>
+        </div>
+        <div class="row"><button @click="screen.stop()">Stop here</button><button @click="screen.hurry()">Hurry on (skip)</button></div>
+      </section>
+      <section v-else-if="here" class="city-here">
         <div class="cc-label">You are at</div>
         <p v-for="(l, i) in ui.scene" :key="i">{{ l }}</p>
         <div class="city-acts">
           <button v-for="a in actions" :key="a.id" :disabled="!!a.disabled" :title="a.disabled" @click="screen.act(a.id)">{{ a.label }}</button>
         </div>
       </section>
-      <section v-if="chosen && chosen.id !== ui.at" class="city-chosen">
+      <section v-if="chosen && chosen.id !== ui.at && chosen.id !== ui.walking" class="city-chosen">
         <div class="cc-label">Chosen</div>
         <p><b>{{ chosen.name }}</b><span v-if="chosen.quarter" class="dim">, {{ chosen.quarter }}</span></p>
         <p class="dim">{{ chosen.about }} About {{ screen.minutesTo(chosen) }} minutes on foot.</p>
@@ -204,7 +291,7 @@ watch(() => [ui.selected, ui.at], () => redraw());
         <div v-for="g in groups" :key="g.kind">
           <div class="cc-label">{{ g.name }}</div>
           <div v-for="p in g.list" :key="p.id" class="city-place" :class="{ on: p.id === ui.selected, at: p.id === ui.at }" @click="choose(p)">
-            <span>{{ p.name }}</span><span class="dim">{{ p.id === ui.at ? 'here' : `${screen.minutesTo(p)} min` }}</span>
+            <span>{{ p.name }}</span><span class="dim">{{ p.id === ui.at && !ui.walking ? 'here' : `${screen.minutesTo(p)} min` }}</span>
           </div>
         </div>
       </div>
@@ -230,6 +317,12 @@ watch(() => [ui.selected, ui.at], () => redraw());
 .city-place:hover { background: #222836; }
 .city-place.on { background: #2b2618; }
 .city-place.at span:first-child { color: var(--accent); }
+.city-pace { display: flex; align-items: center; gap: 4px; margin: 4px 0; }
+.city-pace button { padding: 2px 8px; }
+.city-arrive { position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); width: min(520px, calc(100% - 32px)); max-height: calc(100% - 32px); overflow: auto; background: rgba(21, 25, 34, 0.96); border: 1px solid var(--line); border-radius: 8px; padding: 16px 18px; box-shadow: 0 8px 30px rgba(0, 0, 0, 0.45); }
+.city-arrive h3 { margin: 0 0 8px; font-weight: 500; color: var(--accent); }
+.city-arrive p { margin: 4px 0; line-height: 1.4; }
+.city-arrive .row { margin-top: 12px; }
 .city-foot { border-top: 1px solid var(--line); padding-top: 8px; }
 @media (max-width: 900px) {
   .city { grid-template-columns: 1fr; grid-template-rows: 55vh 1fr; }

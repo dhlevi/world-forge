@@ -95,7 +95,7 @@ export interface SessionWorld {
 /** The screens about the game (screens/play.ts). */
 export interface SessionHost {
   /** A town's or city's view, with the party at the place nearest `at` (or where it stands). */
-  openCity(siteId: string, at?: { lon: number; lat: number }): Promise<void>;
+  openCity(siteId: string, at?: { lon: number; lat: number }, arrived?: boolean): Promise<void>;
   /** Back to the title. */
   toTitle(): void;
   /** The wanderer has died: the screen that says so (screens/play.ts). */
@@ -377,10 +377,12 @@ export class PlaySession {
     };
     // Arriving at a town or city opens its city view; a village opens straight onto the local map.
     travel.onArrive = (site) => {
-      if (!site) return;
-      const at = site.gate ? { lon: site.gate.lon, lat: site.gate.lat } : { lon: site.lon, lat: site.lat };
-      if (site.tier === 'town' || site.tier === 'city') background(host.openCity(site.id, at), 'the game');
-      else this.toLocal();
+      // In a town or city, by its gate or anywhere within it, the city view opens (docs/backlog.md, I1).
+      if (site && (site.tier === 'town' || site.tier === 'city')) {
+        const at = site.gate ? { lon: site.gate.lon, lat: site.gate.lat } : { lon: site.lon, lat: site.lat };
+        background(host.openCity(site.id, at, true), 'the game');
+      } else if (!site && game.hud.town) background(host.openCity(game.hud.town.id, undefined, true), 'the game');
+      else if (site) this.toLocal();
     };
     this.describe(game.time);
   }
@@ -411,6 +413,9 @@ export class PlaySession {
       // Setting out: a moodlet for the first day, sent through the messaging service.
       const p = this.player;
       if (p) this.world.bus.send('actor.moodlet', { id: 'setting-out', text: 'Setting out on the road', value: 3, until: game.time + 86400 } satisfies Moodlet, { to: p.id });
+      // A new game begun in a town or city begins in its city view (docs/backlog.md, I1).
+      game.updateHud();
+      if (game.hud.town) background(this.host.openCity(game.hud.town.id, undefined, true), 'the game');
     }
     this.applySky(this.skyNow);
     if (this.state.mode === 'local') this.people.update(game);

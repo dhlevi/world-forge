@@ -5,6 +5,9 @@
  * and the city view. Runs in the world worker.
  */
 import type { Settlement } from '@worldforge/core/gen/settlements';
+import type { GeneratedWorld } from '@worldforge/core/gen/world';
+import { townContext } from '@worldforge/core/people/town-context';
+import type { TownCtx, TownStats } from '@worldforge/core/people/town';
 import { LocalFrame, type PlanFeature } from '@worldforge/core/towns/plan';
 import type { TownManager } from '@worldforge/core/towns/manager';
 import type { PlanImage, SiteInfo, SitePlace, PlaceKind, Gate } from './protocol';
@@ -400,4 +403,43 @@ export function planImage(s: Settlement, towns: TownManager, o: DrawOpts): PlanI
   const bitmap = cv.transferToImageBitmap();
   const sw = fr.toLL([-o.radius, -o.radius]), ne = fr.toLL([o.radius, o.radius]);
   return { id: s.id, bitmap, west: sw[0], south: sw[1], east: ne[0], north: ne[1] };
+}
+
+/** The town's order, in a few words. */
+const CRIME_WORDS: Record<string, string> = {
+  'law-abiding': 'its people keep the law', quiet: 'it is quiet', middling: 'it has its share of thieves', lawless: 'it is lawless', 'a den of thieves': 'it is a den of thieves',
+};
+
+const GOV_WORDS: Record<string, string> = {
+  feudal: 'held by its lord under the crown', 'city-state': 'a free city that rules itself', republic: 'a republic governed by its council',
+  theocracy: 'ruled by its temple', thalassocracy: 'ruled by its merchant fleets', league: 'one of a league of free towns', tribal: 'ruled by its elders', colony: 'a colony ruled from over the sea',
+};
+
+/**
+ * What a visitor learns of a town on arriving (docs/backlog.md, I2): what it is and how it is
+ * ruled, who lives there, how it fares (its wealth, its streets, its order), what it trades in,
+ * and anything plainly going on. From the town's figures (core people/town.ts, town-context.ts).
+ */
+export function townAccount(w: GeneratedWorld, s: Settlement): string[] {
+  let ctx: TownCtx, st: TownStats;
+  try {
+    ({ ctx, stats: st } = townContext(w, s.id));
+  } catch {
+    return [];
+  }
+  const pct = (x: number) => `${Math.round(x * 100)} in a hundred`;
+  const out: string[] = [];
+  const gov = GOV_WORDS[ctx.gov] ?? 'ruled as its people see fit';
+  out.push(`${s.name ?? 'The town'} is a ${ctx.tier} of ${ctx.population.toLocaleString('en-GB')} souls${ctx.walls ? ', walled' : ''}, ${gov}${ctx.capital ? ', and the seat of its realm' : ''}.`);
+  const [first, ...rest] = st.peoples.filter((p) => p.share >= 0.03);
+  if (first && first.share >= 0.97) out.push(`Its folk are ${first.people}.`);
+  else if (first) out.push(`Most of its folk are ${first.people} (${pct(first.share)})${rest.length ? `; there are ${rest.slice(0, 3).map((p) => p.people).join(', ')} among them too` : ''}.`);
+  out.push(`It is ${st.prosperity.word}${st.prosperity.why[0] ? ` (${st.prosperity.why[0]})` : ''}; its streets are ${st.sanitation.word === 'middling' ? 'neither clean nor foul' : st.sanitation.word}, and ${CRIME_WORDS[st.crime.word] ?? `it is ${st.crime.word}`}${st.crime.why[0] ? ` (${st.crime.why[0]})` : ''}.`);
+  if (st.watch.text) out.push(st.watch.text);
+  if (ctx.economy?.exports.length) out.push(`Its realm sells ${ctx.economy.exports.slice(0, 3).join(', ')}, and buys ${ctx.economy.imports.slice(0, 2).join(' and ') || 'little'}.`);
+  if (ctx.atWar) out.push('Its realm is at war: soldiers are about, and prices are up.');
+  if (ctx.holy) out.push('It is a holy place, and pilgrims crowd its streets.');
+  if (ctx.university) out.push('Scholars of its university fill the taverns.');
+  out.push(...st.notes);
+  return out;
 }

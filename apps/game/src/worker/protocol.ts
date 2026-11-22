@@ -268,6 +268,8 @@ export interface SiteInfo {
   culture?: string;
   quarters: { name: string; lon: number; lat: number }[];
   places: SitePlace[];
+  /** What a visitor learns of it on arriving (worker/sites.ts, townAccount). */
+  account?: string[];
 }
 
 /** A settlement's plan drawn as an image, and the box (lon/lat) it covers. */

@@ -47,7 +47,7 @@ export class PlayScreen extends Screen {
     const w = app.worker;
     this.session = new PlaySession(
       { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, names: (c, s, n) => w.names(c, s, n), site: w.site, starts: () => app.state.starts },
-      { openCity: (id, at) => this.openCity(id, at), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r) },
+      { openCity: (id, at, arrived) => this.openCity(id, at, arrived), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r) },
       o,
     );
   }
@@ -157,8 +157,11 @@ export class PlayScreen extends Screen {
     this.session.toTravelAt(lon, lat);
   }
 
-  /** Opens a town's or city's city view, with the party at the place nearest `at` (or where it stands). */
-  async openCity(siteId: string, at?: { lon: number; lat: number }): Promise<void> {
+  /**
+   * Opens a town's or city's city view, with the party at the place nearest `at` (or where it
+   * stands); on arriving, with the account of the place (docs/backlog.md, I2).
+   */
+  async openCity(siteId: string, at?: { lon: number; lat: number }, arrived = false): Promise<void> {
     const where = at ?? (() => {
       const p = this.session.party();
       return { lon: p[0], lat: p[1] };
@@ -168,7 +171,7 @@ export class PlayScreen extends Screen {
       this.say('There is nothing here to see from afar; walk in instead.');
       return;
     }
-    if (this.active) this.manager?.push(new CityScreen(this, r.site, where ?? { lon: r.site.lon, lat: r.site.lat }));
+    if (this.active) this.manager?.push(new CityScreen(this, r.site, where ?? { lon: r.site.lon, lat: r.site.lat }, arrived));
   }
 
   showSleep(): void {

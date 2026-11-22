@@ -270,12 +270,22 @@ a city of 50,000 contained, with an artistic city map.
 - **Arriving:** travelling to a settlement makes for its way in nearest the party (a gate in its
   walls, or where a road reaches its edge) and stops there, never in a building. Zooming in
   anywhere puts the party on open ground out of doors.
-- **Towns and cities open the city view; villages open straight onto the local map.** On the
-  local map, V opens the city view of the town the party is in.
+- **Towns and cities open the city view; villages open straight onto the local map.** A journey
+  on the travel map that ends anywhere inside a town or city opens its city view, and so does a
+  new game begun in one. On the local map, V opens the city view of the town the party is in;
+  walking in on foot stays on foot.
+- **The account on arriving** (`worker/sites.ts`, `townAccount`): arriving opens the view with a
+  short account of the place, put aside with a button: what it is and how it is ruled, its
+  peoples, how it fares (wealth, streets, order, and why), its watch, its realm's trade, a war, a
+  holy place or a university, and how the wanderer stands there (wanted, or their regard).
 - **The city view:** the illustrated plan, panned and zoomed, with the places of note marked:
   gates and ways in, markets, inns, taverns, temples, the keep, guilds and orders, halls,
-  workshops and shops, the docks, and districts (from the generator's labels). Going to a place
-  takes the time it takes to walk. Each place has a short menu scene: a meal, a room for the night
+  workshops and shops, the docks, and districts (from the generator's labels). The party is
+  marked by a pennant over a gold token, drawn above the places and their names. Going to a place
+  walks the marker there along a dashed line while the clock runs (`screens/stroll.ts`), at a
+  pace of Slow, Steady or Brisk (2, 6 or 20 game minutes each second); the walk can be stopped
+  (the party then stands at the nearest place), hurried to its end, or turned toward another
+  place on the way, and it waits while a shop or lesson is open. Each place has a short menu scene: a meal, a room for the night
   or news at an inn, a drink at a tavern, prayer at a temple, a look at the goods in a market or
   shop (trade to come), looking around, walking in on the local map at that place, or leaving by
   a gate onto the travel map.

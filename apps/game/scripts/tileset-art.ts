@@ -1,7 +1,8 @@
 /**
  * Paints the game's tileset in a top-down pixel-art style (after RimWorld and Dwarf Fortress
  * tilesets): every frame the tile registry asks for (TILESET.md), into public/tileset/tileset.png
- * and tileset.json. Deterministic, so running it again gives the same sheet.
+ * (the animals into animals.png beside it) and tileset.json. Deterministic, so running it again
+ * gives the same sheets.
  *
  *   npm run tileset:art            (add -- --preview for zoomed pages of the sheet in /tmp)
  * Ground edges are left out on purpose: the game cuts each ground's edges from its own art.
@@ -12,11 +13,13 @@ import { DECOR, FACINGS, GROUND_TILES, OBJECT_TILES, type Facing } from '@worldf
 import { TREE_KINDS } from '@worldforge/core/local/trees';
 import { ROOF_MATERIALS, ROOF_PLANES } from '@worldforge/core/local/roofs';
 import { SHORTEN_ROWS, figureLayers } from '@worldforge/core/local/figures';
+import { SPECIES } from '@worldforge/core/local/fauna';
 import { Sprite, encodePng } from './tileset-art/paint';
 import { paintGround } from './tileset-art/ground';
 import { roof, structure } from './tileset-art/structures';
 import { animated, paintDecor, paintObject, paintTreePart } from './tileset-art/things';
 import { paintFigure } from './tileset-art/figures';
+import { animalCells, animalLies, paintAnimal } from './tileset-art/animals';
 
 const COLS = 16;
 const dir = fileURLToPath(new URL('../public/tileset/', import.meta.url));
@@ -123,9 +126,47 @@ const lines = sheet.map((f) => {
   const v = f.at.length > 1 ? `{ "at": ${JSON.stringify(f.at)}, "ms": ${f.ms ?? 200} }` : JSON.stringify(f.at[0]);
   return `    ${JSON.stringify(f.key)}: ${v.replace(/,(?=\d)/g, ', ')}`;
 });
+
+// ---- The animals: a sheet of their own, a species to a band, the large ones two cells square ----
+
+const beasts: { sp: Sprite; x: number; y: number }[] = [];
+let ar = 0;
+for (const s of SPECIES) {
+  if (!paintAnimal(s.id, 's', 0)) {
+    missing.push(`animal_${s.id}`);
+    continue;
+  }
+  const n = animalCells(s.id), rest = `${n > 1 ? `, "size": [${n}, ${n}]` : ''}${animalLies(s.id) ? `, "offset": [${8 - n * 8}, ${8 - n * 8}]` : ''}`;
+  let c = 0;
+  const put = (sp: Sprite): string => {
+    if (c + n > COLS) {
+      c = 0;
+      ar += n;
+    }
+    beasts.push({ sp, x: c * 16, y: ar * 16 });
+    c += n;
+    return `[${c - n}, ${ar}]`;
+  };
+  const entry = (name: string, at: string[], ms?: number) => lines.push(`    "${name}": { "sheet": "animals", "at": ${at.length > 1 ? `[${at.join(', ')}]` : at[0]}${rest}${ms ? `, "ms": ${ms}` : ''} }`);
+  for (const d of FACINGS) {
+    const stand = put(paintAnimal(s.id, d, 0)!);
+    entry(`animal_${s.id}_${d}`, [stand]);
+    entry(`animal_${s.id}_walk_${d}`, [put(paintAnimal(s.id, d, 1)!), stand, put(paintAnimal(s.id, d, 2)!), stand], 110);
+  }
+  if (s.fly) for (const d of FACINGS) {
+    const beat = [0, 1, 2].map((fr) => put(paintAnimal(s.id, d, fr, true)!));
+    entry(`animal_${s.id}_fly_${d}`, [beat[0], beat[1], beat[2], beat[1]], 90);
+  }
+  ar += n;
+}
+const AH = ar * 16, animals = new Uint8ClampedArray(W * AH * 4);
+for (const { sp, x, y } of beasts) for (let j = 0; j < sp.h; j++) animals.set(sp.px.subarray(j * sp.w * 4, (j + 1) * sp.w * 4), ((y + j) * W + x) * 4);
+writeFileSync(dir + 'animals.png', encodePng(animals, W, AH));
+
 writeFileSync(dir + 'tileset.json', `{
   "tileSize": 16,
   "image": "tileset.png",
+  "sheets": { "animals": "animals.png" },
   "about": "Painted by npm run tileset:art (apps/game/scripts/tileset-art.ts): do not edit by hand.",
   "tiles": {
 ${lines.join(',\n')}
@@ -133,7 +174,7 @@ ${lines.join(',\n')}
 }
 `);
 
-console.log(`tileset.png ${W} × ${H}: ${sheet.length} frames in ${r} rows`);
+console.log(`tileset.png ${W} × ${H}: ${sheet.length} frames in ${r} rows; animals.png ${W} × ${AH}: ${beasts.length} pictures`);
 if (missing.length) console.log(`not painted (left to the game's placeholders): ${missing.join(', ')}`);
 
 if (process.argv.includes('--preview')) {
@@ -217,5 +258,39 @@ if (process.argv.includes('--preview')) {
     });
   });
   writeFileSync('/tmp/tileset-figures.png', encodePng(fig, fw, fh));
-  console.log('previews in /tmp/tileset-preview-*.png');
+  // The animals on grass, a man beside each for scale: side, front and back, their strides, and flying.
+  const man = new Sprite();
+  for (const [layer, tint] of [['body_human_m', [216, 176, 144]], ['wear_trousers', [106, 90, 70]], ['wear_tunic', [122, 106, 80]], ['hair_short', [90, 58, 32]]] as [string, number[]][]) {
+    const sp = paintFigure(layer, 's', 0);
+    for (let y = 0; y < 16; y++) for (let x = 0; x < 16; x++) if (sp.alpha(x, y)) man.blend(x, y, sp.get(x, y).map((v, k) => (v * tint[k]) / 255) as [number, number, number], sp.alpha(x, y) / 255);
+  }
+  const views: [Facing, number, boolean][] = [['e', 0, false], ['e', 1, false], ['s', 0, false], ['n', 0, false], ['e', 0, true], ['n', 1, true]];
+  const az = 4, cw = 32 * az, perCol = 7, perSheet = perCol * 2, band = (views.length + 1) * cw;
+  for (let page = 0; page * perSheet < SPECIES.length; page++) {
+    const list = SPECIES.slice(page * perSheet, (page + 1) * perSheet), pw = band * 2, ph = perCol * cw;
+    const out = new Uint8ClampedArray(pw * ph * 4);
+    for (let y = 0; y < ph; y++) for (let x = 0; x < pw; x++) {
+      const tx = Math.floor(x / az) % 32, ty = Math.floor(y / az) % 32, onTile = tx >= 8 && tx < 24 && ty >= 16;
+      out.set(onTile ? [96, 140, 68, 255] : [84, 128, 60, 255], (y * pw + x) * 4);
+    }
+    const stamp = (sp: Sprite, cx: number, cy: number) => {
+      const ox = (32 - sp.w) / 2, oy = 32 - sp.h;
+      for (let y = 0; y < sp.h * az; y++) for (let x = 0; x < sp.w * az; x++) {
+        const sx = Math.floor(x / az), sy = Math.floor(y / az), a = sp.alpha(sx, sy) / 255;
+        if (!a) continue;
+        const o = ((cy + oy * az + y) * pw + cx + ox * az + x) * 4, c = sp.get(sx, sy);
+        for (let k = 0; k < 3; k++) out[o + k] = c[k] * a + out[o + k] * (1 - a);
+      }
+    };
+    list.forEach((s, i) => {
+      const bx = Math.floor(i / perCol) * band, by = (i % perCol) * cw;
+      stamp(man, bx, by);
+      views.forEach(([d, fr, fly], vi) => {
+        const sp = fly && !s.fly ? null : paintAnimal(s.id, d, fr, fly);
+        if (sp) stamp(sp, bx + (vi + 1) * cw, by);
+      });
+    });
+    writeFileSync(`/tmp/tileset-animals-${page}.png`, encodePng(out, pw, ph));
+  }
+  console.log('previews in /tmp/tileset-preview-*.png, /tmp/tileset-figures.png and /tmp/tileset-animals-*.png');
 }

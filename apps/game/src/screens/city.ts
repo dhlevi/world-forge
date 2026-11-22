@@ -1,7 +1,7 @@
 /**
  * The city view (docs/design/navigation.md, Cities and towns): a town or city seen as its
  * illustrated plan with its places of note. The party goes from place to place (time passes by
- * the distance walked), does what each place offers in a short menu scene, walks in on the local
+ * the distance walked, the marker walking there as the clock runs), does what each place offers in a short menu scene, walks in on the local
  * map anywhere, or leaves by a gate.
  */
 import { background } from '../app/errors';
@@ -20,6 +20,7 @@ import { defOf, itemName, type Item } from '../actors/items/item';
 import { taughtAt } from '../actors/learning';
 import { LessonsScreen } from './lessons';
 import { tidy } from '../game/grooming';
+import { perSecond, Stroll, type LonLat, type PaceId } from './stroll';
 
 /** What asking for a better price at an inn does (Persuasion, once a day). */
 const INN_FACTOR: Record<Grade, number> = { fine: 0.7, success: 0.85, near: 1, fail: 1, fumble: 1.2 };
@@ -28,6 +29,9 @@ const BATH = 3, INN_BATH = 4, BARBER = 2;
 
 /** Walking pace in a town (m/s), and how much longer the streets make a straight line. */
 const PACE = 1.25, WINDING = 1.3;
+
+/** The walking pace last chosen (kept from one town to the next). */
+let lastPace: PaceId = 'steady';
 
 export interface SceneAction {
   id: string;
@@ -46,14 +50,46 @@ export class CityScreen extends Screen {
     /** The scene's lines, after arriving or acting. */
     scene: [] as string[],
     loading: true,
+    /** The account of the town on arriving, until put aside (docs/backlog.md, I2). */
+    arrival: [] as string[],
+    /** Where the party's marker is while walking (else at its place). */
+    pos: null as LonLat | null,
+    /** The place being walked to, if walking. */
+    walking: '',
+    /** How fast the clock runs while walking. */
+    pace: lastPace as PaceId,
   });
   private frame: LocalFrame;
+  private stroll: Stroll | null = null;
+  /** Seconds walked and not yet put on the clock. */
+  private owed = 0;
 
-  constructor(readonly play: PlayScreen, readonly site: SiteInfo, at: { lon: number; lat: number }) {
+  constructor(readonly play: PlayScreen, readonly site: SiteInfo, at: { lon: number; lat: number }, arrived = false) {
     super();
     this.frame = new LocalFrame(site.lon, site.lat);
     this.state.at = this.nearest(at.lon, at.lat)?.id ?? '';
     this.state.selected = this.state.at;
+    if (arrived) this.state.arrival = this.account();
+  }
+
+  /** The account of the town: the worker's, and how the wanderer stands there. */
+  account(): string[] {
+    const s = this.site;
+    const lines = s.account?.length ? [...s.account] : [`${s.name}, a ${s.tier} of ${s.population.toLocaleString()}.`];
+    const rec = this.play.session.law.places(this.play.now()).find((p) => p.id === s.id);
+    if (rec?.wanted) lines.push(`You are wanted here for ${rec.wanted}. The watch may know your face.`);
+    else if (rec) lines.push(`Here you are ${rec.words}.`);
+    return lines;
+  }
+
+  /** Puts the account aside. */
+  dismiss(): void {
+    this.state.arrival = [];
+  }
+
+  /** Each frame while on top: the walk moves on (it waits while a shop or lesson is open). */
+  update(dt: number): void {
+    if (this.stroll) this.tick(Math.min(dt, 0.25));
   }
 
   enter(): void {
@@ -99,26 +135,102 @@ export class CityScreen extends Screen {
     return Math.hypot(a[0] - b[0], a[1] - b[1]);
   }
 
-  /** Minutes on foot from where the party is to a place. */
-  minutesTo(p: SitePlace): number {
-    const here = this.place(this.state.at);
+  /** Where the party is: on the way, or at its place. */
+  where(): LonLat | undefined {
+    return this.state.pos ?? this.place(this.state.at);
+  }
+
+  /** Minutes on foot from where the party is to a place (exact, and rounded). */
+  minutesExact(p: SitePlace): number {
+    const here = this.where();
     if (!here) return 0;
-    return Math.round((this.metres(here.lon, here.lat, p.lon, p.lat) * WINDING) / PACE / 60);
+    return (this.metres(here.lon, here.lat, p.lon, p.lat) * WINDING) / PACE / 60;
+  }
+
+  minutesTo(p: SitePlace): number {
+    return Math.round(this.minutesExact(p));
   }
 
   select(id: string): void {
     this.state.selected = id;
   }
 
-  /** Walks to a place: time passes, and its scene opens. */
+  /**
+   * Sets out for a place (docs/backlog.md, I4): the marker walks there while the clock runs, at the
+   * chosen pace, and the place's scene opens on arriving. Choosing another place on the way turns
+   * aside for it from where the party is.
+   */
   go(id: string): void {
     const p = this.place(id);
-    if (!p || id === this.state.at) return;
-    const min = this.minutesTo(p);
-    this.play.advance(min * 60);
-    this.state.at = id;
+    const from = this.where();
+    if (!p || !from || (id === this.state.at && !this.state.pos) || id === this.state.walking) return;
+    if (this.stroll) this.clock(0, true);
+    const min = this.minutesExact(p);
     this.state.selected = id;
-    this.play.say(`You make your way to ${p.name}${min ? ` (${min} min)` : ''}.`);
+    this.stroll = new Stroll({ lon: from.lon, lat: from.lat }, { lon: p.lon, lat: p.lat }, min);
+    this.state.walking = id;
+    this.state.pos = { lon: from.lon, lat: from.lat };
+    if (Math.round(min) >= 1) this.play.say(`You set out for ${p.name} (about ${Math.round(min)} min).`);
+  }
+
+  /** Moves the walk on by `dt` seconds of play. */
+  tick(dt: number): void {
+    const st = this.stroll;
+    if (!st) return;
+    this.clock(st.step(dt * perSecond(this.state.pace)));
+    this.state.pos = st.at;
+    if (st.finished) this.arrive();
+  }
+
+  /** Finishes the walk at once. */
+  hurry(): void {
+    if (!this.stroll) return;
+    this.clock(this.stroll.finish());
+    this.arrive();
+  }
+
+  /** Stops on the way: the party stands at the place nearest where it stopped. */
+  stop(): void {
+    const st = this.stroll;
+    if (!st) return;
+    this.stroll = null;
+    this.clock(0, true);
+    const near = this.nearest(st.at.lon, st.at.lat);
+    this.state.pos = null;
+    this.state.walking = '';
+    if (!near) return;
+    this.state.at = near.id;
+    this.state.selected = near.id;
+    this.play.say(`You stop by ${near.name}.`);
+    this.state.scene = this.describe(near);
+  }
+
+  setPace(pace: PaceId): void {
+    this.state.pace = pace;
+    lastPace = pace;
+  }
+
+  /** Puts walked minutes on the game clock in whole seconds (all that is owed, if `all`). */
+  private clock(min: number, all = false): void {
+    this.owed += min * 60;
+    const s = all ? Math.round(this.owed) : Math.floor(this.owed);
+    if (s > 0) {
+      this.play.advance(s);
+      this.owed -= s;
+    }
+    if (all) this.owed = 0;
+  }
+
+  private arrive(): void {
+    const st = this.stroll, p = this.place(this.state.walking);
+    this.clock(0, true);
+    this.stroll = null;
+    this.state.pos = null;
+    this.state.walking = '';
+    if (!p || !st) return;
+    this.state.at = p.id;
+    this.state.selected = p.id;
+    this.play.say(`You reach ${p.name}.`);
     this.state.scene = this.describe(p);
   }
 
@@ -163,7 +275,7 @@ export class CityScreen extends Screen {
 
   actions(): SceneAction[] {
     const p = this.place(this.state.at);
-    if (!p) return [];
+    if (!p || this.state.walking) return [];
     const broke = (c: number) => (this.copper() < c ? `You have ${moneyText(this.copper())}.` : undefined);
     const out: SceneAction[] = [];
     if (p.kind === 'inn') {
@@ -200,7 +312,7 @@ export class CityScreen extends Screen {
 
   act(id: string): void {
     const p = this.place(this.state.at);
-    if (!p) return;
+    if (!p || this.state.walking) return;
     const now = this.play.now();
     const say = (t: string) => {
       this.state.scene = [...this.describe(p), t];
@@ -345,6 +457,7 @@ export class CityScreen extends Screen {
   }
 
   private doLeave(): void {
+    if (this.state.walking) this.stop();
     const here = this.place(this.state.at);
     const gates = this.site.places.filter((q) => q.kind === 'gate');
     let g = here?.kind === 'gate' ? here : undefined;

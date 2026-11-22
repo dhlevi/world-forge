@@ -46,6 +46,10 @@ design round); XL, several stages (a new system that others build on).
 | N3 | Streets feel more alive: more people about, some simply walking. **Done** (21 November 2026). | M |
 | N2 | People speak their own language, or one they share with the wanderer. **Done** (21 November 2026). | M |
 | T2 | Route choices on the travel map: fastest, direct, keep to roads, cross rivers or not. **Done** (21 November 2026). | M |
+| I1 | Arriving in a town or city from the travel map always opens the in-town view. **Done** (22 November 2026). | S |
+| I2 | On arrival, a short account of the town: its people, how it fares, what is going on. **Done** (22 November 2026). | M |
+| I3 | A clearer marker for the party on the town's plan. **Done** (22 November 2026). | S |
+| I4 | Going to a place walks the marker there as the clock runs, instead of jumping. **Done** (22 November 2026). | M |
 
 ### Phase 3: systems on what exists
 
@@ -61,6 +65,10 @@ design round); XL, several stages (a new system that others build on).
 | W12 | Hospitals in towns and cities (the atlas and the game). | M |
 | B1 | Better layouts for the inside of houses: some are cramped and hard to move through. | L |
 | C1 | Starting scenarios. | L |
+| I5 | A place's scene in a central panel with a picture (as in Darklands), closed to return to the plan. | M |
+| I6 | The town's plan drawn as the atlas draws it, with the name on a banner and its outline. | M |
+| I7 | Walking about a town can meet with events: robbers at night, and the like. | M |
+| I8 | On foot, a building with things to do offers them: by speaking to its keeper, or a dismissible prompt on entering. | M |
 
 ### Phase 4: new systems, in dependency order
 
@@ -272,11 +280,67 @@ need random encounters and events: caravans, lost travellers, pilgrims, patrols,
 on the road. *Phase 4, L.* The ones that give quests depend on quests.md.
 
 **T2. Route choices.** *New.* The route is the fastest by the travel grid. The player should choose:
-fastest, most direct, keep to roads, and whether to cross rivers. *Phase 2, M.* **Done** (21
-November 2026): see navigation.md, Events on the road.
-`game/travel.ts` and the worker's route.
+fastest, most direct, keep to roads, and whether to cross rivers. *Phase 2, M.*
+`game/travel.ts` and the worker's route. **Done** (21 November 2026): see navigation.md, Events on
+the road.
 
 **T3. Deep rivers.** *Partial.* Fords take an Athletics check and can soak or sweep the wanderer.
 Large and deep rivers should need a raft or a swim (with what that means for what is carried), so
 routes avoid them where they can and seek bridges (which the plans have on roads). *Phase 3, M.*
 Pairs with T2.
+
+### The in-town view
+
+The in-town view (`screens/city.ts`, `screens/views/CityView.vue`; navigation.md, Cities and
+towns) shows a town or city as its illustrated plan, with its places of note in a list on the
+right. Choosing a place and going there passes the time the walk takes and opens that place's
+short menu of things to do in the same right-hand panel; the wanderer can walk in on the local map
+anywhere, or leave by a gate. The on-foot view stays as it is: the player can always walk in.
+
+**I1. Opening on arrival.** *Done (22 November 2026):* a journey that ends anywhere inside a
+town or city opens its view, and so does a new game begun in one. *Was partial:* The view opens when a journey on the travel map ends at a
+town or city (at its gate). It does not open when a journey ends elsewhere inside a town, nor when
+a game begins in one. Any arrival from the travel map inside a town or city should open it. Walking
+in on foot from the local map stays on foot. *Phase 2, S.* `game/session.ts` (`onArrive`).
+
+**I2. A word on arrival.** *Done (22 November 2026):* `townAccount` in `worker/sites.ts`, with the
+wanderer's standing from the law's record, shown over the plan until put aside. *Was new:* A short, dismissible account when the view opens: what the town
+is and who lives there (its peoples, its trades, its rule), how it fares (prosperous or poor, safe
+or lawless, clean or foul), and anything plainly going on (a war, the wanderer wanted there, its
+regard for them). The figures exist (core `people/town.ts`, `people/town-context.ts`; the law's
+record); festivals, plague and other events come later with their systems. *Phase 2, M.*
+
+**I3. The party's marker.** *Done (22 November 2026):* a pennant over a gold token, drawn last.
+*Was partial:* The party's place on the plan should be plain at any zoom: a
+token (the wanderer's portrait or a banner) with a ring, drawn above the plan's labels.
+*Phase 2, S.*
+
+**I4. Walking the plan.** *Done (22 November 2026), in a straight line:* `screens/stroll.ts`, at
+Slow, Steady or Brisk, to be stopped, hurried or turned aside. Following the plan's streets is
+left for later. *Was partial:* Going to a place now passes the walk's minutes at once and the
+marker jumps there. The marker should walk the streets to it, step by step, as the game's clock
+runs (at a pace that can be hurried, as the travel map's), and the walk can be stopped on the way.
+*Phase 2, M.* The way through the streets can follow the plan's streets (the plan knows them).
+
+**I5. Scenes in the middle.** *New.* A place's scene (its description, what it offers, its people)
+in a panel in the middle of the screen with a picture above it, as in Darklands, closed to return
+to the plan; the right-hand panel keeps the list of places. Pictures by the kind of place (an inn,
+a smithy, a temple, a market), drawn as placeholders until painted, in the tileset's manner.
+*Phase 3, M.*
+
+**I6. The plan as the atlas draws it.** *Partial.* The plan is the core's illustrated plan. It
+should match the atlas's town map: the town's name on a banner, its outline and walls, the quarters
+named, and the same palette. *Phase 3, M.* Core `towns/illustrate.ts`; the atlas's town view.
+
+**I7. Events in the streets.** *New.* Walking the plan (I4) can meet with what the on-foot streets
+hold: cutpurses in the crowds by day, brigands after dark in a lawless town, the watch who know a
+wanted face, a brawl spilling out of a tavern. Met, the view goes to the local map with the
+wanderer set down where the marker stands, as a road ambush does. *Phase 3, M.* Depends on I4; uses
+`worker/streets.ts`, `world/strife.ts` and `game/justice.ts`.
+
+**I8. A building's offers on foot.** *New.* On the local map, the things a place offers (an inn's
+room and meals, a shop's goods, a temple's healing, lessons) are reached only from the in-town view.
+Entering such a building on foot should offer them: by speaking to its keeper (who says what is on
+offer), or a dismissible prompt on stepping in (which can be turned off). The same scenes as the
+in-town view (I5). *Phase 3, M.* Depends on I5.
+

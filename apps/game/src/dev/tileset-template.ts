@@ -1,9 +1,10 @@
 /**
  * The tileset template (`npm run tileset:template`, development only): every frame the game asks
  * for (TILESET.md) drawn into one sheet, a row to a tile, with the art of public/tileset where it
- * has some and the game's placeholder elsewhere; its index; and a key naming every row. The dev
- * server writes the three files beside the tileset (vite.config.ts), leaving tileset.png and
- * tileset.json as they are.
+ * has some and the game's placeholder elsewhere; its index; and a key naming every row. Pictures
+ * larger than a tile (the animals) take a block of cells each, their rows wrapping at the sheet's
+ * edge. The dev server writes the three files beside the tileset (vite.config.ts), leaving the
+ * tileset's own files as they are.
  */
 import { DECOR, FACINGS, GROUND_TILES, OBJECT_TILES, TERRAINS, type TileDef } from '@worldforge/core/local/tiles';
 import { figureLayers } from '@worldforge/core/local/figures';
@@ -110,48 +111,65 @@ export async function makeTemplate(baseUrl: string): Promise<Template> {
   const P = TILE_PX, entries = rowsOf(ts);
   const rows = entries.filter((r): r is Row => 'frames' in r);
 
-  // The sheet: 16 cells wide, a row to a tile.
+  // The sheet: 16 cells wide, a row to a tile (more where its pictures are larger than a cell).
+  const layout = rows.map((r) => {
+    const cells = Math.max(1, ...r.frames.map((f) => Math.ceil(Math.max(f.look?.tex[0]?.frame.width ?? P, f.look?.tex[0]?.frame.height ?? P) / P)));
+    const per = Math.floor(16 / cells);
+    return { cells, per, tall: Math.ceil(r.frames.length / per) * cells, top: 0 };
+  });
+  let total = 0;
+  for (const l of layout) {
+    l.top = total;
+    total += l.tall;
+  }
   const sheet = document.createElement('canvas');
   sheet.width = 16 * P;
-  sheet.height = rows.length * P;
+  sheet.height = total * P;
   const g = sheet.getContext('2d')!;
   g.imageSmoothingEnabled = false;
   const tiles: Record<string, unknown> = {}, placeholders: string[] = [];
-  rows.forEach((r, row) => {
+  rows.forEach((r, ri) => {
+    const { cells: n, per, top } = layout[ri], S = n * P;
     const cells: [number, number][] = [], animCells: Record<string, [number, number][]> = {};
-    r.frames.forEach((f, col) => {
+    // How a picture is indexed: where it is, its size if larger than a cell, and its offset if it does not stand on its tile.
+    let extra: { size?: [number, number]; offset?: [number, number] } = {};
+    r.frames.forEach((f, i) => {
       const tex = f.look?.tex[0];
-      if (!tex) return;
-      const fr = tex.frame;
+      if (!tex || !f.look) return;
+      const fr = tex.frame, col = (i % per) * n, row = top + Math.floor(i / per) * n;
+      // Standing on its tile (centred across the block, its foot on the block's foot) if it fits so.
+      const sx = (S - P) / 2 + f.look.dx, sy = S - P + f.look.dy;
+      const stands = sx >= 0 && sy >= 0 && sx + fr.width <= S && sy + fr.height <= S;
+      extra = { ...(n > 1 || !stands ? { size: [n, n] } : {}), ...(stands ? {} : { offset: [f.look.dx, f.look.dy] }) };
       g.save();
       g.beginPath();
-      g.rect(col * P, row * P, P, P);
+      g.rect(col * P, row * P, S, S);
       g.clip();
-      g.drawImage(tex.source.resource as CanvasImageSource, fr.x, fr.y, fr.width, fr.height, col * P, row * P, fr.width, fr.height);
+      g.drawImage(tex.source.resource as CanvasImageSource, fr.x, fr.y, fr.width, fr.height, col * P + (stands ? sx : 0), row * P + (stands ? sy : 0), fr.width, fr.height);
       g.restore();
-      const an = r.anims?.find((a) => col >= a.from && col < a.from + a.count);
+      const an = r.anims?.find((a) => i >= a.from && i < a.from + a.count);
       if (r.anim) cells.push([col, row]);
       else if (an) (animCells[an.name] ??= []).push([col, row]);
       else {
-        tiles[f.name] = [col, row];
+        tiles[f.name] = extra.size || extra.offset ? { at: [col, row], ...extra } : [col, row];
         if (!r.art) placeholders.push(f.name);
       }
     });
     for (const a of r.anims ?? []) if (animCells[a.name]?.length) {
-      tiles[a.name] = { at: animCells[a.name], ms: a.ms };
+      tiles[a.name] = { at: animCells[a.name], ...extra, ms: a.ms };
       if (!r.art) placeholders.push(a.name);
     }
     if (r.anim && cells.length) {
-      tiles[r.anim.name] = { at: cells, ms: r.anim.ms };
+      tiles[r.anim.name] = { at: cells, ...extra, ms: r.anim.ms };
       if (!r.art) placeholders.push(r.anim.name);
     }
   });
 
   // The key: the sheet at twice the size, each row named, placeholders in grey.
-  const Z = 2, LW = 270, HEAD = 22, TOP = 30, RH = P * Z + 2;
+  const Z = 2, LW = 270, HEAD = 22, TOP = 30;
   const key = document.createElement('canvas');
   key.width = LW + 16 * P * Z + 8;
-  key.height = TOP + rows.length * RH + (entries.length - rows.length) * HEAD;
+  key.height = TOP + total * P * Z + rows.length * 2 + (entries.length - rows.length) * HEAD;
   const k = key.getContext('2d')!;
   k.imageSmoothingEnabled = false;
   k.fillStyle = '#1b1c22';
@@ -171,20 +189,21 @@ export async function makeTemplate(baseUrl: string): Promise<Template> {
       y += HEAD;
       continue;
     }
+    const { top, tall } = layout[sheetRow], h = tall * P * Z;
     k.fillStyle = e.art ? '#e8e4d8' : '#8a8c96';
     k.font = '11px monospace';
-    k.fillText(`${e.label}${e.art ? '' : '  (placeholder)'}`, 6, y + (P * Z) / 2);
+    k.fillText(`${e.label}${e.art ? '' : '  (placeholder)'}`, 6, y + Math.min(h, P * Z * 2) / 2);
     k.fillStyle = '#2a2b33';
-    k.fillRect(LW, y, 16 * P * Z, P * Z);
-    k.drawImage(sheet, 0, sheetRow * P, 16 * P, P, LW, y, 16 * P * Z, P * Z);
-    y += RH;
+    k.fillRect(LW, y, 16 * P * Z, h);
+    k.drawImage(sheet, 0, top * P, 16 * P, tall * P, LW, y, 16 * P * Z, h);
+    y += h + 2;
     sheetRow++;
   }
 
   const index = {
     tileSize: P,
     image: 'tileset-template.png',
-    about: 'Every frame the game asks for (TILESET.md), laid out a tile to a row: the art of tileset.png where it has some, and the game\'s placeholder elsewhere. Frames listed in "placeholders" are not art yet. To use a painted frame, copy its picture and entry into tileset.png and tileset.json (or point tileset.json at this sheet). Made again by npm run tileset:template.',
+    about: 'Every frame the game asks for (TILESET.md), laid out a tile to a row: the tileset\'s art where it has some, and the game\'s placeholder elsewhere. Frames listed in "placeholders" are not art yet. To use a painted frame, copy its picture and entry into the tileset\'s sheets and tileset.json (or point tileset.json at this sheet). Made again by npm run tileset:template.',
     tiles,
     placeholders,
   };
