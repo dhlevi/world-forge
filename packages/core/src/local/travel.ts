@@ -21,6 +21,8 @@ export interface TravelCell {
   way: 'road' | 'track' | 'street' | '';
   /** A river to ford (no bridge). */
   ford: boolean;
+  /** A river too deep to ford but not too wide to swim or cross on a raft (no bridge; backlog T3). */
+  swim: boolean;
   biome: number;
   /** Elevation (m) at the centre. */
   elev: number;
@@ -51,7 +53,12 @@ const DEG = Math.PI / 180;
 
 interface Seg { ax: number; ay: number; bx: number; by: number; cls: 'road' | 'track' }
 
-/** How a route is chosen (the travel map's choices): the quickest (default), the most direct, or keeping to the roads; and whether to go round rivers to be forded. */
+/** A river wider than this (half its width, m) cannot be forded; wider than the second, not swum or rafted either. */
+export const FORD_HALF_M = 12, SWIM_HALF_M = 60;
+/** Minutes to swim a river or raft it across, beyond the step's walk (the search adds more, to seek a bridge). */
+const SWIM_MIN = 30;
+
+/** How a route is chosen (the travel map's choices): the quickest (default), the most direct, or keeping to the roads; and whether to go round rivers to be forded (and never to swim one). */
 export interface RouteOptions {
   mode?: 'fastest' | 'direct' | 'roads';
   avoidFords?: boolean;
@@ -149,11 +156,12 @@ export class TravelGrid {
     const water = s.isWater(ll[0], ll[1], h);
     const rb = s.riverBank(ll[0], ll[1], STEP_M / 2);
     const river = !!rb && rb.bankM < 0;
-    // Roads bridge rivers; elsewhere a narrow river is forded and a wide one blocks.
-    const blocked = (water && way !== 'road') || (river && !way && rb!.halfM > 12);
-    const ford = river && !blocked && way !== 'road';
+    // Roads bridge rivers; elsewhere a narrow river is forded, a deeper one swum or rafted, and a very wide one blocks.
+    const blocked = (water && way !== 'road') || (river && !way && rb!.halfM > SWIM_HALF_M);
+    const swim = river && !blocked && !way && rb!.halfM > FORD_HALF_M;
+    const ford = river && !blocked && !swim && way !== 'road';
     const speed = way ? WAY_SPEED[way] : SPEED[biome] ?? 3;
-    const c: TravelCell = { blocked, way, ford, biome, elev: Math.round(h), baseMin: (STEP_M / 1000 / speed) * 60 + (ford ? 15 : 0) };
+    const c: TravelCell = { blocked, way, ford, swim, biome, elev: Math.round(h), baseMin: (STEP_M / 1000 / speed) * 60 + (ford ? 15 : 0) + (swim ? SWIM_MIN : 0) };
     this.cells.set(k, c);
     if (this.cells.size > 400000) this.cells.clear();
     return c;
@@ -256,7 +264,7 @@ export class TravelGrid {
         const k2 = idx(nx, ny);
         if (closed[k2]) continue;
         const m = this.stepMinutes(x, y, nx, ny);
-        if (m === Infinity) continue;
+        if (m === Infinity || (o.avoidFords && this.cell(nx, ny).swim)) continue;
         const ng = g[k] + this.stepCost(nx, ny, m, dx && dy ? Math.SQRT2 : 1, best, o);
         if (ng >= g[k2]) continue;
         g[k2] = ng;
@@ -275,7 +283,8 @@ export class TravelGrid {
   /**
    * What a step costs the search, by the route's choice: its minutes (the quickest); nearly its
    * length alone (the most direct, over rough ground and all); its minutes off the roads and tracks
-   * three times over (keeping to the roads); and a ford four hours' worth (going round rivers).
+   * three times over (keeping to the roads); a ford four hours' worth (going round rivers); and a
+   * river to swim or raft eight hours' worth always, so a bridge within a day's detour is taken.
    * Never less than the quickest pace's minutes for its length, so the search's estimate holds.
    */
   private stepCost(x: number, y: number, minutes: number, run: number, best: number, o: RouteOptions): number {
@@ -284,6 +293,7 @@ export class TravelGrid {
     if (o.mode === 'direct') cost = best * run * 1.5 + minutes * 0.1;
     else if (o.mode === 'roads' && c.way !== 'road' && c.way !== 'track' && c.way !== 'street') cost = minutes * 3;
     if (o.avoidFords && c.ford) cost += 240;
+    if (c.swim) cost += 480;
     return cost;
   }
 }

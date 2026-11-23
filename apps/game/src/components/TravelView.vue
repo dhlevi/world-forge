@@ -9,6 +9,8 @@ import WorldView from './WorldView.vue';
 import { SPEEDS, type LL, type Travel } from '../game/travel';
 import { TILE_M } from '@worldforge/core/local/chunk';
 import type { PlanImage, StartSite, TravelArea, ViewLayer } from '../worker/protocol';
+import type { Actor } from '../actors/actor';
+import { whyNoRaft } from '../rules/crossing';
 
 const props = defineProps<{
   travel: Travel;
@@ -18,6 +20,8 @@ const props = defineProps<{
   requestTile: (z: number, x: number, y: number, layer: ViewLayer) => Promise<ImageBitmap | null>;
   requestArea: (box: { west: number; south: number; east: number; north: number }, fine: boolean) => Promise<TravelArea>;
   requestPlan: (id: string, o: { mpp: number; radius: number; illustrated: boolean; lon?: number; lat?: number }) => Promise<PlanImage | null>;
+  /** The wanderer (what they carry decides whether a raft can be built). */
+  player?: Actor | null;
 }>();
 /** The journey (game/travel.ts): the game's own object, driven from here, not data a parent view owns. */
 const journey = props.travel;
@@ -49,6 +53,13 @@ journey.onChange = () => tick.value++;
 
 const party = computed<LL>(() => (tick.value, journey.party()));
 const route = computed<LL[]>(() => (tick.value, journey.ahead()));
+/** At the bank of a deep river (backlog T3), and why a raft cannot be built there, if not. */
+const atRiver = computed(() => (tick.value, journey.atRiver));
+const noRaft = computed(() => {
+  void tick.value;
+  const st = journey.steps[journey.i], a = props.player;
+  return st && a ? whyNoRaft(a, st.biome) : null;
+});
 const dest = computed<LL | null>(() => (tick.value, journey.dest));
 const status = computed(() => {
   void tick.value;
@@ -175,6 +186,11 @@ onBeforeUnmount(() => journey.stop());
           <button v-for="l in (['fantasy', 'terrain', 'biomes'] as ViewLayer[])" :key="l" :class="{ on: layer === l }" @click="layer = l">{{ l[0].toUpperCase() + l.slice(1) }}</button>
         </div>
         <div class="status">{{ status }}</div>
+        <div v-if="atRiver" class="row river">
+          <span>A deep river bars the way.</span>
+          <button @click="journey.cross('swim')">Swim across</button>
+          <button :disabled="!!noRaft" :title="noRaft ?? 'About two hours with an axe or hatchet; rope helps'" @click="journey.cross('raft')">Build a raft (about 2 h)</button>
+        </div>
         <div class="row">
           <button class="primary" :disabled="!journey.steps.length || journey.planning" @click="go">{{ running ? 'Stop' : 'Travel' }}</button>
           <select v-model.number="journey.speed" @change="tick++">
@@ -186,7 +202,7 @@ onBeforeUnmount(() => journey.stop());
             <option value="direct">Direct</option>
             <option value="roads">Keep to roads</option>
           </select>
-          <label class="check" title="Go round rivers to be forded, where there is a way"><input v-model="journey.avoidFords" type="checkbox" @change="replan" /> Avoid rivers</label>
+          <label class="check" title="Go round rivers to be forded where there is a way, and never swim one"><input v-model="journey.avoidFords" type="checkbox" @change="replan" /> Avoid rivers</label>
           <button v-if="journey.dest" @click="journey.clear()">Clear</button>
           <span class="sep" />
           <button @click="mapRef?.centreOnParty()">Find party (F)</button>

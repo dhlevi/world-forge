@@ -128,6 +128,7 @@ button:disabled { opacity: 0.5; cursor: default; }
 }
 .travel-bar .row { flex-wrap: wrap; gap: 6px; }
 .travel-bar button { padding: 4px 10px; }
+.travel-bar .river { align-items: center; color: var(--accent); }
 .travel-bar button.on { border-color: var(--accent); color: var(--accent); }
 .travel-bar .sep { width: 10px; }
 .travel-bar .check { display: flex; align-items: center; gap: 6px; color: var(--dim); }

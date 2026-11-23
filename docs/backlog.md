@@ -57,8 +57,8 @@ design round); XL, several stages (a new system that others build on).
 |---|---|---|
 | W1 | Rain leaves puddles and mud in places, which dry in the sun or freeze to ice. **Done** (22 November 2026). | L |
 | W3 | Rivers and lakes freeze over. **Done** (22 November 2026). | M |
-| T3 | Deep rivers need a raft, a swim or a bridge; routes avoid them where they can. | M |
-| C4 | Clothes get dirty and stained; they can be washed, but stains lower their value for good. | M |
+| T3 | Deep rivers need a raft, a swim or a bridge; routes avoid them where they can. **Done** (22 November 2026). | M |
+| C4 | Clothes get dirty and stained; they can be washed, but stains lower their value for good. **Done** (22 November 2026). | M |
 | C3 | Clothes tailored to fit give bonuses (to armour, to charm, and to the skills it makes sense for). | M |
 | C8 | Lost limbs replaced: peg legs and hook hands. | M |
 | B3 | Signs on workshops and inns, in the local language, read if the wanderer can read it. | M |
@@ -177,7 +177,8 @@ creation as the Old and New Worlds' peoples are.
 worn, a better impression (charm, and the social skills), and less hindrance to the skills it
 matters for (Acrobatics, Sneak). Badly fitting clothes the opposite. *Phase 3, M.*
 
-**C4. Dirty and stained clothes.** *New.* The wanderer gets dirty (`actors/needs.ts`); clothes do
+**C4. Dirty and stained clothes.** *Done (22 November 2026):* see characters.md, Keeping clean.
+The residents' clothes are always clean for now. *Was new:* The wanderer gets dirty (`actors/needs.ts`); clothes do
 not. Clothes should take dirt and blood from what the wanderer does, be washed (with soap, at
 water), and keep stains that lower their worth for good. Dirty clothes sell for less. *Phase 3, M.*
 
@@ -286,7 +287,8 @@ fastest, most direct, keep to roads, and whether to cross rivers. *Phase 2, M.*
 `game/travel.ts` and the worker's route. **Done** (21 November 2026): see navigation.md, Events on
 the road.
 
-**T3. Deep rivers.** *Partial.* Fords take an Athletics check and can soak or sweep the wanderer.
+**T3. Deep rivers.** *Done (22 November 2026), on the travel map:* see navigation.md, Deep rivers.
+On the local map, deep water is swum as before (harder with a load). *Was partial:* Fords take an Athletics check and can soak or sweep the wanderer.
 Large and deep rivers should need a raft or a swim (with what that means for what is carried), so
 routes avoid them where they can and seek bridges (which the plans have on roads). *Phase 3, M.*
 Pairs with T2.

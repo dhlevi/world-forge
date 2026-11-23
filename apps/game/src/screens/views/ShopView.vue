@@ -1,5 +1,6 @@
 <script setup lang="ts">
 /** A market's or shop's goods: what is for sale, at what price, and buying. */
+import { soilWords } from '../../actors/items/soil';
 import { computed } from 'vue';
 import type { ShopScreen, Ware } from '../shop';
 import { conditionWord, defOf, itemName, QUALITY_WORD } from '../../actors/items/item';
@@ -57,7 +58,7 @@ const load = computed(() => {
     <div v-if="ui.tab === 'sell'" class="shop-list">
       <p v-if="!offers.length" class="dim">You carry nothing they would buy.</p>
       <div v-for="o in offers" :key="o.item.uid" class="ware" :class="{ gone: !!o.why }">
-        <span class="nm">{{ itemName(o.item) }} <span class="dim">{{ QUALITY_WORD[o.item.quality] }}, {{ conditionWord(o.item.condition) }}</span></span>
+        <span class="nm">{{ itemName(o.item) }} <span class="dim">{{ QUALITY_WORD[o.item.quality] }}, {{ conditionWord(o.item.condition) }}<template v-if="soilWords(o.item)">, {{ soilWords(o.item) }}</template></span></span>
         <span class="dim">{{ o.why ?? (screen.inv ? screen.inv.where(o.item.loc) : '') }}</span>
         <span class="price">{{ o.price > 0 ? moneyText(o.price) : '' }}</span>
         <button :disabled="!!o.why" @click="screen.sell(o)">Sell</button>

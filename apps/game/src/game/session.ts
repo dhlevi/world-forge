@@ -11,6 +11,8 @@
  * screens (the city view, the title) through `SessionHost`, so that scripts/session-test.ts can
  * play it in Node with stand-ins.
  */
+import { clothesLook, isGarment, soiled, washGarment } from '../actors/items/soil';
+import { crossRiver } from '../rules/crossing';
 import { ICE_SAFE, iceOn, wetAt, type GroundWet, type Wet } from './wet';
 import { reactive } from 'vue';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
@@ -399,6 +401,13 @@ export class PlaySession {
       return Math.max(0.1, Math.min(1, 0.15 + s.light)) * (1 - w.fog * 0.7) * (w.rainMm > 3 ? 0.5 : w.kind.includes('snow') ? 0.6 : 1);
     };
     // Arriving at a town or city opens its city view; a village opens straight onto the local map.
+    // A deep river on the way: swum or rafted (rules/crossing.ts).
+    travel.onCross = (by, st) => {
+      const a = this.player;
+      if (!a) return { ok: false, seconds: 0, text: '' };
+      game.activity = by === 'swim' ? 'swim' : 'work';
+      return crossRiver(a, by, { now: game.time, load: this.invSlow(), biome: st.biome, airC: this.skyNow.w.tempC, random: () => game.dice.random() });
+    };
     travel.onArrive = (site) => {
       // In a town or city, by its gate or anywhere within it, the city view opens (docs/backlog.md, I1).
       if (site && (site.tier === 'town' || site.tier === 'city')) {
@@ -1302,7 +1311,8 @@ export class PlaySession {
     if (said >= 4) ops.add(r.p.id, r.p.name, 'pestered me', -1, t, 1);
     else if (!met || ops.recent(r.p.id, 'spoke civilly', t, 86400) === 0) ops.add(r.p.id, r.p.name, 'spoke civilly', 3, t, 5);
     // Filth and blood put people off (backlog C5): the well-to-do most, the poor and the rough hardly.
-    const clean = this.needs()?.words().clean;
+    const look = this.player?.get(Inventory) ? clothesLook(this.player.get(Inventory)!) : '';
+    const clean = look === 'bloodied' ? 'Bloodied' : look === 'filthy' ? 'Filthy' : this.needs()?.words().clean;
     if ((clean === 'Filthy' || clean === 'Bloodied') && ops.recent(r.p.id, 'you were filthy', t, 86400) === 0) {
       const fussy = r.p.means === 'rich' || r.p.means === 'comfortable' ? 2 : r.p.means === 'destitute' || r.p.template === 'bandit' ? 0 : 1;
       if (fussy) {
@@ -1383,12 +1393,7 @@ export class PlaySession {
   washHere(): void {
     const n = this.needs(), game = this.game, inv = this.player?.get(Inventory);
     if (!n) return;
-    const found = game.nearby(1, (x, y) => {
-      const od = OBJECT_TILES[game.map.object(x, y)];
-      if (od?.name === 'bath') return { how: `in ${od.look}`, leaves: 0, minutes: 25, wet: 30 };
-      if (od?.name === 'well' || od?.name === 'fountain') return { how: `at ${od.look}`, leaves: 12, minutes: 10, wet: 25 };
-      return GROUND_TILES[game.map.ground(x, y)]?.water ? { how: 'in the water', leaves: 5, minutes: 12, wet: 45 } : null;
-    });
+    const found = this.washWater();
     if (!found) {
       game.say('There is no water here to wash in: a river or a lake, a well, a fountain or a bath.');
       return;
@@ -1405,6 +1410,46 @@ export class PlaySession {
     if (soap || was === 'Dirty' || was === 'Filthy' || was === 'Bloodied') this.player?.get(Mood)?.add({ id: 'washed', text: soap ? 'Scrubbed clean with soap' : 'Washed clean', value: soap ? 2 : 1, until: game.time + (soap ? 8 : 4) * 3600 });
     game.say(`You strip off and wash ${found.how}${soap ? ' with soap' : ''}${was === 'Bloodied' ? ', and the blood comes away' : was ? ', scrubbing off the dirt of the road' : ''}${n.d.airC < 5 ? '. The water is bitterly cold' : ''}.`);
     game.updateHud();
+  }
+
+  /** Water to wash in at hand: a bath, a well or a fountain, or water to stand in; how good, how long, how wet. */
+  washWater(): { how: string; leaves: number; minutes: number; wet: number } | null {
+    const game = this.game;
+    return game.nearby(1, (x, y) => {
+      const od = OBJECT_TILES[game.map.object(x, y)];
+      if (od?.name === 'bath') return { how: `in ${od.look}`, leaves: 0, minutes: 25, wet: 30 };
+      if (od?.name === 'well' || od?.name === 'fountain') return { how: `at ${od.look}`, leaves: 12, minutes: 10, wet: 25 };
+      return GROUND_TILES[game.map.ground(x, y)]?.water && !game.iced(x, y) ? { how: 'in the water', leaves: 5, minutes: 12, wet: 45 } : null;
+    });
+  }
+
+  /**
+   * Washes clothes (backlog C4; actors/items/soil.ts): the garments given, or every soiled one
+   * carried or worn, at water to hand; with soap (one use for the lot) all the dirt and fresh blood
+   * come out, without most of it, and blood left sets. A quarter of an hour and five minutes a
+   * garment; what is worn is put back on wet. Returns what happened, in words.
+   */
+  washClothes(uids?: string[]): string {
+    const inv = this.player?.get(Inventory), n = this.needs(), game = this.game;
+    if (!inv) return '';
+    const water = this.washWater();
+    if (!water) return 'There is no water here to wash clothes in: a river or a lake, a well, a fountain or a bath.';
+    const list = uids ? inv.d.items.filter((i) => uids.includes(i.uid) && isGarment(i)) : soiled(inv);
+    if (!list.length) return 'Your clothes are clean enough already.';
+    const soap = inv.d.items.find((i) => i.def === 'soap');
+    let any = false, stainedNow = false;
+    for (const it of list) {
+      const before = it.stain ?? 0;
+      if (washGarment(it, !!soap)) any = true;
+      if ((it.stain ?? 0) > before + 0.5) stainedNow = true;
+    }
+    if (!any) return 'Your clothes are clean enough already.';
+    if (soap) usePortion(inv, soap);
+    if (n && list.some((i) => i.loc?.at === 'worn')) n.d.wet = Math.max(n.d.wet ?? 0, 60);
+    game.time += (15 + 5 * list.length) * 60;
+    game.updateHud();
+    const what = list.length === 1 ? `your ${itemName(list[0])}` : 'your clothes';
+    return `You wash ${what} ${water.how}${soap ? ' with soap' : ''}${stainedNow ? '; the old blood will not all come out, and leaves a stain' : ''}${list.some((i) => i.loc?.at === 'worn') ? ', and put them back on wet' : ''}.`;
   }
 
   // ---- The people about ------------------------------------------------------------------------

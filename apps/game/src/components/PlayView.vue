@@ -292,6 +292,7 @@ onBeforeUnmount(() => {
       :request-tile="app.worker.requestTile"
       :request-area="app.worker.requestArea"
       :request-plan="app.worker.plan"
+      :player="session.player"
       @zoom-in="session.toLocal()"
       @camp="screen.showCamp()"
       :dark="st.darkness"

@@ -103,7 +103,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
         const a = travel!.cell(prev[0], prev[1]);
         const run = STEP_M * (prev[0] !== cx && prev[1] !== cy ? Math.SQRT2 : 1);
         const slope = Math.round((Math.abs(c.elev - a.elev) / run) * 1000) / 1000;
-        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, biome: c.biome, sight: travel!.sightM(cx, cy), slope, banditry: banditry(world!, local!, ...bandCell(cx, cy), c.way) };
+        const st = { cx, cy, min: travel!.stepMinutes(prev[0], prev[1], cx, cy), way: c.way, ford: c.ford, swim: c.swim, biome: c.biome, sight: travel!.sightM(cx, cy), slope, banditry: banditry(world!, local!, ...bandCell(cx, cy), c.way) };
         prev = [cx, cy];
         return st;
       }) : null;

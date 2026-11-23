@@ -283,6 +283,21 @@ fountain, in a bathhouse or at an inn. The design is in
 [survival.md](survival.md#cleanliness-and-grooming); the portrait shows the dirt and the blood
 ([survival.md](survival.md#portraits)).
 
+**Dirty and stained clothes** (backlog C4, 22 November 2026; `actors/items/soil.ts`). What is worn
+takes the dirt and blood the wanderer takes: the cloak and outer garments all of it, the main layer
+and armour most, padding and what is worn beneath least. Dirt washes out. Fresh blood washes out if
+washed soon, but sets as the hours pass (about a twentieth of it an hour), leaving a stain that no
+washing takes out. A swim rinses out much of the dirt and blood, and rain a little of the blood.
+Washing clothes (A in the inventory, at a river, a lake, a well, a fountain or a bath) takes a
+quarter of an hour and five minutes a garment, the chosen garment or all that need it: with soap
+(one use for the lot) all the dirt and fresh blood come out; without, most of the dirt, and the blood
+left sets. Worn clothes are put back on wet. A garment shows as dirty or filthy, bloodied, and
+stained or badly stained, in the inventory and the shops. Value: up to 30% off for dirt and 40% for
+fresh blood until washed, and up to 60% off for stains for good. Dirty, stained, filthy or bloodied
+outer clothes make Social checks harder (2, 3, 5 and 6), beside the wanderer's own dirt, and filthy
+or bloodied clothes sour a first meeting as a filthy wanderer does (`clothes-test.ts`). *Proposed
+numbers, to tune in play.*
+
 ## Conditions: addiction and disease
 
 **Decided.** Addiction and disease as in RimWorld.

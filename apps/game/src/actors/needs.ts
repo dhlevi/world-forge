@@ -31,6 +31,7 @@
  *
  * Proposed numbers, to tune in play.
  */
+import { ageClothes, soilWorn } from './items/soil';
 import { Component } from './actor';
 import type { Message } from '../engine/messages';
 import { Body, Mood, Pools, Skills, type Activity, type TimeCtx } from './components';
@@ -203,7 +204,8 @@ export class Needs extends Component {
     d.heat += (target - d.heat) * Math.min(1, h * 1.2);
 
     // ---- Grime and blood.
-    let grime = d.grime ?? 0, gore = d.bloodied ?? 0;
+    const grime0 = d.grime ?? 0, gore0 = d.bloodied ?? 0;
+    let grime = grime0, gore = gore0, rinsed = 0;
     if (act === 'swim') {
       grime = Math.min(grime, Math.max(SWIM_CLEAN, grime - 240 * h));
       gore = Math.max(0, gore - 400 * h);
@@ -213,12 +215,19 @@ export class Needs extends Component {
       grime += GRIME[act] * rough * (onFoot ? 1 + (ctx.mud ?? 0) * 1.5 : 1) * (d.heat > 15 ? 1 + (d.heat - 15) / 60 : 1) * h;
       if (wx && wx.rainMm > 0 && !wx.snow) {
         const rinse = wx.rainMm * (1 - cover) * h;
+        rinsed = rinse;
         gore = Math.max(0, gore - rinse * 8);
         if (grime > RAIN_CLEAN) grime = Math.max(RAIN_CLEAN, grime - rinse * 2);
       }
     }
     d.grime = clamp(grime, 0, 100);
     d.bloodied = clamp(gore, 0, 100);
+    // What is worn takes its share, and blood left on it sets (backlog C4).
+    const inv = this.actor?.get(Inventory);
+    if (inv) {
+      soilWorn(inv, d.grime - grime0, act === 'swim' ? 0 : d.bloodied - gore0);
+      ageClothes(inv, h, { swim: act === 'swim', rinse: rinsed });
+    }
 
     // ---- Food.
     const cold = d.heat < -15 ? 1 + (-d.heat - 15) / 100 : 1;
@@ -405,11 +414,15 @@ export class Needs extends Component {
   /** Blood gets on the person: their own from a wound, a beast's from a blow or a carcass. */
   stain(amount: number): void {
     this.d.bloodied = clamp((this.d.bloodied ?? 0) + amount, 0, 100);
+    const inv = this.actor?.get(Inventory);
+    if (inv) soilWorn(inv, 0, amount);
   }
 
   /** Dirt gets on the person, beyond the day's (a carcass butchered). */
   soil(amount: number): void {
     this.d.grime = clamp((this.d.grime ?? 0) + amount, 0, 100);
+    const inv = this.actor?.get(Inventory);
+    if (inv) soilWorn(inv, amount, 0);
   }
 
   /** Washes: the blood off, and the dirt down to what the washing leaves (0: a bath). Returns whether there was anything to wash off. */

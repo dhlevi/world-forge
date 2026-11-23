@@ -157,7 +157,18 @@ occupation set what the character knows of the world at the start.
 travel bar chooses how the way is found: Fastest (the quickest by the ground), Direct (as straight
 as the land allows, slower over rough ground), or Keep to roads (roads and tracks wherever they
 go); and Avoid rivers goes round fords where there is a way. Changing a choice finds the way again
-from where the party stands. *Robbers* (combat.md, stage 4): a band's danger is greatest within a
+from where the party stands. *Deep rivers* (backlog T3, 22 November 2026; core `local/travel.ts`,
+`rules/crossing.ts`): a river is forded up to 24 m across; from there to 120 m it is too deep to
+ford but can be swum or rafted; wider, it blocks, as the sea and lakes do. Roads bridge them all.
+A swim costs a route eight hours' worth on top of its time, so the way goes round by a bridge or a
+ford within that detour; with Avoid rivers it never swims. Where it must, the party stops at the
+bank and the travel bar offers **Swim across** (Swimming, harder laden and in the cold: across and
+soaked through; a near miss across but far downstream and spent; a failure turns back; a fumble is
+swept away half drowned and bruised, and the river takes what was held or strapped to the pack)
+or **Build a raft** (an axe or a hatchet and wood about; Survival, with rope or else withies, and
+Carpentry: about two hours, then poled across with the load kept dry; a failure wastes the work and
+a fumble breaks up midstream). A river wider than one step is crossed at one go. *Proposed numbers,
+to tune in play.* *Robbers* (combat.md, stage 4): a band's danger is greatest within a
 day's walk of a town (more of a city) and falls off beyond, to little in the deep wilds; Tracking
 or Survival may see a band lying in wait first, stopping the journey short so the party can go
 round it. *Below the land,* the weather panel shows the rock and the light carried, and the air

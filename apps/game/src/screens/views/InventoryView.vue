@@ -5,6 +5,7 @@
  * and on the right what lies nearby and the chosen thing with what can be done with it.
  * Things are dragged between places, or chosen and given an action (with keys too).
  */
+import { soilWords } from '../../actors/items/soil';
 import { computed } from 'vue';
 import type { InventoryScreen, Ref, Target, Spot } from '../inventory';
 import { REGIONS, REGION_NAMES, JEWEL_SLOTS, JEWEL_NAMES, LAYERS, type JewelSlot } from '../../actors/items/defs';
@@ -46,6 +47,8 @@ function info(i: Item): string {
   const bits: string[] = [];
   if (d.uses && i.uses !== undefined) bits.push(`${i.uses}/${d.uses} ${d.useWord ?? 'uses'}`);
   if (d.durable !== false && i.condition < 95) bits.push(conditionWord(i.condition));
+  const soil = soilWords(i);
+  if (soil) bits.push(soil);
   if (i.quality !== 'common') bits.push(QUALITY_WORD[i.quality]);
   return bits.join(', ');
 }
@@ -175,7 +178,7 @@ const pct = (a: number, b: number) => `${Math.min(100, Math.round((a / Math.max(
           <p><b>{{ itemName(chosen) }}</b><span class="dim"> ({{ ui.selected?.from === 'ground' ? 'nearby' : inv.where(chosen.loc) }})</span></p>
           <p class="dim">
             {{ QUALITY_WORD[chosen.quality] }} {{ defOf(chosen).kind }}<span v-if="chosen.make">, {{ chosen.make }} make</span>;
-            {{ ((chosen.kg ?? defOf(chosen).weight) * chosen.qty).toFixed(2) }} kg, {{ (defOf(chosen).bulk * chosen.qty).toFixed(1) }} L, {{ SIZE_WORD(defOf(chosen).size) }}<span v-if="defOf(chosen).durable !== false">; {{ conditionWord(chosen.condition) }}</span><span v-if="defOf(chosen).uses">; {{ chosen.uses }} of {{ defOf(chosen).uses }} {{ defOf(chosen).useWord }} left</span>; worth about {{ moneyText(itemValue(chosen)) }}.
+            {{ ((chosen.kg ?? defOf(chosen).weight) * chosen.qty).toFixed(2) }} kg, {{ (defOf(chosen).bulk * chosen.qty).toFixed(1) }} L, {{ SIZE_WORD(defOf(chosen).size) }}<span v-if="defOf(chosen).durable !== false">; {{ conditionWord(chosen.condition) }}</span><span v-if="soilWords(chosen)">; {{ soilWords(chosen) }}</span><span v-if="defOf(chosen).uses">; {{ chosen.uses }} of {{ defOf(chosen).uses }} {{ defOf(chosen).useWord }} left</span>; worth about {{ moneyText(itemValue(chosen)) }}.
           </p>
           <p v-if="defOf(chosen).about" class="dim">{{ defOf(chosen).about }}</p>
           <p v-if="defOf(chosen).container" class="dim">Holds {{ defOf(chosen).container!.litres }} L and {{ defOf(chosen).container!.maxKg }} kg, things up to {{ SIZE_WORD(defOf(chosen).container!.maxSize) }}.</p>
@@ -188,7 +191,7 @@ const pct = (a: number, b: number) => `${Math.min(100, Math.round((a / Math.max(
 
     <footer class="inv-foot">
       <span class="msg">{{ ui.message }}</span>
-      <span class="dim">Drag things between places, or choose one: W wear or take off, H hold, B back, S strap to a pack, L belt, P put in a bag, E eat or drink, C cook and eat (at a fire), M mend, R read, D drop, T take; up and down to choose.</span>
+      <span class="dim">Drag things between places, or choose one: W wear or take off, H hold, B back, S strap to a pack, L belt, P put in a bag, E eat or drink, C cook and eat (at a fire), M mend, A wash clothes (at water), R read, D drop, T take; up and down to choose.</span>
     </footer>
   </div>
 </template>

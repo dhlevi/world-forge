@@ -210,6 +210,8 @@ export interface RouteStep {
   min: number;
   way: string;
   ford: boolean;
+  /** A river to swim or raft across (backlog T3). */
+  swim?: boolean;
   biome: number;
   /** How far the land can be seen from it (m). */
   sight: number;

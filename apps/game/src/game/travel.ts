@@ -3,6 +3,7 @@
  * after another with the clock running, until the party arrives, the player stops, or something
  * happens on the way. Long journeys come in legs, each planned when the last is walked.
  */
+import type { CrossBy } from '../rules/crossing';
 import type { RouteOptions } from '@worldforge/core/local/travel';
 import { background } from '../app/errors';
 import { LocalFrame } from '@worldforge/core/towns/plan';
@@ -83,6 +84,14 @@ export class Travel {
   private goal: LL | null = null;
   /** Asks the worker for a settlement's gates (set by the play view). */
   requestSite: ((id: string, at: { lon: number; lat: number }) => Promise<{ site: SiteInfo | null; gates: Gate[] }>) | null = null;
+  /**
+   * At the bank of a river too deep to ford (backlog T3): the party waits there until the player
+   * chooses to swim it or build a raft (`cross`), which the session resolves (rules/crossing.ts).
+   */
+  atRiver = false;
+  /** Across the river being crossed (it may span more than one step). */
+  private across = false;
+  onCross: (by: CrossBy, st: RouteStep) => { ok: boolean; seconds: number; text: string } = () => ({ ok: false, seconds: 0, text: '' });
   /** Called on arriving: at a settlement (its gate), or at a point. */
   onArrive: (site: DestSite | null) => void = () => {};
   private timer = 0;
@@ -167,6 +176,7 @@ export class Travel {
 
   private async plan(): Promise<void> {
     if (!this.dest) return;
+    this.atRiver = false;
     this.planning = true;
     this.onChange();
     const from: [number, number] = [Math.floor(this.game.px / CHUNK), Math.floor(this.game.py / CHUNK)];
@@ -209,8 +219,26 @@ export class Travel {
     this.onChange();
   }
 
+  /** Crosses the river at the bank, by swimming or by raft; on across, the journey goes on. */
+  cross(by: CrossBy): void {
+    const st = this.steps[this.i];
+    if (!this.atRiver || !st) return;
+    const r = this.onCross(by, st);
+    this.game.time += r.seconds;
+    if (r.text) this.game.say(r.text);
+    if (r.ok) {
+      this.atRiver = false;
+      this.across = true;
+    }
+    this.game.updateHud();
+    this.onChange();
+    if (r.ok) this.start();
+  }
+
   clear(): void {
     this.stop();
+    this.atRiver = false;
+    this.across = false;
     this.steps = [];
     this.i = 0;
     this.dest = null;
@@ -240,8 +268,17 @@ export class Travel {
       this.arrive();
       return;
     }
-    const st = this.steps[this.i++];
     const g = this.game;
+    // A deep river ahead: wait at the bank for the player's choice.
+    if (this.steps[this.i].swim && !this.across) {
+      this.running = false;
+      if (!this.atRiver) g.say('A wide river bars the way, too deep to ford, and no bridge is near. Swim it, or build a raft to cross.');
+      this.atRiver = true;
+      this.onChange();
+      return;
+    }
+    const st = this.steps[this.i++];
+    if (!st.swim) this.across = false;
     const before = g.time;
     g.px = st.cx * CHUNK + CHUNK / 2;
     g.py = st.cy * CHUNK + CHUNK / 2;

@@ -17,6 +17,8 @@
  *
  * Proposed numbers, to tune in play.
  */
+import { Inventory } from './items/inventory';
+import { clothesLook } from './items/soil';
 import type { Actor } from './actor';
 import { Body, Mood, Skills, Traits } from './components';
 import { SKILL } from './data/skills';
@@ -108,6 +110,10 @@ export function bodyMods(a: Actor, skill: string): Mod[] {
     const dirt: Record<string, number> = { Dirty: -4, Bloodied: -8, Filthy: -10 };
     if (SKILL.get(skill)?.group === 'Social' && dirt[w.clean]) out.push({ why: w.clean.toLowerCase(), value: dirt[w.clean] });
   }
+  // And so do dirty, bloodied or stained clothes (backlog C4).
+  const look = a.get(Inventory) ? clothesLook(a.get(Inventory)!) : '';
+  const CLOTHES = { dirty: -2, stained: -3, filthy: -5, bloodied: -6 } as const;
+  if (look && SKILL.get(skill)?.group === 'Social') out.push({ why: `${look} clothes`, value: CLOTHES[look] });
   // So do hair and a beard run wild.
   const kempt = a.get(Body)?.kempt();
   if (kempt && SKILL.get(skill)?.group === 'Social') out.push({ why: kempt.toLowerCase(), value: kempt === 'Ragged' ? -5 : -2 });

@@ -8,6 +8,7 @@
  * the kit it needs carried, or beside a forge), cooking food at a fire before eating it
  * (Cooking), and reading a book that teaches (actors/learning.ts).
  */
+import { isGarment, soiled } from '../actors/items/soil';
 import { butcher } from '../world/hunting';
 import { fletch, fletchingNeeds } from '../rules/ranged';
 import { BRUSH_TOOLS } from '../rules/tasks';
@@ -45,7 +46,7 @@ export type Target = Dest | { at: 'ground'; x: number; y: number };
 
 export interface ItemAction {
   label: string;
-  target: Target | 'split' | 'consume' | 'cook' | 'mend' | 'read' | 'butcher' | 'fletch';
+  target: Target | 'split' | 'consume' | 'cook' | 'mend' | 'read' | 'butcher' | 'fletch' | 'wash' | 'washall';
   why?: string | null;
 }
 
@@ -422,6 +423,12 @@ export class InventoryScreen extends Screen {
       const need = fletchingNeeds(this.inv);
       out.unshift({ label: 'Make arrows (Carpentry)', target: 'fletch', why: typeof need === 'string' ? need : null });
     }
+    // Clothes to wash (backlog C4), at water to hand.
+    if (isGarment(it) && r.from === 'inv' && soiled(this.inv).length) {
+      const why = this.play.session.washWater() ? null : 'There is no water here to wash in.';
+      if (soiled(this.inv).some((i) => i.uid === it.uid)) out.push({ label: 'Wash it', target: 'wash', why });
+      if (soiled(this.inv).length > 1) out.push({ label: 'Wash all your clothes', target: 'washall', why });
+    }
     if (d.mend && d.durable !== false && it.condition < 95 && r.from === 'inv') {
       out.push({ label: `Mend (${SKILL.get(d.mend.skill)?.name ?? d.mend.skill})`, target: 'mend', why: this.mendNeeds(it).why });
     }
@@ -438,6 +445,11 @@ export class InventoryScreen extends Screen {
     else if (a.target === 'read') this.read(r);
     else if (a.target === 'butcher') this.butcher(r);
     else if (a.target === 'fletch') this.fletch();
+    else if (a.target === 'wash' || a.target === 'washall') {
+      const it = this.item(r);
+      this.state.message = this.play.session.washClothes(a.target === 'wash' && it ? [it.uid] : undefined);
+      this.play.session.redraw();
+    }
     else this.move(r, a.target);
   }
 
@@ -493,6 +505,7 @@ export class InventoryScreen extends Screen {
     else if (e.code === 'KeyE') a = find(/^Eat$|^Drink$/);
     else if (e.code === 'KeyC') a = find(/^Cook and eat/);
     else if (e.code === 'KeyM') a = find(/^Mend/);
+    else if (e.code === 'KeyA') a = find(/^Wash all/) ?? find(/^Wash it/);
     else if (e.code === 'KeyR') a = find(/^Read/);
     else return false;
     if (a) this.act(a);

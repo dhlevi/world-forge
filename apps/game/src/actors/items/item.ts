@@ -39,6 +39,10 @@ export interface Item {
   /** Its own weight each (kg), where it differs from the kind's (a carcass, by its beast). */
   kg?: number;
   loc?: Loc;
+  /** Clothes (backlog C4; actors/items/soil.ts): dirt that washes out, fresh blood, and stains for good (each 0 to 100). */
+  dirt?: number;
+  blood?: number;
+  stain?: number;
 }
 
 let counter = 0;
@@ -86,7 +90,9 @@ export function itemValue(it: Item): number {
   const d = defOf(it);
   const cond = d.durable === false ? 1 : 0.3 + 0.7 * (it.condition / 100);
   const used = d.uses && it.uses !== undefined ? it.uses / d.uses : 1;
-  return Math.max(0, Math.round(d.value * QUALITY_VALUE[it.quality] * cond * used * it.qty));
+  // Dirty clothes fetch less until washed; blood and stains for good (backlog C4).
+  const soiled = (1 - (it.dirt ?? 0) * 0.003) * (1 - (it.blood ?? 0) * 0.004) * (1 - (it.stain ?? 0) * 0.006);
+  return Math.max(0, Math.round(d.value * QUALITY_VALUE[it.quality] * cond * used * soiled * it.qty));
 }
 
 /** Its own weight (kg), without what it holds. */
