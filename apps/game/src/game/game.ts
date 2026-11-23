@@ -2,6 +2,7 @@
  * The game's rules for Phase 2: one wanderer on the local map, moving a tile at a time. Every
  * action takes time on the game clock; sight is worked out after each one (rot.js shadowcasting).
  */
+import { ICE_SHOWS, type Wet } from './wet';
 import { FOV } from 'rot-js';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, objectId, type Facing, type TileDef } from '@worldforge/core/local/tiles';
@@ -30,6 +31,8 @@ export const SWIM_S = 4;
 export const STAIRS_S = 4;
 /** Seconds more to slip diagonally between two trees (or bushes, or boulders). */
 export const SQUEEZE_S = 2;
+/** Seconds more to cross a tile of mud, and a puddle (game/wet.ts). */
+export const MUD_S = 0.8, PUDDLE_S = 0.2;
 /** Seconds more to go up a ramp (a level), and down one. */
 export const RAMP_UP_S = 1.5;
 export const RAMP_DOWN_S = 0.4;
@@ -158,6 +161,14 @@ export class Game {
   onScratch: () => void = () => {};
   /** Called after going up or down stairs or a ladder (a stumble, for the lame and the laden). */
   onClimbed: (up: boolean) => void = () => {};
+  /** The puddle, ice or mud on a tile out of doors (the session, game/wet.ts), and stepping onto it (`running`: in a run). */
+  wetAt: (x: number, y: number) => Wet | null = () => null;
+  onFooting: (w: Wet, running: boolean) => void = () => {};
+  /** Ice on a tile of water (cm; the session, game/wet.ts), and stepping onto it: true if it gave way (backlog W3). */
+  iceAt: (x: number, y: number) => number = () => 0;
+  onIce: (x: number, y: number, cm: number, running: boolean) => boolean = () => false;
+  /** Set by what happens on a step (a fall on the ice) to end a run. */
+  stopRun = false;
   /** A rock face the wanderer has walked into once: walking into it again climbs it. */
   private face: { x: number; y: number } | null = null;
 
@@ -304,13 +315,29 @@ export class Game {
     return `Day ${day}, ${hh}:${mm}`;
   }
 
+  /** Water frozen hard enough to show and bear a person (out of doors, on the ground). */
+  iced(x: number, y: number): boolean {
+    return this.z === null && !!GROUND_TILES[this.map.ground(x, y)]?.water && this.iceAt(x, y) >= ICE_SHOWS;
+  }
+
+  /** The water underfoot at a tile, if any (none where it is frozen over). */
+  waterAt(x: number, y: number): 'shallow' | 'deep' | undefined {
+    const w = GROUND_TILES[this.map.ground(x, y)]?.water;
+    return w && !this.iced(x, y) ? w : undefined;
+  }
+
+  /** Whether the wanderer is in deep water now. */
+  inDeep(): boolean {
+    return this.z === null && this.waterAt(this.px, this.py) === 'deep';
+  }
+
   /** Deep water can be swum (nothing on it, such as a boat, in the way). */
   private swim(x: number, y: number): boolean {
-    return GROUND_TILES[this.map.ground(x, y)].water === 'deep' && this.map.object(x, y) === 0 && this.map.loaded(x, y);
+    return this.waterAt(x, y) === 'deep' && this.map.object(x, y) === 0 && this.map.loaded(x, y);
   }
 
   private pass(x: number, y: number): boolean {
-    return this.map.passable(x, y) || this.swim(x, y);
+    return this.map.passable(x, y) || this.swim(x, y) || (this.iced(x, y) && this.map.object(x, y) === 0);
   }
 
   /** One step (or a bump: opening a door, or being stopped). Returns whether time passed. */
@@ -387,22 +414,30 @@ export class Game {
     }
     this.face = null;
     const area0 = this.areaAt(this.px, this.py);
+    const wasWet = this.z === null ? this.waterAt(this.px, this.py) : undefined;
     this.px = nx;
     this.py = ny;
     this.steps++;
     const g = GROUND_TILES[this.map.ground(nx, ny)];
-    const wasWet = GROUND_TILES[this.map.ground(this.px - dx, this.py - dy)].water;
+    // Onto ice: it bears the wanderer, or gives way (the session says, and keeps the hole).
+    const ice = this.z === null && g.water ? this.iceAt(nx, ny) : 0;
+    let water = this.z === null ? (ice >= ICE_SHOWS ? undefined : g.water) : g.water;
+    if (ice >= ICE_SHOWS && this.onIce(nx, ny, ice, quiet)) water = g.water;
     // Pushing through a bush or scrub takes longer, and thorns may scratch.
     const through = OBJECT_TILES[this.map.object(nx, ny)];
-    this.time += ((g.water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) + (step === 'cliff' ? 0 : extra) + squeeze + (through?.slow ?? 0)) * this.loadSlow() + (step === 'cliff' ? extra : 0);
+    // Mud underfoot holds the feet; a puddle a little (game/wet.ts).
+    const wet = this.z === null && !g.water ? this.wetAt(nx, ny) : null;
+    const footing = wet === 'mud_patch' ? MUD_S : wet === 'puddle' ? PUDDLE_S : 0;
+    this.time += ((water === 'deep' ? SWIM_S : dx && dy ? DIAG_S : STEP_S) + (step === 'cliff' ? 0 : extra) + squeeze + footing + (through?.slow ?? 0)) * this.loadSlow() + (step === 'cliff' ? extra : 0);
+    if (wet) this.onFooting(wet, quiet);
     if (through?.hurt && this.dice.random() < through.hurt) {
       this.say(`The ${through.name === 'scrub' ? 'thorny scrub' : through.name} scratches you.`);
       this.onScratch();
     }
-    if (step !== 'cliff') this.activity = g.water === 'deep' ? 'swim' : 'walk';
-    if (g.water !== wasWet && !quiet) {
-      if (g.water === 'deep') this.say('You swim out into deep water.');
-      else if (g.water === 'shallow') this.say('You wade into the water.');
+    if (step !== 'cliff') this.activity = water === 'deep' ? 'swim' : 'walk';
+    if (water !== wasWet && !quiet) {
+      if (water === 'deep') this.say('You swim out into deep water.');
+      else if (water === 'shallow') this.say('You wade into the water.');
       else if (wasWet) this.say('You climb out onto dry ground.');
     }
     const area1 = this.areaAt(nx, ny);
@@ -418,8 +453,10 @@ export class Game {
       const area = this.areaAt(this.px, this.py);
       // Running does not carry on into deep water.
       if (n > 0 && this.swim(this.px + dx, this.py + dy) && !this.swim(this.px, this.py)) break;
+      this.stopRun = false;
       if (!this.move(dx, dy, n > 0)) break;
       n++;
+      if (this.stopRun) break;
       this.refreshSight();
       if (this.areaAt(this.px, this.py) !== area) break;
       // Stop beside a door or a way down.

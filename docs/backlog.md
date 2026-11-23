@@ -55,8 +55,8 @@ design round); XL, several stages (a new system that others build on).
 
 | ID | Item | Size |
 |---|---|---|
-| W1 | Rain leaves puddles and mud in places, which dry in the sun or freeze to ice. | L |
-| W3 | Rivers and lakes freeze over. | M |
+| W1 | Rain leaves puddles and mud in places, which dry in the sun or freeze to ice. **Done** (22 November 2026). | L |
+| W3 | Rivers and lakes freeze over. **Done** (22 November 2026). | M |
 | T3 | Deep rivers need a raft, a swim or a bridge; routes avoid them where they can. | M |
 | C4 | Clothes get dirty and stained; they can be washed, but stains lower their value for good. | M |
 | C3 | Clothes tailored to fit give bonuses (to armour, to charm, and to the skills it makes sense for). | M |
@@ -97,7 +97,8 @@ design round); XL, several stages (a new system that others build on).
 
 ### Weather and the world
 
-**W1. Puddles, mud and ice.** *Partial.* The weather already keeps mud and snow cover for the
+**W1. Puddles, mud and ice.** *Done (22 November 2026):* see survival.md, The ground. Worked out
+from the place and the weather rather than stored, so nothing is saved. *Was partial:* The weather already keeps mud and snow cover for the
 whole local map, and mud and snow slow walking (`game/weather.ts`, `game/session.ts`). What is
 missing is ground that changes in places: puddles where rain gathers in hollows and on paths,
 drying in the sun, freezing to ice in the cold (ice is slippery: Acrobatics checks, falls). Mud
@@ -109,7 +110,8 @@ See survival.md (weather) and navigation.md.
 (`world/senses.ts`); in snow they should be plain to anyone (a large bonus to read, long-lasting
 until fresh snow falls). *Phase 2, S.* **Done** (21 November 2026): see npcs.md, Tracks.
 
-**W3. Frozen waterways.** *New.* In a hard frost, still and slow water freezes: shallow first, then
+**W3. Frozen waterways.** *Done (22 November 2026):* see survival.md, Frozen water. Holes broken
+in the ice are not saved, and people and beasts do not yet walk on the ice. *Was new:* In a hard frost, still and slow water freezes: shallow first, then
 deep, over days. Ice can be walked on (thin ice may break: a fall into freezing water); it thaws.
 Uses the weather's temperature history. Pairs with W1. *Phase 3, M.*
 

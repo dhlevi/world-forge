@@ -11,6 +11,7 @@
  * screens (the city view, the title) through `SessionHost`, so that scripts/session-test.ts can
  * play it in Node with stand-ins.
  */
+import { ICE_SAFE, iceOn, wetAt, type GroundWet, type Wet } from './wet';
 import { reactive } from 'vue';
 import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { GROUND_TILES, OBJECT_TILES, type Season } from '@worldforge/core/local/tiles';
@@ -121,6 +122,20 @@ const AUTOSAVE_MS = 3 * 60 * 1000;
 /** How far each light held reaches (tiles). */
 const LIGHT_REACH: Record<string, number> = { torch: 7, lantern: 6, candle: 3 };
 
+/** How long a hole broken in the ice stays open (s). */
+const HOLE_S = 12 * 3600;
+
+/** The ground in a few words for the weather panel: puddles, ice and mud (backlog W1). */
+function groundWords(s: Sky): string {
+  const parts: string[] = [];
+  if (s.pool >= 0.15) parts.push(s.frozen ? 'the puddles are frozen' : s.pool >= 0.6 ? 'puddles everywhere' : 'puddles in the ruts');
+  if (s.mud > 0.5 && !s.frozen) parts.push('the ground is muddy');
+  if (s.iceCm >= 10) parts.push('still water is frozen hard');
+  else if (s.iceCm >= 3) parts.push('thin ice on still water');
+  else if (s.frozen && s.mud === 0 && s.pool < 0.15) parts.push('the ground is frozen hard');
+  return parts.length ? `; ${parts.join(', ')}` : '';
+}
+
 export class PlaySession {
   readonly cast: Cast;
   readonly map: GameMap;
@@ -133,6 +148,10 @@ export class PlaySession {
   /** People in fights (world/strife.ts), and the law (world/law.ts). */
   readonly strife: Strife;
   readonly law = new Law();
+  /** When each kind of footing was last told (game time), so the log is not filled with it. */
+  private footSaid = new Map<string, number>();
+  /** Holes broken in the ice (tile, game time): open water until they freeze again. Not saved. */
+  private holes = new Map<string, number>();
   /** The wanderer's fights: blows, yielding, shooting (game/fights.ts). */
   readonly fights = new Fights(this);
   /** People struck and at the wanderer's mercy, and the law (game/justice.ts). */
@@ -187,7 +206,7 @@ export class PlaySession {
     sky: null as SkyPicture | null,
   });
   /** How the local map should look now: the sky's colour, snow lying, the season, the light (game/renderer.ts). */
-  look: { sky: number; snowCm: number; season: Season; light: number } = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
+  look: { sky: number; snowCm: number; season: Season; light: number; wet?: GroundWet | null } = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
   /** Rain or snow falling where the wanderer can see it (null: none, or indoors). */
   falling: Weather | null = null;
   /** Called when something on screen has changed (set by the view). */
@@ -266,6 +285,10 @@ export class PlaySession {
     };
     // Stairs: a stumble when lame, worn out, laden or in the dark.
     game.onClimbed = (up) => this.stairsStumble(up);
+    game.wetAt = (x, y) => this.wetTile(x, y);
+    game.onFooting = (w, running) => this.footing(w, running);
+    game.iceAt = (x, y) => this.iceTile(x, y);
+    game.onIce = (x, y, cm, running) => this.onIce(x, y, cm, running);
     game.onChange = () => this.redraw();
 
     // The residents about the wanderer (world/population.ts), placed by their day plans.
@@ -469,10 +492,96 @@ export class PlaySession {
     return this.player?.get(Inventory)?.loadInfo().slow ?? 1;
   }
 
-  /** How the ground slows going: deep snow and mud. */
+  /** How the ground slows going: deep snow, and a little for wet ground everywhere (the mud underfoot is game/wet.ts, by the tile). */
   private groundSlow(): number {
     const s = this.skyNow;
-    return 1 + Math.min(1.2, Math.max(0, s.snowCm - 5) / 40) + s.mud * 0.2;
+    return 1 + Math.min(1.2, Math.max(0, s.snowCm - 5) / 40) + s.mud * 0.08;
+  }
+
+  /** What the weather has left on the ground out of doors (none below the land). */
+  wetNow(): GroundWet | null {
+    const s = this.skyNow;
+    return this.belowLand() ? null : { pool: s.pool, mud: s.mud, frozen: s.frozen, snowCm: s.snowCm, iceCm: s.iceCm };
+  }
+
+  /** The ice on a tile of water (cm), out of doors: by the weather and the water (game/wet.ts), none where it was broken lately. */
+  iceTile(x: number, y: number): number {
+    const w = this.wetNow();
+    if (!w || w.iceCm <= 0) return 0;
+    const broken = this.holes.get(`${x},${y}`);
+    if (broken !== undefined && this.game.time - broken < HOLE_S) return 0;
+    const gd = GROUND_TILES[this.game.map.groundAt(x, y, null)];
+    return gd?.water ? iceOn(gd.name, this.game.map.elev(x, y), x, y, w.iceCm) : 0;
+  }
+
+  /**
+   * Stepping onto ice (backlog W3): it may be slippery (as a frozen puddle), and thin ice may give
+   * way, the more likely the thinner it is and the heavier the wanderer goes. Through it, the water
+   * soaks them; deep, they are swimming in it, and the hole stays open a while.
+   */
+  private onIce(x: number, y: number, cm: number, running: boolean): boolean {
+    const game = this.game;
+    if (cm < ICE_SAFE) {
+      const load = this.invSlow();
+      const p = ((ICE_SAFE - cm) / ICE_SAFE) * 0.12 * load * (running ? 1.5 : 1) * (game.sneaking ? 0.6 : 1);
+      if (game.dice.random() < p) {
+        this.holes.set(`${x},${y}`, game.time);
+        const n = this.needs();
+        const deep = GROUND_TILES[game.map.ground(x, y)]?.water === 'deep';
+        if (n) n.d.wet = deep ? 100 : Math.max(n.d.wet ?? 0, 45);
+        game.say(deep ? 'The ice gives way beneath you, and you plunge into the freezing water!' : 'The ice cracks and gives way, and you go through into the icy shallows.');
+        game.stopRun = true;
+        return true;
+      }
+      if (cm < 6) this.said('thin-ice', 'The ice creaks under your weight.');
+    }
+    this.footing('puddle_ice', running);
+    return false;
+  }
+
+  /** Says something at most once in ten minutes of game time. */
+  private said(k: string, text: string): void {
+    const last = this.footSaid.get(k) ?? -Infinity;
+    if (this.game.time - last < 600) return;
+    this.footSaid.set(k, this.game.time);
+    this.game.say(text);
+  }
+
+  /** The puddle, ice or mud on a tile of the ground, if any. */
+  wetTile(x: number, y: number): Wet | null {
+    const w = this.wetNow();
+    if (!w || this.game.z !== null) return null;
+    const gd = GROUND_TILES[this.game.map.groundAt(x, y, null)];
+    return gd && !gd.water && gd.pass ? wetAt(gd.name, x, y, w) : null;
+  }
+
+  /**
+   * Stepping onto a puddle, ice or mud (backlog W1): mud and water splash and soil the wanderer (and
+   * are said, now and then); on ice, an Acrobatics check against slipping, harder running, laden,
+   * hurt or in the dark; a fall bruises and costs a few seconds.
+   */
+  private footing(wet: Wet, running: boolean): void {
+    const game = this.game, a = this.player, n = this.needs();
+    const said = (k: string, text: string) => this.said(k, text);
+    if (wet === 'mud_patch') {
+      n?.soil(0.6);
+      said('mud', 'The mud sucks at your feet.');
+    } else if (wet === 'puddle') {
+      n?.soil(0.3);
+      said('puddle', running ? 'You splash through a puddle.' : 'You step through a puddle.');
+    } else if (a) {
+      const h = this.health();
+      const risk = (running ? 15 : 0) + (game.sneaking ? -5 : 0) + Math.round(Math.max(0, this.invSlow() - 1) * 20) + Math.round((1 - (h?.capacities().moving ?? 1)) * 30) + (game.ambient.light < 0.15 && !this.heldLight() ? 5 : 0);
+      // Most steps on ice are taken safely; now and then a foot goes (more often running).
+      if (game.dice.random() > (running ? 0.5 : 0.25)) return said('ice-ok', 'Ice underfoot: you go carefully.');
+      const r = check(a, 'acrobatics', { difficulty: DC.trivial + risk, now: game.time });
+      if (r.grade === 'fail' && game.dice.random() < 0.6) return said('ice', 'Your feet slide on the ice, but you keep them.');
+      if (r.grade !== 'fail' && r.grade !== 'fumble') return said('ice-ok', 'Ice underfoot: you go carefully.');
+      game.say(r.grade === 'fumble' ? 'Your feet fly out from under you on the ice, and you come down hard.' : 'You slip on the ice and fall.');
+      h?.fall(r.grade === 'fumble' ? 1.2 : 0.6, 'a fall on the ice', game.time);
+      game.time += r.grade === 'fumble' ? 20 : 8;
+      game.stopRun = true;
+    }
   }
 
   /** The people most of those about belong to (their town's language and law), or null with nobody about. */
@@ -774,7 +883,7 @@ export class PlaySession {
     const sight = this.health()?.capacities().sight ?? 1;
     if (sight < 1) range = Math.max(1, Math.round(range * (0.15 + 0.85 * sight)));
     this.game.ambient = inside ? { light: Math.max(0.15, s.light * 0.75), range: Math.max(sight < 0.2 ? 1 : 4, range) } : { light: s.light, range: Math.max(sight < 0.2 ? 1 : 2, range) };
-    this.look = { sky: inside ? 0xffffff : PlaySession.skyTint(s), snowCm: s.snowCm, season: s.season, light: inside ? Math.max(0.4, s.light) : s.light };
+    this.look = { sky: inside ? 0xffffff : PlaySession.skyTint(s), snowCm: s.snowCm, season: s.season, light: inside ? Math.max(0.4, s.light) : s.light, wet: this.wetNow() };
     this.falling = this.state.mode === 'local' && !inside && w.kind !== 'none' ? w : null;
     const n = this.needs();
     const airC = n?.d.airC ?? w.tempC, felt = n?.d.feltC;
@@ -783,7 +892,7 @@ export class PlaySession {
     this.state.weather = {
       when: under ? `Below the land; ${part} above` : `${cap(part)}; ${WeatherService.skyWords(s)}`,
       wind: under ? 'Under the rock, the air is still' : inside ? 'Indoors' : cap(WeatherService.windWords(w)),
-      air: `${Math.round(airC)}°C${felt !== undefined && Math.abs(felt - airC) >= 3 ? ` (feels ${Math.round(felt)}°C)` : ''}, ${airWord(airC)}; ${s.season}${s.snowCm >= 2 ? `; snow ${s.snowCm} cm deep` : s.mud > 0.5 ? '; the ground is muddy' : ''}`,
+      air: `${Math.round(airC)}°C${felt !== undefined && Math.abs(felt - airC) >= 3 ? ` (feels ${Math.round(felt)}°C)` : ''}, ${airWord(airC)}; ${s.season}${s.snowCm >= 2 ? `; snow ${s.snowCm} cm deep` : groundWords(s)}`,
       sun: this.weather.sunWords(s.t),
     };
     this.state.sky = this.weather.picture(s, { inside, under, lit: !!this.heldLight(), tempC: Math.round(airC), ...(felt !== undefined && Math.abs(felt - airC) >= 3 ? { feltC: Math.round(felt) } : {}) });
@@ -869,7 +978,7 @@ export class PlaySession {
       return;
     }
     this.travel.stop();
-    const deep = () => game.z === null && GROUND_TILES[game.map.ground(game.px, game.py)]?.water === 'deep';
+    const deep = () => game.inDeep();
     game.say(deep() ? 'Your senses leave you, and the water closes over your head.' : 'Your senses leave you, and you fall.');
     let mins = 0;
     while (mins < 24 * 60 && h.senseless() && !h.dead && !this.state.dead) {

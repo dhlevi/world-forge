@@ -65,6 +65,32 @@ numbers proposed, tuned with `apps/game/scripts/weather-test.ts`):*
 - **The ground** is worked out from the last fortnight: snow falls and melts (by degree-hours, and
   rain on it), rain soaks in and dries; frozen ground is not muddy. Deep snow and mud slow walking
   and travel.
+- **Puddles, mud and ice in places** (backlog W1; `game/wet.ts`): the ground also keeps the water
+  standing in the hollows, which fills in rain and with the thaw, and soaks away and dries in a day
+  or two of sun and wind (sooner than the mud). Which tiles hold it follows the ground (the ruts of
+  roads and tracks and trodden earth first, paving less, turf least) and how low each lies (a smooth
+  noise, so puddles lie in clumps, and as they dry they shrink back to the deepest, where they were).
+  Mud lies in patches about them on earth, tracks and fields as the soil grows wet. Below freezing
+  a puddle is ice; snow lying hides them all. Nothing is stored: like the decorations, each tile's
+  state is worked out from its place and the weather, and drawn over the ground (frames `puddle`,
+  `puddle_ice`, `mud_patch`). A tile of mud costs 0.8 s more to cross and soils the wanderer; a
+  puddle 0.2 s and a little dirt; each is told now and then, not at every step. On ice a foot
+  goes now and then (more often running): an Acrobatics check, harder laden, lame or in the dark,
+  and a fall bruises, takes a few seconds and ends a run. The weather panel names the puddles,
+  their ice, the mud and frozen ground (`wet-test.ts`). *Proposed numbers, to tune in play.*
+- **Frozen water** (backlog W3; `game/wet.ts`, `iceOn`): the ground also keeps the ice on a still
+  lake, grown by the frost's degree-days after Stefan's rule (about 2.7 cm for the square root of
+  each degree-day; slower under snow) and melted in the thaw and by rain, from a start set by the
+  climate in its winter. Each water tile freezes against that: the shallows 1.4 times as thick,
+  still deep water as the lake, a fordable river a little over half, a deep river under a third
+  for its flow, and the sea (open water at or below the sea's level) a quarter, each a little more
+  or less from place to place. Ice of 3 cm or more is drawn over the water (frames `ice_thin` under
+  10 cm, `ice_sheet` from 10 cm, with snow lying on the thick) and bears the wanderer, who walks
+  it instead of wading or swimming, slipping now and then as on a frozen puddle. Under 10 cm it
+  may give way, the more likely the thinner it is, the heavier the load and when running (less
+  when sneaking); it creaks under 6 cm. Through it, the wanderer is soaked and, over deep water,
+  swimming; the hole stays open for 12 hours (not saved). The weather panel says when still water
+  bears thin or hard ice. *Proposed numbers, to tune in play.*
 - **In play** the weather follows the party (the climate is asked of the worker as it moves). The
   side panel pictures the sky: the sun (by night the moon, in its phase) on its way between the
   day's sunrise and sunset, the cloud, rain or snow leaning with the wind, fog and lightning, over

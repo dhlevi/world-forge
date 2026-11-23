@@ -500,7 +500,7 @@ Every building has a roof (its shape and material from its climate and use, as t
 
 ## Decorations
 
-Small things scattered over open ground with no object on it, drawn only: they block nothing and are not saved. Where one lies is worked out from the position, so each lies on about the share of its ground given here; seasonal ones leave their tiles bare out of season. Transparent background; keep them small and low, so that the ground still reads.
+Small things scattered over open ground with no object on it, drawn only: they block nothing and are not saved. Where one lies is worked out from the position, so each lies on about the share of its ground given here; seasonal ones leave their tiles bare out of season. Puddles, frozen puddles and mud are left by the weather instead (rain fills the ruts and hollows, which dry in the sun or freeze; `apps/game/src/game/wet.ts`), over any other decoration; draw them most of a tile across. Transparent background; keep them small and low, so that the ground still reads.
 
 | Decoration | Draw | Lies on | Share | Seasons | Frames | Placeholder |
 |---|---|---|---|---|---|---|
@@ -514,8 +514,13 @@ Small things scattered over open ground with no object on it, drawn only: they b
 | `sedge` | Stalks of sedge or rush. | `marsh`, `mud` | 12% | all year | 2 variants | #6a7a3a |
 | `lichen` | Patches of pale lichen. | `rock`, `tundra`, `scree` | 6% | all year | 2 variants | #b8c090 |
 | `cracks` | Cracks in dry ground or ice. | `dry_earth`, `salt`, `ice` | 6% | all year | 2 variants | #6a5a40 |
+| `puddle` | A shallow puddle of rainwater, grey-blue with a lighter rim; a few sizes and shapes. | `road`, `track`, `path`, `dirt`, `yard`, `field`, `cobbles`, `flagstones`, `gravel`, `grass`, `grass_lush`, `lawn`, `mound`, `forest_floor` | by the weather | all year | 3 variants | #7f97a8 |
+| `puddle_ice` | A frozen puddle: pale blue-white ice with a crack or two, the same shapes as the puddles. | `road`, `track`, `path`, `dirt`, `yard`, `field`, `cobbles`, `flagstones`, `gravel`, `grass`, `grass_lush`, `lawn`, `mound`, `forest_floor` | by the weather | all year | 3 variants | #d4e6ee |
+| `mud_patch` | A patch of wet dark mud with footprints or ruts in it, its edge soft. | `road`, `track`, `path`, `dirt`, `yard`, `field`, `grass`, `grass_lush`, `lawn`, `forest_floor` | by the weather | all year | 3 variants | #5a4a32 |
+| `ice_sheet` | Water frozen over, thick enough to walk on: grey-white ice covering the whole tile, with snow-dusted cracks and scratches. Joins seamlessly with its neighbours. | `water_shallow`, `water_deep`, `river`, `river_deep` | by the weather | all year | 3 variants | #c8d8e0 |
+| `ice_thin` | Thin new ice over water, the whole tile: dark and glassy, the water showing through, with pale cracks. Walking on it is a risk. | `water_shallow`, `water_deep`, `river`, `river_deep` | by the weather | all year | 2 variants | #6f8fa2 |
 | `fallen_leaves` | A few fallen leaves (autumn colours). | `grass`, `lawn`, `cobbles`, `flagstones`, `path`, `road`, `forest_floor` | 8% | autumn | 3 variants | #d07a30 |
 
 ## Totals
 
-44 ground tiles, 128 objects and 11 decorations: 1248 frames in all with every variant and join drawn.
+44 ground tiles, 128 objects and 16 decorations: 1262 frames in all with every variant and join drawn.

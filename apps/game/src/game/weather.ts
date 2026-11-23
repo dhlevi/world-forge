@@ -5,7 +5,7 @@
  * coming (Survival).
  */
 import { hashString } from '@worldforge/core/gen/rng';
-import { dayOfYear, groundAt, lightAt, moonAt, seasonAt, sunAt, sunTimes, weatherAt, type ClimatePoint, type Moon, type Sun, type Weather } from '@worldforge/core/weather/weather';
+import { dayOfYear, groundAt, lightAt, moonAt, seasonAt, sunAt, sunTimes, weatherAt, type ClimatePoint, type GroundState, type Moon, type Sun, type Weather } from '@worldforge/core/weather/weather';
 import { START_DAY_OF_YEAR, type PlaceClimate } from './calendar';
 import type { Grade } from '../actors/checks';
 import { compassWord } from '../util';
@@ -18,6 +18,11 @@ export interface Sky {
   moon: Moon;
   snowCm: number;
   mud: number;
+  /** Water standing in the hollows (0 to 1), and whether the ground is frozen (puddles are ice). */
+  pool: number;
+  frozen: boolean;
+  /** Ice on still fresh water (cm; game/wet.ts gives each water tile its own). */
+  iceCm: number;
   /** Light out of doors, 0 dark to 1 full day. */
   light: number;
   season: 'spring' | 'summer' | 'autumn' | 'winter';
@@ -64,7 +69,7 @@ export class WeatherService {
   readonly seed: number;
   private place: ClimatePoint;
   private wCache = new Map<number, Weather>();
-  private gCache = new Map<number, { snowCm: number; mud: number }>();
+  private gCache = new Map<number, GroundState>();
 
   constructor(seed: string, lon: number, lat: number) {
     this.seed = hashString(`weather|${seed}`);
@@ -97,7 +102,7 @@ export class WeatherService {
     return w;
   }
 
-  private ground(hour: number): { snowCm: number; mud: number } {
+  private ground(hour: number): GroundState {
     const k = Math.floor(hour / 3);
     let g = this.gCache.get(k);
     if (!g) {
@@ -116,7 +121,7 @@ export class WeatherService {
     const sun = sunAt(this.place.lat, doy, hour % 24);
     const moon = moonAt(this.seed, hour);
     const g = this.ground(hour);
-    return { t, w, sun, moon, snowCm: g.snowCm, mud: g.mud, light: lightAt(sun, moon, w, g.snowCm), season: seasonAt(this.place.lat, doy), doy };
+    return { t, w, sun, moon, snowCm: g.snowCm, mud: g.mud, pool: g.pool, frozen: g.frozen, iceCm: g.iceCm, light: lightAt(sun, moon, w, g.snowCm), season: seasonAt(this.place.lat, doy), doy };
   }
 
   /** Sunrise and sunset today, in words. */

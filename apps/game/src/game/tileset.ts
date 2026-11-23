@@ -674,5 +674,38 @@ function drawDecorPlaceholder(g: CanvasRenderingContext2D, x: number, y: number,
       for (let i = 0; i < 5; i++) g.fillRect(px + i, py + (i % 2), 1, 1);
       break;
     }
+    case 'pool': {
+      // A rounded pool most of a tile across, its size and place by variant, with a lighter rim.
+      const w = 7 + (v % 3) * 2, h = 4 + (v % 2) * 2, px = x + Math.floor((P - w) / 2) + ((v * 3) % 3) - 1, py = y + Math.floor((P - h) / 2) + (v % 2);
+      g.fillStyle = shade(d.colour, 1.15);
+      g.fillRect(px + 1, py - 1, w - 2, h + 2);
+      g.fillRect(px - 1, py + 1, w + 2, h - 2);
+      g.fillStyle = d.colour;
+      g.fillRect(px + 1, py, w - 2, h);
+      g.fillRect(px, py + 1, w, h - 2);
+      g.fillStyle = shade(d.colour, 1.3);
+      g.fillRect(px + 2, py + 1, 2, 1);
+      break;
+    }
+    case 'sheet': {
+      // The whole tile, with a crack running part way across it.
+      g.fillRect(x, y, P, P);
+      g.fillStyle = shade(d.colour, 1.2);
+      const [px, py] = at(0);
+      for (let i = 0; i < 8; i++) g.fillRect(Math.min(x + P - 1, px + i), Math.min(y + P - 1, py + (i >> 1)), 1, 1);
+      break;
+    }
+    case 'smear': {
+      // A soft-edged patch of mud, with a print or two pressed in it.
+      for (let i = 0; i < 9; i++) {
+        const [px, py] = at(i);
+        const cx = x + P / 2 + ((px - x - P / 2) >> 1), cy = y + P / 2 + ((py - y - P / 2) >> 1);
+        g.fillRect(cx - 2, cy - 1, 4, 3);
+      }
+      g.fillStyle = shade(d.colour, 0.7);
+      const [qx, qy] = at(11);
+      g.fillRect(x + P / 2 + ((qx - x - P / 2) >> 2), y + P / 2 + ((qy - y - P / 2) >> 2), 2, 1);
+      break;
+    }
   }
 }

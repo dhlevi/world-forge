@@ -353,14 +353,28 @@ export interface DecorDef {
   seasons?: readonly Season[];
   /** Placeholder colour, and the kind of mark drawn for it until there is art. */
   colour: string;
-  mark: 'tuft' | 'dots' | 'stones' | 'sticks' | 'caps' | 'stalks' | 'crack';
+  mark: 'tuft' | 'dots' | 'stones' | 'sticks' | 'caps' | 'stalks' | 'crack' | 'pool' | 'smear' | 'sheet';
   /** Suggested number of variants to draw. */
   variants?: number;
+  /**
+   * Left by the weather, not scattered (chance 0): where it lies is worked out from the position and
+   * the ground's state (apps/game/src/game/wet.ts, backlog W1).
+   */
+  weather?: 'puddle' | 'ice' | 'mud';
 }
 
 const GRASSES = ['grass', 'grass_lush', 'grass_dry', 'lawn', 'mound'];
 const BARE = ['dirt', 'path', 'track', 'road', 'gravel', 'dry_earth', 'grass_dry', 'rock', 'scree', 'yard'];
 const LITTER = ['forest_floor', 'needle_floor', 'jungle_floor', 'moss'];
+/** Ground where rain stands in puddles: ruts and trodden earth most, paving and turf less. */
+export const PUDDLE_GROUND: Readonly<Record<string, number>> = {
+  road: 1, track: 1, path: 1, dirt: 1, yard: 1, field: 0.7, cobbles: 0.6, flagstones: 0.5, gravel: 0.4,
+  grass: 0.3, grass_lush: 0.4, lawn: 0.3, mound: 0.15, forest_floor: 0.25,
+};
+/** Ground that turns to mud in patches when the soil is wet. */
+export const MUD_GROUND: Readonly<Record<string, number>> = {
+  road: 1, track: 1, path: 1, dirt: 1, yard: 1, field: 1, grass: 0.35, grass_lush: 0.5, lawn: 0.3, forest_floor: 0.3,
+};
 
 export const DECOR: readonly DecorDef[] = [
   { name: 'grass_tuft', art: 'A small tuft of longer grass, a few blades.', on: [...GRASSES, 'tundra'], chance: 0.14, colour: '#4f7a34', mark: 'tuft', variants: 3 },
@@ -373,6 +387,11 @@ export const DECOR: readonly DecorDef[] = [
   { name: 'sedge', art: 'Stalks of sedge or rush.', on: ['marsh', 'mud'], chance: 0.12, colour: '#6a7a3a', mark: 'stalks', variants: 2 },
   { name: 'lichen', art: 'Patches of pale lichen.', on: ['rock', 'tundra', 'scree'], chance: 0.06, colour: '#b8c090', mark: 'dots', variants: 2 },
   { name: 'cracks', art: 'Cracks in dry ground or ice.', on: ['dry_earth', 'salt', 'ice'], chance: 0.06, colour: '#6a5a40', mark: 'crack', variants: 2 },
+  { name: 'puddle', art: 'A shallow puddle of rainwater, grey-blue with a lighter rim; a few sizes and shapes.', on: Object.keys(PUDDLE_GROUND), chance: 0, colour: '#7f97a8', mark: 'pool', variants: 3, weather: 'puddle' },
+  { name: 'puddle_ice', art: 'A frozen puddle: pale blue-white ice with a crack or two, the same shapes as the puddles.', on: Object.keys(PUDDLE_GROUND), chance: 0, colour: '#d4e6ee', mark: 'pool', variants: 3, weather: 'ice' },
+  { name: 'mud_patch', art: 'A patch of wet dark mud with footprints or ruts in it, its edge soft.', on: Object.keys(MUD_GROUND), chance: 0, colour: '#5a4a32', mark: 'smear', variants: 3, weather: 'mud' },
+  { name: 'ice_sheet', art: 'Water frozen over, thick enough to walk on: grey-white ice covering the whole tile, with snow-dusted cracks and scratches. Joins seamlessly with its neighbours.', on: ['water_shallow', 'water_deep', 'river', 'river_deep'], chance: 0, colour: '#c8d8e0', mark: 'sheet', variants: 3, weather: 'ice' },
+  { name: 'ice_thin', art: 'Thin new ice over water, the whole tile: dark and glassy, the water showing through, with pale cracks. Walking on it is a risk.', on: ['water_shallow', 'water_deep', 'river', 'river_deep'], chance: 0, colour: '#6f8fa2', mark: 'sheet', variants: 2, weather: 'ice' },
   { name: 'fallen_leaves', art: 'A few fallen leaves (autumn colours).', on: ['grass', 'lawn', 'cobbles', 'flagstones', 'path', 'road', 'forest_floor'], chance: 0.08, seasons: ['autumn'], colour: '#d07a30', mark: 'dots', variants: 3 },
 ];
 {

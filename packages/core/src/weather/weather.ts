@@ -232,28 +232,64 @@ export function weatherAt(seed: number, c: ClimatePoint, clock: WeatherClock, ho
   return { tempC: Math.round(tempC * 10) / 10, cloud, rainMm, kind, windMs, windFrom, fog: Math.round(fog * 100) / 100, thunder, front: top };
 }
 
-/** Snow lying (cm) and how muddy the ground is (0 to 1), from the last fortnight's weather. */
-export function groundAt(seed: number, c: ClimatePoint, clock: WeatherClock, hour: number): { snowCm: number; mud: number } {
+/**
+ * The ground from the last fortnight's weather: snow lying (cm); how muddy the soil is (0 to 1);
+ * how much water stands in the hollows, ruts and low places (0 to 1: the puddles, which fill in a
+ * downpour and dry within a day or two of sun, faster than the mud); whether the ground is
+ * frozen now (standing water is then ice); and how thick the ice is on still fresh water (cm; it
+ * grows by the frost's degree-days, as Stefan's rule has it, slower under snow, and melts in the
+ * thaw).
+ */
+export interface GroundState {
+  snowCm: number;
+  mud: number;
+  pool: number;
+  frozen: boolean;
+  iceCm: number;
+}
+
+export function groundAt(seed: number, c: ClimatePoint, clock: WeatherClock, hour: number): GroundState {
   const STEP = 3, DAYS = 14;
   const h0 = Math.floor(hour / STEP) * STEP - DAYS * 24;
   // A start from the climate: a cold place in its winter already has some snow down.
   const s0 = 1 - summerness(c.lat, dayOfYear(clock, h0));
   let snow = c.cold < -2 ? clamp((-c.cold - 2) * 3 * clamp((s0 - 0.45) * 3, 0, 1), 0, 90) : 0;
   let soil = 0;
+  /** Standing water (mm over the hollows). */
+  let pool = 0;
+  // Ice on a still lake: a cold place in its winter already has some.
+  const w0 = clamp((s0 - 0.45) * 3, 0, 1);
+  let ice = c.cold < -1 ? Math.min(80, 2.7 * Math.sqrt((-c.cold - 1) * 45 * w0)) : 0;
   for (let h = h0; h <= hour; h += STEP) {
     const w = weatherAt(seed, c, clock, h);
     const snowing = w.kind === 'snow' || w.kind === 'heavy snow' || (w.kind === 'sleet' && w.tempC < 0.5);
     if (snowing) snow += w.rainMm * STEP;
-    else soil += w.rainMm * STEP;
+    else {
+      soil += w.rainMm * STEP;
+      pool += w.rainMm * STEP;
+    }
     if (w.tempC > 0) {
       const melt = Math.min(snow, w.tempC * 0.25 * STEP + (snowing ? 0 : w.rainMm * STEP * 0.5));
       snow -= melt;
       soil += melt * 0.3;
+      pool += melt * 0.3;
       soil = Math.max(0, soil - (0.15 + 0.03 * w.tempC) * STEP * (1 - w.cloud * 0.5));
+      // Puddles soak away and dry in the sun and wind; frozen, they keep.
+      pool = Math.max(0, pool - (0.15 + 0.03 * w.tempC + 0.02 * w.windMs) * STEP * (1 - w.cloud * 0.5));
     }
+    pool = Math.min(pool, 40);
+    if (w.tempC < 0) ice = Math.sqrt(ice * ice + (7.3 * -w.tempC * STEP) / 24 / (1 + snow / 10));
+    else ice = Math.max(0, ice - (1.5 * w.tempC * STEP) / 24 - w.rainMm * STEP * 0.1);
   }
-  const frozen = weatherAt(seed, c, clock, hour).tempC < -2;
-  return { snowCm: Math.round(snow), mud: frozen ? 0 : Math.round(clamp(soil / 15, 0, 1) * 100) / 100 };
+  const now = weatherAt(seed, c, clock, hour);
+  const frozen = now.tempC < 0;
+  return {
+    snowCm: Math.round(snow),
+    mud: now.tempC < -2 ? 0 : Math.round(clamp(soil / 15, 0, 1) * 100) / 100,
+    pool: Math.round(clamp(pool / 10, 0, 1) * 100) / 100,
+    frozen,
+    iceCm: Math.round(ice * 10) / 10,
+  };
 }
 
 // ---- The sun and the moon --------------------------------------------------------------------------

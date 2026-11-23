@@ -7,7 +7,7 @@ import { DECOR, GROUND_TILES, type DecorDef, type Season } from '@worldforge/cor
 import { hash2 } from '../util';
 
 /** The decorations that can lie on each ground tile, by its id. */
-const BY_GROUND: readonly DecorDef[][] = GROUND_TILES.map((g) => DECOR.filter((d) => d.on.includes(g.name)));
+const BY_GROUND: readonly DecorDef[][] = GROUND_TILES.map((g) => DECOR.filter((d) => !d.weather && d.on.includes(g.name)));
 
 /**
  * The decoration lying on a tile of this ground, if any. A tile keeps its place in the scatter

@@ -46,6 +46,7 @@ import { GROUND_TILES, OBJECT_TILES, joinsWith, objectId, standsTall, type Facin
 import { TREE_KINDS, TRUNK_PART } from '@worldforge/core/local/trees';
 import { PART_NAMES, TreeView, treeAt, treeKindOf } from './trees';
 import { TILE_PX, Tileset, N, E, S, W, type Look } from './tileset';
+import { ICE_DECOR, ICE_SAFE, WET_DECOR, wetAt, type GroundWet } from './wet';
 import { decorAt } from './decor';
 import { levelOf, stepBetween } from './levels';
 import { covers, roofPlane, type Roof } from '@worldforge/core/local/roofs';
@@ -116,7 +117,7 @@ export class Renderer {
   private snow = new Container();
   private ss: Sprite[] = [];
   /** The look of the hour and season: the sky's colour, snow lying (cm), the season. */
-  look: { sky: number; snowCm: number; season: Season; light: number } = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
+  look: { sky: number; snowCm: number; season: Season; light: number; wet?: GroundWet | null } = { sky: 0xffffff, snowCm: 0, season: 'summer', light: 1 };
   private player = new Sprite();
   /** The people about (world/population.ts), a pool of sprites among the objects. */
   private folk: Sprite[] = [];
@@ -748,6 +749,7 @@ export class Renderer {
       snowy[i] = seasons === withSnow ? 1 : 0;
       // Deep snow over ground with no snow of its own drawn: the snow tile itself, when it has art.
       const ownSnow = this.tiles.seasons.has(`${gd.name}@snow`);
+      const iced = !!gd.water && look.wet !== undefined && look.wet !== null && game.iced(tx, ty);
       if (open && deep && !ownSnow && TERRAIN_OF[gid] !== SNOW_TERRAIN) {
         gid = SNOW_ID;
         gd = GROUND_TILES[gid];
@@ -761,11 +763,15 @@ export class Renderer {
       // Roots about a tree's foot, else decorations on open ground (none under an object, or where things lie, or under deep snow).
       if (trees.roots[i] && !oid) this.show(d, this.tiles.get('tree', `roots_${TREE_KINDS[trees.rootKind[i]].name}`, tx, ty, rootSide(trees.roots[i]), seasons), i, light);
       else {
-        const dec = !oid && !game.ground.hasAt(tx, ty, null) && gid !== SNOW_ID ? decorAt(gid, tx, ty, look.season) : null;
+        // Puddles, ice and mud the weather has left (game/wet.ts) lie over any decoration.
+        const wet = !oid && open && look.wet && gid !== SNOW_ID ? wetAt(gd.name, tx, ty, look.wet) : null;
+        // Water frozen over (backlog W3): the ice drawn over it.
+        const ice = iced ? (game.iceAt(tx, ty) >= ICE_SAFE ? ICE_DECOR.thick : ICE_DECOR.thin) : null;
+        const dec = ice ?? (wet ? WET_DECOR[wet] : null) ?? (!oid && !game.ground.hasAt(tx, ty, null) && gid !== SNOW_ID ? decorAt(gid, tx, ty, look.season) : null);
         this.show(d, dec && this.tiles.get('decor', dec.name, tx, ty, -1, seasons), i, light);
       }
-      // Snow lying, drawn over open ground that has no snow of its own to show.
-      sn.visible = snowA > 0 && open && !ownSnow && gid !== SNOW_ID;
+      // Snow lying, drawn over open ground that has no snow of its own to show (and over ice thick enough to bear it).
+      sn.visible = snowA > 0 && (open || (iced && game.iceAt(tx, ty) >= ICE_SAFE)) && !ownSnow && gid !== SNOW_ID;
       if (sn.visible) {
         sn.alpha = gd.name === 'road' || gd.name === 'street' ? snowA * 0.5 : snowA;
         sn.tint = mul(light, 0xf2f6ff);
