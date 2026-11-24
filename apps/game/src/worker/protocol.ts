@@ -196,6 +196,8 @@ export interface ChunkData {
   area: Uint16Array;
   areas: string[];
   elev: Int16Array;
+  /** Water tiles that are the sea (salt), 1; the rest 0 (backlog W4: lakes and rivers are fresh, whatever their bed's height). */
+  salt?: Uint8Array;
   sites: { tx: number; ty: number; kind: string; name: string; id: string }[];
   /** The roofs of the buildings standing (in part) here (core local/roofs.ts). */
   roofs: Roof[];

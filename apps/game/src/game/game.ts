@@ -161,6 +161,7 @@ export class Game {
   onNoise: (kind: 'step' | 'door', x: number, y: number, z: number | null, dir: Facing) => void = () => {};
   /** The tracks on a tile, as the wanderer reads them (none: none seen), and how many there are (for drawing). */
   tracksText: (x: number, y: number, z: number | null) => string | null = () => null;
+  /** Negative: only faint signs, seen by a skilled tracker (the count). */
   tracksOn: (x: number, y: number, z: number | null) => number = () => 0;
   /** Moving quietly (Shift+S): slower, quieter, harder for animals to see (world/fauna.ts). */
   sneaking = false;
@@ -180,6 +181,8 @@ export class Game {
     if (this.fx.length > 40) this.fx.splice(0, this.fx.length - 40);
   }
 
+  /** The wanderer's snare on a tile (world/hunting.ts): set, or with a catch in it. */
+  snareAt: (x: number, y: number) => 'set' | 'caught' | null = () => null;
   /** On the trail read and marked (game/hunt.ts). */
   trailAt: (x: number, y: number) => boolean = () => false;
   /** The animals about, to be drawn. */

@@ -304,6 +304,12 @@ nations, regions and cities; factions. **Proposed:**
 
 ## Animals
 
+*Fixes from play (24 November 2026; `world/fauna.ts`):* a beast struck or killed frightens the
+herds about it (12 tiles, 20 for the skittish), not its own only; a sleeping beast walked up to
+wakes, with its herd, and takes fright (sneaking, only right beside it). Where each beast was is
+remembered for six hours when the wanderer takes to the road or leaves it behind, and it is put
+back there on coming back (the wounded are kept as before).
+
 **Proposed, for Stage 2.**
 
 - **Species.** The region's bestiary: the common beasts and birds of the habitats about the

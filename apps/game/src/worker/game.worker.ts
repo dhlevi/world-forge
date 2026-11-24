@@ -19,6 +19,7 @@ import { delveFolkIn } from './delve';
 import { streetFolkIn } from './streets';
 import { bandCell } from '../rules/bands';
 import { animalsIn, gameAt } from './fauna';
+import { seaOf } from './water';
 import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo, townAccount } from './sites';
 
 let world: GeneratedWorld | null = null;
@@ -188,8 +189,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       const c = local.chunk(m.cx, m.cy);
       // Copies: the worker keeps its own in its cache.
       const layers = c.layers.map((l) => ({ z: l.z, ground: l.ground.slice(), object: l.object.slice(), area: l.area.slice() }));
-      const chunk = { ...c, ground: c.ground.slice(), object: c.object.slice(), area: c.area.slice(), elev: c.elev.slice(), layers };
-      post({ type: 'chunk', chunk }, [chunk.ground.buffer, chunk.object.buffer, chunk.area.buffer, chunk.elev.buffer, ...layers.flatMap((l) => [l.ground.buffer, l.object.buffer, l.area.buffer])]);
+      const chunk = { ...c, ground: c.ground.slice(), object: c.object.slice(), area: c.area.slice(), elev: c.elev.slice(), layers, salt: seaOf(local, m.cx, m.cy, c.ground, c.elev) };
+      post({ type: 'chunk', chunk }, [chunk.ground.buffer, chunk.object.buffer, chunk.area.buffer, chunk.elev.buffer, chunk.salt.buffer, ...layers.flatMap((l) => [l.ground.buffer, l.object.buffer, l.area.buffer])]);
     }
   } catch (err) {
     // A request's failure answers that request; anything else is news for the game.
@@ -197,3 +198,4 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
     post({ type: 'error', message: err instanceof Error ? err.message : String(err), ...(id !== undefined ? { id } : {}) });
   }
 };
+

@@ -243,6 +243,13 @@ animals, fear and flight, the watch, predators that are threats only until this 
    10, less for the young and old), courage by trade and traits (Brave, Craven, Wrathful), the
    blows of what they hold (or fists and feet), and armour where they wear it. A person's body is
    the wanderer's plan, by their sex and weight. The dead leave a body with what they carried.
+   *Killing game (24 November 2026, from play):* a beast dies of the shock of its wounds once they
+   tear enough of it (the body counting most, a limb or wing taken off much, and more for the
+   small: a duck falls to one arrow); a stab into a beast goes on inside more often than into a
+   person; a wound to the heart or the brain kills it in moments, to the lungs or the neck within
+   minutes, to the liver within the hour, and for a small beast a stab through the head as the
+   brain (`actors/health.ts`, `trauma`, `mortal`). A bird that has lost much blood or a wing
+   comes down and lies where it falls (`world/fauna.ts`, `grounded`).
 5. **Later**: mounted fighting, companions in fights, war and sieges. **Deferred** (decided 21
    November 2026) until the systems it rests on are under way: riding and mounts, companions who
    follow the wanderer, and a way to take part in the realms' wars (the world has realms at war and

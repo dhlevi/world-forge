@@ -18,6 +18,7 @@ import { CHUNK, TILE_M } from '@worldforge/core/local/chunk';
 import { SPECIES_BY_ID } from '@worldforge/core/local/fauna';
 import { GROUND_TILES } from '@worldforge/core/local/tiles';
 import { check, DC, type Grade, type Mod } from '../actors/checks';
+import { Skills } from '../actors/components';
 import type { AnimalGroup, RouteStep } from '../worker/protocol';
 import { bearing, compassWord } from '../util';
 import type { PlaySession } from './session';
@@ -44,13 +45,31 @@ const SIGN_S = 12 * 3600;
 const PER_STEP = 0.05;
 /** Near enough to a sign to take up its trail (m). */
 const NEAR_M = 400;
-/** How far a trail is read ahead, by the grade of the Tracking check (tiles). */
-const READ: Record<Grade, number> = { fine: 60, success: 40, near: 20, fail: 0, fumble: 0 };
+/** How far a trail is read ahead, by the grade of the Tracking check (tiles); a skilled tracker reads further (`readAhead`). */
+const READ: Record<Grade, number> = { fine: 100, success: 70, near: 35, fail: 0, fumble: 0 };
+/** Tiles read ahead: by the grade, and a half more for a master (Tracking 100). */
+export const readAhead = (grade: Grade, level: number) => Math.round(READ[grade] * (1 + Math.max(0, Math.min(100, level)) / 200));
+/** How far about the hunter a trail taken up from the travel map is read at once (tiles), by Tracking. */
+export const takenUpRead = (level: number) => 8 + Math.round(Math.max(0, Math.min(100, level)) * 0.4);
 
 const NUM = ['no', 'one', 'two', 'three', 'four', 'five', 'six', 'seven', 'eight', 'nine', 'ten'];
 /** Which way an offset (tiles east and south) lies, in words. */
 const way = (dx: number, dy: number) => compassWord(bearing(dx, -dy));
 const hoursWords = (s: number) => (s < 5400 ? 'about an hour old' : s < 3 * 3600 ? 'a couple of hours old' : `some ${Math.round(s / 3600)} hours old`);
+
+/** Snares this near one another (tiles) are one site on the travel map. */
+const TRAP_NEAR = 40;
+
+/** A site of the wanderer's snares, for the travel map: its middle, how many, how many have caught. */
+export interface TrapSite {
+  id: string;
+  x: number;
+  y: number;
+  lon: number;
+  lat: number;
+  n: number;
+  caught: number;
+}
 
 export class Hunting {
   signs: GameSign[] = [];
@@ -139,6 +158,42 @@ export class Hunting {
     return found.length;
   }
 
+  /**
+   * The wanderer's snares, gathered into sites for the travel map (fieldcraft.md, stage 3): those
+   * within 40 tiles (60 m) of one another are one site, marked at their middle.
+   */
+  trapSites(): TrapSite[] {
+    const left = [...this.s.snares.list], out: TrapSite[] = [];
+    while (left.length) {
+      const group = [left.shift()!];
+      for (let i = 0; i < group.length; i++) {
+        for (let j = left.length - 1; j >= 0; j--) {
+          if (Math.hypot(left[j].x - group[i].x, left[j].y - group[i].y) <= TRAP_NEAR) group.push(...left.splice(j, 1));
+        }
+      }
+      const x = Math.round(group.reduce((a, s) => a + s.x, 0) / group.length), y = Math.round(group.reduce((a, s) => a + s.y, 0) / group.length);
+      const [lon, lat] = this.s.travel.frame.toLL([(x + 0.5) * TILE_M, -(y + 0.5) * TILE_M]);
+      out.push({ id: `trap:${group[0].x},${group[0].y}`, x, y, lon, lat, n: group.length, caught: group.filter((s) => s.caught).length });
+    }
+    return out;
+  }
+
+  /** A site of snares in words. */
+  trapWords(t: TrapSite): string {
+    const n = t.n === 1 ? 'a snare' : `${NUM[t.n] ?? t.n} snares`;
+    return `${n} you set${t.caught ? ` (${t.caught === t.n && t.n > 1 ? 'all' : NUM[t.caught] ?? t.caught} with a catch, if nothing has taken it)` : ''}`;
+  }
+
+  /** Goes to a site of snares: onto the local map at its middle when near enough, else the way there is planned. */
+  goToTraps(t: TrapSite): void {
+    if (this.metresTo(t) > NEAR_M) {
+      void this.s.travel.setDest([t.lon, t.lat], 'your snares');
+      return;
+    }
+    this.s.toLocalAt(t.lon, t.lat);
+    this.s.say(`You come to ${this.trapWords(t)}.`);
+  }
+
   /** A sign in words: "the tracks of three red deer, a couple of hours old". */
   signWords(sg: GameSign): string {
     const sp = SPECIES_BY_ID.get(sg.species);
@@ -158,7 +213,7 @@ export class Hunting {
   }
 
   /** Metres from the party to a sign. */
-  metresTo(sg: GameSign): number {
+  metresTo(sg: { x: number; y: number }): number {
     return Math.hypot(sg.x - this.g.px, sg.y - this.g.py) * TILE_M;
   }
 
@@ -205,9 +260,15 @@ export class Hunting {
     const from = { x: Math.round(g.px + Math.cos(ang) * 2), y: Math.round(g.py + Math.sin(ang) * 2), z: null };
     const gr: AnimalGroup = { id: `hunt:${sg.id}`, species: sp.id, members, home: { x: at[0], y: at[1], r: 16 }, water: null, trailFrom: from };
     this.s.fauna.pin(gr, g);
-    this.mark(`animal:${gr.id}`, sp.id, g.px, g.py, 6, sg.made - 1);
+    // Read at once about the hunter, the further the better the tracker (any age: the trail is older at this end).
+    this.mark(`animal:${gr.id}`, sp.id, g.px, g.py, takenUpRead(this.level()), 0);
     this.s.say(`You take up the trail of ${sg.n === 1 ? `a ${sp.name}` : `the ${sp.plural}`}: it leads off ${way(at[0] - g.px, at[1] - g.py)}. (Right-click a track to follow it.)`);
     this.s.redraw();
+  }
+
+  /** The wanderer's Tracking. */
+  level(): number {
+    return this.s.player?.get(Skills)?.effective('tracking') ?? 0;
   }
 
   /** Marks the trail a maker left within `r` tiles of a place, newer than `after`, for an hour. */
@@ -250,7 +311,7 @@ export class Hunting {
     if (g.ambient.light < 0.2) mods.push({ why: 'the dark', value: -15 });
     const r = check(a, 'tracking', { difficulty: DC.easy + Math.round(Math.min(30, ageH * 4)), mods, now: g.time });
     g.time += 60;
-    const reach = READ[r.grade];
+    const reach = readAhead(r.grade, this.level());
     if (!reach) {
       this.s.say(r.grade === 'fumble' ? 'You lose the trail entirely, and cannot tell which way it went.' : 'You cannot make out which way the trail goes from here.');
       return;

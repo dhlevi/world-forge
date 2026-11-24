@@ -60,9 +60,17 @@ const route = computed<LL[]>(() => (tick.value, journey.ahead()));
 /** At the bank of a deep river (backlog T3), and why a raft cannot be built there, if not. */
 const atRiver = computed(() => (tick.value, journey.atRiver));
 /** Signs of game marked, and the one chosen (game/hunt.ts). */
-const signs = computed(() => (tick.value, props.hunt?.live().map((x) => ({ id: x.id, lon: x.lon, lat: x.lat })) ?? []));
+const traps = computed(() => (tick.value, props.hunt?.trapSites() ?? []));
+const signs = computed(() => (tick.value, [...(props.hunt?.live().map((x) => ({ id: x.id, lon: x.lon, lat: x.lat, kind: 'game' as const })) ?? []), ...traps.value.map((t) => ({ id: t.id, lon: t.lon, lat: t.lat, kind: 'trap' as const }))]));
 const signId = ref('');
 const sign = computed(() => (tick.value, props.hunt?.live().find((x) => x.id === signId.value) ?? null));
+/** The site of snares chosen on the map, if any. */
+const trap = computed(() => traps.value.find((t) => t.id === signId.value) ?? null);
+function goToTraps(): void {
+  if (props.hunt && trap.value) props.hunt.goToTraps(trap.value);
+  signId.value = '';
+  tick.value++;
+}
 function search(): void {
   if (props.hunt) background(props.hunt.search(), 'the hunt');
 }
@@ -207,6 +215,11 @@ onBeforeUnmount(() => journey.stop());
         <div v-if="sign && hunt" class="row river">
           <span>{{ cap(hunt.signWords(sign)) }}, {{ (hunt.metresTo(sign) / 1000).toFixed(1) }} km off.</span>
           <button @click="takeUp">{{ hunt.metresTo(sign) <= 400 ? 'Take up the trail' : 'Go there' }}</button>
+          <button @click="signId = ''">Close</button>
+        </div>
+        <div v-if="trap && hunt" class="row river">
+          <span>{{ cap(hunt.trapWords(trap)) }}, {{ (hunt.metresTo(trap) / 1000).toFixed(1) }} km off.</span>
+          <button @click="goToTraps">{{ hunt.metresTo(trap) <= 400 ? 'Go to the snares' : 'Go there' }}</button>
           <button @click="signId = ''">Close</button>
         </div>
         <div v-if="atRiver" class="row river">

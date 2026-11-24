@@ -98,6 +98,8 @@ export interface HealthData {
   nextId: number;
   /** Dead: of what, and when. */
   dead?: { cause: string; at: number };
+  /** A beast's mortal wound (to the heart, the lungs, the liver, the brain, the neck): it dies at this time, wherever it has run. */
+  mortal?: { at: number; part: string };
 }
 
 export interface HealthNote {
@@ -107,6 +109,8 @@ export interface HealthNote {
 }
 
 const H = 3600;
+/** A beast whose wounds tear this much of it (Health.trauma) dies of the shock at once. */
+const TRAUMA_DEATH = 0.45;
 /** Open wounds: these bleed and may fester. */
 const OPEN = new Set<WoundKind>(['cut', 'stab', 'bite', 'crush', 'burn', 'frostbite']);
 /** Millilitres an hour per point of severity, by kind (times the part's own bleeding). */
@@ -440,7 +444,7 @@ export class Health extends Component {
     const pb = def?.bleed ?? 1;
     // A ruined part bleeds as much as the part could, no more (a finger's stump, not a torso's worth).
     const sev = Math.min(w.sev, def?.hp ?? w.sev);
-    let ml = sev * (w.kind === 'fracture' ? 6 : BLEED[w.kind]) * pb * (w.ruin && def?.sever ? 1.3 : 1);
+    let ml = sev * (w.kind === 'fracture' ? 6 : BLEED[w.kind]) * pb * (w.ruin && def?.sever ? 1.3 : 1) * this.smallBleed();
     if (w.stitched !== undefined) return ml * 0.04 * (1.5 - w.stitched);
     // Small wounds clot in time, and a bandage helps them; deep ones and those of the neck and the
     // organs do not clot on their own.
@@ -451,6 +455,37 @@ export class Health extends Component {
     if (w.bandaged !== undefined) ml *= 1 - 0.75 * w.bandaged;
     if (!deep || w.bandaged !== undefined) ml *= clamp(1 - age / clotH, 0, 1);
     return ml;
+  }
+
+  /**
+   * A small beast bleeds out the faster for the same wound (its blood is so much less): twice as
+   * fast at about 5 kg, more for the smallest; a person or a beast of a person's size, as it is.
+   */
+  private smallBleed(): number {
+    const kg = this.d.kg;
+    if (!this.d.plan || this.d.plan === 'humanoid' || !kg) return 1;
+    return Math.min(4, Math.max(1, Math.pow(60 / kg, 0.3)));
+  }
+
+  /**
+   * How much of a beast's body its open wounds and broken bones have torn (the struck parts'
+   * wounds against each part's toughness, the body's counting most, a limb taken off much): enough of it and the beast
+   * dies of the shock in moments, as game shot through does.
+   */
+  trauma(): number {
+    if (!this.d.plan || this.d.plan === 'humanoid') return 0;
+    let t = 0;
+    for (const w of this.d.wounds) {
+      if (w.kind === 'bruise') continue;
+      const def = this.partOf(w.part);
+      if (!def) continue;
+      const share = Math.min(1, w.sev / Math.max(0.5, def.hp));
+      // A limb or wing taken off is a great shock to a beast (half enough to kill it, and more for the small).
+      const lost = w.ruin ? Math.min(1, 0.3 + 0.15 * Math.max(0, 3 - Math.log10(Math.max(0.1, this.d.kg ?? 60)) * 1.5)) : 0;
+      t += Math.max(lost, share * (def.id === 'torso' ? 1 : def.vital || def.inside ? 0.8 : 0.25));
+    }
+    // The smaller the beast, the less hurt it takes to kill it (a hare by a wound a deer would run off).
+    return t * Math.min(2, Math.max(1, (60 / Math.max(0.1, this.d.kg ?? 60)) ** 0.15));
   }
 
   /** All the bleeding now (ml an hour). */
@@ -508,8 +543,11 @@ export class Health extends Component {
     if (!part) return [];
     const made: HealthWound[] = [];
     let sev = h.sev;
-    // A deep blow: part of it goes on inside (a stab into the chest, a blow through the skull).
-    if (h.deep && r() < h.deep) {
+    // A deep blow: part of it goes on inside (a stab into the chest, a blow through the skull). A
+    // beast's body is narrow to a point: a stab (an arrow, a spear) goes on inside more often.
+    const beast = !!this.d.plan && this.d.plan !== 'humanoid';
+    const deep = h.deep && beast && h.kind === 'stab' ? Math.min(0.9, h.deep * 1.6) : h.deep;
+    if (deep && r() < deep) {
       const innerDef = innerPart(r, part.id, this.plan);
       const inner = innerDef ? this.partOf(innerDef.id) : undefined;
       if (inner && !this.isLost(inner.id)) {
@@ -518,12 +556,13 @@ export class Health extends Component {
         const deeperKind: WoundKind = h.kind === 'bruise' || h.kind === 'crush' ? (inner.id === 'ribs' || inner.id === 'skull' || inner.id === 'spine' || inner.id === 'teeth' ? 'fracture' : 'crush') : h.kind === 'fracture' ? 'crush' : h.kind;
         made.push(...this.wound(inner, deeperKind, share, h.cause));
         // Through the skull to the brain.
-        const deeperDef = r() < h.deep * 0.5 ? innerPart(r, inner.id, this.plan) : null;
+        const deeperDef = r() < deep * 0.5 ? innerPart(r, inner.id, this.plan) : null;
         const deeper = deeperDef ? this.partOf(deeperDef.id) : null;
         if (deeper) made.push(...this.wound(deeper, h.kind === 'stab' ? 'stab' : 'crush', share * 0.5, h.cause));
       }
     }
     made.push(...this.wound(part, h.kind, sev, h.cause));
+    if (this.trauma() >= TRAUMA_DEATH) this.die('the shock of its wounds');
     this.touched();
     return made;
   }
@@ -533,6 +572,22 @@ export class Health extends Component {
     if (sev <= 0) return [];
     const w: HealthWound = { id: this.d.nextId++, part: part.id, kind, sev, start: sev, at: this.now, cause };
     this.d.wounds.push(w);
+    // A beast struck in the heart, the lungs, the liver, the brain or the neck, deeply enough, is
+    // done for: the heart or the brain at once, the rest within minutes, as it runs (game falls to
+    // a good shot; a person's wounds go by their bleeding, and treatment can save them).
+    // A small beast's head is mostly brain: a stab through it is as quick.
+    const small = (this.d.kg ?? 60) < 10;
+    const MORTAL = small ? /^(heart|lung\.[lr]|liver|brain|neck|head|skull)$/ : /^(heart|lung\.[lr]|liver|brain|neck)$/;
+    if (this.d.plan && this.d.plan !== 'humanoid' && MORTAL.test(part.id) && OPEN.has(kind)) {
+      const share = sev / Math.max(0.5, part.hp);
+      if (share >= 0.08) {
+        const quick = part.id === 'heart' || part.id === 'brain' || (small && (part.id === 'head' || part.id === 'skull'));
+        // The lungs and the neck within minutes, the liver within the hour or so.
+        const secs = quick ? 20 : part.id === 'liver' ? Math.max(300, (1 - Math.min(1, share * 2)) * 2700) : Math.max(40, (1 - Math.min(1, share * 2)) * 600);
+        const at = this.now + Math.round(secs);
+        if (!this.d.mortal || at < this.d.mortal.at) this.d.mortal = { at, part: part.name };
+      }
+    }
     // A blow to the head stuns (combat.md, stage 3): a concussion that dims the mind, and passes.
     if ((part.id === 'head' || part.id === 'skull' || part.id === 'brain' || part.id === 'jaw') && (kind === 'bruise' || kind === 'fracture' || kind === 'crush')) {
       const was = this.d.cond.concussion ?? 0;
@@ -557,7 +612,8 @@ export class Health extends Component {
       this.d.wounds = this.d.wounds.filter((x) => !gone.has(x.part));
       this.note(`Your ${part.name} ${isAre(part.name)} ${w.kind === 'crush' || w.kind === 'fracture' ? 'crushed beyond saving' : w.kind === 'frostbite' ? 'black with frostbite, and lost' : 'torn away'}.`, true);
     } else this.note(`Your ${part.name} ${isAre(part.name)} ${part.id.startsWith('eye') ? 'blinded' : 'ruined'}.`, true);
-    if (part.vital) this.die(`a ruined ${part.name}${w.cause ? `, from ${w.cause}` : ''}`);
+    // A vital part, or the body itself, ruined: death.
+    if (part.vital || part.id === 'torso') this.die(`a ruined ${part.name}${w.cause ? `, from ${w.cause}` : ''}`);
   }
 
   /** Dies (once). */
@@ -648,6 +704,9 @@ export class Health extends Component {
     const fed = n ? clamp(Math.min(n.nourish, n.hydrated) / 60, 0.2, 1) : 1;
     d.blood = clamp(d.blood - lost * h + (lost < 0.02 ? 0.02 * fed * h : 0), 0, max);
     if (d.blood / max < 0.45) return this.die(this.bleedCause());
+    // A beast torn through: it drops (fieldcraft.md; a shot through the body kills game quickly).
+    if (this.trauma() >= TRAUMA_DEATH) return this.die('the shock of its wounds');
+    if (this.d.mortal && this.now >= this.d.mortal.at) return this.die(`a mortal wound to the ${this.d.mortal.part}`);
 
     // ---- A concussion passes in an hour or two.
     if (d.cond.concussion) {

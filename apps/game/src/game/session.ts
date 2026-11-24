@@ -346,7 +346,15 @@ export class PlaySession {
       if (kind === 'step' && bleed > 30 && game.dice.random() < Math.min(0.9, bleed / 400)) this.people.tracks.add(x, y, z, { t: game.time, by: 'player', kind: this.player?.get(Body)?.d.kind ?? 'human', dir, blood: true });
     };
     game.tracksText = (x, y, z) => readTracks(this.people.tracks.at(x, y, z, game.time), game.time, this.player?.get(Skills)?.effective('tracking') ?? 0);
-    game.tracksOn = (x, y, z) => this.people.tracks.at(x, y, z, game.time).filter((t) => !t.blood && !t.faint).length;
+    // Prints are seen by all; the faint signs on firm ground (bent grass, a scuff) by a tracker of 25
+    // and over, near at hand (5 tiles, and a tile more for each 10 of Tracking).
+    game.tracksOn = (x, y, z) => {
+      const ts = this.people.tracks.at(x, y, z, game.time).filter((t) => !t.blood);
+      const plain = ts.filter((t) => !t.faint).length;
+      if (plain || !ts.length) return plain;
+      const lv = this.hunt.level();
+      return lv >= 25 && Math.hypot(x - game.px, y - game.py) <= 5 + lv / 10 ? -ts.length : 0;
+    };
     this.people.onSee = (text) => game.say(text);
     // People in fights (world/strife.ts): their blows, what is seen, the dead, robbers and the watch.
     this.strife = new Strife(this.people);
@@ -389,6 +397,10 @@ export class PlaySession {
     this.fauna.onDied = (s, x, y, seen, lodged) => this.fights.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null, undefined, lodged);
     game.bloodOn = (x, y, z) => this.people.tracks.bloodAt(x, y, z, game.time);
     game.trailAt = (x, y) => this.hunt.onTrail(x, y);
+    game.snareAt = (x, y) => {
+      const sn = this.snares.at(x, y);
+      return sn ? (sn.caught ? 'caught' : 'set') : null;
+    };
     if (o.restore?.people) {
       this.people.opinions.import(o.restore.people.opinions);
       for (const id of o.restore.people.dead ?? []) this.people.dead.add(id);
@@ -698,7 +710,7 @@ export class PlaySession {
     this.game.cursor = null;
     this.state.mode = 'travel';
     this.people.clear();
-    this.fauna.clear();
+    this.fauna.clear(this.game.time);
     this.game.say('You take to the road.');
     this.applySky(this.skyNow);
   }

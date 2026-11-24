@@ -441,7 +441,7 @@ export class Fights {
 
   /** A dead beast: its carcass left where it fell (world/hunting.ts), with what was still in its wounds, told if seen. */
   carcass(s: Species, x: number, y: number, text: string | null, a?: Animal, lodged: Item[] = a?.lodged ?? []): void {
-    if (a) this.s.fauna.kill(a);
+    if (a) this.s.fauna.kill(a, this.s.game);
     this.s.game.ground.put(x, y, [carcassOf(s), ...lodged.map((it) => ({ ...it, loc: undefined }))]);
     if (text) this.s.game.say(text);
     this.s.redraw();

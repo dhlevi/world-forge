@@ -318,7 +318,11 @@ cooked food is enough; more complex food gives more mood and nutrition.
   water undrinkable; boiling makes it safe. *Built in part* (backlog W4, 21 November 2026): the
   sea (open water at or below the sea's level) is salt and cannot be drunk; rivers and lakes are
   fresh; the search for water and the choice of a camp go by fresh water only (`game/map.ts`,
-  `waterAt`). Quality and boiling are still to come. Drink (ale, wine) quenches thirst less and brings
+  `waterAt`). *Fixed (24 November 2026, from play):* many lakes were taken for the sea. The sea is
+  now the great body of water the world's low ground joins into (150,000 km² and more,
+  `worker/water.ts`); water below the sea's level in a smaller enclosed basin, or in a lake the
+  world made, is fresh. Every lived-in place has a well or a fountain (a well is dug in the plan
+  where none was, `towns/manager.ts`, `ensureWater`). Quality and boiling are still to come. Drink (ale, wine) quenches thirst less and brings
   its own effects.
 - **Hot climates** raise thirst; **hard work and cold** raise hunger.
 

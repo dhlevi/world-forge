@@ -1468,6 +1468,48 @@ export class TownManager {
     out.point('dentry', p, { did: site.id, dkind: 'prison', name: site.name, ...(site.en && site.en !== site.name ? { en: site.en } : {}), seed: site.seed, tags: site.tags.join(','), culture, sid: s.id });
   }
 
+  /**
+   * A well for a place whose plan has none (no well, fountain or pump): on open ground as near the
+   * middle as can be found, clear of the buildings, the water, and a little way off the roads.
+   */
+  private ensureWater(out: PlanOut, frame: LocalFrame, water: (p: Pt) => boolean): void {
+    if (out.features.some((f) => /^(well|fountain|pump)$/.test(String(f.properties.kind)))) return;
+    const local = (c: number[]) => frame.fromLL(c[0], c[1]) as Pt;
+    const rings: Pt[][] = [], lines: Pt[][] = [];
+    for (const f of out.features) {
+      if (f.geometry.type === 'Polygon' && f.properties.kind !== 'field' && f.properties.kind !== 'district' && !String(f.properties.kind).endsWith('area')) rings.push(f.geometry.coordinates[0].map(local));
+      else if (f.geometry.type === 'LineString' && /road|street|track|path|lane|alley/.test(String(f.properties.kind))) lines.push(f.geometry.coordinates.map(local));
+    }
+    const inside = (p: Pt, r: Pt[]) => {
+      let c = false;
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c;
+      }
+      return c;
+    };
+    const nearLine = (p: Pt, l: Pt[], d: number) => {
+      for (let i = 1; i < l.length; i++) {
+        const [ax, ay] = l[i - 1], [bx, by] = l[i];
+        const vx = bx - ax, vy = by - ay, len = vx * vx + vy * vy || 1;
+        const t = Math.max(0, Math.min(1, ((p[0] - ax) * vx + (p[1] - ay) * vy) / len));
+        if (DMath.hypot(p[0] - ax - vx * t, p[1] - ay - vy * t) < d) return true;
+      }
+      return false;
+    };
+    const ok = (p: Pt) => !water(p) && !rings.some((r) => inside(p, r) || r.some((q) => DMath.hypot(q[0] - p[0], q[1] - p[1]) < 3)) && !lines.some((l) => nearLine(p, l, 4));
+    for (let r = 0; r <= 90; r += 5) {
+      const n = r === 0 ? 1 : Math.max(8, Math.round((2 * Math.PI * r) / 6));
+      for (let i = 0; i < n; i++) {
+        const a = (i / n) * Math.PI * 2 + r * 0.37;
+        const p: Pt = [DMath.cos(a) * r, DMath.sin(a) * r];
+        if (ok(p)) {
+          out.point('well', p, { r: 1.4 });
+          return;
+        }
+      }
+    }
+  }
+
   /** The way into a mining camp's mine, marked at the mouth of its first adit on the camp's plan. */
   private mineEntry(s: Settlement, out: PlanOut, frame: LocalFrame, culture: number): void {
     let site: DungeonSite | undefined;
@@ -1827,6 +1869,9 @@ export class TownManager {
       this.underground(s, out, frame, water, culture);
       this.chapterHouses(s, out, frame);
     }
+
+    // Every lived-in place has water to draw: a well where the plan made none.
+    if (s.kind !== 'abandoned' && !s.delve) this.ensureWater(out, frame, water);
 
     // Buildings held back (round large squares) take the last ids.
     out.flushLater();

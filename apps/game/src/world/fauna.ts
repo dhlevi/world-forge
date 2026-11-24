@@ -34,6 +34,7 @@ import { SIZE_RANK, SPECIES_BY_ID, awake, type Species } from '@worldforge/core/
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { AnimalGroup, Spot } from '../worker/protocol';
 import { heardLevel, layTrail, takesTracks, type Noise, type Tracks } from './senses';
+import { findPath, type PathMap } from './paths';
 import { Health, type HealthData } from '../actors/health';
 import type { Item } from '../actors/items/item';
 import { morale, type Stance } from '../rules/combat';
@@ -42,6 +43,8 @@ import { cheb } from '../util';
 
 /** Within this many tiles of the wanderer, animals act. */
 export const ANIMAL_ACTIVE = 40;
+/** How long a beast's last place is remembered, to put it back there (s). */
+const MEMORY_S = 6 * 3600;
 /** At most this many steps an animal takes per action (a long wait is acted in part). */
 const MAX_STEPS = 60;
 /** How long a fright lasts (seconds), and how far a flight takes them (tiles). */
@@ -201,7 +204,13 @@ export class Fauna {
     return this.byTile.size;
   }
 
-  clear(): void {
+  /** Clears the bubble (onto the road): the wounded kept, where the rest were remembered (as of `now`, else the last turn). */
+  clear(now = this.lastTime): void {
+    // Where each beast was is remembered, to put it back there on coming back (within hours).
+    for (const h of this.herds.values()) for (const a of h.members) {
+      if (this.keepWounded(a)) this.gone.add(a.id);
+      else this.remember(a, now);
+    }
     this.herds.clear();
     this.byTile.clear();
     this.asked = null;
@@ -255,9 +264,12 @@ export class Fauna {
       const s = SPECIES_BY_ID.get(gr.species);
       if (!s) continue;
       const h: Herd = { id: gr.id, s, home: gr.home, water: gr.water, members: [], fearUntil: 0, fearFrom: null, planAt: g.time, gone: false };
-      gr.members.forEach((m, i) => {
+      gr.members.forEach((m0, i) => {
         const id = `${gr.id}#${i}`;
-        if (this.gone.has(id) || (g.isVisible(m.x, m.y) && !(inSight && this.pinned.has(gr.id))) || this.byTile.has(key(m.x, m.y))) return;
+        // Back where it was last seen, if that was lately.
+        const was = this.memory.get(id);
+        const m = was && g.time - was.at < MEMORY_S && g.map.loaded(was.x, was.y) && g.map.passableAt(was.x, was.y, null) ? { x: was.x, y: was.y, z: null } : m0;
+        if (this.gone.has(id) || (g.isVisible(m.x, m.y) && !(inSight && this.pinned.has(gr.id)) && !was) || this.byTile.has(key(m.x, m.y))) return;
         const a: Animal = { id, s, g: h, x: m.x, y: m.y, alt: 0, perched: false, facing: (['n', 'e', 's', 'w'] as Facing[])[(hashString(id) >>> 3) % 4], state: 'idle', to: null, nextAt: g.time, ate: g.time - (hashString(id) % (MEAL_H * 3600)), quarry: null, chase: 0, calledAt: g.time - 600, threatAt: 0, noticed: -1 };
         h.members.push(a);
         this.byTile.set(key(m.x, m.y), a);
@@ -282,25 +294,41 @@ export class Fauna {
     const s = h.s, a = h.members[0];
     if (!a || s.fly || SIZE_RANK[s.size] < 1 || (!h.id.startsWith('w:') && !this.pinned.has(h.id))) return;
     const r = mulberry32(hashString(`trail#${h.id}`));
+    const by = `animal:${h.id}`, kind = `animal:${s.id}`, newest = g.time - (10 + r() * 50) * 60, perStep = 60 + r() * 120;
+    // From where the hunter came upon it: along a way the beast could have walked, round the trees.
+    const path = from && 'hasFloor' in g.map ? findPath(g.map as unknown as PathMap, from, { x: a.x, y: a.y, z: null }, 6000) : null;
+    if (path?.length) {
+      const way = [{ x: from!.x, y: from!.y }, ...path];
+      for (let i = way.length - 1, t = newest; i >= 0; i--, t -= perStep) {
+        const p = way[i], prev = way[i - 1] ?? p;
+        const gid = g.map.groundAt(p.x, p.y, null);
+        const dx = p.x - prev.x, dy = p.y - prev.y;
+        this.tracks.add(p.x, p.y, null, { t: Math.round(t), by, kind, dir: Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n', ...(takesTracks(gid, false) ? {} : { faint: true }) });
+      }
+      return;
+    }
     const steps = from ? Math.round(Math.hypot(from.x - a.x, from.y - a.y) * 1.4) + 6 : 14 + Math.floor(r() * 26);
-    layTrail(this.tracks, g.map, { by: `animal:${h.id}`, kind: `animal:${s.id}`, to: { x: a.x, y: a.y, z: null }, steps, newest: g.time - (10 + r() * 50) * 60, perStep: 60 + r() * 120, toward: from, r });
+    layTrail(this.tracks, g.map, { by, kind, to: { x: a.x, y: a.y, z: null }, steps, newest, perStep, toward: from, r });
   }
 
   private dropUnseen(h: Herd, g: FaunaView): void {
     for (const a of [...h.members]) if (!g.isVisible(a.x, a.y)) {
-      this.keepWounded(a);
-      this.remove(a);
+      // Wounded, it is kept as it is (to be found lying up); else it can come back, where it was last.
+      const hurt = this.keepWounded(a);
+      if (!hurt) this.remember(a, g.time);
+      this.remove(a, hurt);
     }
     if (!h.members.length) this.herds.delete(h.id);
   }
 
   /** A wounded beast leaving the bubble is kept, to be found later. */
-  private keepWounded(a: Animal): void {
+  private keepWounded(a: Animal): boolean {
     const h = a.health;
-    if (!h || h.dead || !h.d.wounds.length) return;
+    if (!h || h.dead || !h.d.wounds.length) return false;
     this.wounded = this.wounded.filter((w) => w.id !== a.id);
     this.wounded.push({ id: a.id, species: a.s.id, x: a.x, y: a.y, health: h.toJSON(), t: h.time, ...(a.lodged?.length ? { lodged: a.lodged } : {}) });
     if (this.wounded.length > 40) this.wounded.shift();
+    return true;
   }
 
   /** A beast's body (made when first needed: hurt, or fighting). */
@@ -323,6 +351,9 @@ export class Fauna {
     if (a.fight) return;
     const cornered = this.cornered(a, g) || h.capacities().moving < 0.5;
     const fights = morale(h) >= f.breaks && (f.fights === 'back' || (f.fights === 'cornered' && cornered));
+    // Those about who are not hunters themselves take fright at it too: the rest of the herd, and
+    // the other herds and beasts that see or hear the struggle.
+    this.alarm(a, g);
     if (fights) {
       const intent = f.fights === 'back' ? (a.s.diet === 'predator' && SIZE_RANK[a.s.size] >= 2 ? 'kill' : 'drive') : 'defend';
       this.startFight(a, intent, g);
@@ -330,6 +361,20 @@ export class Fauna {
       if (a.s.herd && a.s.diet === 'predator') for (const m of a.g.members) if (m !== a && !m.fight && cheb(m, a.x, a.y) <= 14) this.startFight(m, intent, g);
       else if (a.g.members.length > 1) this.frightenOthers(a, g);
     } else this.frighten(a.g, { x: g.px, y: g.py, z: null }, g);
+  }
+
+  /**
+   * A beast struck or killed near others: those within twelve tiles (twenty for the skittish) that
+   * are not hunters, nor fighting, nor tame, take fright from the wanderer, awake or asleep.
+   */
+  alarm(a: { x: number; y: number; g?: Herd }, g: FaunaView): void {
+    for (const h of this.herds.values()) {
+      if (h === a.g || h.gone || h.fearUntil > g.time || h.s.temper === 'tame' || h.s.temper === 'aggressive' || h.s.diet === 'predator') continue;
+      const reach = h.s.temper === 'skittish' ? 20 : 12;
+      if (!h.members.some((m) => !m.fight && cheb(m, a.x, a.y) <= reach)) continue;
+      for (const m of h.members) m.noticed = g.time;
+      this.frighten(h, { x: g.px, y: g.py, z: null }, g);
+    }
   }
 
   private frightenOthers(a: Animal, g: FaunaView): void {
@@ -387,9 +432,14 @@ export class Fauna {
   }
 
   /** The wanderer killed a beast (game/combat.ts): it is taken from the map. */
-  kill(a: Animal): void {
+  kill(a: Animal, g?: FaunaView): void {
     a.fight = null;
     this.wounded = this.wounded.filter((w) => w.id !== a.id);
+    // Its herd, and those about, take fright at the killing.
+    if (g) {
+      if (a.g.members.length > 1 && a.s.diet !== 'predator') this.frighten(a.g, { x: g.px, y: g.py, z: null }, g);
+      this.alarm(a, g);
+    }
     this.remove(a);
   }
 
@@ -400,11 +450,25 @@ export class Fauna {
     this.onDied(a.s, a.x, a.y, seen, a.lodged ?? []);
   }
 
-  /** Takes an animal from the map for good (caught, killed). */
-  remove(a: Animal): void {
+  /**
+   * Where each beast was last (by its id), when it left the bubble or the wanderer took to the road:
+   * coming back within six hours, it is put back there rather than where the worker would place it.
+   */
+  private memory = new Map<string, { x: number; y: number; at: number }>();
+  /** The time last acted on (for remembering on leaving the local map). */
+  private lastTime = 0;
+
+  private remember(a: Animal, now: number): void {
+    if (a.health?.dead) return;
+    this.memory.set(a.id, { x: a.x, y: a.y, at: now });
+    if (this.memory.size > 3000) this.memory.delete(this.memory.keys().next().value!);
+  }
+
+  /** Takes a beast off the map: gone for the week (`gone`, killed or taken), or only out of the bubble. */
+  remove(a: Animal, gone = true): void {
     if (this.byTile.get(key(a.x, a.y)) === a) this.byTile.delete(key(a.x, a.y));
     a.g.members = a.g.members.filter((m) => m !== a);
-    this.gone.add(a.id);
+    if (gone) this.gone.add(a.id);
     if (!a.g.members.length) this.herds.delete(a.g.id);
   }
 
@@ -471,6 +535,14 @@ export class Fauna {
     return d <= 1.5;
   }
 
+  /** A bird that cannot fly: weak from losing blood, or a wing lost or badly hurt. */
+  private grounded(a: Animal): boolean {
+    const h = a.health;
+    if (!h || !a.s.fly) return false;
+    const wing = (id: string) => h.isLost(id) || h.d.wounds.filter((w) => w.part === id && w.kind !== 'bruise').reduce((s, w) => s + w.sev, 0) >= (h.partOf(id)?.hp ?? 10) * 0.5;
+    return h.bloodShare() < 0.75 || wing('wing.l') || wing('wing.r');
+  }
+
   /** A noise the wanderer makes: those who hear it start (the skittish flee from it). */
   hearPlayer(g: FaunaView, n: Omit<Noise, 'by'>, who: Presence): void {
     for (const a of this.all()) {
@@ -491,7 +563,7 @@ export class Fauna {
     h.fearFrom = from;
     for (const m of h.members) {
       m.state = 'flee';
-      if (m.s.fly && m.alt === 0) m.alt = 2;
+      if (m.s.fly && m.alt === 0 && !this.grounded(m)) m.alt = 2;
       if (m.s.fly && m.perched) m.perched = false;
       m.nextAt = Math.max(m.nextAt, g.time - 1);
     }
@@ -513,6 +585,7 @@ export class Fauna {
   /** Everyone acts up to the game's time. Returns whether anything shown changed. */
   run(g: FaunaView, who: Presence): boolean {
     let changed = false;
+    this.lastTime = g.time;
     const hour = (g.time % 86400) / 3600;
     this.blows.clear();
     if (this.findWounded(g)) changed = true;
@@ -561,8 +634,25 @@ export class Fauna {
         this.died(a, g);
         return true;
       }
+      // A bird that has lost much blood or a wing comes down, and lies up where it falls.
+      if (a.s.fly && a.alt > 0 && this.grounded(a)) {
+        a.alt = 0;
+        a.perched = false;
+        if (!a.fight) a.state = 'lying';
+        return true;
+      }
     }
     if (a.fight) return this.fightAct(a, g, who);
+    // Asleep, but the wanderer has come close: it wakes and takes fright (sneaking, only right beside it).
+    if (a.state === 'sleep' && a.s.temper !== 'tame' && a.s.temper !== 'aggressive') {
+      const d = cheb(a, g.px, g.py);
+      if (d <= (who.sneaking ? 1 : Math.max(2, Math.round(a.s.flee / 3)))) {
+        a.noticed = g.time;
+        for (const m of h.members) if (m.state === 'sleep') m.state = 'idle';
+        this.frighten(h, { x: g.px, y: g.py, z: null }, g);
+        return true;
+      }
+    }
     // Lying up, wounded: it keeps still unless the wanderer comes close.
     if (a.state === 'lying') {
       const d = cheb(a, g.px, g.py);
@@ -601,7 +691,14 @@ export class Fauna {
         }
         a.state = 'flee';
         const ok = this.step(a, from, g, true);
-        a.nextAt += a.s.fly ? 0.3 : pace / 2;
+        a.nextAt += a.s.fly && a.alt > 0 ? 0.3 : pace / 2;
+        // A bird that can fly no further away (hemmed in, or at the edge of what is made) comes down.
+        if (!ok && a.s.fly && a.alt > 0) {
+          this.land(a, g);
+          a.state = 'idle';
+          h.fearUntil = g.time;
+          break;
+        }
         if (ok) {
           moved = true;
           this.tracked(a, g);

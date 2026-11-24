@@ -904,9 +904,27 @@ export class Renderer {
         this.marks.circle(x + 4, y + 12, 0.8).fill({ color: 0x7a0e0e, alpha: 0.7 });
       }
       if (!n) continue;
+      if (n < 0) {
+        // Faint signs on firm ground, seen by a tracker: a pale scuff.
+        this.marks.ellipse(x + 7, y + 8, 2.2, 1).fill({ color: 0x8a7a50, alpha: 0.45 });
+        continue;
+      }
       const a = Math.min(0.55, 0.2 + 0.08 * n);
       this.marks.ellipse(x + 5, y + 6, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
       this.marks.ellipse(x + 10, y + 10, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
+    }
+    // The wanderer's snares (world/hunting.ts): a noose on its peg, seen or remembered; a catch in it
+    // shows as a red dot.
+    if (!slice) for (let i = 0; i < this.cols * this.rows; i++) {
+      if (Number.isNaN(levels[i])) continue;
+      const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
+      const sn = game.snareAt(tx, ty);
+      if (!sn) continue;
+      const x = (i % this.cols) * TILE_PX + TILE_PX / 2, y = Math.floor(i / this.cols) * TILE_PX + TILE_PX / 2;
+      const al = vis[i] ? 0.95 : 0.6;
+      this.marks.circle(x, y - 1.5, 3.2).stroke({ color: 0x1a1408, width: 2.2, alpha: al * 0.6 }).circle(x, y - 1.5, 3.2).stroke({ color: 0xd8c8a0, width: 1.1, alpha: al });
+      this.marks.moveTo(x, y + 1.7).lineTo(x, y + 5.5).stroke({ color: 0x6a4a22, width: 1.6, alpha: al });
+      if (sn === 'caught') this.marks.circle(x + 4, y - 4, 1.8).fill({ color: 0xc0281c, alpha: al });
     }
     // The trail read by Tracking (game/hunt.ts): small amber marks along it.
     if (!slice) for (let i = 0; i < this.cols * this.rows; i++) {

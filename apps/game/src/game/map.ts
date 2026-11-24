@@ -267,6 +267,10 @@ export class GameMap {
     const g = GROUND_TILES[this.ground(tx, ty)];
     if (!g?.water) return null;
     if (g.name.startsWith('river')) return 'fresh';
+    // The worker says which water is the sea; an older chunk, by its height alone.
+    const at = this.at(tx, ty);
+    const salt = at?.[0].salt;
+    if (salt) return salt[at[1]] ? 'salt' : 'fresh';
     return this.elev(tx, ty) <= 0 ? 'salt' : 'fresh';
   }
 

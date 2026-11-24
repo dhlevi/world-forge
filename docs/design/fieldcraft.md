@@ -90,6 +90,13 @@ a failure, and all lost on a fumble.
   goes by the beast's size (0.1 kg for the tiniest, 0.4 small, 2.5 middling, 7 large, 20 huge);
   its worth is much the same for all (3 to 8 copper by size, and by quality) until the economy
   prices them by supply and demand. The plain "hide" stays for the markets to sell.
+- *Fixes from play (24 November 2026):* a herd's trail from where the hunter took it up is laid
+  along a way the beasts could walk (round trees and water), not broken off in the woods; taking
+  up a trail reads it at once about the hunter (8 tiles, and 4 more for each 10 of Tracking),
+  whatever its age (it was lost before when the sign was fresher than its far end); following it
+  reads 100, 70 or 35 tiles (fine, success, near), and up to half as far again for a master; and a
+  tracker of 25 and over sees the faint signs on firm ground about them (5 tiles, and one more for
+  each 10 of Tracking), drawn as pale scuffs.
 - *Still to come:* droppings, browse and scrapes as signs of their own.
 
 - **On the local map:** the trail of a beast read by Tracking is marked (its prints, which way,
@@ -109,6 +116,12 @@ a failure, and all lost on a fumble.
 - **Snares** set at a chosen tile from the skill menu (Trapping), and **drive fences** of stakes and
   brush that steer game into them.
 - Traps are checked later: what they caught waits in them (and may be taken by a predator).
+- *Built ahead (24 November 2026, from play):* each snare set is marked on the local map (a noose
+  on its peg, with a red mark when it holds a catch), seen or remembered; and on the travel map
+  the snares within 60 m of one another are one site, a noose in a ring at their middle. A site
+  clicked says how many and how many have caught; within 400 m **Go to the snares** puts the
+  wanderer on the local map among them, and further off the way there is planned
+  (`game/hunt.ts`, `trapSites`).
 
 ### Stage 4: fishing
 

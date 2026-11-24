@@ -128,6 +128,9 @@ console.log('\nshooting, shown');
   s.game.ambient = { light: 1, range: 30 };
   s.fauna.pin({ id: 'hunt:shot', species: 'red_deer', members: [{ x: X + 8, y: Y, z: null }, { x: X + 8, y: Y + 2, z: null }], home: { x: X + 8, y: Y, r: 10 }, water: null }, s.game);
   s.game.refresh();
+  // Both in sight before a shot (once one is hit, the herd is alarmed and they die or bolt).
+  const targets = s.fights.shootable();
+  ok(targets.length >= 2, 'with two deer in sight there are two to choose between');
   let hits = 0, shots = 0;
   const kinds = new Set<string>();
   for (let i = 0; i < 12; i++) {
@@ -135,17 +138,15 @@ console.log('\nshooting, shown');
     if (!f) break;
     const m = s.fights.missiles().find((x) => x.how === 'shoot')!;
     s.game.fx = [];
+    const before = s.hud.log.length;
     s.fights.shoot(f, m, null);
-    const line = s.hud.log[s.hud.log.length - 1];
-    if (line.tone === 'hit' || line.tone === 'kill') hits++;
+    if (s.hud.log.slice(before).some((l) => l.tone === 'hit' || l.tone === 'kill')) hits++;
     shots++;
     for (const e of s.game.fx) kinds.add(e.kind === 'float' ? `float:${e.text.split(':')[0]}` : e.kind);
   }
-  ok(shots >= 3 && hits >= shots * 0.6, `a skilled archer hits a deer close by most times (${hits} of ${shots})`);
+  ok(shots >= 2 && hits >= shots * 0.6, `a skilled archer hits a deer close by most times (${hits} of ${shots})`);
   ok(kinds.has('shot') && [...kinds].some((k) => k.startsWith('float:')), `each shot is shown: the arrow's flight and what came of it (${[...kinds].join(', ')})`);
   ok(s.hud.log.some((l) => l.tone), 'and the log marks the hits and misses');
-  const targets = s.fights.shootable();
-  ok(targets.length >= 2, 'with two deer in sight there are two to choose between');
   s.dispose();
 }
 
@@ -176,6 +177,122 @@ console.log('\nskinning');
   ok(fox?.items[0]?.def === 'pelt_fox' && (!bh || bh.def === 'pelt_brown_bear'), `each beast its own: ${fox?.items[0] ? itemName(fox.items[0]) : '(spoilt)'}, ${bh ? itemName(bh) : '(spoilt)'}`);
   ok(defOf(makeItem('hide_red_deer')).weight > defOf(makeItem('pelt_fox')).weight, 'a deer hide weighing more than a fox pelt');
   s.dispose();
+}
+
+console.log('\nthe herds about, remembered places, snares found again');
+{
+  const s = session();
+  for (let dy = -20; dy <= 20; dy++) for (let dx = -20; dx <= 20; dx++) if (s.map.object(X + dx, Y + dy)) s.map.setObject(X + dx, Y + dy, 0);
+  s.state.mode = 'local';
+  s.game.ambient = { light: 1, range: 30 };
+  // Striking one beast frightens the other herds near it, not only its own.
+  s.fauna.pin({ id: 'hunt:a', species: 'red_deer', members: [{ x: X + 6, y: Y, z: null }], home: { x: X + 6, y: Y, r: 10 }, water: null }, s.game);
+  s.fauna.pin({ id: 'hunt:b', species: 'roe_deer', members: [{ x: X + 12, y: Y + 3, z: null }, { x: X + 13, y: Y + 4, z: null }], home: { x: X + 12, y: Y + 3, r: 10 }, water: null }, s.game);
+  const a = [...s.fauna.all()].find((m) => m.g.id === 'hunt:a')!;
+  const b = [...s.fauna.all()].find((m) => m.g.id === 'hunt:b')!;
+  s.fauna.provoke(a, s.game);
+  ok(b.g.fearUntil > s.game.time, 'striking a deer frightens the roe deer grazing near it');
+  // A sleeping beast walked up to wakes, and its herd with it.
+  s.fauna.pin({ id: 'hunt:c', species: 'roe_deer', members: [{ x: X - 2, y: Y, z: null }], home: { x: X - 2, y: Y, r: 10 }, water: null }, s.game);
+  const c = [...s.fauna.all()].find((m) => m.g.id === 'hunt:c')!;
+  c.state = 'sleep';
+  c.g.planAt = s.game.time + 9999;
+  c.nextAt = s.game.time - 1;
+  s.game.time += 5;
+  s.fauna.run(s.game, s.presence());
+  ok(c.state !== 'sleep' && c.g.fearUntil > s.game.time - 5, `a sleeping roe deer walked up to wakes and takes fright (${c.state})`);
+  s.dispose();
+}
+{
+  // Where a beast was is remembered when the wanderer leaves, and it is put back there.
+  const s = session();
+  s.state.mode = 'local';
+  const gr = { id: 'w:mem:0:roe_deer:0', species: 'roe_deer', members: [{ x: X + 20, y: Y + 4, z: null }], home: { x: X + 20, y: Y + 4, r: 20 }, water: null };
+  s.fauna.take([gr], s.game);
+  const before = [...s.fauna.all()].find((m) => m.g.id === gr.id);
+  const was = before ? { x: before.x, y: before.y } : null;
+  s.fauna.clear(s.game.time);
+  s.game.time += 600;
+  s.fauna.take([{ ...gr, members: [{ x: X - 25, y: Y - 10, z: null }] }], s.game);
+  const after = [...s.fauna.all()].find((m) => m.g.id === gr.id);
+  ok(!!was && !!after && after.x === was.x && after.y === was.y, `a roe deer seen and left is found where it was (${was ? `${was.x - X},${was.y - Y}` : '-'} then ${after ? `${after.x - X},${after.y - Y}` : '-'})`);
+  s.dispose();
+}
+{
+  // Snares: marked on the local map, and gathered into sites on the travel map.
+  const s = session();
+  s.snares.set(X + 3, Y, s.game.time);
+  s.snares.set(X + 12, Y + 5, s.game.time);
+  s.snares.set(X + 400, Y, s.game.time);
+  s.snares.list[1].caught = 'hare';
+  ok(s.game.snareAt(X + 3, Y) === 'set' && s.game.snareAt(X + 12, Y + 5) === 'caught' && s.game.snareAt(X + 4, Y) === null, 'each snare is marked where it is set, and one with a catch shows it');
+  const sites = s.hunt.trapSites();
+  const near = sites.find((t) => t.n === 2);
+  ok(sites.length === 2 && !!near && near.caught === 1, `snares near together are one site on the travel map (${sites.map((t) => t.n).join(' and ')})`);
+  ok(!!near && Math.abs(near.x - (X + 7)) <= 1 && Math.abs(near.y - (Y + 2)) <= 1, 'marked at their middle');
+  ok(!!near && /two snares/.test(s.hunt.trapWords(near)), `told in words: "${near ? s.hunt.trapWords(near) : ''}"`);
+  s.state.mode = 'travel';
+  if (near) s.hunt.goToTraps(near);
+  ok((s.state.mode as string) === 'local' && Math.hypot(s.game.px - (X + 7), s.game.py - (Y + 2)) <= 3, `going to them from the travel map puts the wanderer among them (${s.game.px - X}, ${s.game.py - Y})`);
+  s.dispose();
+}
+{
+  // A skilled tracker sees the faint signs on firm ground near at hand; a novice does not.
+  const s = session();
+  s.people.tracks.add(X + 2, Y, null, { t: s.game.time - 60, by: 'animal:z', kind: 'animal:red_deer', dir: 'e', faint: true });
+  s.player!.need(Skills).d.levels.tracking = 50;
+  const skilled = s.game.tracksOn(X + 2, Y, null);
+  s.player!.need(Skills).d.levels.tracking = 5;
+  const novice = s.game.tracksOn(X + 2, Y, null);
+  ok(skilled < 0 && novice === 0, `faint signs are drawn for a tracker of 50, not of 5 (${skilled}, ${novice})`);
+  s.dispose();
+}
+
+console.log('\nwounds that kill');
+{
+  // Shot with a hunting bow until struck, then left: how long the beast lives (over 20 tries each).
+  const lives = (species: string) => {
+    const out: number[] = [];
+    for (let k = 0; k < 20; k++) {
+      const s = session();
+      const p = s.player!, inv = p.need(Inventory);
+      p.need(Skills).d.levels.archery = 40 + k * 3;
+      inv.d.items.push({ ...makeItem('hunting_bow'), loc: { at: 'hand', hand: 'both' } }, { ...makeItem('arrows', { qty: 20 }), loc: { at: 'back' } });
+      for (let dy = -10; dy <= 10; dy++) for (let dx = -10; dx <= 10; dx++) if (s.map.object(X + dx, Y + dy)) s.map.setObject(X + dx, Y + dy, 0);
+      s.state.mode = 'local';
+      s.game.ambient = { light: 1, range: 30 };
+      p.need(Skills).d.levels.tracking = 50;
+      s.fauna.pin({ id: `hunt:k${k}`, species, members: [{ x: X + 4 + (k % 5), y: Y + (k % 3) - 1, z: null }], home: { x: X + 5, y: Y, r: 4 }, water: null }, s.game);
+      s.game.refresh();
+      const a = [...s.fauna.all()][0];
+      let struck = false;
+      for (let i = 0; i < 12 && !struck; i++) {
+        const f = s.fights.shootable()[0];
+        if (!f) break;
+        const before = s.hud.log.length;
+        s.fights.shoot(f, s.fights.missiles().find((x) => x.how === 'shoot')!, null);
+        struck = s.hud.log.slice(before).some((l) => l.tone === 'hit' || l.tone === 'kill');
+      }
+      if (!struck || !a) {
+        s.dispose();
+        continue;
+      }
+      const h = s.fauna.healthOf(a, s.game.time);
+      let t = 0;
+      while (!h.dead && t < 3600) {
+        t += 10;
+        h.advance(10, {}, s.game.time + t);
+      }
+      out.push(h.dead ? t : Infinity);
+      s.dispose();
+    }
+    return out.sort((a, b) => a - b);
+  };
+  const duck = lives('duck');
+  ok(duck.length >= 10 && duck.filter((t) => t <= 300).length >= duck.length * 0.8, `a duck struck by an arrow mostly dies within five minutes (${duck.map((t) => (t === Infinity ? 'lived' : `${t}s`)).join(', ')})`);
+  const deer = lives('red_deer');
+  const soon = deer.filter((t) => t <= 3600).length;
+  ok(deer.length >= 10 && soon >= deer.length * 0.15, `a red deer struck once by an arrow dies of it within the hour about one time in five (${soon} of ${deer.length})`);
 }
 
 console.log(failures ? `\n${failures} failed` : '\nall hunting tests passed');

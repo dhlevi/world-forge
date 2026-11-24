@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<{
   /** Settlements' plans, drawn over the land (travel map, close in). */
   plans?: PlanImage[];
   /** Signs of game found (travel map; game/hunt.ts), and the one chosen. */
-  signs?: { id: string; lon: number; lat: number }[];
+  signs?: { id: string; lon: number; lat: number; kind?: 'game' | 'trap' }[];
   sign?: string;
 }>(), { signs: () => [], sign: '', chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, roadSeen: null, fogVersion: 0, plans: () => [] });
 const emit = defineEmits<{ sign: [id: string]; choose: [id: string]; pick: [ll: LL]; view: [box: { west: number; south: number; east: number; north: number; km: number }]; level: [i: number] }>();
@@ -352,7 +352,7 @@ function draw(): void {
   }
 }
 
-/** A sign of game: a paw print in a ring. */
+/** A sign of game: a paw print in a ring; the wanderer's snares: a noose in a ring. */
 function drawSigns(g: CanvasRenderingContext2D): void {
   for (const sg of props.signs) {
     const [x, y] = toScreen(...merc(sg.lon, sg.lat));
@@ -366,6 +366,17 @@ function drawSigns(g: CanvasRenderingContext2D): void {
     g.strokeStyle = on ? '#a3261b' : '#5a3a1a';
     g.stroke();
     g.fillStyle = '#5a3a1a';
+    if (sg.kind === 'trap') {
+      // A snare: a noose on its peg.
+      g.strokeStyle = '#5a3a1a';
+      g.lineWidth = 1.6;
+      g.beginPath();
+      g.arc(x, y - 1, 3.2, 0, Math.PI * 2);
+      g.moveTo(x, y + 2.2);
+      g.lineTo(x, y + 5.5);
+      g.stroke();
+      continue;
+    }
     g.beginPath();
     g.ellipse(x, y + 2, 3, 2.4, 0, 0, Math.PI * 2);
     g.fill();

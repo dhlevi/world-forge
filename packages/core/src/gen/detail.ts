@@ -86,6 +86,24 @@ export class DetailSampler {
     return this.rivers?.nearest(lon, lat, maxM) ?? null;
   }
 
+  /**
+   * A lake (fresh water) rather than the sea at a point: the world's lakes, by their depth and
+   * level, whatever the height of their bed (a lake's bed can lie below the sea's level).
+   */
+  isLake(lon: number, lat: number, hh: number): boolean {
+    const { W, H, lakeDepth, waterLevel } = this.world;
+    if (!lakeDepth || !waterLevel) return false;
+    const fx = ((lon + 180) / 360) * W - 0.5;
+    const fy = ((90 - lat) / 180) * H - 0.5;
+    const i0 = Math.floor(fx), j0 = Math.floor(fy);
+    const tx = fx - i0, ty = Math.min(1, Math.max(0, fy - j0));
+    const a = ((i0 % W) + W) % W, b = (a + 1) % W;
+    const o0 = Math.min(H - 1, Math.max(0, j0)) * W, o1 = Math.min(H - 1, Math.max(0, j0 + 1)) * W;
+    const bl = (f: Float32Array) =>
+      (f[o0 + a] * (1 - tx) + f[o0 + b] * tx) * (1 - ty) + (f[o1 + a] * (1 - tx) + f[o1 + b] * tx) * ty;
+    return bl(lakeDepth) > 1 && hh < bl(waterLevel);
+  }
+
   /** Sea or lake at full detail, matching the drawn shoreline; pass the height if already known. */
   isWater(lon: number, lat: number, hh = this.height(lon, lat)): boolean {
     if (hh <= 0) return true;

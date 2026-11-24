@@ -31,7 +31,7 @@ design round); XL, several stages (a new system that others build on).
 | B2 | People crowd buildings until the wanderer cannot move through them (temples, guildhalls). **Done** (21 November 2026). | M |
 | W8 | On the travel map, roads appear too late, after the wanderer has walked off them. **Done** (21 November 2026). | S |
 | D1 | Dwarven cities (delves) have no people in them. **Done** (21 November 2026). | M |
-| W4 | The sea can be drunk from; it should be salt and undrinkable (lakes and rivers stay fresh). **Done** (21 November 2026). | S |
+| W4 | The sea can be drunk from; it should be salt and undrinkable (lakes and rivers stay fresh). **Done** (21 November 2026; lakes below the sea's level no longer taken for the sea, and a well in every settlement, 24 November 2026). | S |
 
 ### Phase 2: quick wins
 
