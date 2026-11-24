@@ -242,6 +242,47 @@
         "butcher"
       ],
       "about": "Fresh meat from a butchered animal. It will not keep long; roast it, or dry it."
+    },
+    {
+      "id": "roast_meat",
+      "name": "roast meat",
+      "plural": "cuts of roast meat",
+      "kind": "food",
+      "weight": 0.6,
+      "bulk": 0.8,
+      "size": "small",
+      "value": 4,
+      "stack": 8,
+      "uses": 3,
+      "useWord": "portions",
+      "food": {
+        "kcal": 240,
+        "verb": "eat some of the roast meat"
+      },
+      "durable": false,
+      "sold": [
+        "market",
+        "butcher"
+      ],
+      "about": "Meat roasted over a fire: good to eat cold, and it keeps a little longer than raw."
+    },
+    {
+      "id": "roast_rabbit",
+      "name": "roast rabbit",
+      "kind": "food",
+      "weight": 0.9,
+      "bulk": 1.2,
+      "size": "small",
+      "value": 4,
+      "stack": 4,
+      "uses": 4,
+      "useWord": "portions",
+      "food": {
+        "kcal": 165,
+        "verb": "eat some of the roast rabbit"
+      },
+      "durable": false,
+      "about": "A rabbit roasted whole on a spit."
     }
   ]
 }

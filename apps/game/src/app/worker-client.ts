@@ -142,6 +142,10 @@ export class WorkerClient {
     this.ask((id) => ({ type: 'climate', id, lon, lat }), (m) =>
       m.type === 'climate' ? { warm: m.warm, cold: m.cold, precipSummer: m.precipSummer, precipWinter: m.precipWinter, windU: m.windU, windV: m.windV } : { warm: 20, cold: 0, precipSummer: 600, precipWinter: 600, windU: 0.5, windV: 0 });
 
+  /** The wild game a place holds: species, and groups to a chunk (fieldcraft.md, stage 2). */
+  game = (lon: number, lat: number, winter: boolean): Promise<{ id: string; density: number }[]> =>
+    this.ask((id) => ({ type: 'game', id, lon, lat, winter }), (m) => (m.type === 'game' ? m.species : []));
+
   /** Forgets kept plan images (a new world). */
   clearPlans(): void {
     this.plans.clear();

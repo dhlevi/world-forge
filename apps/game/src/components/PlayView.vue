@@ -16,6 +16,7 @@ import Portrait from './Portrait.vue';
 import MessageLog from './MessageLog.vue';
 import { ROOF_MODES, ROOF_WORDS } from '../game/roofs-mode';
 import type { PlayScreen } from '../screens/play';
+import type { TileAction } from '../game/fieldcraft';
 
 const props = defineProps<{ screen: PlayScreen }>();
 const screen = props.screen;
@@ -41,6 +42,36 @@ let ready = false;
 let pointer: [number, number] | null = null;
 /** The note of what is under the pointer (or the look cursor): where it hangs, and to which side. */
 const tip = reactive({ show: false, x: 0, y: 0, left: false, up: false });
+/** The skill menu (right-click on the local map; game/fieldcraft.ts): what can be done at a tile. */
+const menu = reactive({ show: false, x: 0, y: 0, tx: 0, ty: 0, left: false, up: false, items: [] as TileAction[] });
+
+function onContext(e: MouseEvent): void {
+  e.preventDefault();
+  menu.show = false;
+  if (hud.mode !== 'play' || st.mode !== 'local' || !screen.active) return;
+  const r = el.value!.getBoundingClientRect();
+  const px = e.clientX - r.left, py = e.clientY - r.top;
+  const [tx, ty] = renderer.tileAt(px, py);
+  const items = session.field.actions(tx, ty);
+  if (!items.length) return;
+  Object.assign(menu, { show: true, x: px, y: py, tx, ty, items, left: px > r.width - 340, up: py > r.height - 40 - items.length * 34 });
+}
+
+function pickAction(a: TileAction): void {
+  menu.show = false;
+  if (a.why) {
+    session.say(a.why);
+    redraw();
+    return;
+  }
+  background(session.field.act(a.id, menu.tx, menu.ty).then(() => redraw()), 'the skill menu');
+}
+
+function closeMenu(): void {
+  menu.show = false;
+  // A click stops a walk under way.
+  session.field.cancelWalk();
+}
 
 /** Hangs the note by the look cursor's tile, else by the pointer, turned inward near the map's edges. */
 function placeTip(): void {
@@ -118,6 +149,17 @@ const DIR: Record<string, [number, number]> = {
 };
 
 function onKey(e: KeyboardEvent): void {
+  // Any key stops a walk under way (the skill menu's), and does nothing else.
+  if (session.field.busy) {
+    session.field.cancelWalk();
+    e.preventDefault();
+    return;
+  }
+  if (menu.show && e.code === 'Escape') {
+    menu.show = false;
+    e.preventDefault();
+    return;
+  }
   if (e.code === 'KeyT' && !e.ctrlKey && !e.metaKey && hud.mode === 'play') {
     if (st.mode === 'local') session.toTravel();
     else session.toLocal();
@@ -282,7 +324,17 @@ onBeforeUnmount(() => {
 
 <template>
   <div class="play">
-    <div v-show="st.mode === 'local'" ref="el" class="map" @pointermove="onPointer" @pointerleave="onPointerOut" />
+    <div v-show="st.mode === 'local'" ref="el" class="map" @pointermove="onPointer" @pointerleave="onPointerOut" @contextmenu="onContext" @pointerdown="closeMenu" />
+    <div
+      v-if="menu.show && st.mode === 'local' && screen.active"
+      class="skill-menu"
+      :style="{ left: `${menu.x}px`, top: `${menu.y}px`, transform: `translate(${menu.left ? '-100%' : '0'}, ${menu.up ? '-100%' : '0'})` }"
+      @contextmenu.prevent
+    >
+      <button v-for="a in menu.items" :key="a.id" :class="{ off: !!a.why }" :title="a.why ?? ''" @click="pickAction(a)">
+        {{ a.label }}<span v-if="a.why" class="why">{{ a.why }}</span>
+      </button>
+    </div>
     <TravelView
       v-if="st.mode === 'travel'"
       class="map"
@@ -293,6 +345,7 @@ onBeforeUnmount(() => {
       :request-area="app.worker.requestArea"
       :request-plan="app.worker.plan"
       :player="session.player"
+      :hunt="session.hunt"
       @zoom-in="session.toLocal()"
       @camp="screen.showCamp()"
       :dark="st.darkness"
@@ -301,7 +354,7 @@ onBeforeUnmount(() => {
     </TravelView>
     <MessageLog v-else :log="hud.log" />
     <div
-      v-if="tip.show && st.mode === 'local' && screen.active"
+      v-if="tip.show && !menu.show && st.mode === 'local' && screen.active"
       class="tile-tip"
       :style="{ left: `${tip.x}px`, top: `${tip.y}px`, transform: `translate(${tip.left ? '-100%' : '0'}, ${tip.up ? '-100%' : '0'})` }"
     >

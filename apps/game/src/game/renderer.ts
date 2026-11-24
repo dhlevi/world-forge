@@ -39,7 +39,7 @@
  * what (the sky's colour at dawn, by day, at dusk and by night, or the warm light of a fire), snow
  * lies over open ground, and the broadleaf trees and the grass turn with the seasons.
  */
-import { Application, Container, Graphics, Sprite, Texture, type Ticker } from 'pixi.js';
+import { Application, Container, Graphics, Sprite, Text, Texture, type Ticker } from 'pixi.js';
 // Pixi builds its shaders without eval with this; the desktop app's page allows no eval.
 import 'pixi.js/unsafe-eval';
 import { GROUND_TILES, OBJECT_TILES, joinsWith, objectId, standsTall, type Facing, type Season, type TileDef } from '@worldforge/core/local/tiles';
@@ -52,7 +52,10 @@ import { levelOf, stepBetween } from './levels';
 import { covers, roofPlane, type Roof } from '@worldforge/core/local/roofs';
 import type { RoofMode } from './roofs-mode';
 import { TERRAIN_OF, blendsAt } from './terrain';
-import { WAYS_IN, type Game } from './game';
+import { WAYS_IN, type Game, type Fx } from './game';
+
+/** How long each effect shows (ms; a missile's flight is added to its own). */
+const FX_MS: Record<Fx['kind'], number> = { float: 2400, shot: 0, flash: 320, lunge: 220 };
 import { FigureArt } from './figure-art';
 
 const REMEMBERED = 0x6a6e82;
@@ -135,6 +138,18 @@ export class Renderer {
   private cursor = new Graphics();
   /** Rings round the ways in from the land (cave mouths, dungeons' steps) seen, so they stand out. */
   private marks = new Graphics();
+  /**
+   * What happens shown over the map (game/game.ts, Fx): words rising over a tile (a hit, a miss), a
+   * missile in flight, a flash where a blow lands; the wanderer's lunge is in the place of the
+   * figure. Drawn each frame by the ticker, and let go when done.
+   */
+  private fxLayer = new Container();
+  private fxG = new Graphics();
+  private fxTexts: Text[] = [];
+  /** The numbers over those that could be aimed at. */
+  private tgtTexts: Text[] = [];
+  /** The game last drawn (its effects are drawn each frame). */
+  private shown: Game | null = null;
   /** Lines where the level changes. */
   private edges = new Graphics();
   /** Shadows cast by walls and other tall things on the ground to their south. */
@@ -162,7 +177,8 @@ export class Renderer {
   async init(el: HTMLElement): Promise<void> {
     await this.app.init({ resizeTo: el, background: '#07080b', antialias: false, autoDensity: true, resolution: window.devicePixelRatio || 1 });
     el.appendChild(this.app.canvas);
-    this.app.stage.addChild(this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor);
+    this.app.stage.addChild(this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor, this.fxLayer);
+    this.fxLayer.addChild(this.fxG);
     this.solidTex = this.solidTexture();
     this.objects.addChild(this.player);
     this.app.ticker.add(this.animate);
@@ -190,6 +206,7 @@ export class Renderer {
   /** Turns over the pictures of animated looks (all in step, by the clock). */
   private animate = (_t: Ticker): void => {
     const now = performance.now();
+    this.drawFx(now);
     for (const { sprite, look } of this.animated) {
       const tex = look.tex[Math.floor(now / look.ms) % look.tex.length];
       if (sprite.texture !== tex) sprite.texture = tex;
@@ -207,7 +224,7 @@ export class Renderer {
     }
     // Behind by what is left of the step: the map seems to move under the wanderer.
     const left = this.slide ? 1 - t : 0, ox = (this.slide?.dx ?? 0) * left * T, oy = (this.slide?.dy ?? 0) * left * T;
-    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor]) {
+    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor, this.fxLayer]) {
       c.x = (ox - T) * z;
       c.y = (oy - T) * z;
     }
@@ -216,8 +233,12 @@ export class Renderer {
     const tex = look.tex.length > 1 ? look.tex[Math.floor(now / look.ms) % look.tex.length] : look.tex[0];
     if (this.player.texture !== tex) this.player.texture = tex;
     this.player.scale.x = me.flip ? -1 : 1;
-    this.player.x = me.x - ox + look.dx + (me.flip ? tex.frame.width : 0);
-    this.player.y = me.y - oy + look.dy;
+    // A lunge at a foe (a blow struck): toward it and back.
+    const lunge = this.shown?.fx.find((e) => e.kind === 'lunge');
+    const lk = lunge ? Math.min(1, (now - lunge.t0) / FX_MS.lunge) : 1;
+    const lx = lunge && lunge.kind === 'lunge' ? Math.sin(Math.PI * lk) * lunge.dx * T * 0.35 : 0, ly = lunge && lunge.kind === 'lunge' ? Math.sin(Math.PI * lk) * lunge.dy * T * 0.35 : 0;
+    this.player.x = me.x - ox + look.dx + (me.flip ? tex.frame.width : 0) + lx;
+    this.player.y = me.y - oy + look.dy + ly;
   }
 
   /**
@@ -658,7 +679,56 @@ export class Renderer {
     }
   }
 
+  /** Tile to the effects layer's own pixels (the middle of the tile). */
+  private fxAt(tx: number, ty: number): [number, number] {
+    return [(tx + this.ox) * TILE_PX + TILE_PX / 2, (ty + this.oy) * TILE_PX + TILE_PX / 2];
+  }
+
+  private drawFx(now: number): void {
+    const g = this.shown;
+    const fx = this.fxG;
+    fx.clear();
+    let n = 0;
+    if (!g) return;
+    g.fx = g.fx.filter((e) => now - e.t0 < FX_MS[e.kind] + (e.kind === 'shot' ? e.ms : 0));
+    for (const e of g.fx) {
+      const age = now - e.t0;
+      if (e.kind === 'float') {
+        const k = age / FX_MS.float;
+        const [x, y] = this.fxAt(e.x, e.y);
+        let t = this.fxTexts[n];
+        if (!t) {
+          t = new Text({ text: '', style: { fontFamily: 'Georgia, serif', fontSize: 10, fontWeight: 'bold', fill: 0xffffff, stroke: { color: 0x10100c, width: 3 } }, resolution: 4 });
+          t.anchor.set(0.5, 1);
+          this.fxTexts.push(t);
+          this.fxLayer.addChild(t);
+        }
+        n++;
+        t.visible = true;
+        t.text = e.text;
+        t.style.fill = e.color;
+        t.x = x;
+        t.y = y - TILE_PX * 0.55 - k * TILE_PX * 0.9 - (e.row ?? 0) * 10;
+        t.alpha = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+      } else if (e.kind === 'shot') {
+        // The missile flies from one tile to the other, then is gone.
+        const k = Math.min(1, age / e.ms);
+        if (k >= 1) continue;
+        const [x0, y0] = this.fxAt(e.from[0], e.from[1]), [x1, y1] = this.fxAt(e.to[0], e.to[1]);
+        const d = Math.hypot(x1 - x0, y1 - y0) || 1, ux = (x1 - x0) / d, uy = (y1 - y0) / d;
+        const x = x0 + (x1 - x0) * k, y = y0 + (y1 - y0) * k - Math.sin(Math.PI * k) * Math.min(10, d * 0.08);
+        fx.moveTo(x - ux * 5, y - uy * 5).lineTo(x + ux * 2, y + uy * 2).stroke({ color: e.color ?? 0x3a2a18, width: 1.3 });
+      } else if (e.kind === 'flash') {
+        const k = age / FX_MS.flash;
+        const [x, y] = this.fxAt(e.x, e.y);
+        fx.circle(x, y, TILE_PX * (0.3 + k * 0.5)).stroke({ color: e.color ?? 0xd03020, width: 1.6, alpha: 1 - k });
+      }
+    }
+    for (let i = n; i < this.fxTexts.length; i++) this.fxTexts[i].visible = false;
+  }
+
   draw(game: Game): void {
+    this.shown = game;
     // The map and what lies about are read on the ground here; floors are named where drawn.
     const floor = game.z;
     game.map.floor = null;
@@ -676,7 +746,7 @@ export class Renderer {
     this.app.resize();
     this.layout();
     const z = this.zoom;
-    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor]) c.scale.set(z);
+    for (const c of [this.ground, this.blends, this.decor, this.snow, this.shadows, this.birdShadows, this.edges, this.objects, this.canopy, this.aloft, this.marks, this.cursor, this.fxLayer]) c.scale.set(z);
     /** Each screen tile: 1 if what stands on it casts a shadow, 2 if it is ground that can take one. */
     const tall = new Uint8Array(this.cols * this.rows);
     /** Each screen tile's terrain (-2 where not drawn as ground), ground and tint, for the edges between kinds of ground. */
@@ -838,8 +908,40 @@ export class Renderer {
       this.marks.ellipse(x + 5, y + 6, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
       this.marks.ellipse(x + 10, y + 10, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
     }
+    // The trail read by Tracking (game/hunt.ts): small amber marks along it.
+    if (!slice) for (let i = 0; i < this.cols * this.rows; i++) {
+      if (Number.isNaN(levels[i])) continue;
+      const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
+      if (!game.trailAt(tx, ty)) continue;
+      const x = (i % this.cols) * TILE_PX + TILE_PX / 2, y = Math.floor(i / this.cols) * TILE_PX + TILE_PX / 2;
+      this.marks.poly([x, y - 3, x + 3, y, x, y + 3, x - 3, y]).fill({ color: 0xffb030, alpha: vis[i] ? 0.85 : 0.5 }).stroke({ color: 0x3a2408, width: 0.6, alpha: 0.7 });
+    }
     this.cursor.clear();
-    if (game.cursor) {
+    // The others that could be aimed at, numbered (the shoot menu: 1 to 9 choose).
+    let nl = 0;
+    if (game.aiming) for (const t of game.targets) {
+      if (!game.isVisible(t.x, t.y)) continue;
+      let tx = this.tgtTexts[nl];
+      if (!tx) {
+        tx = new Text({ text: '', style: { fontFamily: 'Georgia, serif', fontSize: 8, fontWeight: 'bold', fill: 0xfff0c0, stroke: { color: 0x10100c, width: 2.5 } }, resolution: 4 });
+        tx.anchor.set(0.5, 1);
+        this.tgtTexts.push(tx);
+        this.fxLayer.addChild(tx);
+      }
+      tx.visible = true;
+      tx.text = t.label;
+      tx.x = (t.x + this.ox) * TILE_PX + TILE_PX / 2;
+      tx.y = (t.y + this.oy) * TILE_PX - 1;
+      nl++;
+    }
+    for (let i = nl; i < this.tgtTexts.length; i++) this.tgtTexts[i].visible = false;
+    if (game.cursor && game.aiming) {
+      // The target: red brackets at its corners.
+      const x = (game.cursor[0] + this.ox) * TILE_PX, y = (game.cursor[1] + this.oy) * TILE_PX, T = TILE_PX, k = 5, w = 1.6;
+      for (const [cx, cy, sx, sy] of [[x, y, 1, 1], [x + T, y, -1, 1], [x, y + T, 1, -1], [x + T, y + T, -1, -1]]) {
+        this.cursor.moveTo(cx - sx * 2, cy + sy * k).lineTo(cx - sx * 2, cy - sy * 2).lineTo(cx + sx * k, cy - sy * 2).stroke({ color: 0xff3a2a, width: w });
+      }
+    } else if (game.cursor) {
       this.cursor.rect((game.cursor[0] + this.ox) * TILE_PX, (game.cursor[1] + this.oy) * TILE_PX, TILE_PX, TILE_PX).stroke({ color: 0xffd060, width: 1 / z });
     }
   }

@@ -83,6 +83,8 @@ export interface Track {
   blood?: boolean;
   /** Pressed into lying snow (backlog W2): plain to anyone, and kept until fresh snow or a thaw. */
   snow?: boolean;
+  /** Not a print but a sign on firm ground (bent grass, a scuff, droppings; fieldcraft.md, stage 2): not drawn, and read only by a tracker. */
+  faint?: boolean;
 }
 
 /** Ground that always takes tracks, and ground that takes them when wet. */
@@ -132,6 +134,19 @@ export class Tracks {
   /** The tracks on a tile still to be seen at a time, newest last. */
   at(x: number, y: number, z: number | null, now: number): Track[] {
     return (this.tiles.get(key(x, y, z)) ?? []).filter((t) => now - t.t < lasts(t) && t.t <= now);
+  }
+
+  /** The tracks a maker left within `r` tiles of a place, on the ground, still to be seen: where and when, oldest first. */
+  ofMaker(by: string, x: number, y: number, r: number, now: number): { x: number; y: number; t: number }[] {
+    const out: { x: number; y: number; t: number }[] = [];
+    for (const [k, l] of this.tiles) {
+      const tz = k % 128;
+      if (tz !== 127) continue;
+      const rest = (k - tz) / 128, ty = (rest % 2097152) - 1048576, tx = Math.floor(rest / 2097152) - 1048576;
+      if (Math.abs(tx - x) > r || Math.abs(ty - y) > r) continue;
+      for (const t of l) if (t.by === by && !t.blood && now - t.t < lasts(t) && t.t <= now) out.push({ x: tx, y: ty, t: t.t });
+    }
+    return out.sort((a, b) => a.t - b.t);
   }
 
   /** Lets old tracks go; rain or falling snow wash out (or cover) all but the freshest. */
@@ -200,7 +215,10 @@ export function readTracks(ts: Track[], now: number, tracking: number): string |
   return bloodText ? `${bloodText} ${printText}` : printText;
 }
 
-function readPrints(ts: Track[], now: number, tracking: number): string {
+function readPrints(all: Track[], now: number, tracking: number): string {
+  // Signs on firm ground are for a tracker's eye only.
+  const ts = tracking >= 20 ? all : all.filter((t) => !t.faint);
+  if (!ts.length) return '';
   // In snow the prints are plain: anyone reads them as a fair tracker would.
   if (ts.some((t) => t.snow)) tracking = Math.max(tracking + 30, 45);
   if (tracking < 15) return ts.every((t) => t.kind.startsWith('animal:')) ? 'Tracks in the ground.' : 'Footprints in the ground.';
@@ -225,4 +243,63 @@ function readPrints(ts: Track[], now: number, tracking: number): string {
     if (whose.length) out += ` (${whose.join(', ')})`;
   }
   return `${out}.`;
+}
+
+// ---- Trails ------------------------------------------------------------------------------------------
+
+/** What laying a trail needs of the map. */
+export interface TrailMap {
+  loaded(x: number, y: number): boolean;
+  passableAt(x: number, y: number, z: number | null): boolean;
+  groundAt(x: number, y: number, z: number | null): number;
+}
+
+/**
+ * Lays the trail a beast (or a herd) left on its way to where it is now (fieldcraft.md, stage 2):
+ * from `to` back along a wandering way of `steps` tiles, bending toward `toward` if given (so that
+ * it passes near there), the newest track at `to` (made at `newest`) and each step back older by
+ * `perStep` seconds. Prints where the ground takes them, faint signs elsewhere; none on water or
+ * indoors. `r` is the trail's own draw (seeded, so the same beast lays the same trail).
+ */
+export function layTrail(tracks: Tracks, map: TrailMap, o: { by: string; kind: string; to: Spot; steps: number; newest: number; perStep: number; toward?: Spot; r: () => number }): number {
+  let x = o.to.x, y = o.to.y, t = o.newest, laid = 0;
+  // A heading to walk back along, changing a little each step.
+  let hx = o.toward ? o.toward.x - x : o.r() * 2 - 1, hy = o.toward ? o.toward.y - y : o.r() * 2 - 1;
+  const seen = new Set<string>([`${x},${y}`]);
+  const facing = (dx: number, dy: number): Facing => (Math.abs(dx) >= Math.abs(dy) ? (dx > 0 ? 'e' : 'w') : dy > 0 ? 's' : 'n');
+  let lastDir: Facing = 's';
+  for (let i = 0; i < o.steps; i++) {
+    // The tile the beast came from: the open neighbour most along the heading, with a little wander.
+    if (o.toward) {
+      hx = hx * 0.7 + (o.toward.x - x) * 0.3;
+      hy = hy * 0.7 + (o.toward.y - y) * 0.3;
+    }
+    hx += (o.r() - 0.5) * 0.8;
+    hy += (o.r() - 0.5) * 0.8;
+    const len = Math.hypot(hx, hy) || 1;
+    let best: [number, number] | null = null, bs = -Infinity;
+    for (let dy = -1; dy <= 1; dy++) for (let dx = -1; dx <= 1; dx++) {
+      if (!dx && !dy) continue;
+      const nx = x + dx, ny = y + dy;
+      if (seen.has(`${nx},${ny}`) || !map.loaded(nx, ny) || !map.passableAt(nx, ny, null)) continue;
+      const sc = (dx * hx + dy * hy) / len / Math.hypot(dx, dy) + o.r() * 0.3;
+      if (sc > bs) {
+        bs = sc;
+        best = [nx, ny];
+      }
+    }
+    // Its track here, facing the way it went (from there to here).
+    const dir: Facing = best ? facing(x - best[0], y - best[1]) : lastDir;
+    const g = GROUND_TILES[map.groundAt(x, y, null)];
+    if (g && !g.water && !g.name.startsWith('floor_')) {
+      tracks.add(x, y, null, { t: Math.round(t), by: o.by, kind: o.kind, dir, ...(takesTracks(map.groundAt(x, y, null), false) ? {} : { faint: true }) });
+      laid++;
+    }
+    lastDir = dir;
+    if (!best || (o.toward && Math.abs(x - o.toward.x) <= 1 && Math.abs(y - o.toward.y) <= 1)) break;
+    [x, y] = best;
+    seen.add(`${x},${y}`);
+    t -= o.perStep;
+  }
+  return laid;
 }

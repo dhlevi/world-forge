@@ -103,6 +103,8 @@ export interface AnimalGroup {
   members: Spot[];
   home: { x: number; y: number; r: number };
   water: Spot | null;
+  /** A group the hunt placed (game/hunt.ts): its trail passes near here, where the hunter took it up. */
+  trailFrom?: Spot;
 }
 
 /** A people of the world, for character creation. */
@@ -302,6 +304,8 @@ export type ToWorker =
   | { type: 'site'; id: number; siteId: string; lon?: number; lat?: number }
   /** The climate at a place: its warmest and coldest months (°C). */
   | { type: 'climate'; id: number; lon: number; lat: number }
+  /** The wild game a place holds (worker/fauna.ts, gameAt). */
+  | { type: 'game'; id: number; lon: number; lat: number; winter: boolean }
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
   | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean }
   /** The residents about a tile at a time (game seconds), placed by their day plan (worker/people.ts). */
@@ -323,6 +327,7 @@ export type FromWorker =
   | { type: 'plan'; id: number; image: PlanImage | null }
   | { type: 'people'; id: number; people: PlacedPerson[]; radius: number }
   | { type: 'animals'; id: number; groups: AnimalGroup[]; radius: number }
+  | { type: 'game'; id: number; species: { id: string; density: number }[] }
   | { type: 'climate'; id: number; warm: number; cold: number; precipSummer: number; precipWinter: number; windU: number; windV: number }
   /** Something went wrong: with the id of the request it answers, or none (making the world, starting, a chunk). */
   | { type: 'error'; message: string; id?: number };

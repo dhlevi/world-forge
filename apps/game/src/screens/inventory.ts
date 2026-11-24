@@ -9,7 +9,7 @@
  * (Cooking), and reading a book that teaches (actors/learning.ts).
  */
 import { isGarment, soiled } from '../actors/items/soil';
-import { butcher } from '../world/hunting';
+import { butcher, skin } from '../world/hunting';
 import { fletch, fletchingNeeds } from '../rules/ranged';
 import { BRUSH_TOOLS } from '../rules/tasks';
 import { reactive } from 'vue';
@@ -46,7 +46,7 @@ export type Target = Dest | { at: 'ground'; x: number; y: number };
 
 export interface ItemAction {
   label: string;
-  target: Target | 'split' | 'consume' | 'cook' | 'mend' | 'read' | 'butcher' | 'fletch' | 'wash' | 'washall';
+  target: Target | 'split' | 'consume' | 'cook' | 'mend' | 'read' | 'butcher' | 'skin' | 'fletch' | 'wash' | 'washall';
   why?: string | null;
 }
 
@@ -330,6 +330,24 @@ export class InventoryScreen extends Screen {
     this.done(`${res.text}${dropped ? ' What you cannot carry you leave on the ground.' : ''}`);
   }
 
+  /** Skins a carcass before it is butchered (Hideworking). */
+  skin(r: Ref): void {
+    const it = this.item(r);
+    if (!it || it.def !== 'carcass') return;
+    const res = skin(this.actor, it, this.inv, this.play.now() + 10 * 60);
+    if (!res) {
+      this.state.message = it.skinned ? 'It is skinned already.' : 'You need a blade to skin it.';
+      return;
+    }
+    let dropped = 0;
+    for (const y of res.items) if (this.inv.stow(y)) {
+      this.game.ground.put(this.game.px, this.game.py, [y]);
+      dropped++;
+    }
+    this.play.advance(res.seconds);
+    this.done(`${res.text}${dropped ? ' What you cannot carry you leave on the ground.' : ''}`);
+  }
+
   /** Reads a book that teaches, for an hour. */
   read(r: Ref): void {
     const it = this.item(r);
@@ -418,6 +436,7 @@ export class InventoryScreen extends Screen {
     if (it.def === 'carcass') {
       const blade = BRUSH_TOOLS.some(([id]) => this.inv.d.items.some((i) => i.def === id));
       out.unshift({ label: 'Butcher (Survival)', target: 'butcher', why: blade ? null : 'You need a blade: a knife, a machete, an axe or a sword.' });
+      if (!it.skinned) out.unshift({ label: 'Skin (Hideworking)', target: 'skin', why: blade ? null : 'You need a blade: a knife, a machete, an axe or a sword.' });
     }
     if (it.def === 'feathers' && r.from === 'inv') {
       const need = fletchingNeeds(this.inv);
@@ -444,6 +463,7 @@ export class InventoryScreen extends Screen {
     else if (a.target === 'mend') this.mend(r);
     else if (a.target === 'read') this.read(r);
     else if (a.target === 'butcher') this.butcher(r);
+    else if (a.target === 'skin') this.skin(r);
     else if (a.target === 'fletch') this.fletch();
     else if (a.target === 'wash' || a.target === 'washall') {
       const it = this.item(r);

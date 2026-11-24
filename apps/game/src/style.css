@@ -55,6 +55,11 @@ button:disabled { opacity: 0.5; cursor: default; }
 /* The log, over the map's bottom left corner (above the travel map's bar). */
 .log { max-width: 560px; background: rgba(13, 15, 20, 0.8); border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; font-size: 0.9em; pointer-events: none; }
 .play > .log { grid-row: 1; grid-column: 1; align-self: end; justify-self: start; margin: 12px; position: relative; z-index: 1; }
+/* A fight's lines: a blow or shot landed, one taken, a miss, a kill (game/game.ts, LogTone). */
+.log .tone-hit { color: #ffd27a; }
+.log .tone-kill { color: #ffb070; font-weight: bold; }
+.log .tone-hurt { color: #ff8a78; }
+.log .tone-miss { color: #b8b8b0; }
 .log .t { color: var(--dim); font-variant-numeric: tabular-nums; }
 /* What is under the pointer, beside it. */
 .tile-tip {
@@ -62,6 +67,11 @@ button:disabled { opacity: 0.5; cursor: default; }
   border-radius: 6px; padding: 6px 10px; font-size: 0.9em; pointer-events: none; display: flex; flex-direction: column; gap: 2px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
+.skill-menu { position: absolute; z-index: 5; grid-row: 1; grid-column: 1; align-self: start; justify-self: start; display: flex; flex-direction: column; min-width: 240px; max-width: 340px; background: rgba(21, 25, 34, 0.97); border: 1px solid var(--line); border-radius: 6px; padding: 4px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
+.skill-menu button { text-align: left; border: none; background: none; padding: 5px 8px; border-radius: 4px; }
+.skill-menu button:hover { background: #2b2618; }
+.skill-menu button.off { color: var(--dim); }
+.skill-menu .why { display: block; font-size: 0.82em; color: var(--dim); }
 .tile-tip .head { color: var(--dim); font-size: 0.85em; text-transform: uppercase; letter-spacing: 0.05em; }
 
 @media (max-width: 760px) {

@@ -46,8 +46,8 @@ export class PlayScreen extends Screen {
     super();
     const w = app.worker;
     this.session = new PlaySession(
-      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, names: (c, s, n) => w.names(c, s, n), site: w.site, starts: () => app.state.starts },
-      { openCity: (id, at, arrived) => this.openCity(id, at, arrived), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r) },
+      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, game: w.game, names: (c, s, n) => w.names(c, s, n), site: w.site, starts: () => app.state.starts },
+      { openCity: (id, at, arrived) => this.openCity(id, at, arrived), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r), showCamp: () => this.showCamp() },
       o,
     );
   }

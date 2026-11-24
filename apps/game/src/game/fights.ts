@@ -9,7 +9,8 @@ import { GROUND_TILES } from '@worldforge/core/local/tiles';
 import { residentLines } from './person-card';
 import { Inventory } from '../actors/items/inventory';
 import { itemName, type Item } from '../actors/items/item';
-import { Health } from '../actors/health';
+import { Health, type HealthWound } from '../actors/health';
+import type { LogTone } from './game';
 import { animalLines } from '../world/fauna';
 import { carcassOf } from '../world/hunting';
 import { aimables, armsOf, beastStrikes, readyWeapon, strikeBeast, strikeChance, type Arms, type Blow, type BlowId, type Stance, type Target } from '../rules/combat';
@@ -172,7 +173,12 @@ export class Fights {
     g.facing = at.x > g.px ? 'e' : at.x < g.px ? 'w' : at.y < g.py ? 'n' : 's';
     g.time += ex.seconds;
     g.activity = 'work';
-    g.say(ex.text, ex.tip);
+    // Shown: the lunge, a flash where it lands, and what came of it over the foe.
+    g.effect({ kind: 'lunge', dx: Math.sign(at.x - g.px), dy: Math.sign(at.y - g.py) });
+    const outcome = this.outcome(ex.hit, ex.wounds, t.health, ex.killed || t.health.dead);
+    if (ex.hit && ex.wounds.length) g.effect({ kind: 'flash', x: at.x, y: at.y });
+    g.effect({ kind: 'float', x: at.x, y: at.y, text: outcome.text, color: outcome.color });
+    g.say(ex.text, ex.tip, outcome.tone);
     // Striking someone who was not fighting you is a crime (and remembered), seen by those about.
     if (f.kind === 'person') this.s.justice.struckPerson(f.r);
     // Blood drawn close to gets on the one who drew it.
@@ -218,7 +224,10 @@ export class Fights {
       this.woken = true;
       g.say('You wake to an attack!');
     }
-    g.say(ex.text, ex.tip);
+    const o = this.outcome(ex.hit, ex.wounds, h, h.dead);
+    g.effect({ kind: 'float', x: g.px, y: g.py, text: ex.hit && ex.wounds.length ? `${o.text.replace(/^Hit: /, '')}!` : ex.hit ? 'Blocked' : 'Missed you', color: ex.hit && ex.wounds.length ? 0xff5040 : 0xc0c0c0 });
+    if (ex.hit && ex.wounds.length) g.effect({ kind: 'flash', x: g.px, y: g.py, color: 0xff3020 });
+    g.say(ex.text, ex.tip, ex.hit && ex.wounds.length ? 'hurt' : 'miss');
     this.s.raiseAlarm();
     this.s.travel.stop();
     this.s.practice.flush();
@@ -312,7 +321,7 @@ export class Fights {
   }
 
   /** The chance of a missile at a foe now, and what lies in the way. */
-  shotAt(f: Foe, m: Missile, aim: string | null): { chance: number; mods: Mod[]; dist: number; inRange: boolean; cover: string[]; person: string | null; blocked: string | null } {
+  shotAt(f: Foe, m: Missile, aim: string | null): { chance: number; mods: Mod[]; dist: number; inRange: boolean; cover: string[]; person: string | null; blocked: string | null; clear: number } {
     const p = this.s.player, g = this.s.game, at = foeXY(f);
     const dist = Math.max(Math.abs(at.x - g.px), Math.abs(at.y - g.py));
     const way = inTheWay(this.fireWorld(foeId(f)), [g.px, g.py], [at.x, at.y]);
@@ -361,7 +370,20 @@ export class Fights {
     g.facing = at.x > g.px ? 'e' : at.x < g.px ? 'w' : at.y < g.py ? 'n' : 's';
     g.time += res.seconds;
     g.activity = 'work';
-    g.say(res.text, res.tip);
+    // Shown: the missile's flight, and what came of it over where it ended.
+    const struckAt = this.foeTile(res.struck?.id) ?? (res.struck ? [at.x, at.y] as [number, number] : null);
+    const end = struckAt ?? res.landed ?? [at.x, at.y];
+    const dist = Math.hypot(end[0] - g.px, end[1] - g.py);
+    g.effect({ kind: 'shot', from: [g.px, g.py], to: end, ms: Math.max(120, Math.min(550, dist * 30)) });
+    let tone: LogTone = 'miss';
+    if (res.struck && struckAt) {
+      const th = this.foeHealth(res.struck.id);
+      const o = this.outcome(true, res.struck.wounds, th, res.struck.killed || !!th?.dead);
+      tone = o.tone;
+      g.effect({ kind: 'float', x: struckAt[0], y: struckAt[1], text: res.struck.id === foeId(f) ? o.text : `${o.text} (in the way)`, color: o.color });
+      if (res.struck.wounds.length) g.effect({ kind: 'flash', x: struckAt[0], y: struckAt[1] });
+    } else g.effect({ kind: 'float', x: at.x, y: at.y, text: res.broke && !res.landed ? 'Miss' : 'Miss', color: 0xc0c0c0 });
+    g.say(res.text, res.tip, tone);
     // Shooting at someone who was not fighting you is a crime, seen by those about.
     if (f.kind === 'person') this.s.justice.struckPerson(f.r);
     if (res.landed) g.ground.put(res.landed[0], res.landed[1], [missile]);
@@ -386,6 +408,35 @@ export class Fights {
     this.s.practice.flush();
     g.refresh();
     return true;
+  }
+
+  /** What a blow or shot came to, in a word or two over the foe, its colour, and the log's mark. */
+  private outcome(hit: boolean, wounds: HealthWound[], h: Health | null | undefined, killed: boolean): { text: string; color: number; tone: LogTone } {
+    if (!hit) return { text: 'Miss', color: 0xc0c0c0, tone: 'miss' };
+    if (killed) return { text: 'Killed', color: 0xff6040, tone: 'kill' };
+    const w = wounds[wounds.length - 1];
+    if (!w) return { text: 'No harm', color: 0xd8d0c0, tone: 'miss' };
+    return { text: `Hit: ${h?.partOf(w.part)?.name ?? 'struck'}`, color: 0xffc040, tone: 'hit' };
+  }
+
+  /** Where a foe stands, by its id (a beast's, or a person's "p:"), if still about. */
+  private foeTile(id: string | undefined): [number, number] | null {
+    if (!id) return null;
+    if (id.startsWith('p:')) {
+      const r = [...this.s.people.all()].find((x) => `p:${x.p.id}` === id);
+      return r ? [r.x, r.y] : null;
+    }
+    const a = [...this.s.fauna.all()].find((x) => x.id === id);
+    return a ? [a.x, a.y] : null;
+  }
+
+  private foeHealth(id: string): Health | null {
+    if (id.startsWith('p:')) {
+      const r = [...this.s.people.all()].find((x) => `p:${x.p.id}` === id);
+      return r ? healthOf(r, this.s.game.time) : null;
+    }
+    const a = [...this.s.fauna.all()].find((x) => x.id === id);
+    return a ? this.s.fauna.healthOf(a, this.s.game.time) : null;
   }
 
   /** A dead beast: its carcass left where it fell (world/hunting.ts), with what was still in its wounds, told if seen. */

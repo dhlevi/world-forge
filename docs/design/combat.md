@@ -172,6 +172,16 @@ animals, fear and flight, the watch, predators that are threats only until this 
    - *Stalk and shoot.* A beast that does not know the wanderer is there is far easier to hit (sneak
      up, keep downwind); a hit beast bolts, comes on, or turns at bay, and is followed by its blood;
      birds can be shot perched, or in flight (hard).
+   - *Shown, and clear* (24 November 2026, from play: shots hard to read, targets unclear). The
+     missile's flight is drawn from the wanderer to where it ends, and what came of it rises in a
+     word over the beast or person (Hit: neck, Killed, No harm, Miss; "in the way" when another was
+     struck); a melee blow lunges the figure toward the foe, a flash marks where a blow lands, and a
+     blow taken shows over the wanderer (the part struck, Blocked, Missed you). The log colours a
+     fight's lines (a hit amber, a kill bold, a wound taken red, a miss grey; `game/game.ts`,
+     LogTone). The shoot menu keeps to the side of the map away from the target; the target has red
+     brackets at its corners and the others in reach are numbered on the map (1 to 9 choose them,
+     as Tab does). The chance shown counts what is in the way: the shot's own chance and the chance
+     of getting past the trees, brush and beasts between (`rules/ranged.ts`, `inTheWay`).
 
    The rules: the chance is the skill (Archery, Crossbow, Sling, Throwing) against 15 and 1.5 a tile
    within the weapon's good range (3 a tile beyond it), shifted by the target's size (a hare -8, a

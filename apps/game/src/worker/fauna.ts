@@ -174,3 +174,22 @@ export function animalsIn(w: GeneratedWorld, local: LocalWorld, x: number, y: nu
   }
   return out;
 }
+
+/**
+ * The wild game a place holds (fieldcraft.md, stage 2: signs on the travel map): the region's wild
+ * species that walk (not the birds, nor the tiniest), each with how many groups to a chunk, thinned
+ * in and near settlements as the local map thins them.
+ */
+export function gameAt(w: GeneratedWorld, local: LocalWorld, lon: number, lat: number, winter: boolean): { id: string; density: number }[] {
+  if (forWorld !== w) {
+    regions.clear();
+    forWorld = w;
+  }
+  const { region, names } = regionFor(w, lon, lat);
+  const [mx, my] = local.frame.fromLL(lon, lat);
+  const thin = local.inSettlement(lon, lat) ? IN_TOWN : local.sitesNear(mx, my, mx, my, 150).length ? NEAR_TOWN : 1;
+  return wildSpecies(region, (n) => names.has(n), winter)
+    .filter(({ s }) => !s.fly && s.size !== 'tiny' && s.home === 'wild')
+    .map(({ s, density }) => ({ id: s.id, density: Math.round(density * thin * 1000) / 1000 }))
+    .filter((x) => x.density > 0);
+}

@@ -10,6 +10,13 @@ const screen = props.screen;
 const st = screen.state;
 const word = (c: number) => (c >= 80 ? 'very likely' : c >= 60 ? 'a good chance' : c >= 40 ? 'an even chance' : c >= 20 ? 'a poor chance' : 'hardly a chance');
 
+/** The side of the map the card keeps to: away from the target, so that it stays in view. */
+const side = computed(() => {
+  void st.rev;
+  const b = screen.beast, g = screen.play.session.game;
+  return b && foeXY(b).x < g.px ? 'right' : 'left';
+});
+
 const view = computed(() => {
   void st.rev;
   const b = screen.beast, m = screen.missile;
@@ -29,7 +36,7 @@ const view = computed(() => {
 </script>
 
 <template>
-  <div class="shoot card">
+  <div class="shoot card" :style="side === 'right' ? { marginLeft: 'auto' } : {}">
     <header class="row">
       <h2>Shoot or throw</h2>
       <span class="grow" />
@@ -37,8 +44,8 @@ const view = computed(() => {
     </header>
     <div v-if="view" class="body">
       <div class="row targets">
-        <button v-for="(t, i) in screen.targets.slice(0, 8)" :key="foeId(t)" :class="{ on: st.target === i }" @click="st.target = i; st.aim = null; st.rev++">{{ screen.play.session.fights.foeName(t) }}</button>
-        <span v-if="screen.targets.length > 1" class="dim">(Tab)</span>
+        <button v-for="(t, i) in screen.targets.slice(0, 9)" :key="foeId(t)" :class="{ on: st.target === i }" @click="screen.choose(i)">{{ i + 1 }}. {{ screen.play.session.fights.foeName(t) }}</button>
+        <span v-if="screen.targets.length > 1" class="dim">(Tab, or 1 to 9: numbered on the map)</span>
       </div>
       <p class="dim">{{ view.lines.join(' ') }} {{ view.dist }} tiles off.</p>
       <p v-if="!screen.missiles.length" class="warn">You have nothing to shoot or throw: a bow wants arrows, a sling stones (M gathers them).</p>
@@ -63,7 +70,10 @@ const view = computed(() => {
         <p v-if="view.shot.person" class="warn">{{ view.shot.person }} is in the way.</p>
         <p v-else-if="view.shot.blocked" class="warn">{{ view.shot.blocked[0].toUpperCase() + view.shot.blocked.slice(1) }} is in the way.</p>
         <p v-else-if="!view.shot.inRange" class="warn">Out of reach.</p>
-        <p v-else class="chance" :title="view.tip">{{ word(view.shot.chance) }} to hit ({{ view.shot.chance }}%)<span v-if="view.shot.cover.length" class="dim">; in the way, and may take it: {{ view.shot.cover.join(', ') }}</span></p>
+        <p v-else class="chance" :title="view.tip">
+          {{ word(Math.round(view.shot.chance * view.shot.clear)) }} to hit ({{ Math.round(view.shot.chance * view.shot.clear) }}%)
+          <span v-if="view.shot.clear < 0.99" class="dim">: {{ view.shot.chance }}% for the shot, but only {{ Math.round(view.shot.clear * 100) }}% of getting past what is in the way ({{ view.shot.cover.join(', ') }})</span>
+        </p>
         <p v-if="view.m.launcher && view.m.launcher.loc?.at !== 'hand'" class="note">Your {{ itemName(view.m.launcher) }} is not in hand: taking it up takes this turn.</p>
       </template>
       <div class="row acts">
@@ -75,7 +85,7 @@ const view = computed(() => {
 </template>
 
 <style scoped>
-.shoot { width: min(620px, 94vw); max-height: 88vh; overflow-y: auto; }
+.shoot { width: min(460px, 94vw); max-height: 70vh; overflow-y: auto; }
 .shoot h2 { margin: 0; font-weight: 500; color: var(--accent); }
 .cc-label { color: var(--dim); font-size: 0.8em; text-transform: uppercase; letter-spacing: 0.05em; margin-top: 6px; }
 .cols { display: grid; grid-template-columns: 1.3fr 1fr; gap: 12px; }

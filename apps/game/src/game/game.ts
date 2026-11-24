@@ -51,7 +51,7 @@ export interface Hud {
   place: string;
   where: string;
   clock: string;
-  log: { t: string; text: string; tip?: string }[];
+  log: { t: string; text: string; tip?: string; tone?: LogTone }[];
   look: string[];
   mode: 'play' | 'look' | 'open' | 'close' | 'cut' | 'talk';
   loading: number;
@@ -95,6 +95,21 @@ export interface ShownAnimal {
   sleeping: boolean;
 }
 
+/** How a line of the log is marked: a blow or shot that landed, one the wanderer took, a miss, a kill. */
+export type LogTone = 'hit' | 'hurt' | 'miss' | 'kill';
+
+/**
+ * Effects over the map (game/renderer.ts): words rising over a tile (a hit, a miss; `row` lifts one
+ * above another on the same tile), a missile in flight from one tile to another, a flash where a blow
+ * lands, and the wanderer's lunge toward a foe.
+ */
+export type FxSpec =
+  | { kind: 'float'; x: number; y: number; text: string; color: number; row?: number }
+  | { kind: 'shot'; from: [number, number]; to: [number, number]; ms: number; color?: number }
+  | { kind: 'flash'; x: number; y: number; color?: number }
+  | { kind: 'lunge'; dx: number; dy: number };
+export type Fx = FxSpec & { t0: number };
+
 export class Game {
   px: number;
   py: number;
@@ -114,6 +129,9 @@ export class Game {
   readonly discovery = new Discovery();
   /** The look cursor (look mode). */
   cursor: [number, number] | null = null;
+  /** Aiming (the shoot menu): the cursor is the target, marked as such, and the others it could be, numbered. */
+  aiming = false;
+  targets: { x: number; y: number; label: string }[] = [];
   private fov: InstanceType<typeof FOV.PreciseShadowcasting>;
   /** Called when something on screen changed. */
   onChange: () => void = () => {};
@@ -153,6 +171,17 @@ export class Game {
   onBumpAnimal: (x: number, y: number, quiet?: boolean) => string | true | null = () => null;
   /** Whether there is blood on a tile (combat.md, stage 2), for drawing. */
   bloodOn: (x: number, y: number, z: number | null) => boolean = () => false;
+  /** What happens shown over the map for a moment (the renderer draws and lets them go). */
+  fx: Fx[] = [];
+
+  /** Shows something happening: words over a tile, a missile's flight, a flash, a lunge. */
+  effect(e: FxSpec): void {
+    this.fx.push({ ...e, t0: typeof performance !== 'undefined' ? performance.now() : 0 } as Fx);
+    if (this.fx.length > 40) this.fx.splice(0, this.fx.length - 40);
+  }
+
+  /** On the trail read and marked (game/hunt.ts). */
+  trailAt: (x: number, y: number) => boolean = () => false;
   /** The animals about, to be drawn. */
   animals: () => Iterable<ShownAnimal> = () => [];
   /** The people about, to be drawn (world/population.ts). */
@@ -303,8 +332,9 @@ export class Game {
   }
 
   /** Tells something in the log; a tip holds the numbers behind it (a blow's chance), shown on hover. */
-  say(text: string, tip?: string): void {
-    this.hud.log.push({ t: this.clockText(), text, ...(tip ? { tip } : {}) });
+  /** Tells something in the log; `tone` marks a fight's line: a hit landed, one taken, a miss. */
+  say(text: string, tip?: string, tone?: LogTone): void {
+    this.hud.log.push({ t: this.clockText(), text, ...(tip ? { tip } : {}), ...(tone ? { tone } : {}) });
     if (this.hud.log.length > 60) this.hud.log.splice(0, this.hud.log.length - 60);
   }
 

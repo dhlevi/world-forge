@@ -22,6 +22,8 @@ export abstract class Screen {
   abstract readonly view: Component;
   /** Drawn over the screen beneath (which stays in sight but paused). */
   popup = false;
+  /** A popup kept to a corner, leaving the map beneath it in view (the shoot menu). */
+  docked = false;
   /** A key for the view. */
   readonly uid = ++uid;
   manager: ScreenManager | null = null;

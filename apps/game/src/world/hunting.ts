@@ -7,6 +7,8 @@
  *   `snared`) that steps on it is caught; out of sight, each hour, a snare in the range of a group of
  *   small game catches one with a chance that grows with Survival. Walking onto a snare with a catch
  *   takes it (a carcass); P on a snare lifts it and gives the wire back.
+ * - **Skinning** (Hideworking; fieldcraft.md, stage 2): a carcass skinned first gives its hide or
+ *   pelt, of a quality by the check; butchered unskinned, the hide is hacked off, poor at best.
  * - **Butchery.** A carcass and a blade give the beast's yields (core local/fauna.ts): fewer with a
  *   poor Survival check, more with a fine one.
  */
@@ -16,7 +18,7 @@ import type { Actor } from '../actors/actor';
 import { check, DC, type Grade } from '../actors/checks';
 import type { Inventory } from '../actors/items/inventory';
 import { makeItem, type Item } from '../actors/items/item';
-import { ITEM } from '../actors/items/defs';
+import { ITEM, hideId, itemDef } from '../actors/items/defs';
 import { Needs } from '../actors/needs';
 import { BRUSH_TOOLS } from '../rules/tasks';
 import { fightOf } from '../rules/beasts';
@@ -119,6 +121,35 @@ export function speciesOfCarcass(it: Item): Species | undefined {
 
 const YIELD: Record<Grade, number> = { fumble: 0.3, fail: 0.6, near: 0.8, success: 1, fine: 1.25 };
 
+
+/** How a skinning turns out: the hide's quality, or spoilt. */
+const SKINNED: Record<Grade, Item['quality'] | null> = { fine: 'fine', success: 'common', near: 'poor', fail: 'poor', fumble: null };
+
+/**
+ * Skins a carcass with a blade (Hideworking; fieldcraft.md, stage 2): the hide or pelt, its quality
+ * by the check (a fumble spoils it), before it is butchered. Null with no blade, or nothing to skin.
+ */
+export function skin(a: Actor, it: Item, inv: Inventory, now: number): { items: Item[]; text: string; seconds: number } | null {
+  const carried = new Set(inv.d.items.map((i) => i.def));
+  if (!BRUSH_TOOLS.some(([id]) => carried.has(id)) || it.skinned) return null;
+  const s = speciesOfCarcass(it) ?? SPECIES_BY_ID.get('hare')!;
+  if (!s.yields.some(([id]) => id === 'hide')) return null;
+  const grade = check(a, 'hideworking', { difficulty: DC.easy, now }).grade;
+  const q = SKINNED[grade];
+  it.skinned = true;
+  const kg = fightOf(s).kg;
+  a.get(Needs)?.stain(Math.min(25, 4 + kg * 0.12));
+  const id = hideId(s), name = itemDef(id).name;
+  const text: Record<Grade, string> = {
+    fine: `You skin the ${s.name} neatly, without a nick: a fine ${name}.`,
+    success: `You skin the ${s.name}: a sound ${name}.`,
+    near: `You skin the ${s.name}, with a few nicks in the ${name}.`,
+    fail: `You skin the ${s.name} badly; the ${name} is torn and scored.`,
+    fumble: `You make a ruin of skinning the ${s.name}: the ${name} is cut to pieces.`,
+  };
+  return { items: q ? [makeItem(id, { quality: q })] : [], text: text[grade], seconds: Math.round(10 * 60 * Math.max(1, Math.pow(kg / 10, 0.5))) };
+}
+
 /**
  * Butchers a carcass with a blade (Survival): its yields, fewer for a poor job (a fumble spoils
  * the hide), more for a fine one. Returns what it gives, in words, and how long it took; null with
@@ -133,9 +164,10 @@ export function butcher(a: Actor, inv: Inventory, it: Item, now: number): { item
   const items: Item[] = [];
   for (const [id, n] of s.yields) {
     if (!ITEM.has(id)) continue;
-    if (id === 'hide' && grade === 'fumble') continue;
+    // Skinned first, the hide is taken already; else it is hacked off as the meat is cut, poor at best.
+    if (id === 'hide' && (it.skinned || grade === 'fumble')) continue;
     const qty = id === 'raw_meat' ? Math.max(1, Math.round(n * YIELD[grade])) : n;
-    items.push(makeItem(id, { qty, name: id === 'hide' ? `${s.name} hide` : undefined }));
+    items.push(id === 'hide' ? makeItem(hideId(s), { quality: 'poor' }) : makeItem(id, { qty }));
   }
   const words: Record<Grade, string> = {
     fumble: `You make a mess of the ${s.name}: the hide is ruined, and much of the meat with it.`,

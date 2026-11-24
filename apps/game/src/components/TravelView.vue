@@ -4,6 +4,7 @@
  * route; choose a destination, travel with the clock running, stop, or zoom in to the local map.
  */
 import { background } from '../app/errors';
+import { cap } from '../util';
 import { computed, onBeforeUnmount, ref, shallowRef } from 'vue';
 import WorldView from './WorldView.vue';
 import { SPEEDS, type LL, type Travel } from '../game/travel';
@@ -11,6 +12,7 @@ import { TILE_M } from '@worldforge/core/local/chunk';
 import type { PlanImage, StartSite, TravelArea, ViewLayer } from '../worker/protocol';
 import type { Actor } from '../actors/actor';
 import { whyNoRaft } from '../rules/crossing';
+import type { Hunting } from '../game/hunt';
 
 const props = defineProps<{
   travel: Travel;
@@ -22,6 +24,8 @@ const props = defineProps<{
   requestPlan: (id: string, o: { mpp: number; radius: number; illustrated: boolean; lon?: number; lat?: number }) => Promise<PlanImage | null>;
   /** The wanderer (what they carry decides whether a raft can be built). */
   player?: Actor | null;
+  /** Hunting: signs of game found, Hunt, taking up a trail (game/hunt.ts). */
+  hunt?: Hunting | null;
 }>();
 /** The journey (game/travel.ts): the game's own object, driven from here, not data a parent view owns. */
 const journey = props.travel;
@@ -55,6 +59,17 @@ const party = computed<LL>(() => (tick.value, journey.party()));
 const route = computed<LL[]>(() => (tick.value, journey.ahead()));
 /** At the bank of a deep river (backlog T3), and why a raft cannot be built there, if not. */
 const atRiver = computed(() => (tick.value, journey.atRiver));
+/** Signs of game marked, and the one chosen (game/hunt.ts). */
+const signs = computed(() => (tick.value, props.hunt?.live().map((x) => ({ id: x.id, lon: x.lon, lat: x.lat })) ?? []));
+const signId = ref('');
+const sign = computed(() => (tick.value, props.hunt?.live().find((x) => x.id === signId.value) ?? null));
+function search(): void {
+  if (props.hunt) background(props.hunt.search(), 'the hunt');
+}
+function takeUp(): void {
+  if (props.hunt && sign.value) props.hunt.takeUp(sign.value);
+  tick.value++;
+}
 const noRaft = computed(() => {
   void tick.value;
   const st = journey.steps[journey.i], a = props.player;
@@ -171,6 +186,9 @@ onBeforeUnmount(() => journey.stop());
       :fog="fog"
       :fog-version="fogVersion"
       :plans="plans"
+      :signs="signs"
+      :sign="signId"
+      @sign="(id: string) => (signId = id)"
       @pick="pick"
       @view="onView"
       @level="(i: number) => (level = i)"
@@ -186,6 +204,11 @@ onBeforeUnmount(() => journey.stop());
           <button v-for="l in (['fantasy', 'terrain', 'biomes'] as ViewLayer[])" :key="l" :class="{ on: layer === l }" @click="layer = l">{{ l[0].toUpperCase() + l.slice(1) }}</button>
         </div>
         <div class="status">{{ status }}</div>
+        <div v-if="sign && hunt" class="row river">
+          <span>{{ cap(hunt.signWords(sign)) }}, {{ (hunt.metresTo(sign) / 1000).toFixed(1) }} km off.</span>
+          <button @click="takeUp">{{ hunt.metresTo(sign) <= 400 ? 'Take up the trail' : 'Go there' }}</button>
+          <button @click="signId = ''">Close</button>
+        </div>
         <div v-if="atRiver" class="row river">
           <span>A deep river bars the way.</span>
           <button @click="journey.cross('swim')">Swim across</button>
@@ -208,6 +231,7 @@ onBeforeUnmount(() => journey.stop());
           <button @click="mapRef?.centreOnParty()">Find party (F)</button>
           <button @click="emit('zoomIn')">Zoom in (Z)</button>
           <button @click="journey.stop(); emit('camp')">Camp (Shift+C)</button>
+          <button v-if="hunt" title="Spend an hour searching the country about for signs of game (Tracking)" @click="journey.stop(); search()">Hunt (an hour)</button>
         </div>
       </div>
     </div>

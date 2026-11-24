@@ -51,6 +51,18 @@ design round); XL, several stages (a new system that others build on).
 | I3 | A clearer marker for the party on the town's plan. **Done** (22 November 2026). | S |
 | I4 | Going to a place walks the marker there as the clock runs, instead of jumping. **Done** (22 November 2026). | M |
 
+### Now: fieldcraft (decided 23 November 2026, ahead of the rest of Phase 3)
+
+The core of living off the land, before more flavour: see [design/fieldcraft.md](design/fieldcraft.md).
+
+| ID | Item | Size |
+|---|---|---|
+| F1 | The skill menu (right-click on the local map), a fire anywhere, roasting meat. **Done** (23 November 2026). | M |
+| F2 | Tracking and trails on both maps, Hunt on the travel map; skinning (Hideworking). **Done** (23 November 2026). | L |
+| F3 | Traps: felling saplings, stakes, digging and pitfalls, snares anywhere, drive fences. | L |
+| F4 | Fishing: with a rod or a spear for a time, and lines or nets set and left. | M |
+| F5 | The camp: leave it lit, mark it on the travel map, go back to it. | M |
+
 ### Phase 3: systems on what exists
 
 | ID | Item | Size |

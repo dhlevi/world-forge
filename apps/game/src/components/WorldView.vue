@@ -37,8 +37,11 @@ const props = withDefaults(defineProps<{
   fogVersion?: number;
   /** Settlements' plans, drawn over the land (travel map, close in). */
   plans?: PlanImage[];
-}>(), { chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, roadSeen: null, fogVersion: 0, plans: () => [] });
-const emit = defineEmits<{ choose: [id: string]; pick: [ll: LL]; view: [box: { west: number; south: number; east: number; north: number; km: number }]; level: [i: number] }>();
+  /** Signs of game found (travel map; game/hunt.ts), and the one chosen. */
+  signs?: { id: string; lon: number; lat: number }[];
+  sign?: string;
+}>(), { signs: () => [], sign: '', chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, roadSeen: null, fogVersion: 0, plans: () => [] });
+const emit = defineEmits<{ sign: [id: string]; choose: [id: string]; pick: [ll: LL]; view: [box: { west: number; south: number; east: number; north: number; km: number }]; level: [i: number] }>();
 
 const box = ref<HTMLDivElement>();
 const cv = ref<HTMLCanvasElement>();
@@ -349,7 +352,47 @@ function draw(): void {
   }
 }
 
+/** A sign of game: a paw print in a ring. */
+function drawSigns(g: CanvasRenderingContext2D): void {
+  for (const sg of props.signs) {
+    const [x, y] = toScreen(...merc(sg.lon, sg.lat));
+    if (x < -20 || y < -20 || x > W + 20 || y > H + 20) continue;
+    const on = sg.id === props.sign;
+    g.beginPath();
+    g.arc(x, y, on ? 10 : 8, 0, Math.PI * 2);
+    g.fillStyle = 'rgba(243, 234, 210, 0.92)';
+    g.fill();
+    g.lineWidth = on ? 3 : 2;
+    g.strokeStyle = on ? '#a3261b' : '#5a3a1a';
+    g.stroke();
+    g.fillStyle = '#5a3a1a';
+    g.beginPath();
+    g.ellipse(x, y + 2, 3, 2.4, 0, 0, Math.PI * 2);
+    g.fill();
+    for (const [dx, dy] of [[-3.4, -2.2], [-1.2, -4.2], [1.2, -4.2], [3.4, -2.2]]) {
+      g.beginPath();
+      g.arc(x + dx, y + dy, 1.1, 0, Math.PI * 2);
+      g.fill();
+    }
+  }
+}
+
+/** The sign of game under a point of the view (within 12 px), if any. */
+function signAt(px: number, py: number): string | null {
+  let best: string | null = null, bd = 12 * 12;
+  for (const sg of props.signs) {
+    const [x, y] = toScreen(...merc(sg.lon, sg.lat));
+    const d = (x - px) ** 2 + (y - py) ** 2;
+    if (d < bd) {
+      bd = d;
+      best = sg.id;
+    }
+  }
+  return best;
+}
+
 function drawParty(g: CanvasRenderingContext2D): void {
+  drawSigns(g);
   if (props.dest) {
     const [x, y] = toScreen(...merc(props.dest[0], props.dest[1]));
     g.strokeStyle = '#a3261b';
@@ -480,8 +523,10 @@ function up(e: PointerEvent): void {
   const r = cv.value!.getBoundingClientRect();
   if (drag && !drag.moved) {
     const px = e.clientX - r.left, py = e.clientY - r.top;
-    const s = nearest(px, py);
-    if (s) {
+    const sg = signAt(px, py);
+    const s = sg ? null : nearest(px, py);
+    if (sg) emit('sign', sg);
+    else if (s) {
       emit('choose', s.id);
       emit('pick', [s.lon, s.lat]);
     } else {
@@ -526,7 +571,7 @@ watch(() => props.chosen, (id) => {
 });
 watch(() => props.layer, () => redraw());
 watch(() => props.level, (i) => setLevel(i));
-watch(() => [props.route, props.dest, props.area, props.fogVersion, props.plans], () => redraw());
+watch(() => [props.route, props.dest, props.area, props.fogVersion, props.plans, props.signs, props.sign], () => redraw());
 // While travelling, the view follows the party when it walks near the edge; otherwise the view
 // stays where the player has panned it.
 watch(() => props.party, (p, old) => {

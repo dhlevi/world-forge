@@ -22,6 +22,7 @@ import provisions from '../../data/items/provisions.json';
 import goods from '../../data/items/goods.json';
 import gear from '../../data/items/gear.json';
 import { SKILL } from '../data/skills';
+import { SPECIES, type Species } from '@worldforge/core/local/fauna';
 
 /** How big a thing is at its largest: what it can go into. */
 export const SIZES = ['tiny', 'small', 'medium', 'large', 'huge'] as const;
@@ -383,6 +384,28 @@ const BUILT_IN: [string, { items: unknown[] }][] = [
   ['containers.json', containers], ['clothing.json', clothing], ['armour.json', armour], ['jewellery.json', jewellery],
   ['weapons.json', weapons], ['tools.json', tools], ['provisions.json', provisions], ['goods.json', goods],
 ];
-const faults = BUILT_IN.flatMap(([f, file]) => registerItems(file.items, f));
+/** A beast's skin by its kind: the furred ones give a pelt. */
+const PELT = /fox|wolf|bear|lynx|hare|rabbit|badger|squirrel|beaver|otter|marten|sable|mink|ermine|cat|lion|tiger|leopard|seal|wolverine|hyena/;
+/** A skin's weight (kg) by the beast's size; its worth much the same for now (to be priced by the economy). */
+const HIDE_KG = { tiny: 0.1, small: 0.4, medium: 2.5, large: 7, huge: 20 } as const;
+const HIDE_VALUE = { tiny: 3, small: 4, medium: 6, large: 7, huge: 8 } as const;
+
+/** The item id of a beast's hide or pelt (fieldcraft.md, stage 2). */
+export const hideId = (s: Species): string => `${PELT.test(s.id) ? 'pelt' : 'hide'}_${s.id}`;
+
+/** A hide or pelt for each beast that gives one: its own item, named and weighted for the beast. */
+function beastHides(): unknown[] {
+  return SPECIES.filter((s) => s.yields.some(([id]) => id === 'hide')).map((s) => {
+    const pelt = PELT.test(s.id);
+    return {
+      id: hideId(s), name: `${s.name} ${pelt ? 'pelt' : 'hide'}`, plural: `${s.name} ${pelt ? 'pelts' : 'hides'}`, kind: 'goods',
+      weight: HIDE_KG[s.size], bulk: Math.max(0.3, Math.round(HIDE_KG[s.size] * 2 * 10) / 10), size: s.size === 'huge' ? 'large' : s.size === 'large' ? 'medium' : 'small',
+      value: HIDE_VALUE[s.size], durable: false,
+      about: `The ${pelt ? 'pelt' : 'hide'} of a ${s.name}, untanned and scraped clean. A ${pelt ? 'furrier' : 'tanner'} pays for good ones.`,
+    };
+  });
+}
+
+const faults = [...BUILT_IN.flatMap(([f, file]) => registerItems(file.items, f)), ...registerItems(beastHides(), 'the beasts\' hides')];
 faults.push(...registerGear(gear, 'gear.json'), ...checkReferences());
 if (faults.length) throw new Error(`The item data has faults:\n${faults.join('\n')}`);

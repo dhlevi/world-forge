@@ -33,7 +33,7 @@ import { GROUND_TILES, OBJECT_TILES, type Facing } from '@worldforge/core/local/
 import { SIZE_RANK, SPECIES_BY_ID, awake, type Species } from '@worldforge/core/local/fauna';
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { AnimalGroup, Spot } from '../worker/protocol';
-import { heardLevel, takesTracks, type Noise, type Tracks } from './senses';
+import { heardLevel, layTrail, takesTracks, type Noise, type Tracks } from './senses';
 import { Health, type HealthData } from '../actors/health';
 import type { Item } from '../actors/items/item';
 import { morale, type Stance } from '../rules/combat';
@@ -229,9 +229,23 @@ export class Fauna {
   }
 
   /** Takes the worker's groups: new ones placed (members out of sight only), the rest dropped out of sight. */
-  take(groups: AnimalGroup[], g: FaunaView): void {
+  /**
+   * Groups placed by the hunt (game/hunt.ts: game found by its signs on the travel map), kept
+   * whatever the worker sends until they are gone (killed, or left far behind).
+   */
+  readonly pinned = new Map<string, AnimalGroup>();
+
+  /** Places a group the hunt found (members placed even in sight: the hunter has come upon them). */
+  pin(gr: AnimalGroup, g: FaunaView): void {
+    this.pinned.set(gr.id, gr);
+    this.take([...[...this.herds.values()].filter((h) => !h.gone).map((h) => ({ id: h.id, species: h.s.id, members: [], home: h.home, water: h.water })), gr], g, true);
+  }
+
+  take(groups: AnimalGroup[], g: FaunaView, inSight = false): void {
     const seen = new Set<string>();
-    for (const gr of groups) {
+    // A hunted group left far behind is let go.
+    for (const [id, p] of this.pinned) if (Math.abs(p.home.x - g.px) > 400 || Math.abs(p.home.y - g.py) > 400) this.pinned.delete(id);
+    for (const gr of [...groups, ...[...this.pinned.values()].filter((p) => !groups.some((x) => x.id === p.id))]) {
       seen.add(gr.id);
       const known = this.herds.get(gr.id);
       if (known) {
@@ -243,17 +257,33 @@ export class Fauna {
       const h: Herd = { id: gr.id, s, home: gr.home, water: gr.water, members: [], fearUntil: 0, fearFrom: null, planAt: g.time, gone: false };
       gr.members.forEach((m, i) => {
         const id = `${gr.id}#${i}`;
-        if (this.gone.has(id) || g.isVisible(m.x, m.y) || this.byTile.has(key(m.x, m.y))) return;
+        if (this.gone.has(id) || (g.isVisible(m.x, m.y) && !(inSight && this.pinned.has(gr.id))) || this.byTile.has(key(m.x, m.y))) return;
         const a: Animal = { id, s, g: h, x: m.x, y: m.y, alt: 0, perched: false, facing: (['n', 'e', 's', 'w'] as Facing[])[(hashString(id) >>> 3) % 4], state: 'idle', to: null, nextAt: g.time, ate: g.time - (hashString(id) % (MEAL_H * 3600)), quarry: null, chase: 0, calledAt: g.time - 600, threatAt: 0, noticed: -1 };
         h.members.push(a);
         this.byTile.set(key(m.x, m.y), a);
       });
-      if (h.members.length) this.herds.set(gr.id, h);
+      if (h.members.length) {
+        this.herds.set(gr.id, h);
+        this.trailOf(h, g, this.pinned.get(gr.id)?.trailFrom ?? undefined);
+      }
     }
     for (const [id, h] of this.herds) if (!seen.has(id)) {
       h.gone = true;
       this.dropUnseen(h, g);
     }
+  }
+
+  /**
+   * The trail a wild herd left on its way to where it is placed (fieldcraft.md, stage 2): back from
+   * its first member a wandering way, grazed or walked over the last hour or few, for a tracker to
+   * find and follow. A herd the hunt placed has its trail pass near where the hunter came upon it.
+   */
+  private trailOf(h: Herd, g: FaunaView, from?: Spot): void {
+    const s = h.s, a = h.members[0];
+    if (!a || s.fly || SIZE_RANK[s.size] < 1 || (!h.id.startsWith('w:') && !this.pinned.has(h.id))) return;
+    const r = mulberry32(hashString(`trail#${h.id}`));
+    const steps = from ? Math.round(Math.hypot(from.x - a.x, from.y - a.y) * 1.4) + 6 : 14 + Math.floor(r() * 26);
+    layTrail(this.tracks, g.map, { by: `animal:${h.id}`, kind: `animal:${s.id}`, to: { x: a.x, y: a.y, z: null }, steps, newest: g.time - (10 + r() * 50) * 60, perStep: 60 + r() * 120, toward: from, r });
   }
 
   private dropUnseen(h: Herd, g: FaunaView): void {

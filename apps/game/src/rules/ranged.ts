@@ -156,19 +156,32 @@ export interface FireWorld {
 }
 
 /** What lies on the line between the wanderer and a target: what may take the missile first, in words, and a person in the way. */
-export function inTheWay(w: FireWorld, from: [number, number], to: [number, number]): { cover: string[]; person: string | null; blocked: string | null } {
+export function inTheWay(w: FireWorld, from: [number, number], to: [number, number]): { cover: string[]; person: string | null; blocked: string | null; clear: number } {
   const path = lineOfFire(from[0], from[1], to[0], to[1], Math.max(Math.abs(to[0] - from[0]), Math.abs(to[1] - from[1])));
   const cover: string[] = [];
   let person: string | null = null, blocked: string | null = null;
+  /** The chance the missile gets past all that is in the way (as fire() has it). */
+  let clear = 1;
   for (const [x, y] of path.slice(0, -1)) {
     const o = OBJECT_TILES[w.objectAt(x, y)];
     if (o && o.name !== 'none' && !w.passable(x, y) && !o.gap) blocked ??= o.look;
-    else if (o && o.name !== 'none' && (o.gap || o.slow)) cover.push(o.look);
+    else if (o && o.name !== 'none' && (o.gap || o.slow)) {
+      cover.push(o.look);
+      clear *= 1 - stopChance(o.name, !!o.gap);
+    }
     const b = w.beastAt(x, y);
-    if (b) cover.push(b.t.name);
+    if (b) {
+      cover.push(b.t.name);
+      clear *= 1 - SIZE_IN_WAY[b.t.size];
+    }
     person ??= w.personAt(x, y);
   }
-  return { cover: [...new Set(cover)], person, blocked };
+  return { cover: [...new Set(cover)], person, blocked, clear: blocked ? 0 : clear };
+}
+
+/** The chance something in the way (a tree, a bush, a boulder) takes a missile passing it. */
+function stopChance(name: string, gap: boolean): number {
+  return name.startsWith('tree') || name === 'tree_trunk' ? 0.35 : gap ? 0.5 : 0.12;
 }
 
 const SIZE_MOD: Record<AnimalSize, number> = { tiny: -15, small: -8, medium: 0, large: 6, huge: 10 };
@@ -246,7 +259,7 @@ export function fire(a: Actor, m: Missile, w: FireWorld, from: [number, number],
     // Walls stop it; trees, boulders and bushes may.
     if (o && o.name !== 'none') {
       if (!w.passable(x, y) && !o.gap) return done(`It strikes ${o.look}${isTarget ? '' : ' short of its mark'}.`, last, 1.5);
-      if (!isTarget && (o.gap || o.slow) && rng() < (o.name.startsWith('tree') || o.name === 'tree_trunk' ? 0.35 : o.gap ? 0.5 : 0.12)) {
+      if (!isTarget && (o.gap || o.slow) && rng() < stopChance(o.name, !!o.gap)) {
         return done(o.slow ? `It is turned aside by ${o.look}.` : `It strikes ${o.look} in the way.`, o.slow ? [x, y] : last, 1.2);
       }
     }

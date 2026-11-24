@@ -11,6 +11,8 @@
  * screens (the city view, the title) through `SessionHost`, so that scripts/session-test.ts can
  * play it in Node with stand-ins.
  */
+import { Hunting } from './hunt';
+import { Fieldcraft } from './fieldcraft';
 import { clothesLook, isGarment, soiled, washGarment } from '../actors/items/soil';
 import { crossRiver } from '../rules/crossing';
 import { ICE_SAFE, iceOn, wetAt, type GroundWet, type Wet } from './wet';
@@ -88,6 +90,8 @@ export interface SessionWorld {
   requestPeople?: WorkerClient['requestPeople'];
   /** The animals about a tile (none: no animals). */
   requestAnimals?: WorkerClient['requestAnimals'];
+  /** The wild game a place holds (none: no signs of game on the travel map). */
+  game?: WorkerClient['game'];
   /** Names of a people (for the watch sent for from their post). */
   names?: WorkerClient['names'];
   site: WorkerClient['site'];
@@ -105,6 +109,8 @@ export interface SessionHost {
   onDeath?(): void;
   /** A person at the wanderer's mercy (yielded, fallen, bound): the choices (screens/mercy.ts). */
   mercy?(r: Resident): void;
+  /** The camp screen (screens/camp.ts). */
+  showCamp?(): void;
 }
 
 export interface SleepOptions {
@@ -158,6 +164,10 @@ export class PlaySession {
   readonly fights = new Fights(this);
   /** People struck and at the wanderer's mercy, and the law (game/justice.ts). */
   readonly justice = new Justice(this);
+  /** Fieldcraft on the local map: the skill menu, fires, roasting (game/fieldcraft.ts). */
+  readonly field = new Fieldcraft(this);
+  /** Hunting by tracking: signs of game on the travel map, trails on the local map (game/hunt.ts). */
+  readonly hunt = new Hunting(this);
   /** When the wanderer last practised Sneak near animals (game seconds). */
   private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
@@ -336,7 +346,7 @@ export class PlaySession {
       if (kind === 'step' && bleed > 30 && game.dice.random() < Math.min(0.9, bleed / 400)) this.people.tracks.add(x, y, z, { t: game.time, by: 'player', kind: this.player?.get(Body)?.d.kind ?? 'human', dir, blood: true });
     };
     game.tracksText = (x, y, z) => readTracks(this.people.tracks.at(x, y, z, game.time), game.time, this.player?.get(Skills)?.effective('tracking') ?? 0);
-    game.tracksOn = (x, y, z) => this.people.tracks.at(x, y, z, game.time).filter((t) => !t.blood).length;
+    game.tracksOn = (x, y, z) => this.people.tracks.at(x, y, z, game.time).filter((t) => !t.blood && !t.faint).length;
     this.people.onSee = (text) => game.say(text);
     // People in fights (world/strife.ts): their blows, what is seen, the dead, robbers and the watch.
     this.strife = new Strife(this.people);
@@ -378,6 +388,7 @@ export class PlaySession {
     this.fauna.onStrike = (a, blow) => this.fights.beastBlow(a, blow);
     this.fauna.onDied = (s, x, y, seen, lodged) => this.fights.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null, undefined, lodged);
     game.bloodOn = (x, y, z) => this.people.tracks.bloodAt(x, y, z, game.time);
+    game.trailAt = (x, y) => this.hunt.onTrail(x, y);
     if (o.restore?.people) {
       this.people.opinions.import(o.restore.people.opinions);
       for (const id of o.restore.people.dead ?? []) this.people.dead.add(id);
@@ -394,6 +405,7 @@ export class PlaySession {
     travel.onStep = (st) => {
       const extra = this.practice.travelStep(st, this.invSlow());
       this.justice.roadside(st);
+      this.hunt.onTravelStep(st);
       return extra;
     };
     travel.sightFactor = () => {
@@ -767,6 +779,7 @@ export class PlaySession {
       this.justice.purseNotice();
       // The animals, and the snares set for them.
       this.fauna.update(game, this.presence());
+      this.hunt.update();
       for (const sn of this.snares.run(this.fauna, game, this.player?.get(Skills)?.effective('survival') ?? 0)) {
         if (game.isVisible(sn.x, sn.y) && game.z === null) game.say(`Your snare catches a ${SPECIES_BY_ID.get(sn.caught ?? '')?.name ?? 'beast'}.`);
       }

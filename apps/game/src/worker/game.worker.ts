@@ -18,7 +18,7 @@ import { banditry, banditsIn } from './bandits';
 import { delveFolkIn } from './delve';
 import { streetFolkIn } from './streets';
 import { bandCell } from '../rules/bands';
-import { animalsIn } from './fauna';
+import { animalsIn, gameAt } from './fauna';
 import { findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo, townAccount } from './sites';
 
 let world: GeneratedWorld | null = null;
@@ -166,6 +166,8 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       const feats = planOf(local.towns, s);
       const ci = cultureOf(world!, s);
       post({ type: 'site', id: m.id, site: { ...siteInfo(s, feats), culture: ci !== undefined ? CULTURES[ci]?.name : undefined, account: townAccount(world!, s) }, gates: gatesOf(s, feats) });
+    } else if (m.type === 'game') {
+      post({ type: 'game', id: m.id, species: world && local ? gameAt(world, local, m.lon, m.lat, m.winter) : [] });
     } else if (m.type === 'climate') {
       if (!world) throw new Error('No world yet.');
       const r = world.raster;

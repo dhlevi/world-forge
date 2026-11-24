@@ -43,6 +43,8 @@ export interface Item {
   dirt?: number;
   blood?: number;
   stain?: number;
+  /** A carcass already skinned (world/hunting.ts). */
+  skinned?: boolean;
 }
 
 let counter = 0;

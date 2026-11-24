@@ -15,7 +15,7 @@ defineProps<{ manager: ScreenManager }>();
       v-show="manager.isVisible(s)"
       :key="s.uid"
       class="screen-layer"
-      :class="{ popup: s.popup, active: s.active }"
+      :class="{ popup: s.popup, docked: s.docked, active: s.active }"
     >
       <component :is="s.view" :screen="s" />
     </div>
@@ -37,5 +37,15 @@ defineProps<{ manager: ScreenManager }>();
   display: flex;
   align-items: center;
   justify-content: center;
+}
+.screen-layer.popup.docked {
+  background: transparent;
+  align-items: flex-end;
+  justify-content: flex-start;
+  padding: 12px 312px 12px 12px;
+  pointer-events: none;
+}
+.screen-layer.popup.docked > * {
+  pointer-events: auto;
 }
 </style>
