@@ -110,12 +110,66 @@ a failure, and all lost on a fumble.
 
 ### Stage 3: traps
 
-- **Felling** small trees (an axe or a hatchet) and **cutting stakes and poles**.
-- **Digging** (a spade or shovel much faster; hands and a stick slowly): a pit, covered for a
-  **pitfall** trap on a game trail.
-- **Snares** set at a chosen tile from the skill menu (Trapping), and **drive fences** of stakes and
-  brush that steer game into them.
-- Traps are checked later: what they caught waits in them (and may be taken by a predator).
+*Decided (25 November 2026):* any tree can be felled, slower by its size; a covered pit takes game
+and people alike (a man-trap where people walk is a crime); frightened game is herded along drive
+fences into the trap in their gap; and a catch left waiting may be taken by a predator, by the
+hour.
+
+*Built (25 November 2026; woodcraft in `world/woodcraft.ts` and `game/woodcraft.ts`, being of use
+beyond traps; pits and fences in `world/traps.ts` and `game/trapping.ts`; `trap-test.ts`).* All
+from the skill menu; the numbers are proposed, to tune in play.
+
+- **Felling** (Survival, with an axe, or a hatchet half as slow again): any tree standing on one
+  tile, in 8 minutes and 2.5 more for each metre of its height (half for a young tree, more for an
+  old one); the great old trees whose trunks are two tiles across cannot be felled. It leaves a
+  stump (walked over), and gives a pole for a young tree, two for a grown one (three for the
+  straight conifers and birches), stout sticks, and firewood by its size; what cannot be carried is
+  left at the wanderer's feet. A fumble catches the wanderer a blow.
+- **Stakes** are cut with any blade: four from a pole (a quarter of an hour each), one from a stout
+  stick (five minutes).
+- **Digging a pit** (Athletics) on soft ground, not on rock, stone, roads, sand or wet ground: two
+  hours with a shovel, two and a half with a spade, seven with a stout stick and bare hands, more or
+  less by the check. Four stakes **spike** it; a pole or two stout sticks **cover** it (Trapping):
+  the check sets how hard the pitfall is to see. It can be uncovered, cleared after it is sprung,
+  or filled in.
+- **The pitfall.** A beast of middling size or larger (a roe deer, a boar, a wolf, a red deer, a
+  bear) that steps on a covered pit falls in: hurt by the fall, and by a stake or two if spiked,
+  and held there until it is killed; its herd takes fright. Out of sight, each hour, a covered pit
+  in the range of such a herd catches one (3 in a hundred, more with Trapping and a better cover);
+  a beast left two days in a pit is found dead. What lies in a sprung pit is lifted out from the
+  menu. The wanderer knows their own pitfalls and steps round them.
+- **People and pitfalls.** A person walking onto a covered pit may see it in time (hunters,
+  trappers and foresters far more often), and drags the cover off; the rest fall in, are hurt, and
+  sit a while before they climb out. Where people walk (a settlement, or within a few tiles of a
+  road), a pitfall known to be the wanderer's (someone saw it dug or covered, or the wanderer is in
+  sight) is an assault in law, and the victim thinks much the worse of the wanderer.
+- **Drive fences** (Trapping): a length of stakes (three stakes, twenty minutes) or of brush
+  between stakes (one stake and two stout sticks or an armful of firewood, or brush cut about with a
+  blade), each blocking the way as a wall does; pulled up, the stakes are kept. A frightened beast
+  with a fence within three tiles runs along it toward a trap that lies away from what frightened
+  it (a covered pit for the middling and larger, a snare for the small), rather than straight
+  away. Out of sight, each length of fence within eight tiles of a trap raises its chance by a
+  sixth, to three times at most.
+- **Predators.** A catch waiting out of sight in a snare or a pit may be taken each hour (6 in a
+  hundred for a snare with a predator about, 2 without; 5 and 1.5 for a pit), and coming to the
+  trap tells of it, with the predator's tracks.
+- **Snares** now go by Trapping (or three fifths of Survival, if that is better).
+- **Bait** (decided and built 26 November 2026; `world/traps.ts`): a portion of food laid in a
+  snare or a pit (from the skill menu). Meat, fish and cheese draw the hunters, scavengers and
+  omnivores; apples, berries, nuts, greens, roots and bread draw the grazers, browsers,
+  seed-eaters and omnivores. In sight, a wild beast the bait draws, within half again its sense
+  of smell (and at most 30 tiles), goes to it: into the snare or onto the pit's cover, where it is
+  caught if the trap suits it. One the trap does not hold (a fox at a snare, a hare on a pit's
+  cover) eats the bait and goes; one it holds may still take the bait and get away, the warier
+  more often and the better the trapper less (a fifth, a third for the wary or skittish, less a
+  quarter of Trapping, at least one in twenty). Out of sight, bait doubles the trap's chance an
+  hour for the beasts it draws and reaches ten tiles further for them, and is taken without a
+  catch three times in a hundred an hour. Meat goes off and stops drawing after three days, plant
+  food after five. A baited snare shows a brown mark in its noose; coming to a trap whose bait was
+  taken says so, with the thief's tracks if it left any. Fish join the baits with stage 4.
+- **New things:** the hatchet, the spade and the shovel (sold by smiths and in markets), sharpened
+  stakes and poles; and on the map the stump, the dug, covered and sprung pit, and the two fences
+  (placeholders until the tileset draws them).
 - *Built ahead (24 November 2026, from play):* each snare set is marked on the local map (a noose
   on its peg, with a red mark when it holds a catch), seen or remembered; and on the travel map
   the snares within 60 m of one another are one site, a noose in a ring at their middle. A site

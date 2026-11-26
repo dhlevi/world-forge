@@ -15,7 +15,7 @@ than chosen from a list. Part of the design vision ([vision.md](vision.md)). Eac
   body or mind. The world stays low magic: most people never see a working spell.
 - **Spells can be written down, learnt and traded**, kept in a spell book.
 - **Enchanting** attaches a spell to an object, locked in by something whose quality limits the
-  power, as in the Elder Scrolls games.
+  power, as in the Elder Scrolls games (soul gem or something similar).
 
 **Proposed.**
 

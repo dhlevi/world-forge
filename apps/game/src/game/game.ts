@@ -181,8 +181,8 @@ export class Game {
     if (this.fx.length > 40) this.fx.splice(0, this.fx.length - 40);
   }
 
-  /** The wanderer's snare on a tile (world/hunting.ts): set, or with a catch in it. */
-  snareAt: (x: number, y: number) => 'set' | 'caught' | null = () => null;
+  /** The wanderer's snare on a tile (world/hunting.ts): set, baited, or with a catch in it. */
+  snareAt: (x: number, y: number) => 'set' | 'baited' | 'caught' | null = () => null;
   /** On the trail read and marked (game/hunt.ts). */
   trailAt: (x: number, y: number) => boolean = () => false;
   /** The animals about, to be drawn. */
@@ -398,6 +398,11 @@ export class Game {
       if (!quiet) this.say(beast);
       this.time += STEP_S;
       return true;
+    }
+    // The wanderer's own pitfall (game/trapping.ts): they know it, and step round it.
+    if (this.z === null && obj.name === 'pit_covered') {
+      if (!quiet) this.say('That is your pitfall: you step round it.');
+      return false;
     }
     if (!this.pass(nx, ny)) {
       if (obj.toggle) return this.toggle(nx, ny, true, quiet);

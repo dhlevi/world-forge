@@ -25,6 +25,8 @@ import { lightFire, feedFire } from './camping/fire';
 import { stackFirewood } from './camping/pitch';
 import type { CampCtx } from './camping/context';
 import type { PlaySession } from './session';
+import { Trapping } from './trapping';
+import { Woodcraft } from './woodcraft';
 
 /** A thing that can be done at a tile, and why not, if it cannot. */
 export interface TileAction {
@@ -134,6 +136,8 @@ export class Fieldcraft {
       out.push({ id: 'drink', label: 'Drink, and fill your waterskins' });
       out.push({ id: 'wash', label: 'Wash' });
     }
+    // Felling and stakes (game/woodcraft.ts), pits and fences (game/trapping.ts; stage 3).
+    out.push(...s.wood.actions(x, y), ...s.traps.actions(x, y));
     return out;
   }
 
@@ -141,8 +145,10 @@ export class Fieldcraft {
   async act(id: string, x: number, y: number): Promise<void> {
     const s = this.s, g = this.g;
     // Onto the tile itself for a snare or a walk; beside it for the rest.
-    const onto = id === 'walk' || id === 'snare';
+    const onto = id === 'walk' || id === 'snare' || id === 'stakes';
     if (id !== 'tracks' && id !== 'follow' && !(await this.reach(x, y, onto))) return;
+    if (Woodcraft.IDS.has(id)) s.wood.act(id, x, y);
+    if (Trapping.IDS.has(id)) s.traps.act(id, x, y);
     switch (id) {
       case 'walk':
         break;

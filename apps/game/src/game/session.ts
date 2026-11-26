@@ -54,6 +54,9 @@ import { Justice } from './justice';
 import { Population } from '../world/population';
 import { Fauna, animalLines, type Presence } from '../world/fauna';
 import { Snares, carcassOf } from '../world/hunting';
+import { baitWords, fresh, Pits, robbedWords } from '../world/traps';
+import { Trapping } from './trapping';
+import { Woodcraft } from './woodcraft';
 import { type BlowId, type Stance } from '../rules/combat';
 import { callName, isWatch } from '../world/folk-fight';
 import { Strife } from '../world/strife';
@@ -168,6 +171,11 @@ export class PlaySession {
   readonly field = new Fieldcraft(this);
   /** Hunting by tracking: signs of game on the travel map, trails on the local map (game/hunt.ts). */
   readonly hunt = new Hunting(this);
+  /** The wanderer's pits, and trapping (world/traps.ts, game/trapping.ts; fieldcraft.md, stage 3). */
+  readonly pits = new Pits();
+  readonly traps = new Trapping(this);
+  /** Felling and cutting wood (world/woodcraft.ts, game/woodcraft.ts). */
+  readonly wood = new Woodcraft(this);
   /** When the wanderer last practised Sneak near animals (game seconds). */
   private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
@@ -397,9 +405,10 @@ export class PlaySession {
     this.fauna.onDied = (s, x, y, seen, lodged) => this.fights.carcass(s, x, y, seen ? `The ${s.name} sinks down and dies.` : null, undefined, lodged);
     game.bloodOn = (x, y, z) => this.people.tracks.bloodAt(x, y, z, game.time);
     game.trailAt = (x, y) => this.hunt.onTrail(x, y);
+    this.traps.install();
     game.snareAt = (x, y) => {
       const sn = this.snares.at(x, y);
-      return sn ? (sn.caught ? 'caught' : 'set') : null;
+      return sn ? (sn.caught ? 'caught' : fresh(sn.bait, game.time) ? 'baited' : 'set') : null;
     };
     if (o.restore?.people) {
       this.people.opinions.import(o.restore.people.opinions);
@@ -407,6 +416,7 @@ export class PlaySession {
       this.law.import(o.restore.people.law);
       this.people.tracks.import(o.restore.people.tracks);
       this.snares.import(o.restore.people.snares);
+      this.pits.import(o.restore.people.pits);
       for (const id of o.restore.people.gone ?? []) this.fauna.gone.add(id);
       this.fauna.importWounded(o.restore.people.wounded);
     }
@@ -792,9 +802,16 @@ export class PlaySession {
       // The animals, and the snares set for them.
       this.fauna.update(game, this.presence());
       this.hunt.update();
-      for (const sn of this.snares.run(this.fauna, game, this.player?.get(Skills)?.effective('survival') ?? 0)) {
+      const sk = this.player?.get(Skills);
+      for (const sn of this.snares.run(this.fauna, game, Math.max(sk?.effective('trapping') ?? 0, (sk?.effective('survival') ?? 0) * 0.6), (x, y) => this.traps.fenceBoost(x, y))) {
         if (game.isVisible(sn.x, sn.y) && game.z === null) game.say(`Your snare catches a ${SPECIES_BY_ID.get(sn.caught ?? '')?.name ?? 'beast'}.`);
       }
+      // Bait taken from a snare in sight is seen taken.
+      for (const sn of this.snares.list) if (sn.baitTaken && game.time - sn.baitTaken.at < 5 && game.isVisible(sn.x, sn.y)) {
+        game.say(`The ${SPECIES_BY_ID.get(sn.baitTaken.by ?? '')?.name ?? 'beast'} takes the bait from your snare and slips away.`);
+        sn.baitTaken = undefined;
+      }
+      this.traps.run();
       this.listen();
       // Rain and falling snow wash out (or cover) the older tracks; the rest fade in time.
       if (Math.floor(t / 600) !== Math.floor(this.lastTracksAt / 600)) {
@@ -1241,6 +1258,14 @@ export class PlaySession {
       sn.caught = undefined;
       sn.tried = g.time;
     }
+    if (sn?.robbed) {
+      g.say(robbedWords(sn.robbed.by, 'catch from your snare'));
+      sn.robbed = undefined;
+    }
+    if (sn?.baitTaken) {
+      g.say(baitWords(sn.baitTaken.by, 'snare'));
+      sn.baitTaken = undefined;
+    }
     if (g.sneaking && g.time - this.sneakAt > 60) {
       for (const a of this.fauna.all()) {
         if (Math.max(Math.abs(a.x - x), Math.abs(a.y - y)) > 12 || g.time - a.noticed < 120 || a.state === 'sleep') continue;
@@ -1535,7 +1560,7 @@ export class PlaySession {
     const o = this.o;
     return makeSave(this.game, {
       id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON(),
-      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), gone: [...this.fauna.gone].slice(-500), wounded: this.fauna.exportWounded(), dead: [...this.people.dead], law: this.law.export() },
+      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), pits: this.pits.export(), gone: [...this.fauna.gone].slice(-500), wounded: this.fauna.exportWounded(), dead: [...this.people.dead], law: this.law.export() },
       ...(this.state.dead ? { dead: this.state.dead } : {}),
     });
   }

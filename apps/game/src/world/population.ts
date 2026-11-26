@@ -169,6 +169,8 @@ export class Population {
   shoo: (x: number, y: number, z: number | null) => void = () => {};
   /** What is seen to happen among them, for the log (a greeting, a sleeper stirring). */
   onSee: (text: string) => void = () => {};
+  /** A person has stepped onto a tile (for the wanderer's pitfalls: game/trapping.ts). */
+  onStep: (r: Resident, t: Spot) => void = () => {};
   /** Greetings between people, by pair, the day they last met. */
   private greeted = new Map<string, number>();
   /** Residents by full name (for finding the people in one another's ties). */
@@ -284,10 +286,12 @@ export class Population {
   private place(r: Resident, t: Spot): void {
     if (r.present) this.byTile.delete(tileKey(r.x, r.y, r.z));
     r.present = true;
+    const moved = r.x !== t.x || r.y !== t.y || r.z !== t.z;
     r.x = t.x;
     r.y = t.y;
     r.z = t.z;
     this.byTile.set(tileKey(t.x, t.y, t.z), r);
+    if (moved) this.onStep(r, t);
   }
 
   private drop(r: Resident): void {

@@ -5,7 +5,7 @@
  *
  * - **Snares.** A length of snare wire set on a tile (P). Small game (core local/fauna.ts,
  *   `snared`) that steps on it is caught; out of sight, each hour, a snare in the range of a group of
- *   small game catches one with a chance that grows with Survival. Walking onto a snare with a catch
+ *   small game catches one with a chance that grows with Trapping (fieldcraft.md, stage 3). Walking onto a snare with a catch
  *   takes it (a carcass); P on a snare lifts it and gives the wire back.
  * - **Skinning** (Hideworking; fieldcraft.md, stage 2): a carcass skinned first gives its hide or
  *   pelt, of a quality by the check; butchered unskinned, the hide is hacked off, poor at best.
@@ -23,6 +23,7 @@ import { Needs } from '../actors/needs';
 import { BRUSH_TOOLS } from '../rules/tasks';
 import { fightOf } from '../rules/beasts';
 import type { Fauna, FaunaView } from './fauna';
+import { BAIT_BOOST, BAIT_TAKEN_PER_HOUR, drawnBy, fresh, stealChance, takerOf, type Bait } from './traps';
 
 export interface Snare {
   x: number;
@@ -33,6 +34,11 @@ export interface Snare {
   /** What it has caught (a species id), and when. */
   caught?: string;
   at?: number;
+  /** Its catch taken by a predator (the species, if any was about), and when (fieldcraft.md, stage 3). */
+  robbed?: { by: string | null; at: number };
+  /** Food laid in it to draw game, and its bait taken without a catch (world/traps.ts). */
+  bait?: Bait;
+  baitTaken?: { by: string | null; at: number };
 }
 
 /** A snare's chance an hour (out of sight, in the range of small game), by Survival 0 to 100. */
@@ -61,15 +67,42 @@ export class Snares {
    * The snares catch: small game on a snare's tile is caught at once; out of sight, each hour, a
    * snare in the range of small game catches one by chance. Returns the snares that caught.
    */
-  run(fauna: Fauna, g: FaunaView, survival: number): Snare[] {
+  run(fauna: Fauna, g: FaunaView, survival: number, fenceBoost: (x: number, y: number) => number = () => 1): Snare[] {
     const out: Snare[] = [];
+    const predators = [...fauna.all()].filter((m) => m.s.diet === 'predator');
     for (const s of this.list) {
-      if (s.caught) continue;
+      // A catch waiting out of sight may be taken, by the hour (fieldcraft.md, stage 3).
+      if (s.caught) {
+        if (g.isVisible(s.x, s.y)) s.tried = g.time;
+        while (s.caught && g.time - s.tried >= 3600) {
+          s.tried += 3600;
+          const r = mulberry32(hashString(`snare-rob#${s.x},${s.y}#${s.tried}`));
+          const near = predators.find((m) => Math.hypot(m.x - s.x, m.y - s.y) < 80);
+          if (r() < (near ? 0.06 : 0.02)) {
+            s.robbed = { by: near?.s.id ?? null, at: s.tried };
+            s.caught = undefined;
+          }
+        }
+        continue;
+      }
       const a = fauna.at(s.x, s.y);
+      const bait = fresh(s.bait, g.time) ? s.bait : undefined;
+      // A beast at the bait that the snare does not hold eats it; one it holds may take it and get away.
+      if (a && a.alt === 0 && bait && drawnBy(a.s.diet, bait.kind)) {
+        const r = mulberry32(hashString(`snare-bait#${s.x},${s.y}#${Math.floor(g.time)}`));
+        if (!a.s.snared || r() < stealChance(survival, a.s.temper === 'wary' || a.s.temper === 'skittish')) {
+          s.bait = undefined;
+          s.baitTaken = { by: a.s.id, at: g.time };
+          continue;
+        }
+      }
       if (a && a.s.snared && a.alt === 0) {
         fauna.remove(a);
         s.caught = a.s.id;
         s.at = g.time;
+        s.tried = g.time;
+        s.robbed = undefined;
+        s.bait = undefined;
         out.push(s);
         continue;
       }
@@ -80,16 +113,22 @@ export class Snares {
       while (g.time - s.tried >= 3600 && !s.caught) {
         s.tried += 3600;
         const r = mulberry32(hashString(`snare#${s.x},${s.y}#${s.tried}`));
-        for (const m of fauna.all()) {
-          const h = m.g;
-          if (!m.s.snared || Math.hypot(h.home.x - s.x, h.home.y - s.y) > h.home.r + 4) continue;
-          if (r() < PER_HOUR(survival)) {
-            fauna.remove(m);
-            s.caught = m.s.id;
-            s.at = s.tried;
-            out.push(s);
-          }
-          break;
+        const b = fresh(s.bait, s.tried) ? s.bait : undefined;
+        // Bait out of sight is taken now and then by a beast the snare does not hold.
+        if (b && r() < BAIT_TAKEN_PER_HOUR) {
+          const thief = [...fauna.all()].find((m) => drawnBy(m.s.diet, b.kind) && Math.hypot(m.x - s.x, m.y - s.y) < 60);
+          s.baitTaken = { by: thief?.s.id ?? null, at: s.tried };
+          s.bait = undefined;
+          continue;
+        }
+        const m = takerOf(fauna, s, b, (x) => !!x.s.snared);
+        if (m && r() < PER_HOUR(survival) * fenceBoost(s.x, s.y) * (b && drawnBy(m.s.diet, b.kind) ? BAIT_BOOST : 1)) {
+          fauna.remove(m);
+          s.caught = m.s.id;
+          s.at = s.tried;
+          s.robbed = undefined;
+          s.bait = undefined;
+          out.push(s);
         }
       }
     }

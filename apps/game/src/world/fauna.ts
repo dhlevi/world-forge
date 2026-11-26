@@ -35,6 +35,7 @@ import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import type { AnimalGroup, Spot } from '../worker/protocol';
 import { heardLevel, layTrail, takesTracks, type Noise, type Tracks } from './senses';
 import { findPath, type PathMap } from './paths';
+import { drawnBy, FENCES, PIT_RANK, type BaitKind } from './traps';
 import { Health, type HealthData } from '../actors/health';
 import type { Item } from '../actors/items/item';
 import { morale, type Stance } from '../rules/combat';
@@ -172,6 +173,12 @@ export class Fauna {
   onSee: (text: string) => void = () => {};
   /** Whether a person stands on a tile (the animals keep off them). */
   personAt: (x: number, y: number) => boolean = () => false;
+  /** A beast has stepped onto a covered pit (world/traps.ts, game/trapping.ts). */
+  onPit: (a: Animal, x: number, y: number) => void = () => {};
+  /** The wanderer's traps near a place (snares and covered pits), for steering game along fences. */
+  lures: (x: number, y: number, r: number) => { x: number; y: number; pit: boolean }[] = () => [];
+  /** The fresh bait in the wanderer's traps near a place (world/traps.ts). */
+  baits: (x: number, y: number, r: number) => { x: number; y: number; kind: BaitKind }[] = () => [];
   /** Called when the animals shown may have changed. */
   onChange: () => void = () => {};
   /** Whether a herd has been told of as fleeing lately (by herd id). */
@@ -488,12 +495,77 @@ export class Fauna {
     return g.map.passableAt(x, y, null);
   }
 
-  private move(a: Animal, x: number, y: number): void {
+  /** The bait nearest a wild beast that draws it, within its smell (and at most 30 tiles). */
+  private baitFor(a: Animal): Spot | null {
+    if (a.alt > 0 || a.s.home !== 'wild' || a.s.temper === 'tame') return null;
+    const r = Math.min(30, a.s.smell * 1.5 + 4);
+    let best: Spot | null = null, bd = Infinity;
+    for (const b of this.baits(a.x, a.y, r)) {
+      if (!drawnBy(a.s.diet, b.kind)) continue;
+      const d = Math.hypot(b.x - a.x, b.y - a.y);
+      if (d <= r && d < bd) {
+        bd = d;
+        best = { x: b.x, y: b.y, z: null };
+      }
+    }
+    return best;
+  }
+
+  /** Whether an animal is held in a pit (fieldcraft.md, stage 3): it cannot climb out. */
+  inPit(a: Animal, g: FaunaView): boolean {
+    return a.alt === 0 && OBJECT_TILES[g.map.objectAt(a.x, a.y, null)]?.name === 'pit_sprung';
+  }
+
+  private move(a: Animal, x: number, y: number, g: FaunaView): boolean {
+    if (this.inPit(a, g)) return false;
     if (this.byTile.get(key(a.x, a.y)) === a) this.byTile.delete(key(a.x, a.y));
     a.facing = facingOf(x - a.x, y - a.y);
     a.x = x;
     a.y = y;
     this.byTile.set(key(x, y), a);
+    // Onto a covered pit: a beast of middling size or larger falls in (world/traps.ts).
+    if (a.alt === 0 && SIZE_RANK[a.s.size] >= PIT_RANK && OBJECT_TILES[g.map.objectAt(x, y, null)]?.name === 'pit_covered') this.onPit(a, x, y);
+    return true;
+  }
+
+  /**
+   * The flight of a frightened beast with a drive fence beside it (fieldcraft.md, stage 3): it runs
+   * along the fence toward a trap that lies away from what frightened it, rather than straight away.
+   * Returns null when there is no fence or no trap to steer toward.
+   */
+  private herdStep(a: Animal, from: Spot, g: FaunaView): boolean | null {
+    if (a.alt > 0) return null;
+    let fence = false;
+    for (let dy = -3; dy <= 3 && !fence; dy++) for (let dx = -3; dx <= 3 && !fence; dx++) {
+      if (g.map.loaded(a.x + dx, a.y + dy) && FENCES.has(OBJECT_TILES[g.map.objectAt(a.x + dx, a.y + dy, null)]?.name ?? '')) fence = true;
+    }
+    if (!fence) return null;
+    const d0 = Math.hypot(a.x - from.x, a.y - from.y);
+    const big = SIZE_RANK[a.s.size] >= PIT_RANK;
+    let lure: { x: number; y: number } | null = null, ld = Infinity;
+    for (const t of this.lures(a.x, a.y, 16)) {
+      if (t.pit !== big || (!big && !a.s.snared)) continue;
+      if (Math.hypot(t.x - from.x, t.y - from.y) < d0 - 1) continue;
+      const d = Math.hypot(t.x - a.x, t.y - a.y);
+      if (d < ld) {
+        ld = d;
+        lure = t;
+      }
+    }
+    if (!lure) return null;
+    let best: [number, number] | null = null, bs = Infinity;
+    for (const [dx, dy] of DIRS8) {
+      const x = a.x + dx, y = a.y + dy;
+      if (!this.free(x, y, g, a) || !this.canStand(a, x, y, g)) continue;
+      const df = Math.hypot(x - from.x, y - from.y);
+      if (df < d0 - 0.5) continue;
+      const sc = Math.hypot(lure.x - x, lure.y - y) - 0.4 * df;
+      if (sc < bs) {
+        bs = sc;
+        best = [x, y];
+      }
+    }
+    return best ? this.move(a, best[0], best[1], g) : false;
   }
 
   /** A step toward (or, `away`, from) a tile: the free neighbour that best closes (or opens) the distance. */
@@ -512,8 +584,7 @@ export class Fauna {
     if (!best) return false;
     // Toward: only if it gets nearer.
     if (!away && bd >= Math.hypot(to.x - a.x, to.y - a.y)) return false;
-    this.move(a, best[0], best[1]);
-    return true;
+    return this.move(a, best[0], best[1], g);
   }
 
   /**
@@ -690,7 +761,7 @@ export class Fauna {
           continue;
         }
         a.state = 'flee';
-        const ok = this.step(a, from, g, true);
+        const ok = this.herdStep(a, from, g) ?? this.step(a, from, g, true);
         a.nextAt += a.s.fly && a.alt > 0 ? 0.3 : pace / 2;
         // A bird that can fly no further away (hemmed in, or at the edge of what is made) comes down.
         if (!ok && a.s.fly && a.alt > 0) {
@@ -729,6 +800,20 @@ export class Fauna {
       if (a.s.call && g.time - a.calledAt > 600 + (hashString(a.id) % 900)) {
         a.calledAt = g.time;
         this.noise(a, 'work', 55, a.s.call);
+      }
+      // Bait it smells (fieldcraft.md, stage 3): a wild beast the bait draws goes to it.
+      const bait = this.baitFor(a);
+      if (bait && (a.x !== bait.x || a.y !== bait.y)) {
+        if (this.step(a, bait, g)) {
+          a.state = 'walk';
+          a.nextAt += pace;
+          moved = true;
+          this.tracked(a, g);
+          continue;
+        }
+      } else if (bait) {
+        a.nextAt += pace * 3;
+        continue;
       }
       // The leader goes where the herd's plan says; the others keep with it.
       const lead = h.members[0];

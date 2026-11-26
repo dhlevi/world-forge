@@ -914,7 +914,7 @@ export class Renderer {
       this.marks.ellipse(x + 10, y + 10, 1.2, 2).fill({ color: 0x2a1e12, alpha: a });
     }
     // The wanderer's snares (world/hunting.ts): a noose on its peg, seen or remembered; a catch in it
-    // shows as a red dot.
+    // shows as a red dot, bait in it as a brown one within the noose.
     if (!slice) for (let i = 0; i < this.cols * this.rows; i++) {
       if (Number.isNaN(levels[i])) continue;
       const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
@@ -925,6 +925,7 @@ export class Renderer {
       this.marks.circle(x, y - 1.5, 3.2).stroke({ color: 0x1a1408, width: 2.2, alpha: al * 0.6 }).circle(x, y - 1.5, 3.2).stroke({ color: 0xd8c8a0, width: 1.1, alpha: al });
       this.marks.moveTo(x, y + 1.7).lineTo(x, y + 5.5).stroke({ color: 0x6a4a22, width: 1.6, alpha: al });
       if (sn === 'caught') this.marks.circle(x + 4, y - 4, 1.8).fill({ color: 0xc0281c, alpha: al });
+      else if (sn === 'baited') this.marks.circle(x, y - 1.5, 1.3).fill({ color: 0x8a5a2a, alpha: al });
     }
     // The trail read by Tracking (game/hunt.ts): small amber marks along it.
     if (!slice) for (let i = 0; i < this.cols * this.rows; i++) {

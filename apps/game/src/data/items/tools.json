@@ -258,6 +258,47 @@
       "value": 1,
       "stack": 10,
       "sold": ["market", "store"]
+    },
+    {
+      "id": "hatchet",
+      "name": "hatchet",
+      "kind": "tool",
+      "weight": 0.8,
+      "bulk": 1,
+      "size": "medium",
+      "value": 12,
+      "belt": true,
+      "melee": { "skill": "axes", "reach": 1, "seconds": 1.6, "cut": 6, "bash": 3, "parry": 0.2 },
+      "throw": { "kind": "cut", "sev": 6, "range": 6, "seconds": 1.6 },
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
+      "sold": ["smithy", "market"],
+      "about": "A small one-handed axe: for felling small trees, cutting stakes and splitting kindling."
+    },
+    {
+      "id": "spade",
+      "name": "spade",
+      "kind": "tool",
+      "weight": 2,
+      "bulk": 3,
+      "size": "huge",
+      "value": 10,
+      "strap": true,
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
+      "sold": ["smithy", "market"],
+      "about": "A flat iron-shod blade on a long handle, for cutting turf and digging."
+    },
+    {
+      "id": "shovel",
+      "name": "shovel",
+      "kind": "tool",
+      "weight": 2.2,
+      "bulk": 3,
+      "size": "huge",
+      "value": 12,
+      "strap": true,
+      "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
+      "sold": ["smithy", "market"],
+      "about": "A broad scoop of iron on a long handle, for moving loose earth quickly."
     }
   ]
 }

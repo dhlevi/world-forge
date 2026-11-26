@@ -313,6 +313,12 @@ From the floor plans. Over the floor, transparent background, seen from straight
 | `support` | A timber prop holding up the gallery roof. | walk | 1 | `\|` #8a6a40 |
 | `ore` | Glinting ore in the rock, a pick mark beside it. | blocks | 1 | `*` #c8a050 |
 | `pit` | A dark hole in the floor. | blocks | 1 | `o` #141210 |
+| `stump` | The stump of a felled tree, cut low. | walk | 1 | `u` #7a5a38 |
+| `pit_dug` | A pit dug in the ground, deep enough to hold a deer, its earth heaped round it. | blocks | 1 | `o` #3a2a18 |
+| `pit_covered` | Thin sticks and leaf litter laid over a pit: a pitfall, hard to tell from the ground about it. | walk | 1 | `,` #6a5a38 |
+| `pit_sprung` | A pitfall whose cover has fallen in: something is in it, or was. | blocks | 1 | `o` #2a1e10 |
+| `stake_fence` | Stakes driven into the ground close together, a drive fence to steer game. | blocks | join (16), group stakes | `#` #8a6a42 |
+| `brush_fence` | Cut brush piled between stakes, a drive fence to steer game. | blocks | join (16), group stakes | `*` #5a6a32 |
 
 ## Ground edges
 
@@ -523,4 +529,4 @@ Small things scattered over open ground with no object on it, drawn only: they b
 
 ## Totals
 
-44 ground tiles, 128 objects and 16 decorations: 1262 frames in all with every variant and join drawn.
+44 ground tiles, 134 objects and 16 decorations: 1298 frames in all with every variant and join drawn.

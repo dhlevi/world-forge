@@ -264,6 +264,13 @@ const OBJECT: Def[] = [
   o('ore', '*', '#c8a050', 'a vein of ore', 'Glinting ore in the rock, a pick mark beside it.'),
   o('pit', 'o', '#141210', 'a pit', 'A dark hole in the floor.'),
   o('wall_torch', '*', '#f0a040', 'a torch in a sconce', 'A burning torch in an iron sconce on a stone wall (the wall drawn as wall_stone, the flame over it); it lights the room.', { opaque: true, group: 'wall', join: 'mask4' }),
+  // Fieldcraft (the wanderer's work, apps/game: fieldcraft.md, stage 3): never placed by the generator.
+  o('stump', 'u', '#7a5a38', 'a tree stump', 'The stump of a felled tree, cut low.', { pass: true, slow: 0.5, gap: true }),
+  o('pit_dug', 'o', '#3a2a18', 'a dug pit', 'A pit dug in the ground, deep enough to hold a deer, its earth heaped round it.'),
+  o('pit_covered', ',', '#6a5a38', 'a covered pit', 'Thin sticks and leaf litter laid over a pit: a pitfall, hard to tell from the ground about it.', { pass: true }),
+  o('pit_sprung', 'o', '#2a1e10', 'a sprung pitfall', 'A pitfall whose cover has fallen in: something is in it, or was.'),
+  o('stake_fence', '#', '#8a6a42', 'a fence of stakes', 'Stakes driven into the ground close together, a drive fence to steer game.', { group: 'stakes', join: 'mask4' }),
+  o('brush_fence', '*', '#5a6a32', 'a brush fence', 'Cut brush piled between stakes, a drive fence to steer game.', { group: 'stakes', join: 'mask4' }),
 ];
 
 export const GROUND_TILES: readonly TileDef[] = GROUND.map((d) => ({ ...d, layer: 'ground' as const }));

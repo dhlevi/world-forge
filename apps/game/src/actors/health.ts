@@ -275,7 +275,7 @@ export class Health extends Component {
     return Health.bloodMaxFor(this.d.kg ?? this.actor?.get(Body)?.d.weightKg ?? 70);
   }
 
-  private random(): number {
+  random(): number {
     return this.rng?.() ?? this.actor?.get(Skills)?.random() ?? Math.random();
   }
 

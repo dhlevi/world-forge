@@ -383,6 +383,32 @@
       "size": "tiny",
       "value": 10,
       "about": "Venom milked from a snake's fangs, for apothecaries, and worse."
+    },
+    {
+      "id": "stake",
+      "name": "sharpened stake",
+      "plural": "sharpened stakes",
+      "kind": "goods",
+      "weight": 1,
+      "bulk": 1.5,
+      "size": "large",
+      "value": 0,
+      "stack": 10,
+      "durable": false,
+      "about": "A length of green wood pointed at one end, for a fence, a pit's spikes or a snare's peg."
+    },
+    {
+      "id": "pole",
+      "name": "pole",
+      "plural": "poles",
+      "kind": "goods",
+      "weight": 4,
+      "bulk": 5,
+      "size": "huge",
+      "value": 1,
+      "stack": 4,
+      "durable": false,
+      "about": "A long straight trunk of a young tree, trimmed of its branches: for a fence's rails, a shelter's frame or a pit's cover."
     }
   ]
 }
