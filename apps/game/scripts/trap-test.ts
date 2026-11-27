@@ -136,6 +136,35 @@ console.log('felling, stakes and pits');
   s.dispose();
 }
 
+console.log('\nwork that can be stopped and taken up again');
+{
+  const s = await play();
+  give(s, 'shovel');
+  // Shown a minute at a time (as in play), stopped part way by the player.
+  s.field.stepMs = 1;
+  s.field.workMs = 1;
+  const t0 = s.game.time;
+  const job = s.field.act('dig', X + 2, Y - 2);
+  await new Promise((r) => setTimeout(r, 40));
+  ok(s.field.busy && !!s.game.hud.task, `while digging the wanderer is busy, and it says so ("${s.game.hud.task}")`);
+  s.field.cancelWalk();
+  await job;
+  const spent = s.game.time - t0;
+  ok(objAt(s, X + 2, Y - 2) === 'none' && spent > 0 && spent < 2 * 3600 && s.field.progress.has(`dig:${X + 2},${Y - 2}`), `stopped after ${Math.round(spent / 60)} minutes: no pit yet, the work kept`);
+  ok(!s.game.hud.task && !s.field.busy, 'and no longer busy');
+  s.field.stepMs = 0;
+  const t1 = s.game.time;
+  await s.field.act('dig', X + 2, Y - 2);
+  ok(objAt(s, X + 2, Y - 2) === 'pit_dug' && !s.field.progress.has(`dig:${X + 2},${Y - 2}`), `taken up again, the pit is finished in ${Math.round((s.game.time - t1) / 60)} more minutes`);
+  // Danger stops it: a wild boar close by.
+  s.fauna.pin({ id: 'hunt:boar', species: 'boar', members: [{ x: X - 3, y: Y + 3, z: null }], home: { x: X - 3, y: Y + 3, r: 2 }, water: null }, s.game);
+  s.game.refresh();
+  const t2 = s.game.time;
+  await s.field.act('dig', X - 2, Y);
+  ok(objAt(s, X - 2, Y) === 'none' && s.game.time - t2 < 10 * 60 && /boar is close by/.test(s.hud.log.map((l) => l.text).join(' ')), 'a wild boar close by stops the work at once');
+  s.dispose();
+}
+
 console.log('\na drive fence and a pitfall');
 {
   const s = await play();

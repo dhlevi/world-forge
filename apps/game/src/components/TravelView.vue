@@ -13,6 +13,7 @@ import type { PlanImage, StartSite, TravelArea, ViewLayer } from '../worker/prot
 import type { Actor } from '../actors/actor';
 import { whyNoRaft } from '../rules/crossing';
 import type { Hunting } from '../game/hunt';
+import type { CampsAway } from '../game/camping/away';
 
 const props = defineProps<{
   travel: Travel;
@@ -26,6 +27,8 @@ const props = defineProps<{
   player?: Actor | null;
   /** Hunting: signs of game found, Hunt, taking up a trail (game/hunt.ts). */
   hunt?: Hunting | null;
+  /** The camps left standing (game/camping/away.ts). */
+  camps?: CampsAway | null;
 }>();
 /** The journey (game/travel.ts): the game's own object, driven from here, not data a parent view owns. */
 const journey = props.travel;
@@ -61,7 +64,19 @@ const route = computed<LL[]>(() => (tick.value, journey.ahead()));
 const atRiver = computed(() => (tick.value, journey.atRiver));
 /** Signs of game marked, and the one chosen (game/hunt.ts). */
 const traps = computed(() => (tick.value, props.hunt?.trapSites() ?? []));
-const signs = computed(() => (tick.value, [...(props.hunt?.live().map((x) => ({ id: x.id, lon: x.lon, lat: x.lat, kind: 'game' as const })) ?? []), ...traps.value.map((t) => ({ id: t.id, lon: t.lon, lat: t.lat, kind: 'trap' as const }))]));
+const campSites = computed(() => (tick.value, props.camps?.sites() ?? []));
+const signs = computed(() => (tick.value, [
+  ...(props.hunt?.live().map((x) => ({ id: x.id, lon: x.lon, lat: x.lat, kind: 'game' as const })) ?? []),
+  ...traps.value.map((t) => ({ id: t.id, lon: t.lon, lat: t.lat, kind: 'trap' as const })),
+  ...campSites.value.map((c) => ({ id: c.id, lon: c.lon, lat: c.lat, kind: 'camp' as const, state: c.fire })),
+]));
+/** The camp chosen on the map, if any. */
+const campSite = computed(() => campSites.value.find((c) => c.id === signId.value) ?? null);
+function goToCamp(): void {
+  if (props.camps && campSite.value) props.camps.goTo(campSite.value);
+  signId.value = '';
+  tick.value++;
+}
 const signId = ref('');
 const sign = computed(() => (tick.value, props.hunt?.live().find((x) => x.id === signId.value) ?? null));
 /** The site of snares chosen on the map, if any. */
@@ -215,6 +230,11 @@ onBeforeUnmount(() => journey.stop());
         <div v-if="sign && hunt" class="row river">
           <span>{{ cap(hunt.signWords(sign)) }}, {{ (hunt.metresTo(sign) / 1000).toFixed(1) }} km off.</span>
           <button @click="takeUp">{{ hunt.metresTo(sign) <= 400 ? 'Take up the trail' : 'Go there' }}</button>
+          <button @click="signId = ''">Close</button>
+        </div>
+        <div v-if="campSite && camps" class="row river">
+          <span>{{ camps.words(campSite) }}; {{ (camps.metresTo(campSite) / 1000).toFixed(1) }} km off.</span>
+          <button @click="goToCamp">{{ camps.metresTo(campSite) <= 400 ? 'Go to your camp' : 'Go there' }}</button>
           <button @click="signId = ''">Close</button>
         </div>
         <div v-if="trap && hunt" class="row river">

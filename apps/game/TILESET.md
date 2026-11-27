@@ -319,6 +319,7 @@ From the floor plans. Over the floor, transparent background, seen from straight
 | `pit_sprung` | A pitfall whose cover has fallen in: something is in it, or was. | blocks | 1 | `o` #2a1e10 |
 | `stake_fence` | Stakes driven into the ground close together, a drive fence to steer game. | blocks | join (16), group stakes | `#` #8a6a42 |
 | `brush_fence` | Cut brush piled between stakes, a drive fence to steer game. | blocks | join (16), group stakes | `*` #5a6a32 |
+| `fire_banked` | A ring of stones, the embers banked under ash: warm, and smoking a little (a camp left for a while). | blocks | 1 | `*` #8a4a30 |
 
 ## Ground edges
 
@@ -529,4 +530,4 @@ Small things scattered over open ground with no object on it, drawn only: they b
 
 ## Totals
 
-44 ground tiles, 134 objects and 16 decorations: 1298 frames in all with every variant and join drawn.
+44 ground tiles, 135 objects and 16 decorations: 1299 frames in all with every variant and join drawn.

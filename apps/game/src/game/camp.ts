@@ -36,6 +36,10 @@ export const CAMP_R = 4;
 export const BURN_KG_H = 1, ARMFUL_KG = 3;
 /** A fire's warmth (°C) to those beside it, at best. */
 export const FIRE_WARMTH = 10;
+/** A banked fire burns its fuel this much slower, keeps at most this long (h), and gives this share of the warmth. */
+export const BANKED_SLOW = 4, BANKED_MAX_H = 12, BANKED_WARMTH = 0.3;
+/** Unvisited this long (s), a camp falls into ruin: its shelter falls in, and it leaves the map. */
+export const CAMP_FADES_S = 30 * 86400;
 
 export interface SiteRating {
   /** 0 (open to the wind) to 1 (well sheltered). */
@@ -69,7 +73,13 @@ export interface CampData {
   y: number;
   made: number;
   site: SiteRating;
-  fire: { lit: boolean; fuelH: number; tend: boolean };
+  /** The fire: lit (or banked, embers under ash), the hours of fuel in it, and whether it is tended. */
+  fire: { lit: boolean; fuelH: number; tend: boolean; banked?: boolean; bankedH?: number };
+  /** When the wanderer was last at it (fieldcraft.md, stage 5): unvisited a month, it falls into ruin. */
+  visited?: number;
+  /** When the hours away were last reckoned (things left taken), and what has happened, to tell on coming back. */
+  reckoned?: number;
+  news?: string[];
   /** Kilograms of firewood gathered and stacked. */
   wood: number;
   woodAt: [number, number];
@@ -89,9 +99,19 @@ const WAYS = new Set(['road', 'track', 'path', 'street']);
 const objName = (g: Game, x: number, y: number) => OBJECT_TILES[g.map.object(x, y)]?.name ?? 'none';
 const groundOf = (g: Game, x: number, y: number) => GROUND_TILES[g.map.ground(x, y)];
 
-/** Whether a tile is somewhere to lay a camp: open, dry ground out of doors, nothing on it. */
+/**
+ * The town or city a tile lies within, if any (from play, 27 November 2026): no camp or fire is
+ * made inside one (sleeping rough on the ground is still allowed); a village is no bar.
+ */
+export function townAt(g: Game, x: number, y: number): { name: string; tier: string } | null {
+  const mx = (x + 0.5) * TILE_M, my = -(y + 0.5) * TILE_M;
+  for (const s of g.sites) if ((s.tier === 'town' || s.tier === 'city') && Math.hypot(s.x - mx, s.y - my) < s.radiusM) return s;
+  return null;
+}
+
+/** Whether a tile is somewhere to lay a camp: open, dry ground out of doors, outside a town's bounds, nothing on it. */
 export function campable(g: Game, x: number, y: number): boolean {
-  if (!g.map.loaded(x, y) || !g.map.passable(x, y)) return false;
+  if (!g.map.loaded(x, y) || !g.map.passable(x, y) || townAt(g, x, y)) return false;
   const gr = groundOf(g, x, y);
   if (!gr || gr.water || gr.name.startsWith('floor_') || WAYS.has(gr.name)) return false;
   const o = objName(g, x, y);
@@ -196,9 +216,17 @@ export function findSites(g: Game, x: number, y: number, radius: number, here = 
 export class Camps {
   list: CampData[] = [];
 
-  /** The camp the wanderer is at (within CAMP_R of its fire), if any. */
+  /** The camp the wanderer is at (within CAMP_R of its fire; the nearest, where two are close), if any. */
   at(x: number, y: number): CampData | undefined {
-    return this.list.find((c) => Math.max(Math.abs(c.x - x), Math.abs(c.y - y)) <= CAMP_R);
+    let best: CampData | undefined, bd = Infinity;
+    for (const c of this.list) {
+      const d = Math.max(Math.abs(c.x - x), Math.abs(c.y - y));
+      if (d <= CAMP_R && d < bd) {
+        bd = d;
+        best = c;
+      }
+    }
+    return best;
   }
 
   /** The nearest camp, and how far (tiles). */
@@ -256,10 +284,23 @@ export class Camps {
     else this.unplace(g, c, c.woodAt[0], c.woodAt[1]);
   }
 
-  setFire(g: Game, c: CampData, lit: boolean): void {
+  setFire(g: Game, c: CampData, lit: boolean, banked = false): void {
     c.fire.lit = lit;
+    c.fire.banked = lit && banked ? true : undefined;
     if (!lit) c.fire.fuelH = Math.max(0, c.fire.fuelH);
-    this.place(g, c, c.x, c.y, lit ? 'campfire' : 'fire_out');
+    this.place(g, c, c.x, c.y, !lit ? 'fire_out' : banked ? 'fire_banked' : 'campfire');
+  }
+
+  /** The fire's state in a word: burning, banked, or cold. */
+  fireWord(c: CampData): 'burning' | 'banked' | 'cold' {
+    return !c.fire.lit ? 'cold' : c.fire.banked ? 'banked' : 'burning';
+  }
+
+  /** Hours the fire will last as it is (banked: slowly, up to its limit; burning: its fuel, and the pile if tended). */
+  hoursLeft(c: CampData): number {
+    if (!c.fire.lit) return 0;
+    if (c.fire.banked) return Math.min(BANKED_MAX_H, c.fire.fuelH * BANKED_SLOW);
+    return c.fire.fuelH + (c.fire.tend ? c.wood / BURN_KG_H : 0);
   }
 
   /**
@@ -270,6 +311,18 @@ export class Camps {
     const out: CampData[] = [];
     for (const c of this.list) {
       if (!c.fire.lit) continue;
+      // Banked, the embers keep under the ash: slowly, and not past their limit.
+      if (c.fire.banked) {
+        c.fire.fuelH -= dt / 3600 / BANKED_SLOW;
+        c.fire.bankedH = (c.fire.bankedH ?? 0) + dt / 3600;
+        if (c.fire.fuelH <= 0 || c.fire.bankedH >= BANKED_MAX_H) {
+          c.fire.fuelH = 0;
+          c.fire.bankedH = undefined;
+          this.setFire(g, c, false);
+          out.push(c);
+        }
+        continue;
+      }
       c.fire.fuelH -= dt / 3600;
       while (c.fire.fuelH <= 0 && c.fire.tend && c.wood >= 1) {
         const kg = Math.min(ARMFUL_KG, c.wood);
@@ -293,7 +346,7 @@ export class Camps {
     let w = 0;
     if (c.fire.lit) {
       const d = Math.max(Math.abs(c.x - x), Math.abs(c.y - y));
-      w += FIRE_WARMTH * (d <= 2 ? 1 : 0.5) * (0.6 + 0.4 * c.site.shelter) * (airC < -10 ? 0.6 : 1);
+      w += FIRE_WARMTH * (d <= 2 ? 1 : 0.5) * (0.6 + 0.4 * c.site.shelter) * (airC < -10 ? 0.6 : 1) * (c.fire.banked ? BANKED_WARMTH : 1);
     }
     if (c.shelter) w += SHELTERS[c.shelter.kind].warmth;
     return w;

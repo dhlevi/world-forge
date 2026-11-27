@@ -68,6 +68,7 @@ button:disabled { opacity: 0.5; cursor: default; }
   box-shadow: 0 4px 14px rgba(0, 0, 0, 0.4);
 }
 .skill-menu { position: absolute; z-index: 5; grid-row: 1; grid-column: 1; align-self: start; justify-self: start; display: flex; flex-direction: column; min-width: 240px; max-width: 340px; background: rgba(21, 25, 34, 0.97); border: 1px solid var(--line); border-radius: 6px; padding: 4px; box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45); }
+.task-banner { position: absolute; z-index: 5; grid-row: 1; grid-column: 1; align-self: start; justify-self: center; margin-top: 12px; display: flex; align-items: center; gap: 12px; padding: 6px 12px; background: rgba(21, 25, 34, 0.92); border: 1px solid var(--line); border-radius: 6px; }
 .skill-menu button { text-align: left; border: none; background: none; padding: 5px 8px; border-radius: 4px; }
 .skill-menu button:hover { background: #2b2618; }
 .skill-menu button.off { color: var(--dim); }

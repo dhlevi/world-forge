@@ -37,7 +37,7 @@ export class Woodcraft extends FieldWork {
   }
 
   /** Does a thing with wood at a tile (beside a tree; on the wanderer's own tile for stakes). */
-  act(what: string, x: number, y: number): void {
+  async act(what: string, x: number, y: number): Promise<void> {
     const g = this.g, a = this.s.player, inv = this.inv;
     if (!a || !inv) return;
     const why = this.actions(x, y).find((t) => t.id === what)?.why;
@@ -49,19 +49,18 @@ export class Woodcraft extends FieldWork {
       case 'fell': {
         const tool = fellingTool(inv)!;
         const r = fell(a, this.objName(x, y), x, y, tool[1], g.time);
-        if (!r) return;
-        this.spend(r.seconds);
+        if (!r || !(await this.spend(r.seconds, `Felling the ${r.name}`, `fell:${x},${y}`))) return;
         g.map.setObject(x, y, objectId('stump')!);
         const left = this.stow(r.items);
         if (r.hurt) a.get(Health)?.hurt({ kind: 'bruise', sev: 3, cause: 'a falling tree', now: g.time });
-        this.s.say(`You fell the ${r.name} with your ${tool[0]} (${Math.round(r.seconds / 60)} minutes). ${r.text} It gives ${r.items.map((i) => itemName(i)).join(', ')}${left.length ? '; what you cannot carry lies at your feet' : ''}.`);
+        this.s.say(`You fell the ${r.name} with your ${tool[0]}. ${r.text} It gives ${r.items.map((i) => itemName(i)).join(', ')}${left.length ? '; what you cannot carry lies at your feet' : ''}.`);
         break;
       }
       case 'stakes': {
         const poles = this.count('pole');
         const n = poles ? poles * STAKES_PER_POLE : this.count('stick');
+        if (!(await this.spend((poles ? POLE_MIN * poles : STICK_MIN * n) * 60, 'Cutting stakes'))) return;
         this.use(poles ? 'pole' : 'stick', poles || n);
-        this.spend((poles ? POLE_MIN * poles : STICK_MIN * n) * 60);
         this.stow([makeItem('stake', { qty: n })]);
         this.s.say(`You cut and point ${n} stake${n > 1 ? 's' : ''} with your ${blade(inv)}.`);
         break;

@@ -271,6 +271,7 @@ const OBJECT: Def[] = [
   o('pit_sprung', 'o', '#2a1e10', 'a sprung pitfall', 'A pitfall whose cover has fallen in: something is in it, or was.'),
   o('stake_fence', '#', '#8a6a42', 'a fence of stakes', 'Stakes driven into the ground close together, a drive fence to steer game.', { group: 'stakes', join: 'mask4' }),
   o('brush_fence', '*', '#5a6a32', 'a brush fence', 'Cut brush piled between stakes, a drive fence to steer game.', { group: 'stakes', join: 'mask4' }),
+  o('fire_banked', '*', '#8a4a30', 'a banked fire', 'A ring of stones, the embers banked under ash: warm, and smoking a little (a camp left for a while).'),
 ];
 
 export const GROUND_TILES: readonly TileDef[] = GROUND.map((d) => ({ ...d, layer: 'ground' as const }));

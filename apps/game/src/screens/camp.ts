@@ -10,7 +10,7 @@ import { Screen } from '../engine/screens';
 import type { PlayScreen } from './play';
 import type { Actor } from '../actors/actor';
 import type { Moodlet } from '../actors/components';
-import { findSites, type CampData, type ShelterKind, type SiteChoice } from '../game/camp';
+import { findSites, townAt, type CampData, type ShelterKind, type SiteChoice } from '../game/camp';
 import * as C from '../game/camping';
 import { beddingAt } from './sleep';
 import CampView from './views/CampView.vue';
@@ -96,7 +96,8 @@ export class CampScreen extends Screen {
       return;
     }
     this.state.choices = findSites(this.game, this.game.px, this.game.py, r, !travel);
-    if (!this.state.choices.length) this.state.message = 'There is nowhere here to make camp: find open, dry ground out of doors.';
+    const town = townAt(this.game, this.game.px, this.game.py);
+    if (!this.state.choices.length) this.state.message = town ? `You cannot make camp within ${town.name}: go beyond its walls. You can still sleep rough on the ground (Shift+Z).` : 'There is nowhere here to make camp: find open, dry ground out of doors.';
     this.bump();
   }
 
@@ -133,8 +134,12 @@ export class CampScreen extends Screen {
     void this.state.version;
     const ctx = this.ctx;
     const out: CampAction[] = [{ id: 'wood', label: 'Gather firewood (an hour)', why: c.site.wood < 0.05 ? 'There is nothing here to burn.' : null }];
-    if (c.fire.lit) {
+    if (c.fire.banked) {
+      out.push({ id: 'rake', label: 'Rake up the banked fire' });
+      out.push({ id: 'douse', label: 'Put out the fire' });
+    } else if (c.fire.lit) {
       out.push({ id: 'feed', label: 'Build up the fire', why: c.wood < 0.5 ? 'There is no wood stacked.' : null });
+      out.push({ id: 'bank', label: 'Bank the fire (to keep it while you are away)' });
       out.push({ id: 'douse', label: 'Put out the fire' });
     } else out.push({ id: 'light', label: 'Light the fire', why: C.whyNoFire(ctx, c) });
     const kinds: [ShelterKind, string][] = [['tent', 'Pitch your tent'], ['windbreak', 'Build a windbreak (40 min)'], ['lean_to', 'Build a lean-to (2 hours)']];
@@ -161,6 +166,8 @@ export class CampScreen extends Screen {
     else if (id === 'light') r = C.lightFire(ctx, c);
     else if (id === 'feed') r = C.feedFire(ctx, c);
     else if (id === 'douse') r = C.putOutFire(ctx, c);
+    else if (id === 'bank') r = C.bankFire(ctx, c);
+    else if (id === 'rake') r = C.rakeFire(ctx, c);
     else if (id.startsWith('shelter:')) r = C.putUpShelter(ctx, c, id.slice(8) as ShelterKind);
     else if (id === 'unshelter') C.takeDownShelter(ctx, c);
     else if (id === 'forage') r = C.forage(ctx, c);
@@ -183,6 +190,23 @@ export class CampScreen extends Screen {
     }
     if (r && !r.ok) this.state.message = r.text;
     this.bump();
+  }
+
+  /**
+   * Leaves the camp standing (fieldcraft.md, stage 5) to go about the day: the fire left burning on
+   * its fuel, banked to keep, or put out. The camp stays on the map, and on the travel map.
+   */
+  leaveCamp(fire: 'burn' | 'bank' | 'douse'): void {
+    const c = this.camp;
+    if (!c) return;
+    c.fire.tend = false;
+    let text = '';
+    if (c.fire.lit && fire === 'bank' && !c.fire.banked) text = C.bankFire(this.ctx, c).text;
+    else if (c.fire.lit && fire === 'douse') text = C.putOutFire(this.ctx, c).text;
+    const h = Math.round(this.game.camps.hoursLeft(c));
+    this.ctx.say(`${text ? `${text} ` : ''}You leave your camp standing${c.fire.lit && !c.fire.banked ? `, the fire burning (about ${Math.max(1, h)} hours in it)` : ''}; it is marked on the travel map.`);
+    this.bump();
+    this.close();
   }
 
   /** What the night plan can include now. */

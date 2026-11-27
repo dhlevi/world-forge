@@ -325,6 +325,11 @@ onBeforeUnmount(() => {
 <template>
   <div class="play">
     <div v-show="st.mode === 'local'" ref="el" class="map" @pointermove="onPointer" @pointerleave="onPointerOut" @contextmenu="onContext" @pointerdown="closeMenu" />
+    <!-- A spell of work under way (game/fieldcraft.ts, work): what, and a way to stop it. -->
+    <div v-if="hud.task && st.mode === 'local'" class="task-banner">
+      <span>{{ hud.task }}...</span>
+      <button @click="session.field.cancelWalk()">Stop (any key)</button>
+    </div>
     <div
       v-if="menu.show && st.mode === 'local' && screen.active"
       class="skill-menu"
@@ -346,6 +351,7 @@ onBeforeUnmount(() => {
       :request-plan="app.worker.plan"
       :player="session.player"
       :hunt="session.hunt"
+      :camps="session.campsAway"
       @zoom-in="session.toLocal()"
       @camp="screen.showCamp()"
       :dark="st.darkness"

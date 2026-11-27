@@ -29,3 +29,4 @@ export * from './fire';
 export * from './shelter';
 export * from './food';
 export * from './night';
+export * from './away';

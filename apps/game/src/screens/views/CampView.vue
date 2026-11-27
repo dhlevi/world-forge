@@ -63,6 +63,14 @@ const away = computed(() => {
           <div class="acts">
             <button v-for="a in actions" :key="a.id" :disabled="!!a.why" :title="a.why ?? ''" @click="screen.act(a.id)">{{ a.label }}</button>
           </div>
+          <div class="cc-label">Leave the camp standing</div>
+          <p class="dim small">To hunt, fish or explore and come back: the camp stays, and is marked on the travel map. Things left on the ground here may be taken while you are away.</p>
+          <div class="acts">
+            <button v-if="camp.fire.lit && !camp.fire.banked" @click="screen.leaveCamp('burn')">Leave the fire burning</button>
+            <button v-if="camp.fire.lit && !camp.fire.banked" @click="screen.leaveCamp('bank')">Bank the fire and go</button>
+            <button v-if="camp.fire.lit" @click="screen.leaveCamp('douse')">Put the fire out and go</button>
+            <button v-if="!camp.fire.lit || camp.fire.banked" @click="screen.leaveCamp('burn')">Leave the camp</button>
+          </div>
         </div>
         <div>
           <div class="cc-label">The night</div>

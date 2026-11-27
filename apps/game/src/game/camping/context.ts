@@ -3,7 +3,7 @@ import type { Actor } from '../../actors/actor';
 import { Skills, type Moodlet } from '../../actors/components';
 import { Inventory } from '../../actors/items/inventory';
 import { type Item } from '../../actors/items/item';
-import { BURN_KG_H, SHELTERS, type CampData } from '../camp';
+import { BANKED_MAX_H, BANKED_SLOW, BURN_KG_H, SHELTERS, type CampData } from '../camp';
 import type { Game } from '../game';
 import { TILE_M } from '@worldforge/core/local/chunk';
 
@@ -48,7 +48,10 @@ export function give(c: CampCtx, camp: CampData, it: Item): void {
 export function campWords(camp: CampData): string[] {
   const out: string[] = [];
   const h = Math.max(1, Math.round(camp.fire.fuelH));
-  out.push(camp.fire.lit ? `The fire is burning (${h === 1 ? 'about an hour' : `about ${h} hours`} left in it).` : 'The fire is out.');
+  if (camp.fire.banked) {
+    const b = Math.max(1, Math.round(Math.min(BANKED_MAX_H - (camp.fire.bankedH ?? 0), camp.fire.fuelH * BANKED_SLOW)));
+    out.push(`The fire is banked under its ashes (the embers will keep ${b === 1 ? 'about an hour' : `about ${b} hours`}).`);
+  } else out.push(camp.fire.lit ? `The fire is burning (${h === 1 ? 'about an hour' : `about ${h} hours`} left in it).` : 'The fire is out.');
   const w = Math.round(camp.wood / BURN_KG_H);
   out.push(camp.wood >= 0.5 ? `Wood stacked: ${w <= 1 ? 'about an hour' : `about ${w} hours`} of fire.` : 'No wood stacked.');
   out.push(camp.shelter ? `Shelter: ${SHELTERS[camp.shelter.kind].name}.` : 'No shelter.');

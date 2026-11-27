@@ -34,6 +34,17 @@ needs). Read it with [survival.md](survival.md) (needs, fire and shelter), [npcs
 *Walking (24 November 2026, from play):* the walk to a tile goes a step at a time, each shown
 (about a ninth of a second apart), and any key or click stops it.
 
+*Work takes its time (27 November 2026, from play):* everything done from the skill menu that
+takes time (fishing, felling, digging, covering, fencing, gutting, roasting, gathering kindling
+and the rest) passes it a minute at a time, the world going on about the wanderer and shown
+(about a thirtieth of a second a minute), with a banner saying what is being done and a Stop
+button; any key or click stops it as well. Stopped part way, nothing is done (time spent is
+spent); felling a tree, digging a pit and filling one in are kept where they were left, and taken
+up again from there. Danger stops work at once: a beast fighting, or one that could hurt the
+wanderer (a predator of middling size or more, or an aggressive beast) seen within ten tiles; a
+person fighting them; bad bleeding or falling senseless; or weariness, cold, thirst or hunger past
+bearing. The camp screen's tasks and the night are worked out from their menus, as before.
+
 *Built (23 November 2026; `game/fieldcraft.ts`, `field-test.ts`).* The menu offers, as they apply:
 Walk here; Light a fire here (Survival), or at a fire-place Light the fire, Build up the fire and
 Tend the camp; Roast the raw meat and game you carry (Cooking), at any fire, hearth, oven or
@@ -218,9 +229,32 @@ trouble.
 
 ### Stage 5: the camp
 
-- **Leaving the camp** without striking it or putting out the fire (the fire burns down untended,
-  or is banked to last), to fish, hunt or explore, and coming back.
-- **The camp on the travel map:** marked, and gone back to with a click.
-- The camp screen reworked about these.
+*Decided (27 November 2026):* a camp can be left standing with its fire burning, banked or put
+out; things left at it are at risk while the wanderer is away; and every camp is marked on the
+travel map with the state of its fire, those unvisited a month falling into ruin.
+
+*Built (27 November 2026; `game/camp.ts`, `game/camping/fire.ts`, `game/camping/away.ts`,
+`screens/camp.ts`, `camp-test.ts`).* The numbers are proposed, to tune in play.
+
+- **Banking the fire** (the camp screen, or the skill menu at the fire): the embers covered with
+  ash, an armful laid on if one is stacked, to smoulder four times slower than a fire burns, for
+  half a day at most, and to be raked back to flame without flint and steel. A banked fire gives
+  three tenths of a fire's warmth, and the rain does not put it out.
+- **Leaving the camp standing** (the camp screen): leave the fire burning on its fuel, bank it and
+  go, or put it out and go. The camp stays on the map, its fire burning down as time passes;
+  nothing needs doing to leave it but walking away.
+- **Things left at a camp** (on the ground within four tiles of its fire): while the wanderer is
+  away, each hour food may be taken by animals (four in a hundred) and goods by passers (four in a
+  thousand, none at a well hidden site); a hidden site and a shelter make both less likely. Coming
+  back to the camp tells what happened, the fire burning out among it.
+- **On the travel map:** each camp is a flame in a ring, bright while its fire burns, dull red
+  banked, grey cold. Clicked, it says the camp's shelter, its fire and when it was left; within
+  400 m **Go to your camp** puts the wanderer at its bed, and further off the way there is planned.
+- **A month unvisited,** a camp falls into ruin: its shelter falls in (a tent left in it is lost),
+  its objects go from the map but a cold ring of stones, and it is no longer marked.
+- Where two camps are close, the wanderer is at the nearer.
+- *From play (27 November 2026):* no camp is made, and no fire lit from the skill menu, within the
+  bounds of a town or a city (beyond its walls, it can be); sleeping rough on the ground there is
+  still allowed. A village is no bar.
 
 *Proposed numbers in each stage, to tune in play.*

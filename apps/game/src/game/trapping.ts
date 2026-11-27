@@ -276,7 +276,7 @@ export class Trapping extends FieldWork {
   static readonly IDS = new Set(['baitmeat', 'baitplant', 'dig', 'fence', 'brush', 'unfence', 'spike', 'cover', 'uncover', 'takepit', 'reset', 'fill']);
 
   /** Does a thing with traps at a tile (the wanderer is beside it, or on it for stakes). */
-  act(what: string, x: number, y: number): void {
+  async act(what: string, x: number, y: number): Promise<void> {
     const g = this.g, a = this.s.player, inv = this.inv;
     if (!a || !inv) return;
     const why = this.actions(x, y).find((t) => t.id === what)?.why;
@@ -285,44 +285,45 @@ export class Trapping extends FieldWork {
       return;
     }
     const p = this.pits.at(x, y);
+    // The time first, a minute at a time: stopped part way, nothing is done (a pit dug or filled
+    // part way is kept, to go on with).
     switch (what) {
       case 'baitmeat':
       case 'baitplant': {
         const kind: BaitKind = what === 'baitmeat' ? 'meat' : 'plant';
-        const it = this.baitCarried(kind);
         const sn = this.s.snares.at(x, y), trap = sn ?? p;
-        if (!it || !trap) return;
+        if (!trap || !(await this.spend(2 * 60, 'Baiting the trap'))) return;
+        const it = this.baitCarried(kind);
+        if (!it) return;
         const name = itemName({ ...it, qty: 1 });
         usePortion(inv, it);
         this.looked(x, y);
         trap.bait = { def: it.def, kind, at: g.time };
         trap.baitTaken = undefined;
-        this.spend(2 * 60);
         this.s.say(`You lay some of your ${name} in the ${sn ? 'snare' : 'pit'}: ${kind === 'meat' ? 'meat draws hunters and scavengers' : 'it will draw grazers and browsers'} for some days, until it goes off.`);
         break;
       }
       case 'dig': {
         const tool = diggingTool(inv)!;
         const d = digSeconds(a, tool[1], g.time);
-        this.spend(d.seconds);
+        if (!(await this.spend(d.seconds, 'Digging a pit', `dig:${x},${y}`))) return;
         g.map.setObject(x, y, id('pit_dug'));
         const pit = this.pits.dig(x, y, g.time);
         pit.seen = this.watched();
-        const hours = d.seconds / 3600;
-        this.s.say(`You dig a pit${tool[0] === 'stick' ? ' with a stout stick and your hands' : ` with your ${tool[0]}`}, deep enough to hold a deer (${hours < 1.5 ? `${Math.round(hours * 60)} minutes` : `${Math.round(hours * 2) / 2} hours`}).${d.grade === 'fumble' ? ' Your back aches from it.' : ''}`);
+        this.s.say(`You dig a pit${tool[0] === 'stick' ? ' with a stout stick and your hands' : ` with your ${tool[0]}`}, deep enough to hold a deer.${d.grade === 'fumble' ? ' Your back aches from it.' : ''}`);
         break;
       }
       case 'spike':
+        if (!(await this.spend(15 * 60, 'Setting stakes in the pit'))) return;
         this.use('stake', SPIKES);
-        this.spend(15 * 60);
         if (p) p.spiked = true;
         this.s.say('You drive sharpened stakes into the floor of the pit, points up.');
         break;
       case 'cover': {
+        if (!(await this.spend(20 * 60, 'Covering the pit'))) return;
         if (this.count('pole')) this.use('pole', 1);
         else this.use('stick', 2);
         const c = coverPit(a, g.time);
-        this.spend(20 * 60);
         g.map.setObject(x, y, id('pit_covered'));
         const pit = p ?? this.pits.dig(x, y, g.time);
         pit.covered = true;
@@ -333,59 +334,58 @@ export class Trapping extends FieldWork {
         break;
       }
       case 'uncover':
+        if (!(await this.spend(5 * 60, 'Taking the cover off'))) return;
         g.map.setObject(x, y, id('pit_dug'));
         if (p) {
           p.covered = false;
           p.hide = undefined;
         }
-        this.spend(5 * 60);
         this.stow([makeItem('stick', { qty: 2 })]);
         this.s.say('You lift the cover off the pit.');
         break;
       case 'takepit': {
+        if (!(await this.spend(5 * 60, 'Climbing down into the pit'))) return;
         this.looked(x, y);
         const items = g.ground.at(x, y);
         for (const it of [...items]) g.ground.take(x, y, it.uid);
         const left = this.stow(items);
-        this.spend(5 * 60);
         this.s.say(`You climb down into the pit and lift out ${items.map((i) => itemName(i)).join(', ')}${left.length ? ', and lay down what you cannot carry' : ''}.`);
         break;
       }
       case 'reset':
+        if (!(await this.spend(10 * 60, 'Clearing the pit'))) return;
         this.looked(x, y);
         g.map.setObject(x, y, id('pit_dug'));
-        this.spend(10 * 60);
         this.s.say('You clear the broken sticks out of the pit; it can be covered again.');
         break;
       case 'fill': {
         const tool = diggingTool(inv)!;
-        this.spend(Math.round(tool[1] * 0.4 * 3600));
+        if (!(await this.spend(Math.round(tool[1] * 0.4 * 3600), 'Filling in the pit', `fill:${x},${y}`))) return;
         g.map.setObject(x, y, id('none'));
         this.pits.remove(x, y);
         this.s.say('You fill the pit in and tread the earth down.');
         break;
       }
       case 'fence':
+        if (!(await this.spend(20 * 60, 'Driving in a fence'))) return;
         this.use('stake', FENCE_STAKES);
-        this.spend(20 * 60);
         g.map.setObject(x, y, id('stake_fence'));
         this.s.say('You drive in a length of fence, stakes close set.');
         break;
       case 'brush': {
+        const carried = this.count('stick') >= 2 || this.count('firewood') > 0;
+        if (!(await this.spend((carried ? 15 : 35) * 60, 'Building a brush fence'))) return;
         this.use('stake', BRUSH_STAKES);
-        let mins = 15;
         if (this.count('stick') >= 2) this.use('stick', 2);
         else if (this.count('firewood')) this.use('firewood', 1);
-        else mins += 20;
-        this.spend(mins * 60);
         g.map.setObject(x, y, id('brush_fence'));
-        this.s.say(mins > 15 ? 'You cut brush about and pile it between stakes: a length of drive fence.' : 'You pile brush between stakes: a length of drive fence.');
+        this.s.say(carried ? 'You pile brush between stakes: a length of drive fence.' : 'You cut brush about and pile it between stakes: a length of drive fence.');
         break;
       }
       case 'unfence': {
+        if (!(await this.spend(10 * 60, 'Pulling up the fence'))) return;
         const stakes = this.objName(x, y) === 'stake_fence' ? FENCE_STAKES : BRUSH_STAKES;
         g.map.setObject(x, y, id('none'));
-        this.spend(10 * 60);
         this.stow([makeItem('stake', { qty: stakes })]);
         this.s.say('You pull the fence up and keep the stakes.');
         break;

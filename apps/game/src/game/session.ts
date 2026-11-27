@@ -59,6 +59,7 @@ import { Trapping } from './trapping';
 import { Woodcraft } from './woodcraft';
 import { Fishing } from './fishing';
 import { Lines } from '../world/fishing';
+import { CampsAway } from './camping/away';
 import { type BlowId, type Stance } from '../rules/combat';
 import { callName, isWatch } from '../world/folk-fight';
 import { Strife } from '../world/strife';
@@ -181,6 +182,8 @@ export class PlaySession {
   /** Lines and nets set, and fishing (world/fishing.ts, game/fishing.ts; fieldcraft.md, stage 4). */
   readonly lines = new Lines();
   readonly fishing = new Fishing(this);
+  /** The camps left standing (game/camping/away.ts; fieldcraft.md, stage 5). */
+  readonly campsAway = new CampsAway(this);
   /** When the wanderer last practised Sneak near animals (game seconds). */
   private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
@@ -835,9 +838,14 @@ export class PlaySession {
     const inside = this.indoors();
     const camp = game.camps.at(game.px, game.py);
     // Camp fires burn down (game/camp.ts); heavy rain puts out an open fire.
-    for (const c of game.camps.burn(game, dt)) if (camp === c) game.say('Your fire has burnt down to ashes.');
+    for (const c of game.camps.burn(game, dt)) {
+      if (camp === c) game.say('Your fire has burnt down to ashes.');
+      else (c.news ??= []).push('Your fire burnt out while you were away.');
+    }
+    // Camps left behind (game/camping/away.ts): what happens while the wanderer is away.
+    this.campsAway.run();
     if (!inside && w.rainMm > 2 && !w.kind.includes('snow')) {
-      for (const c of game.camps.list) if (c.fire.lit && Math.hypot(c.x - game.px, c.y - game.py) < 400) {
+      for (const c of game.camps.list) if (c.fire.lit && !c.fire.banked && Math.hypot(c.x - game.px, c.y - game.py) < 400) {
         game.camps.setFire(game, c, false);
         c.fire.fuelH = 0;
         if (c === camp) game.say('The rain puts out your fire.');

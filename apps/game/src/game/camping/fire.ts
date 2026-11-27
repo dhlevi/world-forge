@@ -1,6 +1,6 @@
 /** Wood and fire. */
 import { check, DC, type Grade } from '../../actors/checks';
-import { ARMFUL_KG, BURN_KG_H, type CampData } from '../camp';
+import { ARMFUL_KG, BANKED_MAX_H, BURN_KG_H, type CampData } from '../camp';
 import { done, has, inv, pass, type CampCtx, type Result } from './context';
 
 // ---- Wood and fire -------------------------------------------------------------------------------
@@ -44,6 +44,7 @@ export function lightFire(c: CampCtx, camp: CampData): Result {
 
 export function feedFire(c: CampCtx, camp: CampData): Result {
   if (!camp.fire.lit) return { ok: false, text: 'The fire is out.' };
+  if (camp.fire.banked) return rakeFire(c, camp);
   if (camp.wood < 0.5) return { ok: false, text: 'There is no wood left.' };
   const kg = Math.min(ARMFUL_KG, camp.wood);
   camp.wood -= kg;
@@ -51,6 +52,37 @@ export function feedFire(c: CampCtx, camp: CampData): Result {
   pass(c, 60);
   c.game.camps.showWood(c.game, camp);
   return done(c, true, 'You build up the fire.');
+}
+
+/**
+ * Banks the fire (fieldcraft.md, stage 5): the embers covered with ash, with an armful laid on if
+ * there is one, to smoulder for up to twelve hours and be raked back to flame without flint and steel.
+ * The rain does not put it out.
+ */
+export function bankFire(c: CampCtx, camp: CampData): Result {
+  if (!camp.fire.lit) return { ok: false, text: 'The fire is out.' };
+  if (camp.fire.banked) return { ok: false, text: 'The fire is banked already.' };
+  if (camp.wood >= 1) {
+    const kg = Math.min(ARMFUL_KG, camp.wood);
+    camp.wood -= kg;
+    camp.fire.fuelH += kg / BURN_KG_H;
+  }
+  camp.fire.tend = false;
+  camp.fire.bankedH = 0;
+  c.game.camps.setFire(c.game, camp, true, true);
+  c.game.camps.showWood(c.game, camp);
+  pass(c, 5 * 60);
+  const h = Math.round(c.game.camps.hoursLeft(camp));
+  return done(c, true, `You bank the fire under its ashes: the embers will keep ${h >= BANKED_MAX_H ? `for half a day` : `for some ${Math.max(1, h)} hours`}.`);
+}
+
+/** Rakes a banked fire back into flame. */
+export function rakeFire(c: CampCtx, camp: CampData): Result {
+  if (!camp.fire.lit || !camp.fire.banked) return { ok: false, text: 'There is no banked fire to rake up.' };
+  camp.fire.bankedH = undefined;
+  c.game.camps.setFire(c.game, camp, true);
+  pass(c, 2 * 60);
+  return done(c, true, 'You rake the ashes off the embers and blow them back into flame.');
 }
 
 export function putOutFire(c: CampCtx, camp: CampData): Result {

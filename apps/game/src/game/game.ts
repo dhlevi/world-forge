@@ -59,6 +59,8 @@ export interface Hud {
   town?: { id: string; name: string; tier: string } | null;
   /** The settlement the wanderer is in, any village, town or city (for the law), if any. */
   settlement?: { id: string; name: string; tier: string } | null;
+  /** A spell of work under way (game/fieldcraft.ts, `work`), in words, to show with a way to stop it. */
+  task?: string | null;
 }
 
 const vkey = (x: number, y: number) => (x + 1048576) * 2097152 + (y + 1048576);

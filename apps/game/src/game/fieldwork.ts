@@ -52,9 +52,11 @@ export abstract class FieldWork {
     return left;
   }
 
-  /** Time spent at work. */
-  protected spend(seconds: number): void {
-    this.g.time += seconds;
-    this.g.activity = 'work';
+  /**
+   * Time spent at work, a minute at a time with the world going on (game/fieldcraft.ts, `work`):
+   * whether it was done, or stopped by the player or by danger (and with a `key`, kept to go on with).
+   */
+  protected async spend(seconds: number, label = 'Working', key?: string): Promise<boolean> {
+    return (await this.s.field.work(seconds, label, { key })).done;
   }
 }

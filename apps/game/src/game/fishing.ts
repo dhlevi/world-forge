@@ -9,7 +9,6 @@ import { GROUND_TILES } from '@worldforge/core/local/tiles';
 import { FISH_BY_ID, type Fish } from '../actors/data/fish';
 import { Health } from '../actors/health';
 import { itemName, makeItem, type Item } from '../actors/items/item';
-import { Needs } from '../actors/needs';
 import { Skills } from '../actors/components';
 import { biteChance, climateBand, fishItem, fishingWater, fishOf, fishWeight, gutAll, hookBait, land, LANDED, Lines, timeOfDay, useBait, whichFish, wormsIn, type BiteOdds, type FishingWater, type Gear } from '../world/fishing';
 import { blade, fellingTool } from '../world/woodcraft';
@@ -139,37 +138,38 @@ export class Fishing extends FieldWork {
       case 'fishtwo':
       case 'fishlight':
       case 'fishone':
-        this.fish(x, y, 'rod', ({ fishhour: 'hour', fishtwo: 'two', fishlight: 'light', fishone: 'one' } as Record<string, Span>)[what]);
+        await this.fish(x, y, 'rod', ({ fishhour: 'hour', fishtwo: 'two', fishlight: 'light', fishone: 'one' } as Record<string, Span>)[what]);
         break;
       case 'spearhour':
       case 'spearone':
-        this.fish(x, y, 'spear', what === 'spearhour' ? 'hour' : 'one');
+        await this.fish(x, y, 'spear', what === 'spearhour' ? 'hour' : 'one');
         break;
       case 'setline':
       case 'setnet': {
         const net = what === 'setnet';
+        if (!(await this.spend((net ? 20 : 10) * 60, net ? 'Setting your net' : 'Setting a line'))) return;
         const b = net ? null : hookBait(inv);
         if (b) useBait(inv, b.it);
         this.use(net ? 'net' : 'set_line', 1);
         this.lines.set(x, y, net ? 'net' : 'line', g.time, b?.kind);
-        this.spend((net ? 20 : 10) * 60);
         this.s.say(net ? 'You weight your net and set it across the water, its ends staked to the bank.' : `You ${b ? `bait the hooks with ${itemName({ ...b.it, qty: 1 })}, ` : ''}cast the line out and tie it to a stake on the bank${b ? '' : '; unbaited, it will take little'}.`);
         break;
       }
       case 'liftline': {
+        if (!this.lines.at(x, y) || !(await this.spend(10 * 60, 'Lifting it'))) return;
         const l = this.lines.lift(x, y);
         if (!l) return;
         const fish = l.catch.map((c) => fishItem(FISH_BY_ID.get(c.fish)!, c.kg));
         const left = this.stow([makeItem(l.kind === 'net' ? 'net' : 'set_line'), ...fish]);
-        this.spend(10 * 60);
         const robbed = l.robbed ? ` Something has taken a fish from it${l.robbed.by ? `: ${SPECIES_BY_ID.get(l.robbed.by)?.name ?? 'a beast'} tracks on the bank` : ''}.` : '';
         this.s.say(`You lift your ${l.kind}${fish.length ? ` with ${this.list(fish)} in it` : ', empty'}.${robbed}${left.length ? ' What you cannot carry lies on the bank.' : ''}`);
         break;
       }
       case 'gut': {
+        const n = inv.d.items.filter((i) => /^fish_/.test(i.def) && i.def !== 'fish_guts' && i.def !== 'fish_spear').reduce((k, i) => k + i.qty, 0);
+        if (!(await this.spend(n * 5 * 60, 'Gutting fish'))) return;
         const r = gutAll(a, inv, g.time);
         if (!r) return;
-        this.spend(r.seconds);
         if (r.guts) this.stow([makeItem('fish_guts', { qty: r.guts })]);
         if (r.cut) a.get(Health)?.hurt({ kind: 'cut', sev: 0.6, cause: 'a gutting knife', part: 'hand.l', now: g.time });
         this.s.say(`${r.text}${r.guts ? ` You keep the guts for bait.` : ''}`);
@@ -179,15 +179,15 @@ export class Fishing extends FieldWork {
         const gd = GROUND_TILES[g.map.groundAt(x, y, null)];
         const sky = this.s.skyNow;
         const tool = inv.d.items.some((i) => i.def === 'spade' || i.def === 'shovel');
+        if (!(await this.spend(30 * 60, 'Digging for worms'))) return;
         const n = wormsIn(gd?.name ?? '', sky.frozen, sky.mud > 0.15 || sky.w.rainMm > 0.3, tool);
-        this.spend(30 * 60);
         if (n) this.stow([makeItem('worms', { qty: n })]);
         this.s.say(n ? `You turn the earth over and pick out ${n === 1 ? 'a handful of worms' : `${n} handfuls of worms`}.` : 'You dig for half an hour and find no worms worth the name.');
         break;
       }
       case 'fishspear': {
+        if (!(await this.spend(20 * 60, 'Sharpening a fish spear'))) return;
         this.use(inv.d.items.some((i) => i.def === 'pole') ? 'pole' : 'staff', 1);
-        this.spend(20 * 60);
         this.stow([makeItem('fish_spear')]);
         this.s.say(`You split the end and sharpen it into prongs with your ${blade(inv)}: a fish spear.`);
         break;
@@ -202,90 +202,62 @@ export class Fishing extends FieldWork {
   }
 
   /**
-   * Fishes at a water with a rod or a spear, a quarter hour at a time, for the span chosen: each
-   * quarter a bite by chance, landed or lost by the check. It stops early when someone or something
-   * comes near, or the wanderer grows too hungry, thirsty, tired or cold.
+   * Fishes at a water with a rod or a spear for the span chosen, the world going on about the
+   * wanderer (game/fieldcraft.ts, `work`): each quarter hour a bite by chance, landed or lost by the
+   * check. The player can stop it at any time, and danger stops it.
    */
-  fish(x: number, y: number, gear: 'rod' | 'spear', span: Span): void {
+  async fish(x: number, y: number, gear: 'rod' | 'spear', span: Span): Promise<void> {
     const g = this.g, a = this.s.player, inv = this.inv;
     const w = this.water(x, y);
     if (!a || !inv || !w) return;
-    const start = g.time;
     // Through the ice: a hole cut first.
     if (this.frozen(w)) {
-      this.spend(20 * 60);
+      if (!(await this.spend(20 * 60, 'Cutting a hole in the ice'))) return;
       this.s.say('You cut a hole through the ice.');
     }
     const sun = this.s.people.sun;
-    const until = span === 'hour' ? g.time + 3600 : span === 'two' ? g.time + 7200 : span === 'one' ? g.time + 4 * 3600 : (() => {
+    const seconds = span === 'hour' ? 3600 : span === 'two' ? 7200 : span === 'one' ? 4 * 3600 : (() => {
       const h = (g.time % 86400) / 3600, day0 = g.time - (g.time % 86400);
-      const dark = timeOfDay(h, sun.rise, sun.set) === 'night';
-      const to = dark ? sun.rise : sun.set;
+      const to = timeOfDay(h, sun.rise, sun.set) === 'night' ? sun.rise : sun.set;
       const at = day0 + to * 3600 + (to * 3600 <= g.time % 86400 ? 86400 : 0);
-      return Math.min(at, g.time + MAX_S);
+      return Math.max(Q, Math.min(at - g.time, MAX_S));
     })();
     const caught: Item[] = [];
-    let lost = 0, stop: string | null = null, baitOut = false;
-    const watch = this.trouble(true);
-    while (g.time < until) {
-      const b = gear === 'rod' ? hookBait(inv) : null;
-      const { o, list } = this.odds(w, gear, b?.kind ?? null);
-      const r = mulberry32(hashString(`fish#${x},${y}#${g.time}`));
-      this.spend(Q);
-      g.updateHud();
-      if (r() < biteChance(o)) {
+    let lost = 0, baitOut = false;
+    // A quarter hour at a time a fish may bite; the world goes on, and it can be stopped.
+    let quarters = 0;
+    const res = await this.s.field.work(seconds, gear === 'spear' ? 'Spearing fish' : 'Fishing', {
+      each: (done) => {
+        // A roll for each quarter hour passed (or the last part of one, at the end).
+        const q = done >= seconds ? Math.ceil(done / Q) : Math.floor(done / Q);
+        if (q <= quarters) return;
+        quarters = q;
+        const b = gear === 'rod' ? hookBait(inv) : null;
+        const { o, list } = this.odds(w, gear, b?.kind ?? null);
+        const r = mulberry32(hashString(`fish#${x},${y}#${g.time}`));
+        if (r() >= biteChance(o)) return;
         const f = whichFish(list, o, r);
-        if (f) {
-          const kg = fishWeight(f, r);
-          const grade = land(a, f, kg, gear, g.time);
-          const res = LANDED[grade];
-          if (b && res.bait) useBait(inv, b.it);
-          if (b && !hookBait(inv)) baitOut = true;
-          if (res.landed) {
-            const it = fishItem(f, kg);
-            caught.push(it);
-            this.stow([it]);
-            this.s.say(`${gear === 'spear' ? 'You spear' : 'You land'} a ${f.name} (${kg} kg).`);
-            if (span === 'one') break;
-          } else {
-            lost++;
-            this.s.say(grade === 'fumble' && gear === 'rod' ? 'Something big takes the hook and snaps the line; you tie on another.' : gear === 'spear' ? 'Your spear glances off a fish, and it is gone.' : 'A fish takes the bait and slips off the hook at the bank.');
-          }
+        if (!f) return;
+        const kg = fishWeight(f, r);
+        const grade = land(a, f, kg, gear, g.time);
+        const out = LANDED[grade];
+        if (b && out.bait) useBait(inv, b.it);
+        if (b && !hookBait(inv)) baitOut = true;
+        if (out.landed) {
+          const it = fishItem(f, kg);
+          caught.push(it);
+          this.stow([it]);
+          this.s.say(`${gear === 'spear' ? 'You spear' : 'You land'} a ${f.name} (${kg} kg).`);
+          if (span === 'one') return false;
+        } else {
+          lost++;
+          this.s.say(grade === 'fumble' && gear === 'rod' ? 'Something big takes the hook and snaps the line; you tie on another.' : gear === 'spear' ? 'Your spear glances off a fish, and it is gone.' : 'A fish takes the bait and slips off the hook at the bank.');
         }
-      }
-      stop = this.trouble(false, watch);
-      if (stop || this.s.state.dead) break;
-    }
-    const mins = Math.round((g.time - start) / 60);
+      },
+    });
+    const mins = Math.round(res.spent / 60);
     const span2 = mins >= 90 ? `${Math.round(mins / 30) / 2} hours` : `${mins} minutes`;
-    this.s.say(`${stop ? `${stop} You stop fishing` : 'You stop fishing'} after ${span2}: ${caught.length ? this.list(caught) : 'nothing'}${lost ? `, and ${lost === 1 ? 'one' : lost} lost` : ''}.${baitOut ? ' You have no bait left.' : ''}`);
-  }
-
-  /**
-   * What stops a spell of fishing: a beast fighting or a hunter close, a person come near (who was
-   * not there at the start), or hunger, thirst, tiredness or cold. With `start`, the people near at
-   * the start (to leave out).
-   */
-  private trouble(start: true): Set<string>;
-  private trouble(start: false, near: Set<string>): string | null;
-  private trouble(start: boolean, near?: Set<string>): Set<string> | string | null {
-    const g = this.g;
-    const people = [...this.s.people.all()].filter((r) => r.z === g.z && Math.max(Math.abs(r.x - g.px), Math.abs(r.y - g.py)) <= 4);
-    if (start) return new Set(people.map((r) => r.p.id));
-    if (people.some((r) => r.fight?.foe === 'player')) return 'You are set upon!';
-    const come = people.find((r) => !near!.has(r.p.id));
-    if (come) return `${come.p.given} comes near.`;
-    for (const b of this.s.fauna.all()) {
-      const d = Math.hypot(b.x - g.px, b.y - g.py);
-      if (b.fight || (d <= 10 && g.isVisible(b.x, b.y) && (b.s.temper === 'aggressive' || (b.s.diet === 'predator' && b.s.size !== 'small' && b.s.size !== 'tiny')))) return `A ${b.s.name} is close by.`;
-    }
-    const n = this.s.player?.get(Needs);
-    if (n) {
-      if (n.d.fatigue >= 95) return 'You are worn out.';
-      if (n.d.heat <= -45) return 'You are chilled through.';
-      if (n.d.hydrated < 15) return 'You are parched.';
-      if (n.d.nourish < 15 && n.d.stomachKcal < 50) return 'You are faint with hunger.';
-    }
-    return null;
+    const what = `${caught.length ? this.list(caught) : 'nothing'}${lost ? `, and ${lost === 1 ? 'one' : lost} lost` : ''}`;
+    this.s.say(`${res.done ? `You stop fishing after ${span2}: ${what}` : `Your catch: ${what}`}.${baitOut ? ' You have no bait left.' : ''}`);
   }
 }

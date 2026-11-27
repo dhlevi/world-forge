@@ -38,7 +38,7 @@ const props = withDefaults(defineProps<{
   /** Settlements' plans, drawn over the land (travel map, close in). */
   plans?: PlanImage[];
   /** Signs of game found (travel map; game/hunt.ts), and the one chosen. */
-  signs?: { id: string; lon: number; lat: number; kind?: 'game' | 'trap' }[];
+  signs?: { id: string; lon: number; lat: number; kind?: 'game' | 'trap' | 'camp'; state?: 'burning' | 'banked' | 'cold' }[];
   sign?: string;
 }>(), { signs: () => [], sign: '', chosen: '', party: null, route: () => [], dest: null, area: null, levels: () => [], level: 0, follow: false, fog: null, roadSeen: null, fogVersion: 0, plans: () => [] });
 const emit = defineEmits<{ sign: [id: string]; choose: [id: string]; pick: [ll: LL]; view: [box: { west: number; south: number; east: number; north: number; km: number }]; level: [i: number] }>();
@@ -352,7 +352,7 @@ function draw(): void {
   }
 }
 
-/** A sign of game: a paw print in a ring; the wanderer's snares: a noose in a ring. */
+/** A sign of game: a paw print in a ring; the wanderer's traps: a noose in a ring; their camps: a flame in a ring. */
 function drawSigns(g: CanvasRenderingContext2D): void {
   for (const sg of props.signs) {
     const [x, y] = toScreen(...merc(sg.lon, sg.lat));
@@ -366,6 +366,19 @@ function drawSigns(g: CanvasRenderingContext2D): void {
     g.strokeStyle = on ? '#a3261b' : '#5a3a1a';
     g.stroke();
     g.fillStyle = '#5a3a1a';
+    if (sg.kind === 'camp') {
+      // A camp: a flame, bright while it burns, dull red banked, grey cold.
+      g.fillStyle = sg.state === 'burning' ? '#e07a30' : sg.state === 'banked' ? '#9a3a20' : '#8a8478';
+      g.beginPath();
+      g.moveTo(x, y - 5.5);
+      g.quadraticCurveTo(x + 4.5, y - 0.5, x + 2.5, y + 3.5);
+      g.lineTo(x - 2.5, y + 3.5);
+      g.quadraticCurveTo(x - 4.5, y - 0.5, x, y - 5.5);
+      g.fill();
+      g.fillStyle = '#5a3a1a';
+      g.fillRect(x - 4, y + 3.5, 8, 1.6);
+      continue;
+    }
     if (sg.kind === 'trap') {
       // A snare: a noose on its peg.
       g.strokeStyle = '#5a3a1a';

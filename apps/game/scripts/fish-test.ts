@@ -22,6 +22,7 @@ import type { ChunkData, LocalSite, PlacedPerson, StartSite } from '../src/worke
 import { baitKind } from '../src/world/traps';
 import { FISH_BY_ID } from '../src/actors/data/fish';
 import { defOf } from '../src/actors/items/item';
+import { Needs } from '../src/actors/needs';
 
 let failures = 0;
 const ok = (cond: boolean, what: string) => {
@@ -87,6 +88,8 @@ const ids = (s: PlaySession, x: number, y: number) => s.field.actions(x, y).map(
 /** The fish carried, by species. */
 const fishCarried = (s: PlaySession) => inv(s).d.items.filter((i) => /^(fish|gutted|roast)_/.test(i.def) && i.def !== 'fish_guts' && i.def !== 'fish_spear');
 const speciesOf = (def: string) => FISH_BY_ID.get(def.replace(/^(fish|gutted|roast)_/, ''));
+/** Fed, watered, rested and warm again (after the clock is moved on in a test). */
+const rested = (s: PlaySession) => Object.assign(s.player!.need(Needs).d, { hydrated: 100, hydrationL: 2, stomachL: 0.5, nourish: 100, stomachKcal: 800, reserveKcal: 2000, fatigue: 0, debt: 0, heat: 0 });
 const setSkill = (s: PlaySession, id: string, n: number) => (s.player!.need(Skills).d.levels[id] = n);
 
 console.log('the skill menu at the water');
@@ -116,9 +119,11 @@ console.log('\nwith a rod');
   ok(caught.every((i) => speciesOf(i.def)?.waters.includes('river')), 'all of them river fish');
   ok(has(s, 'worms') < 10, `bait used as they bite (${10 - has(s, 'worms')} handfuls)`);
   ok(caught.every((i) => (i.uses ?? 0) >= 1 && (i.kg ?? 0) > 0), 'each its own weight and portions');
-  const before = fishCarried(s).length, t1 = s.game.time;
+  rested(s);
+  const n0 = s.hud.log.length, t1 = s.game.time;
   await s.field.act('fishone', X + 3, Y);
-  ok(fishCarried(s).length === before + 1 || s.game.time - t1 >= 4 * 3600 - 1, `until a catch: stops at the first (${Math.round((s.game.time - t1) / 60)} minutes)`);
+  const landed = s.hud.log.slice(n0).filter((l) => /^You land/.test(l.text)).length;
+  ok(landed === 1 || (landed === 0 && s.game.time - t1 >= 4 * 3600 - 1), `until a catch: stops at the first (${Math.round((s.game.time - t1) / 60)} minutes)`);
   s.dispose();
 }
 {
@@ -166,9 +171,11 @@ console.log('\nset lines and nets');
   await s.field.act('setline', X + 3, Y);
   const l = s.lines.at(X + 3, Y)!;
   ok(!!l && l.bait === 'worm' && has(s, 'set_line') === 0 && s.game.lineAt(X + 3, Y) === 'line', 'a baited line is set, and marked');
-  s.game.time += 36 * 3600;
+  // Left out over a night (the clock moved on by itself: the wanderer is not made to go without for it).
+  s.game.time += 14 * 3600;
   s.fishing.run();
-  ok(l.catch.length >= 1 || !!l.robbed, `a day and a half later it holds ${l.catch.length} fish`);
+  rested(s);
+  ok(l.catch.length >= 1 || !!l.robbed, `left overnight it holds ${l.catch.length} fish`);
   const n = fishCarried(s).length;
   s.game.px = X + 2;
   await s.field.act('liftline', X + 3, Y);
@@ -197,7 +204,7 @@ console.log('\ngutting, roasting and worms');
   await s.field.act('fire', X - 2, Y);
   s.game.px = X - 1;
   s.game.py = Y;
-  s.field.roast();
+  await s.field.roast();
   const trout = inv(s).d.items.find((i) => i.def === 'roast_trout'), pike = inv(s).d.items.find((i) => i.def === 'roast_pike');
   ok(!!trout && !!pike, `roasted at the fire: ${[trout, pike].filter(Boolean).map((i) => `${defOf(i!).name} (${i!.quality})`).join(', ')}`);
   ok(!pike || pike.quality !== 'fine', 'the pike roasted whole, the poorer for it');
