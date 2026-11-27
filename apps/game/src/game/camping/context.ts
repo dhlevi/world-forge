@@ -16,6 +16,8 @@ export interface CampCtx {
   season(): string;
   /** Sleeps (game hours), with something to run after each hour; returns hours slept. */
   sleep(hours: number, quality: number, onHour: (h: number) => void): number;
+  /** The wanderer's snares within some tiles of a place (world/hunting.ts), if the camp can see them. */
+  snaresNear?(x: number, y: number, r: number): { x: number; y: number; caught?: string }[];
 }
 
 export interface Result {
@@ -55,7 +57,6 @@ export function campWords(camp: CampData): string[] {
   const w = Math.round(camp.wood / BURN_KG_H);
   out.push(camp.wood >= 0.5 ? `Wood stacked: ${w <= 1 ? 'about an hour' : `about ${w} hours`} of fire.` : 'No wood stacked.');
   out.push(camp.shelter ? `Shelter: ${SHELTERS[camp.shelter.kind].name}.` : 'No shelter.');
-  if (camp.snares.length) out.push(`${camp.snares.length} ${camp.snares.length === 1 ? 'snare' : 'snares'} set about the camp.`);
   return out;
 }
 

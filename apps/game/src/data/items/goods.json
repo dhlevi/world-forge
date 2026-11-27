@@ -435,6 +435,21 @@
       "stack": 10,
       "durable": false,
       "about": "The guts of a fish: bait for a hook, a line or a trap."
+    },
+    {
+      "id": "salt",
+      "name": "bag of salt",
+      "plural": "bags of salt",
+      "kind": "goods",
+      "weight": 1,
+      "bulk": 0.8,
+      "size": "small",
+      "value": 6,
+      "stack": 5,
+      "uses": 4,
+      "useWord": "saltings",
+      "sold": ["market"],
+      "about": "Coarse salt for packing meat and fish to keep: a bag salts four cuts or fish."
     }
   ]
 }

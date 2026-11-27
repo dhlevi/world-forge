@@ -20,7 +20,6 @@ import { GROUND_TILES, OBJECT_TILES, objectId } from '@worldforge/core/local/til
 import { TILE_M } from '@worldforge/core/local/chunk';
 import type { Game } from './game';
 import type { Item } from '../actors/items/item';
-import type { Grade } from '../actors/checks';
 
 export type ShelterKind = 'tent' | 'lean_to' | 'windbreak';
 
@@ -54,18 +53,6 @@ export interface SiteRating {
   score: number;
 }
 
-export interface Snare {
-  x: number;
-  y: number;
-  /** When set, and how well (Trapping). */
-  set: number;
-  grade: Grade;
-  /** Something caught, waiting. */
-  caught?: string;
-  /** When last looked at. */
-  checked: number;
-}
-
 export interface CampData {
   id: string;
   /** The fire's tile. */
@@ -85,7 +72,8 @@ export interface CampData {
   woodAt: [number, number];
   bedAt: [number, number];
   shelter?: { kind: ShelterKind; x: number; y: number; tent?: Item };
-  snares: Snare[];
+  /** Snares of the camp's own, from old saves only: made the wanderer's ordinary snares when the game is loaded (world/hunting.ts). */
+  snares?: { x: number; y: number; set: number; caught?: string }[];
   /** Objects laid over the map, with what was there before (to put back when the camp is struck). */
   placed: [number, number, number][];
 }
@@ -249,7 +237,7 @@ export class Camps {
       return p;
     };
     const bedAt = pick(2), woodAt = pick(1);
-    const c: CampData = { id: `c${g.time.toString(36)}${this.list.length}`, x, y, made: g.time, site, fire: { lit: false, fuelH: 0, tend: false }, wood: 0, woodAt, bedAt, snares: [], placed: [] };
+    const c: CampData = { id: `c${g.time.toString(36)}${this.list.length}`, x, y, made: g.time, site, fire: { lit: false, fuelH: 0, tend: false }, wood: 0, woodAt, bedAt, placed: [] };
     this.place(g, c, x, y, 'fire_out');
     this.list.push(c);
     return c;

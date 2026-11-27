@@ -2,6 +2,7 @@
  * Items as things in the world: one of a kind of item (actors/items/defs.ts), or a stack of
  * them, with its quality, who made it, its condition, the uses left, and where it is.
  */
+import { STAGE_WORD, spoilStage } from './spoil';
 import { itemDef, QUALITY_VALUE, sizeRank, type ItemDef, type Quality, type Size } from './defs';
 
 /**
@@ -45,6 +46,10 @@ export interface Item {
   stain?: number;
   /** A carcass already skinned (world/hunting.ts). */
   skinned?: boolean;
+  /** Food's age, in days at a mild 15 °C (actors/items/spoil.ts): how near it is to spoiling. */
+  aged?: number;
+  /** Hung on a rack to dry: hours of drying so far (game/preserving.ts). */
+  drying?: number;
 }
 
 let counter = 0;
@@ -69,7 +74,10 @@ export const defOf = (it: Item): ItemDef => itemDef(it.def);
 /** Its name, with the count for a stack ("20 arrows", "a cloak"). */
 export function itemName(it: Item, article = false): string {
   const d = defOf(it);
-  const base = it.name ?? (it.qty > 1 ? d.plural ?? `${d.name}s` : d.name);
+  const named = it.name ?? (it.qty > 1 ? d.plural ?? `${d.name}s` : d.name);
+  // Food past its best says so (actors/items/spoil.ts).
+  const stage = STAGE_WORD[spoilStage(it.def, it.aged)];
+  const base = stage ? `${stage} ${named}` : named;
   if (it.qty > 1) return `${it.qty} ${base}`;
   if (!article || d.plural === d.name) return base;
   return `${/^[aeiou]/i.test(base) ? 'an' : 'a'} ${base}`;
@@ -107,5 +115,5 @@ export const fitsSize = (it: Item, max: Size): boolean => sizeRank(sizeOf(it)) <
 /** Whether two stacks can be one (the same kind, quality and state). */
 export function stacksWith(a: Item, b: Item): boolean {
   const d = defOf(a);
-  return !!d.stack && a.def === b.def && a.quality === b.quality && a.make === b.make && a.condition === b.condition && a.uses === b.uses && a.name === b.name;
+  return !!d.stack && a.def === b.def && a.quality === b.quality && a.make === b.make && a.condition === b.condition && a.uses === b.uses && a.name === b.name && spoilStage(a.def, a.aged) === spoilStage(b.def, b.aged);
 }

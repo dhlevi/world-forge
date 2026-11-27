@@ -253,6 +253,13 @@ travel map with the state of its fire, those unvisited a month falling into ruin
 - **A month unvisited,** a camp falls into ruin: its shelter falls in (a tent left in it is lost),
   its objects go from the map but a cold ring of stones, and it is no longer marked.
 - Where two camps are close, the wanderer is at the nearer.
+- *One snare system (27 November 2026, from play):* the camp screen no longer sets, checks or takes
+  up snares of a camp's own; snares are all the wanderer's ordinary snares, set from the skill menu
+  (or P), and the camp screen lists those within thirty tiles of the camp, and how many have a
+  catch. A camp's snares in an old save become ordinary snares on loading, with any catch. Striking
+  a camp leaves snares about it where they are.
+- *Gathering sticks and stones* (the skill menu, or M) takes its quarter hour as work that can be
+  stopped.
 - *From play (27 November 2026):* no camp is made, and no fire lit from the skill menu, within the
   bounds of a town or a city (beyond its walls, it can be); sleeping rough on the ground there is
   still allowed. A village is no bar.

@@ -1,6 +1,6 @@
 /**
  * The camp screen (Shift+C, or Camp on the travel map): choosing a site and making camp, then
- * everything done at it (wood, fire, shelter, food from the land, snares), the plan for the night,
+ * everything done at it (wood, fire, shelter, food from the land), the plan for the night,
  * and striking camp (game/camping/). From the travel map, the local map about the party is made
  * first, so that the camp is laid out on it as on foot.
  */
@@ -37,7 +37,6 @@ export class CampScreen extends Screen {
     message: '',
     version: 0,
     plan: { cook: true, mend: false, watch: 0, tend: true } as C.NightPlan,
-    snares: 3,
   });
   readonly ctx: C.CampCtx;
 
@@ -55,6 +54,7 @@ export class CampScreen extends Screen {
       // The season as the land shows it: deep snow is winter whatever the calendar says.
       season: () => (h.sky.snowCm >= 10 ? 'winter' : h.sky.season),
       sleep: (hours, quality, onHour) => h.sleep(hours, quality, { onHour }),
+      snaresNear: (x, y, r) => h.snares.list.filter((s) => Math.max(Math.abs(s.x - x), Math.abs(s.y - y)) <= r),
     };
   }
 
@@ -127,6 +127,17 @@ export class CampScreen extends Screen {
     this.bump();
   }
 
+  /** The wanderer's snares about the camp (set from the skill menu), in words, if any. */
+  snareWords(): string | null {
+    const c = this.camp;
+    if (!c) return null;
+    void this.state.version;
+    const near = this.ctx.snaresNear?.(c.x, c.y, 30) ?? [];
+    if (!near.length) return null;
+    const caught = near.filter((s) => s.caught).length;
+    return `${near.length === 1 ? 'A snare' : `${near.length} snares`} of yours about the camp${caught ? `, ${caught === near.length && near.length > 1 ? 'all' : caught} with a catch` : ''} (set and taken up from the skill menu).`;
+  }
+
   /** What can be done at the camp now, with why not where not. */
   actions(): CampAction[] {
     const c = this.camp;
@@ -146,12 +157,6 @@ export class CampScreen extends Screen {
     for (const [k, label] of kinds) if (c.shelter?.kind !== k) out.push({ id: `shelter:${k}`, label, why: C.whyNoShelter(ctx, c, k) });
     if (c.shelter) out.push({ id: 'unshelter', label: c.shelter.kind === 'tent' ? 'Strike the tent' : 'Pull down the shelter' });
     out.push({ id: 'forage', label: 'Forage for food (an hour)', why: c.site.wood < 0.05 && ctx.season() === 'winter' ? 'Nothing grows here.' : null });
-    const wire = C.wires(ctx);
-    out.push({ id: 'snares', label: `Set snares (${Math.min(this.state.snares, wire) || 'none'}, a quarter hour each)`, why: wire ? (c.snares.length >= 6 ? 'You have set as many as you can watch over.' : null) : 'You have no snare wire.' });
-    if (c.snares.length) {
-      out.push({ id: 'check', label: 'Check the snares' });
-      out.push({ id: 'unsnare', label: 'Take up the snares' });
-    }
     if (this.tooEarly()) out.push({ id: 'evening', label: 'Wait until evening' });
     out.push({ id: 'strike', label: 'Strike camp' });
     return out;
@@ -171,9 +176,6 @@ export class CampScreen extends Screen {
     else if (id.startsWith('shelter:')) r = C.putUpShelter(ctx, c, id.slice(8) as ShelterKind);
     else if (id === 'unshelter') C.takeDownShelter(ctx, c);
     else if (id === 'forage') r = C.forage(ctx, c);
-    else if (id === 'snares') r = C.setSnares(ctx, c, this.state.snares);
-    else if (id === 'check') r = C.checkSnares(ctx, c);
-    else if (id === 'unsnare') C.takeUpSnares(ctx, c);
     else if (id === 'evening') {
       const g = this.game, day = 86400, at = Math.floor(g.time / day) * day + EVENING * 3600;
       const hours = Math.ceil((at - g.time) / 3600);

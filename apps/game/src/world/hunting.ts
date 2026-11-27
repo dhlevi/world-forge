@@ -19,6 +19,7 @@ import { check, DC, type Grade } from '../actors/checks';
 import type { Inventory } from '../actors/items/inventory';
 import { makeItem, type Item } from '../actors/items/item';
 import { ITEM, hideId, itemDef } from '../actors/items/defs';
+import { carriedAge } from '../actors/items/spoil';
 import { Needs } from '../actors/needs';
 import { BRUSH_TOOLS } from '../rules/tasks';
 import { fightOf } from '../rules/beasts';
@@ -221,5 +222,10 @@ export function butcher(a: Actor, inv: Inventory, it: Item, now: number): { item
   const n = a.get(Needs);
   n?.stain(Math.min(40, 8 + kg * 0.25));
   n?.soil(5);
+  // The meat is as old as the carcass it came from (actors/items/spoil.ts).
+  for (const out of items) {
+    const aged = carriedAge(it.def, it.aged, out.def);
+    if (aged !== undefined) out.aged = aged;
+  }
   return { items, text: words[grade], seconds: Math.round(15 * 60 * Math.max(1, Math.pow(kg / 10, 0.55))) };
 }

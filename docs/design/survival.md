@@ -313,7 +313,32 @@ cooked food is enough; more complex food gives more mood and nutrition.
   cheese), **a meal** (a stew, a pie; cooking skill and several ingredients), **fine** (a feast,
   spiced and varied). Eating the same thing day after day loses its mood bonus.
 - **Spoilage** by food, temperature and preservation (smoked, salted, dried, pickled); spoiled food
-  risks illness, which Smell and Taste can warn of.
+  risks illness, which Smell and Taste can warn of. *Built (27 November 2026, from play; `actors/items/spoil.ts`,
+  `game/preserving.ts`, `spoil-test.ts`):*
+  - **Keeping.** Each perishable food keeps so many days at a mild 15 °C: raw meat a day and a
+    half, raw fish a day, roast meat four days, roast fish three, bread five, greens, berries and
+    mushrooms three, apples and cheese a month, roots forty days, smoked fish and meat six weeks to
+    two months, dried meat and fish and nuts half a year, salt meat and fish most of a year. Its age
+    is counted as time passes, carried (in the air the wanderer feels) or left on the ground (in
+    the open air): twice as fast for each ten degrees warmer, a fifth as fast about freezing, and
+    hardly at all frozen.
+  - **Stages.** Fresh; stale past six tenths of its keeping (its name says so, and it gives
+    fifteen in a hundred less); spoiling past its keeping (three tenths less, and a chance of a sick
+    stomach: three in ten, nearly one in two for raw meat or fish); rotten past half as long again
+    (six tenths less, and sickness four times in five). Cooking halves the chance; a strong
+    constitution lowers it. Sick, the wanderer brings up what they ate, loses water and strength,
+    and feels wretched for some hours. Rotten food is warned of the first time it is chosen, and
+    eaten if chosen again. Food of different stages does not stack; a stack is as old as its
+    oldest. Carried food going off is told of.
+  - **Age carries over:** a carcass's meat, a roast, and food smoked, salted or dried are as far on
+    as what they were made from, by their own keeping: spoilt meat is not made good.
+  - **Preserving.** *Smoking* (the skill menu at a lit fire: Cooking, six hours, up to ten pieces):
+    raw meat and fish become smoked meat and smoked fish, poorer or lost on a bad check. *Salting*
+    (salt bought at market, a bag salting four, half an hour): salt meat and salt fish. *Drying* (at
+    a camp: a rack of green sticks put up, Survival, half an hour): meat and fish hung on it dry in a
+    day and a half of dry weather (rain stalls it) into dried meat and dried fish; while away,
+    animals may take from the rack as from any food left at a camp.
+  - *Not yet:* Smell and Taste warning of bad food before it is eaten, and pickling.
 - **Water** has a quality: springs and wells good, rivers fair, ponds and marshes risky, sea
   water undrinkable; boiling makes it safe. *Built in part* (backlog W4, 21 November 2026): the
   sea (open water at or below the sea's level) is salt and cannot be drunk; rivers and lakes are

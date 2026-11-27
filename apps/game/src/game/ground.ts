@@ -75,6 +75,11 @@ export class Ground {
     this.version++;
   }
 
+  /** Everything on every tile and floor (for ageing food: actors/items/spoil.ts). */
+  *everything(): Iterable<Item> {
+    for (const list of this.m.values()) yield* list;
+  }
+
   /** Takes a thing (and all inside it) up from a tile; returns them, the top one first. */
   take(x: number, y: number, uid: string): Item[] {
     const k = this.key(x, y);

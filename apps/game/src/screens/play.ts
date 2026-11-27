@@ -2,6 +2,7 @@
  * Playing: the game itself (game/session.ts), drawn by components/PlayView.vue, with the screens
  * laid over it (the character sheet, the inventory, sleep, camp, a town's view).
  */
+import { background } from '../app/errors';
 import type { Grade } from '../actors/checks';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
@@ -108,7 +109,7 @@ export class PlayScreen extends Screen {
     }
     // Gathering stones and sticks.
     if (e.code === 'KeyM' && !e.shiftKey && !e.ctrlKey && !e.metaKey && this.player && this.session.state.mode === 'local') {
-      this.session.gather();
+      background(this.session.gather().then(() => this.session.redraw()), 'gathering');
       return true;
     }
     // The fight menu (combat.md, stage 2): a blow at a beast in reach, with its aim, blow and stance.

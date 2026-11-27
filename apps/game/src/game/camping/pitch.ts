@@ -2,7 +2,6 @@
 import { defOf } from '../../actors/items/item';
 import { type CampData, type SiteChoice } from '../camp';
 import { done, give, has, inv, pass, type CampCtx, type Result } from './context';
-import { takeUpSnares } from './food';
 
 // ---- Making and striking camp -------------------------------------------------------------------
 
@@ -35,13 +34,11 @@ export function stackFirewood(c: CampCtx, camp: CampData): number {
   return kg;
 }
 
-/** Strikes the camp: the tent packed, snares taken up, the fire put out. */
+/** Strikes the camp: the tent packed, the fire put out (snares set about it are left; take them up from the skill menu). */
 export function strikeCamp(c: CampCtx, camp: CampData): Result {
   const g = c.game;
   if (camp.shelter?.tent) give(c, camp, camp.shelter.tent);
-  const wires = camp.snares.length;
-  takeUpSnares(c, camp, true);
-  pass(c, (camp.shelter?.kind === 'tent' ? 15 : 5) * 60 + wires * 5 * 60);
+  pass(c, (camp.shelter?.kind === 'tent' ? 15 : 5) * 60);
   g.camps.strike(g, camp);
-  return done(c, true, `You strike camp${camp.shelter?.tent ? ' and pack the tent' : ''}${wires ? `, taking up your snares` : ''}.`);
+  return done(c, true, `You strike camp${camp.shelter?.tent ? ' and pack the tent' : ''}.`);
 }

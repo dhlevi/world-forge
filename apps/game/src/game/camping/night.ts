@@ -5,7 +5,6 @@ import { Needs } from '../../actors/needs';
 import { type CampData } from '../camp';
 import { cookPortion, mendNeeds, mendThing } from '../../rules/tasks';
 import { inv, notes, pass, type CampCtx } from './context';
-import { snareCatches } from './food';
 
 // ---- The night -----------------------------------------------------------------------------------
 
@@ -102,8 +101,7 @@ export function spendNight(c: CampCtx, camp: CampData, plan: NightPlan, bedQuali
     if (watch + h === at) happen(false);
   });
   camp.fire.tend = false;
-  snareCatches(c, camp);
-  if (camp.snares.some((x) => x.caught)) c.say('Something may be caught in your snares.');
+  if (c.snaresNear?.(camp.x, camp.y, 30).some((x) => x.caught)) c.say('Something may be caught in your snares.');
   notes(c);
 }
 

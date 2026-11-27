@@ -11,9 +11,51 @@ import { ITEM } from '../actors/items/defs';
 import type { Inventory } from '../actors/items/inventory';
 import { defOf, itemName, type Item } from '../actors/items/item';
 import { Needs } from '../actors/needs';
+import { Skills, Traits } from '../actors/components/index';
+import { spoilStage, type SpoilStage } from '../actors/items/spoil';
 
 /** What eating it raw does: half the good of it, and an unpleasant moodlet. */
 export const RAW_FACTOR = 0.5;
+
+/** How much of its good food keeps by its stage (actors/items/spoil.ts). */
+const STAGE_FACTOR: Record<SpoilStage, number> = { fresh: 1, stale: 0.85, spoiling: 0.7, rotten: 0.4 };
+/** Rotten food the wanderer has been warned of (by uid): eaten if they choose it again. */
+const warned = new Set<string>();
+
+/**
+ * Food past its best (from play, 27 November 2026): a chance of a sick stomach from spoiling food
+ * (more from raw meat and fish), a likely one from rotten; cooking halves it, and a strong
+ * constitution resists. Sick, the wanderer brings up what they ate, loses water, tires, and feels
+ * wretched for half a day.
+ */
+function spoilt(a: Actor, it: Item, cooked: boolean): { stage: SpoilStage; sick: boolean; text: string; mood?: Moodlet } {
+  const stage = spoilStage(it.def, it.aged);
+  if (stage === 'fresh' || stage === 'stale') return { stage, sick: false, text: stage === 'stale' ? ' It is stale.' : '' };
+  const flesh = /meat|rabbit|fish|gutted_|carcass/.test(it.def) && defOf(it).food?.raw;
+  const con = a.get(Traits)?.get('constitution') ?? 10;
+  const p = Math.max(0.05, ((stage === 'rotten' ? 0.8 : flesh ? 0.45 : 0.3) * (cooked ? 0.5 : 1)) - (con - 10) * 0.02);
+  const roll = a.get(Skills)?.random() ?? Math.random();
+  if (roll >= p) return { stage, sick: false, text: stage === 'rotten' ? ' It tastes foul, but stays down.' : ' It tastes off, but stays down.' };
+  const n = a.need(Needs);
+  const severe = stage === 'rotten';
+  n.d.stomachKcal = 0;
+  n.d.stomachL = Math.max(0, n.d.stomachL * 0.3);
+  n.d.hydrated = Math.max(0, n.d.hydrated - (severe ? 20 : 10));
+  n.d.fatigue = Math.min(140, n.d.fatigue + (severe ? 20 : 10));
+  return {
+    stage, sick: true,
+    text: severe ? ' Before long your stomach heaves, and you are wretchedly sick.' : ' Before long your stomach turns, and you bring it up again.',
+    mood: { id: 'food-sick', text: severe ? 'Sick from rotten food' : 'Sick from bad food', value: severe ? -8 : -5 },
+  };
+}
+
+/** Why rotten food is not eaten yet (a warning, the first time it is chosen), or null to go on. */
+function rottenWarning(it: Item): string | null {
+  if (spoilStage(it.def, it.aged) !== 'rotten' || warned.has(it.uid)) return null;
+  warned.add(it.uid);
+  if (warned.size > 200) warned.delete(warned.values().next().value!);
+  return `The ${itemName({ ...it, qty: 1 })} stinks; eating it would likely make you sick. Choose it again to eat it all the same.`;
+}
 
 /** A portion or use gone: the last of the last one takes the thing with it. */
 export function usePortion(inv: Inventory, it: Item): void {
@@ -42,14 +84,18 @@ export interface Outcome {
 export function eatPortion(a: Actor, inv: Inventory, it: Item): Outcome {
   const food = defOf(it).food!;
   const n = a.need(Needs);
-  const kcal = food.kcal * (food.raw ? RAW_FACTOR : 1);
+  const warn = rottenWarning(it);
+  if (warn) return { text: warn, seconds: 0, ok: false };
+  const stage = spoilStage(it.def, it.aged);
+  const kcal = food.kcal * (food.raw ? RAW_FACTOR : 1) * STAGE_FACTOR[stage];
   if (n.room().kcal < Math.min(50, kcal)) return { text: 'You are too full to eat; give your stomach time to settle.', seconds: 0, ok: false };
   n.eat(kcal, food.water ?? 0);
+  const bad = spoilt(a, it, false);
   usePortion(inv, it);
   const meat = it.def === 'rabbit';
   return {
-    text: food.raw ? `You ${food.verb}, raw.` : `You ${food.verb}.`,
-    mood: food.raw ? { id: 'ate-raw', text: meat ? 'Ate raw meat' : 'Ate it raw', value: meat ? -3 : -1 } : undefined,
+    text: `${food.raw ? `You ${food.verb}, raw.` : `You ${food.verb}.`}${bad.text}`,
+    mood: bad.mood ?? (food.raw ? { id: 'ate-raw', text: meat ? 'Ate raw meat' : 'Ate it raw', value: meat ? -3 : -1 } : undefined),
     seconds: 5 * 60,
     ok: true,
   };
@@ -66,12 +112,15 @@ const COOKED: Record<Grade, { factor: number; text: string; mood?: Moodlet }> = 
 /** Cooks a portion at a fire and eats it (Cooking): raw food comes to its full worth and more. */
 export function cookPortion(a: Actor, inv: Inventory, it: Item, now: number): Outcome {
   const food = defOf(it).food!;
+  const warn = rottenWarning(it);
+  if (warn) return { text: warn, seconds: 0, ok: false };
   const g = check(a, 'cooking', { difficulty: food.raw ? DC.easy + 5 : DC.easy, now }).grade;
   const c = COOKED[g];
-  a.need(Needs).eat(food.kcal * c.factor, food.water ?? 0);
+  a.need(Needs).eat(food.kcal * c.factor * STAGE_FACTOR[spoilStage(it.def, it.aged)], food.water ?? 0);
   const name = `the ${itemName({ ...it, qty: 1 })}`;
+  const bad = spoilt(a, it, true);
   usePortion(inv, it);
-  return { text: c.text.replace('$', name), mood: c.mood ? { ...c.mood } : undefined, seconds: 40 * 60, ok: g !== 'fumble' };
+  return { text: `${c.text.replace('$', name)}${bad.text}`, mood: bad.mood ?? (c.mood ? { ...c.mood } : undefined), seconds: 40 * 60, ok: g !== 'fumble' };
 }
 
 /** Condition a mending gives back, by grade. */

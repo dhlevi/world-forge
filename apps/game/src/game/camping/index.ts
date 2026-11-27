@@ -14,8 +14,8 @@
  * - **Foraging** (the better of Survival and Herbalism): what the season and the land give:
  *   greens and roots in spring, berries in summer, nuts, mushrooms and berries in autumn, little
  *   in winter; now and then healing herbs.
- * - **Snares** (Trapping): set on runs about the camp; each may hold a rabbit when checked, by how
- *   well it was set, the land, and how long it has been.
+ * - **Snares** are the wanderer's own, set from the skill menu (world/hunting.ts); the camp screen
+ *   lists those about the camp.
  * - **The night's events** (placeholders until there are creatures and people about): animals at
  *   the food, a stranger, wolves. Keeping watch, a fire and a hidden site each turn them aside.
  *   Rain and snow are the real weather's (game/weather.ts): a tent or lean-to keeps them off, and

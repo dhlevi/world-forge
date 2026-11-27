@@ -28,10 +28,12 @@ import { stackFirewood } from './camping/pitch';
 import type { CampCtx } from './camping/context';
 import { FISH } from '../actors/data/fish';
 import { fishIds } from '../actors/items/defs';
+import { carriedAge } from '../actors/items/spoil';
 import type { PlaySession } from './session';
 import { Trapping } from './trapping';
 import { Woodcraft } from './woodcraft';
 import { Fishing } from './fishing';
+import { Preserving } from './preserving';
 
 /** A thing that can be done at a tile, and why not, if it cannot. */
 export interface TileAction {
@@ -151,7 +153,7 @@ export class Fieldcraft {
       out.push({ id: 'wash', label: 'Wash' });
     }
     // Felling and stakes (game/woodcraft.ts), pits and fences (game/trapping.ts; stage 3).
-    out.push(...s.wood.actions(x, y), ...s.traps.actions(x, y), ...s.fishing.actions(x, y));
+    out.push(...s.wood.actions(x, y), ...s.traps.actions(x, y), ...s.fishing.actions(x, y), ...s.preserve.actions(x, y));
     return out;
   }
 
@@ -159,11 +161,12 @@ export class Fieldcraft {
   async act(id: string, x: number, y: number): Promise<void> {
     const s = this.s, g = this.g;
     // Onto the tile itself for a snare or a walk; beside it for the rest.
-    const onto = id === 'walk' || id === 'snare' || id === 'stakes' || id === 'gut' || id === 'fishspear';
+    const onto = id === 'walk' || id === 'snare' || id === 'stakes' || id === 'gut' || id === 'fishspear' || id === 'salt' || id === 'rack';
     if (id !== 'tracks' && id !== 'follow' && !(await this.reach(x, y, onto))) return;
     if (Woodcraft.IDS.has(id)) await s.wood.act(id, x, y);
     if (Trapping.IDS.has(id)) await s.traps.act(id, x, y);
     if (Fishing.IDS.has(id)) await s.fishing.act(id, x, y);
+    if (Preserving.IDS.has(id)) await s.preserve.act(id, x, y);
     switch (id) {
       case 'walk':
         break;
@@ -193,7 +196,7 @@ export class Fieldcraft {
         await this.roast();
         break;
       case 'gather':
-        s.gather();
+        await s.gather();
         break;
       case 'follow':
         await s.hunt.follow(x, y);
@@ -458,6 +461,9 @@ export class Fieldcraft {
         const whole = /^fish_/.test(it.def);
         const out = makeItem(ROASTS[it.def], { qty: Math.max(1, keep), quality: whole && how.quality !== 'poor' ? (how.quality === 'fine' ? 'common' : 'poor') : how.quality });
         if (it.kg !== undefined) out.kg = Math.round(it.kg * 0.75 * 100) / 100;
+        // Roasting does not make old meat new: the roast is as far on as what went on the fire.
+        const aged = carriedAge(it.def, it.aged, out.def);
+        if (aged !== undefined) out.aged = aged;
         if (it.qty === 1 && how.keep < 1 && uses) out.uses = Math.max(1, Math.floor(uses * how.keep));
         else if (uses !== undefined && it.qty === 1) out.uses = uses;
         if (inv.stow(out)) g.ground.put(g.px, g.py, [out]);

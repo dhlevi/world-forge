@@ -60,6 +60,8 @@ import { Woodcraft } from './woodcraft';
 import { Fishing } from './fishing';
 import { Lines } from '../world/fishing';
 import { CampsAway } from './camping/away';
+import { dryRacks, Preserving } from './preserving';
+import { ageFood, spoilStage } from '../actors/items/spoil';
 import { type BlowId, type Stance } from '../rules/combat';
 import { callName, isWatch } from '../world/folk-fight';
 import { Strife } from '../world/strife';
@@ -184,10 +186,14 @@ export class PlaySession {
   readonly fishing = new Fishing(this);
   /** The camps left standing (game/camping/away.ts; fieldcraft.md, stage 5). */
   readonly campsAway = new CampsAway(this);
+  /** Smoking, salting and drying food (game/preserving.ts). */
+  readonly preserve = new Preserving(this);
   /** When the wanderer last practised Sneak near animals (game seconds). */
   private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
   private lastTracksAt = -1;
+  /** When food was last aged (actors/items/spoil.ts). */
+  private spoiledAt = -1;
   private toldNoise = new Map<string, number>();
   /** How often the wanderer has talked to each person today (for varying their lines). */
   private talks = new Map<string, number>();
@@ -429,6 +435,14 @@ export class PlaySession {
       this.lines.import(o.restore.people.lines);
       for (const id of o.restore.people.gone ?? []) this.fauna.gone.add(id);
       this.fauna.importWounded(o.restore.people.wounded);
+    }
+    // Old saves: snares of a camp's own become ordinary snares (one snare system).
+    for (const c of game.camps.list) {
+      for (const sn of c.snares ?? []) {
+        if (!this.snares.at(sn.x, sn.y)) this.snares.set(sn.x, sn.y, sn.set).caught = sn.caught;
+        game.camps.unplace(game, c, sn.x, sn.y);
+      }
+      delete c.snares;
     }
 
     // The road: steps take skill (fords, steep ground), weather shortens sight, arriving opens the place.
@@ -795,6 +809,7 @@ export class PlaySession {
   tick(t: number): void {
     const game = this.game;
     this.updateClimate();
+    this.ageFood(t);
     if (this.state.mode === 'local' && !this.travel.running) {
       // The people about: the day's light for their plans, and the rain that sends them indoors.
       const sky = this.weather.sky(t), st = sunTimes(this.o.site.lat, sky.doy);
@@ -995,7 +1010,7 @@ export class PlaySession {
    * under trees (to throw, to club, to make arrows of). A Survival check finds more or fewer good
    * ones in a quarter of an hour.
    */
-  gather(): void {
+  async gather(): Promise<void> {
     const g = this.game, a = this.player, inv = a?.get(Inventory);
     if (!a || !inv || this.state.dead) return;
     const STONY = new Set(['gravel', 'rock', 'scree', 'cave_floor', 'river', 'water_shallow', 'track', 'path', 'dry_earth']);
@@ -1012,13 +1027,13 @@ export class PlaySession {
       g.say('There is nothing here worth gathering: stones lie on stony ground and in stream beds, sticks under trees.');
       return;
     }
+    // A quarter hour's work, the world going on, stopped by a key or by danger (game/fieldcraft.ts).
+    if (!(await this.field.work(15 * 60, 'Gathering sticks and stones')).done) return;
     const r = check(a, 'survival', { difficulty: DC.trivial + 5, now: g.time });
     const n = { fine: 6, success: 4, near: 3, fail: 2, fumble: 1 }[r.grade];
     const got: Item[] = [];
     if (stones) got.push(makeItem('stone', { qty: n }));
     if (sticks) got.push(makeItem('stick', { qty: Math.max(1, Math.round(n / 2)) }));
-    g.time += 15 * 60;
-    g.activity = 'work';
     let left = 0;
     for (const it of got) if (inv.stow(it)) {
       g.ground.put(g.px, g.py, [it]);
@@ -1027,6 +1042,27 @@ export class PlaySession {
     g.say(`You gather ${got.map((it) => `${it.qty} ${itemName(it)}`).join(' and ')}${left ? ', leaving on the ground what you cannot carry' : ''}.`);
     this.practice.flush();
     g.refresh();
+  }
+
+  /**
+   * Food ages as time passes (actors/items/spoil.ts), every half hour or so: what is carried in the
+   * air the wanderer feels, what lies on the ground in the open air. Food that turns is told of.
+   */
+  private ageFood(t: number): void {
+    if (this.spoiledAt < 0) this.spoiledAt = t;
+    const hours = (t - this.spoiledAt) / 3600;
+    if (hours < 0.5) return;
+    this.spoiledAt = t;
+    const w = this.weather.sky(t).w, inv = this.player?.get(Inventory);
+    const carried = inv ? ageFood(inv.d.items, hours, this.needs()?.d.airC ?? w.tempC) : false;
+    ageFood(this.game.ground.everything(), hours, w.tempC);
+    // Meat and fish on a drying rack dry in dry weather (game/preserving.ts).
+    dryRacks(this.game.ground.everything(), hours, w.rainMm > 0.3);
+    if (carried && inv) {
+      const bad = inv.d.items.filter((i) => spoilStage(i.def, i.aged) === 'spoiling' || spoilStage(i.def, i.aged) === 'rotten');
+      if (bad.length) this.game.say(`Some of the food you carry is going off: ${bad.slice(0, 3).map((i) => itemName(i)).join(', ')}.`);
+      this.player?.changed();
+    }
   }
 
   /** The wanderer's health (actors/health.ts). */

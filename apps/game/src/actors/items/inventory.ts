@@ -313,6 +313,8 @@ export class Inventory extends Component {
       const merge = this.children(dest.parent).find((c) => c.uid !== it.uid && stacksWith(c, it) && c.qty + it.qty <= (d.stack ?? 1));
       if (merge) {
         merge.qty += it.qty;
+        // Food of the same stage joins the stack as old as the older (actors/items/spoil.ts).
+        if (it.aged !== undefined || merge.aged !== undefined) merge.aged = Math.max(merge.aged ?? 0, it.aged ?? 0);
         this.drop(it.uid);
         return null;
       }

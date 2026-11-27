@@ -59,6 +59,7 @@ const away = computed(() => {
           <div class="cc-label">The camp</div>
           <div class="dim">{{ siteWords(camp.site) }}.</div>
           <div v-for="(l, i) in campWords(camp)" :key="i">{{ l }}</div>
+          <div v-if="screen.snareWords()">{{ screen.snareWords() }}</div>
           <div class="cc-label">Things to do</div>
           <div class="acts">
             <button v-for="a in actions" :key="a.id" :disabled="!!a.why" :title="a.why ?? ''" @click="screen.act(a.id)">{{ a.label }}</button>
