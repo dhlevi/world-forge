@@ -409,6 +409,32 @@
       "stack": 4,
       "durable": false,
       "about": "A long straight trunk of a young tree, trimmed of its branches: for a fence's rails, a shelter's frame or a pit's cover."
+    },
+    {
+      "id": "worms",
+      "name": "handful of worms",
+      "plural": "handfuls of worms",
+      "kind": "goods",
+      "weight": 0.05,
+      "bulk": 0.1,
+      "size": "tiny",
+      "value": 0,
+      "stack": 10,
+      "durable": false,
+      "about": "Earthworms dug from soft, damp ground: the best bait for a hook."
+    },
+    {
+      "id": "fish_guts",
+      "name": "fish guts",
+      "plural": "lots of fish guts",
+      "kind": "goods",
+      "weight": 0.1,
+      "bulk": 0.2,
+      "size": "tiny",
+      "value": 0,
+      "stack": 10,
+      "durable": false,
+      "about": "The guts of a fish: bait for a hook, a line or a trap."
     }
   ]
 }

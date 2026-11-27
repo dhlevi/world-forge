@@ -234,7 +234,7 @@ export interface Bait {
   at: number;
 }
 
-const MEAT = /^(raw_meat|rabbit|dried_meat|roast_meat|roast_rabbit|cheese)$|fish/;
+const MEAT = /^(raw_meat|rabbit|dried_meat|roast_meat|roast_rabbit|cheese|fish_guts)$|^(fish_(?!spear)|gutted_)/;
 const PLANT = /^(apple|berries|nuts|wild_greens|roots|bread|grain|oats|turnip|carrot)$/;
 
 /** The kind of bait a food is, if it is bait at all. */

@@ -927,6 +927,22 @@ export class Renderer {
       if (sn === 'caught') this.marks.circle(x + 4, y - 4, 1.8).fill({ color: 0xc0281c, alpha: al });
       else if (sn === 'baited') this.marks.circle(x, y - 1.5, 1.3).fill({ color: 0x8a5a2a, alpha: al });
     }
+    // The wanderer's lines and nets in the water (world/fishing.ts): a float, or a net's corks; red
+    // when something is caught.
+    if (!slice) for (let i = 0; i < this.cols * this.rows; i++) {
+      if (Number.isNaN(levels[i])) continue;
+      const tx = (i % this.cols) - this.ox, ty = Math.floor(i / this.cols) - this.oy;
+      const ln = game.lineAt(tx, ty);
+      if (!ln) continue;
+      const x = (i % this.cols) * TILE_PX + TILE_PX / 2, y = Math.floor(i / this.cols) * TILE_PX + TILE_PX / 2;
+      const al = vis[i] ? 0.95 : 0.6, top = ln === 'caught' ? 0xc0281c : 0xf0ece0;
+      if (ln === 'net') for (const [dx, dy] of [[-4, -3], [0, -4], [4, -3], [-4, 3], [0, 4], [4, 3]]) this.marks.circle(x + dx, y + dy, 1.1).fill({ color: 0xd8b070, alpha: al });
+      else {
+        this.marks.circle(x, y, 2.2).fill({ color: top, alpha: al }).stroke({ color: 0x1a1408, width: 0.6, alpha: al });
+        this.marks.moveTo(x, y + 2.2).lineTo(x, y + 4).stroke({ color: 0x1a1408, width: 0.8, alpha: al });
+      }
+      if (ln === 'caught') this.marks.circle(x, y, 1.4).fill({ color: top, alpha: al });
+    }
     // The trail read by Tracking (game/hunt.ts): small amber marks along it.
     if (!slice) for (let i = 0; i < this.cols * this.rows; i++) {
       if (Number.isNaN(levels[i])) continue;

@@ -57,6 +57,8 @@ import { Snares, carcassOf } from '../world/hunting';
 import { baitWords, fresh, Pits, robbedWords } from '../world/traps';
 import { Trapping } from './trapping';
 import { Woodcraft } from './woodcraft';
+import { Fishing } from './fishing';
+import { Lines } from '../world/fishing';
 import { type BlowId, type Stance } from '../rules/combat';
 import { callName, isWatch } from '../world/folk-fight';
 import { Strife } from '../world/strife';
@@ -176,6 +178,9 @@ export class PlaySession {
   readonly traps = new Trapping(this);
   /** Felling and cutting wood (world/woodcraft.ts, game/woodcraft.ts). */
   readonly wood = new Woodcraft(this);
+  /** Lines and nets set, and fishing (world/fishing.ts, game/fishing.ts; fieldcraft.md, stage 4). */
+  readonly lines = new Lines();
+  readonly fishing = new Fishing(this);
   /** When the wanderer last practised Sneak near animals (game seconds). */
   private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
@@ -406,6 +411,7 @@ export class PlaySession {
     game.bloodOn = (x, y, z) => this.people.tracks.bloodAt(x, y, z, game.time);
     game.trailAt = (x, y) => this.hunt.onTrail(x, y);
     this.traps.install();
+    this.fishing.install();
     game.snareAt = (x, y) => {
       const sn = this.snares.at(x, y);
       return sn ? (sn.caught ? 'caught' : fresh(sn.bait, game.time) ? 'baited' : 'set') : null;
@@ -417,6 +423,7 @@ export class PlaySession {
       this.people.tracks.import(o.restore.people.tracks);
       this.snares.import(o.restore.people.snares);
       this.pits.import(o.restore.people.pits);
+      this.lines.import(o.restore.people.lines);
       for (const id of o.restore.people.gone ?? []) this.fauna.gone.add(id);
       this.fauna.importWounded(o.restore.people.wounded);
     }
@@ -812,6 +819,7 @@ export class PlaySession {
         sn.baitTaken = undefined;
       }
       this.traps.run();
+      this.fishing.run();
       this.listen();
       // Rain and falling snow wash out (or cover) the older tracks; the rest fade in time.
       if (Math.floor(t / 600) !== Math.floor(this.lastTracksAt / 600)) {
@@ -1560,7 +1568,7 @@ export class PlaySession {
     const o = this.o;
     return makeSave(this.game, {
       id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON(),
-      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), pits: this.pits.export(), gone: [...this.fauna.gone].slice(-500), wounded: this.fauna.exportWounded(), dead: [...this.people.dead], law: this.law.export() },
+      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), pits: this.pits.export(), lines: this.lines.export(), gone: [...this.fauna.gone].slice(-500), wounded: this.fauna.exportWounded(), dead: [...this.people.dead], law: this.law.export() },
       ...(this.state.dead ? { dead: this.state.dead } : {}),
     });
   }

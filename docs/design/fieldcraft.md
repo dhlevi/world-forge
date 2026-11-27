@@ -173,17 +173,48 @@ from the skill menu; the numbers are proposed, to tune in play.
 - *Built ahead (24 November 2026, from play):* each snare set is marked on the local map (a noose
   on its peg, with a red mark when it holds a catch), seen or remembered; and on the travel map
   the snares within 60 m of one another are one site, a noose in a ring at their middle. A site
-  clicked says how many and how many have caught; within 400 m **Go to the snares** puts the
-  wanderer on the local map among them, and further off the way there is planned
+  clicked says how many and how many have caught; within 400 m **Go to your traps** puts the
+  wanderer on the local map among them (pits and set lines and nets are counted with the snares), and further off the way there is planned
   (`game/hunt.ts`, `trapSites`).
 
 ### Stage 4: fishing
 
-- **Fishing** where the water is large enough to hold fish (rivers, lakes, the sea's shore): with a
-  rod and line, a spear (or a staff sharpened) in shallow water, for a chosen time, a catch rolled
-  each quarter hour (Fishing, by the water, the hour and the season).
-- **Lines and nets** set and left, checked later.
-- Fish are gutted and roasted as meat is.
+*Decided (27 November 2026):* each fish its own species and items, by water and climate; fish are
+gutted (a blade, Survival) before roasting, the guts kept for bait; worms dug, guts, meat scraps
+and bread bait a hook; and a spell of fishing runs for a length chosen from the menu, stopping on
+trouble.
+
+*Built (27 November 2026; `actors/data/fish.ts`, `world/fishing.ts`, `game/fishing.ts`,
+`fish-test.ts`).* The numbers are proposed, to tune in play.
+
+- **The fish.** Twenty-three species, each with its waters (river, lake, or the sea's shore), its
+  climates (cold, temperate, warm, by the place's warmest and coldest months), its size and how
+  common it is; some bite at night (eel, catfish), some keep to the shallows (where a spear can
+  take them), and some hunt other fish (they take guts or meat rather than worms). Each is three
+  items: as caught, gutted, and roast, its weight and portions those of the fish caught.
+- **Fishing with a rod** (the skill menu at water: for an hour, two hours, until dusk or dawn, or
+  until a catch, at most eight hours): each quarter hour a bite by chance, by Fishing, the hour
+  (dawn and dusk best, night poorest but for the night fish), winter (half), rain (a little
+  better), the water (a small pond holds few) and the bait (worms best; guts, meat or bread good;
+  none, slowly). Landing it is a Fishing check, harder for a bigger fish: a near miss or a failure
+  loses it and the bait, a fumble snaps the line. It stops early when a beast that could hurt the
+  wanderer comes within ten tiles, someone comes near, or they grow worn out, chilled, parched or
+  faint with hunger, and says what was caught.
+- **A spear** (bought, or a pole or a staff sharpened into prongs with a blade): in the shallows
+  only, by day or night, for an hour or until a catch; it takes only the fish of the shallows.
+- **Set lines and nets** from the bank: a line (baited from what is carried) takes a fish an hour
+  by chance (unbaited, seldom), holding three; a net more often, holding six, but not in a small
+  pond. They are marked in the water (a float, or a net's corks, red with a catch), and with the
+  traps on the travel map; lifting one gives back the line or net and its fish. A heron or
+  whatever hunts about may take a fish waiting in it.
+- **Gutting** (the skill menu on the wanderer's own tile, with a blade; Survival): each fish
+  carried is gutted, five minutes a fish, the guts kept but on a poor job; a fumble nicks the hand.
+  A fish roasted whole comes out a grade poorer.
+- **Worms** dug near water (within twelve tiles) in soft ground: half an hour for a handful or
+  more, more in rich or damp ground and with a spade; none from frozen, sandy or stony ground.
+- **Bait for traps:** fish, gutted fish and guts are meat bait for snares and pits.
+- **Ice:** a frozen lake (or a river frozen hard) is fished through a hole cut with an axe, a
+  hatchet or a spear (twenty minutes); lines and nets cannot be set under the ice.
 
 ### Stage 5: the camp
 

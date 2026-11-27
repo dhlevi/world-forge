@@ -299,6 +299,46 @@
       "mend": { "skill": "smithing", "at": ["forge", "anvil"] },
       "sold": ["smithy", "market"],
       "about": "A broad scoop of iron on a long handle, for moving loose earth quickly."
+    },
+    {
+      "id": "fishing_rod",
+      "name": "rod and line",
+      "plural": "rods and lines",
+      "kind": "tool",
+      "weight": 0.6,
+      "bulk": 3,
+      "size": "large",
+      "value": 6,
+      "strap": true,
+      "mend": { "skill": "carpentry", "kit": "tool_roll" },
+      "sold": ["market"],
+      "about": "A long springy rod with a line and a few hooks, for fishing from the bank."
+    },
+    {
+      "id": "set_line",
+      "name": "set line",
+      "plural": "set lines",
+      "kind": "tool",
+      "weight": 0.1,
+      "bulk": 0.2,
+      "size": "tiny",
+      "value": 2,
+      "stack": 10,
+      "sold": ["market"],
+      "about": "A strong line with a few hooks and a weight, to be baited, set from the bank and left."
+    },
+    {
+      "id": "fish_spear",
+      "name": "fish spear",
+      "plural": "fish spears",
+      "kind": "tool",
+      "weight": 1.2,
+      "bulk": 4,
+      "size": "huge",
+      "value": 1,
+      "strap": true,
+      "melee": { "skill": "polearms", "reach": 2, "seconds": 2, "thrust": 5, "parry": 0.3, "hands": 2 },
+      "about": "A pole split and sharpened at one end into prongs, for taking fish in the shallows."
     }
   ]
 }

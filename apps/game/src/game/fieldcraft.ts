@@ -24,9 +24,12 @@ import { CAMP_R, campable, rateSite, type CampData } from './camp';
 import { lightFire, feedFire } from './camping/fire';
 import { stackFirewood } from './camping/pitch';
 import type { CampCtx } from './camping/context';
+import { FISH } from '../actors/data/fish';
+import { fishIds } from '../actors/items/defs';
 import type { PlaySession } from './session';
 import { Trapping } from './trapping';
 import { Woodcraft } from './woodcraft';
+import { Fishing } from './fishing';
 
 /** A thing that can be done at a tile, and why not, if it cannot. */
 export interface TileAction {
@@ -39,7 +42,12 @@ export interface TileAction {
 const FIRES = new Set(['campfire', 'hearth', 'oven', 'brazier']);
 
 /** What each raw food roasts into. */
-export const ROASTS: Readonly<Record<string, string>> = { raw_meat: 'roast_meat', rabbit: 'roast_rabbit' };
+export const ROASTS: Readonly<Record<string, string>> = {
+  raw_meat: 'roast_meat',
+  rabbit: 'roast_rabbit',
+  // Fish (stage 4): gutted, or roasted whole and the poorer for it.
+  ...Object.fromEntries(FISH.flatMap((f) => { const ids = fishIds(f.id); return [[ids.gutted, ids.roast], [ids.raw, ids.roast]]; })),
+};
 
 /** Minutes to roast: to set up the spit, and for each piece. */
 const ROAST_MIN = 20, ROAST_EACH_MIN = 10;
@@ -137,7 +145,7 @@ export class Fieldcraft {
       out.push({ id: 'wash', label: 'Wash' });
     }
     // Felling and stakes (game/woodcraft.ts), pits and fences (game/trapping.ts; stage 3).
-    out.push(...s.wood.actions(x, y), ...s.traps.actions(x, y));
+    out.push(...s.wood.actions(x, y), ...s.traps.actions(x, y), ...s.fishing.actions(x, y));
     return out;
   }
 
@@ -145,10 +153,11 @@ export class Fieldcraft {
   async act(id: string, x: number, y: number): Promise<void> {
     const s = this.s, g = this.g;
     // Onto the tile itself for a snare or a walk; beside it for the rest.
-    const onto = id === 'walk' || id === 'snare' || id === 'stakes';
+    const onto = id === 'walk' || id === 'snare' || id === 'stakes' || id === 'gut' || id === 'fishspear';
     if (id !== 'tracks' && id !== 'follow' && !(await this.reach(x, y, onto))) return;
     if (Woodcraft.IDS.has(id)) s.wood.act(id, x, y);
     if (Trapping.IDS.has(id)) s.traps.act(id, x, y);
+    if (Fishing.IDS.has(id)) await s.fishing.act(id, x, y);
     switch (id) {
       case 'walk':
         break;
@@ -346,7 +355,10 @@ export class Fieldcraft {
       const keep = how.keep >= 1 ? it.qty : Math.floor(it.qty * how.keep);
       const uses = it.uses ?? defOf(it).uses;
       if (keep > 0 || (how.keep > 0 && (uses ?? 1) > 1)) {
-        const out = makeItem(ROASTS[it.def], { qty: Math.max(1, keep), quality: how.quality });
+        // A fish roasted ungutted is the poorer for it.
+        const whole = /^fish_/.test(it.def);
+        const out = makeItem(ROASTS[it.def], { qty: Math.max(1, keep), quality: whole && how.quality !== 'poor' ? (how.quality === 'fine' ? 'common' : 'poor') : how.quality });
+        if (it.kg !== undefined) out.kg = Math.round(it.kg * 0.75 * 100) / 100;
         if (it.qty === 1 && how.keep < 1 && uses) out.uses = Math.max(1, Math.floor(uses * how.keep));
         else if (uses !== undefined && it.qty === 1) out.uses = uses;
         if (inv.stow(out)) g.ground.put(g.px, g.py, [out]);

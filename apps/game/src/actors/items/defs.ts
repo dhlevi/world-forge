@@ -23,6 +23,7 @@ import goods from '../../data/items/goods.json';
 import gear from '../../data/items/gear.json';
 import { SKILL } from '../data/skills';
 import { SPECIES, type Species } from '@worldforge/core/local/fauna';
+import { FISH, fishKg } from '../data/fish';
 
 /** How big a thing is at its largest: what it can go into. */
 export const SIZES = ['tiny', 'small', 'medium', 'large', 'huge'] as const;
@@ -406,6 +407,30 @@ function beastHides(): unknown[] {
   });
 }
 
-const faults = [...BUILT_IN.flatMap(([f, file]) => registerItems(file.items, f)), ...registerItems(beastHides(), 'the beasts\' hides')];
+/** Kilocalories in a portion of fish (about a third of a kilogram), raw or roast. */
+const FISH_PORTION_KG = 0.35, FISH_KCAL = 200, ROAST_FISH_KCAL = 230;
+
+/** The item ids of a fish: as caught, gutted, and roast (fieldcraft.md, stage 4). */
+export const fishIds = (id: string) => ({ raw: `fish_${id}`, gutted: `gutted_${id}`, roast: `roast_${id}` });
+
+/** Portions in a fish of a weight (kg). */
+export const fishPortions = (kg: number): number => Math.max(1, Math.round(kg / FISH_PORTION_KG));
+
+/** Each fish its own items: as caught, gutted, and roast, weighed and portioned by its size. */
+function fishItems(): unknown[] {
+  return FISH.flatMap((f) => {
+    const kg = fishKg(f), ids = fishIds(f.id), uses = fishPortions(kg);
+    const size = kg < 0.3 ? 'tiny' : kg < 2 ? 'small' : 'medium';
+    const base = { kind: 'food', uses, useWord: 'portions', size, durable: false, bulk: Math.max(0.2, Math.round(kg * 1.5 * 10) / 10) };
+    const value = Math.max(1, Math.round(1 + kg));
+    return [
+      { ...base, id: ids.raw, name: f.name, plural: f.plural, weight: kg, value, sold: ['market'], food: { kcal: FISH_KCAL, verb: `eat some of the ${f.name}`, raw: true }, about: `A ${f.name}, as it came from the water. Gut it before you roast it.` },
+      { ...base, id: ids.gutted, name: `gutted ${f.name}`, plural: `gutted ${f.plural}`, weight: Math.round(kg * 0.85 * 100) / 100, value, food: { kcal: FISH_KCAL, verb: `eat some of the ${f.name}`, raw: true }, about: `A ${f.name}, gutted and cleaned, ready for the fire.` },
+      { ...base, id: ids.roast, name: `roast ${f.name}`, plural: `roast ${f.plural}`, weight: Math.round(kg * 0.75 * 100) / 100, value: value + 1, food: { kcal: ROAST_FISH_KCAL, verb: `eat some of the roast ${f.name}` }, about: `A ${f.name} roasted over a fire.` },
+    ];
+  });
+}
+
+const faults = [...BUILT_IN.flatMap(([f, file]) => registerItems(file.items, f)), ...registerItems(beastHides(), 'the beasts\' hides'), ...registerItems(fishItems(), 'the fish')];
 faults.push(...registerGear(gear, 'gear.json'), ...checkReferences());
 if (faults.length) throw new Error(`The item data has faults:\n${faults.join('\n')}`);

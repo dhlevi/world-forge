@@ -183,6 +183,8 @@ export class Game {
 
   /** The wanderer's snare on a tile (world/hunting.ts): set, baited, or with a catch in it. */
   snareAt: (x: number, y: number) => 'set' | 'baited' | 'caught' | null = () => null;
+  /** The wanderer's set line or net on a water tile (world/fishing.ts), and whether it holds a fish. */
+  lineAt: (x: number, y: number) => 'line' | 'net' | 'caught' | null = () => null;
   /** On the trail read and marked (game/hunt.ts). */
   trailAt: (x: number, y: number) => boolean = () => false;
   /** The animals about, to be drawn. */

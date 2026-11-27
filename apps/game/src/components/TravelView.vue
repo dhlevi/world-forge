@@ -219,7 +219,7 @@ onBeforeUnmount(() => journey.stop());
         </div>
         <div v-if="trap && hunt" class="row river">
           <span>{{ cap(hunt.trapWords(trap)) }}, {{ (hunt.metresTo(trap) / 1000).toFixed(1) }} km off.</span>
-          <button @click="goToTraps">{{ hunt.metresTo(trap) <= 400 ? 'Go to the snares' : 'Go there' }}</button>
+          <button @click="goToTraps">{{ hunt.metresTo(trap) <= 400 ? 'Go to your traps' : 'Go there' }}</button>
           <button @click="signId = ''">Close</button>
         </div>
         <div v-if="atRiver" class="row river">

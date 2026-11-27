@@ -69,6 +69,8 @@ export interface TrapSite {
   lat: number;
   n: number;
   caught: number;
+  /** How many of each kind: snares, pits, and lines or nets. */
+  kinds: { snare: number; pit: number; line: number };
 }
 
 export class Hunting {
@@ -163,7 +165,13 @@ export class Hunting {
    * within 40 tiles (60 m) of one another are one site, marked at their middle.
    */
   trapSites(): TrapSite[] {
-    const left = [...this.s.snares.list], out: TrapSite[] = [];
+    type Trap = { x: number; y: number; kind: 'snare' | 'pit' | 'line'; caught: boolean };
+    const left: Trap[] = [
+      ...this.s.snares.list.map((t): Trap => ({ x: t.x, y: t.y, kind: 'snare', caught: !!t.caught })),
+      ...this.s.pits.list.map((t): Trap => ({ x: t.x, y: t.y, kind: 'pit', caught: !!t.caught })),
+      ...this.s.lines.list.map((t): Trap => ({ x: t.x, y: t.y, kind: 'line', caught: t.catch.length > 0 })),
+    ];
+    const out: TrapSite[] = [];
     while (left.length) {
       const group = [left.shift()!];
       for (let i = 0; i < group.length; i++) {
@@ -173,21 +181,25 @@ export class Hunting {
       }
       const x = Math.round(group.reduce((a, s) => a + s.x, 0) / group.length), y = Math.round(group.reduce((a, s) => a + s.y, 0) / group.length);
       const [lon, lat] = this.s.travel.frame.toLL([(x + 0.5) * TILE_M, -(y + 0.5) * TILE_M]);
-      out.push({ id: `trap:${group[0].x},${group[0].y}`, x, y, lon, lat, n: group.length, caught: group.filter((s) => s.caught).length });
+      const count = (k: Trap['kind']) => group.filter((t) => t.kind === k).length;
+      out.push({ id: `trap:${group[0].x},${group[0].y}`, x, y, lon, lat, n: group.length, caught: group.filter((t) => t.caught).length, kinds: { snare: count('snare'), pit: count('pit'), line: count('line') } });
     }
     return out;
   }
 
-  /** A site of snares in words. */
+  /** A site of traps in words: "two snares and a pit you set". */
   trapWords(t: TrapSite): string {
-    const n = t.n === 1 ? 'a snare' : `${NUM[t.n] ?? t.n} snares`;
+    const word = (n: number, one: string, many: string) => (n === 1 ? `a ${one}` : `${NUM[n] ?? n} ${many}`);
+    const k = t.kinds ?? { snare: t.n, pit: 0, line: 0 };
+    const parts = [k.snare ? word(k.snare, 'snare', 'snares') : '', k.pit ? word(k.pit, 'pit', 'pits') : '', k.line ? word(k.line, 'set line or net', 'set lines and nets') : ''].filter(Boolean);
+    const n = parts.length > 1 ? `${parts.slice(0, -1).join(', ')} and ${parts[parts.length - 1]}` : parts[0] ?? 'traps';
     return `${n} you set${t.caught ? ` (${t.caught === t.n && t.n > 1 ? 'all' : NUM[t.caught] ?? t.caught} with a catch, if nothing has taken it)` : ''}`;
   }
 
   /** Goes to a site of snares: onto the local map at its middle when near enough, else the way there is planned. */
   goToTraps(t: TrapSite): void {
     if (this.metresTo(t) > NEAR_M) {
-      void this.s.travel.setDest([t.lon, t.lat], 'your snares');
+      void this.s.travel.setDest([t.lon, t.lat], 'your traps');
       return;
     }
     this.s.toLocalAt(t.lon, t.lat);

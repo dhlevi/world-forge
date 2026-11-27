@@ -77,6 +77,11 @@ export class WeatherService {
     this.place = { lon, lat, warm: 18, cold: 2, precipSummer: 700, precipWinter: 700, windU: 0.5, windV: 0 };
   }
 
+  /** The climate where it is: the warmest and coldest months' means (°C). */
+  get climate(): { warm: number; cold: number } {
+    return { warm: this.place.warm, cold: this.place.cold };
+  }
+
   get lat(): number {
     return this.place.lat;
   }
