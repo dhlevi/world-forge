@@ -59,6 +59,8 @@ export interface Hud {
   town?: { id: string; name: string; tier: string } | null;
   /** The settlement the wanderer is in, any village, town or city (for the law), if any. */
   settlement?: { id: string; name: string; tier: string } | null;
+  /** The place of note the wanderer is at on foot (a tavern, an inn, a market, a shop, a temple), to use as from the city view. */
+  here?: { id: string; name: string; kind: string; lon: number; lat: number } | null;
   /** A spell of work under way (game/fieldcraft.ts, `work`), in words, to show with a way to stop it. */
   task?: string | null;
 }
@@ -488,28 +490,31 @@ export class Game {
     return true;
   }
 
-  /** Runs in a direction until something is worth stopping for. */
+  /** Runs in a direction until something is worth stopping for (all at once: for the tests; play runs a step at a time, game/fieldcraft.ts). */
   run(dx: number, dy: number): void {
-    let n = 0;
-    while (n < 60) {
-      const area = this.areaAt(this.px, this.py);
-      // Running does not carry on into deep water.
-      if (n > 0 && this.swim(this.px + dx, this.py + dy) && !this.swim(this.px, this.py)) break;
-      this.stopRun = false;
-      if (!this.move(dx, dy, n > 0)) break;
-      n++;
-      if (this.stopRun) break;
-      this.refreshSight();
-      if (this.areaAt(this.px, this.py) !== area) break;
-      // Stop beside a door or a way down.
-      let stop = false;
-      for (const [ax, ay] of DIRS8) {
-        const o = OBJECT_TILES[this.map.object(this.px + ax, this.py + ay)];
-        if (o.toggle || o.name.endsWith('entrance') || o.name === 'cave_mouth' || STAIRS_UP.has(o.name) || STAIRS_DOWN.has(o.name)) stop = true;
-      }
-      if (stop) break;
-    }
+    for (let n = 0; n < 60 && this.runStep(dx, dy, n); n++);
     this.refresh();
+  }
+
+  /**
+   * One step of a run (the `n`th): whether the run goes on after it. It stops at deep water, at
+   * anything in the way, on entering another area, and beside a door or a way up or down.
+   */
+  runStep(dx: number, dy: number, n: number): boolean {
+    const area = this.areaAt(this.px, this.py);
+    // Running does not carry on into deep water.
+    if (n > 0 && this.swim(this.px + dx, this.py + dy) && !this.swim(this.px, this.py)) return false;
+    this.stopRun = false;
+    if (!this.move(dx, dy, n > 0)) return false;
+    if (this.stopRun) return false;
+    this.refreshSight();
+    if (this.areaAt(this.px, this.py) !== area) return false;
+    // Stop beside a door or a way down.
+    for (const [ax, ay] of DIRS8) {
+      const o = OBJECT_TILES[this.map.object(this.px + ax, this.py + ay)];
+      if (o.toggle || o.name.endsWith('entrance') || o.name === 'cave_mouth' || STAIRS_UP.has(o.name) || STAIRS_DOWN.has(o.name)) return false;
+    }
+    return true;
   }
 
   private refreshSight(): void {
@@ -680,7 +685,11 @@ export class Game {
       }
     }
     this.hud.place = t?.area ? cap(t.area) : inside ? `${inside.name}` : 'The wilds';
-    this.hud.town = inside && inside.tier !== 'village' ? { id: inside.id, name: inside.name, tier: inside.tier } : null;
+    // The town or city about the wanderer (its city view), whatever smaller place lies within it,
+    // with a little room past its bounds for the houses at its edge (from play, 27 November 2026).
+    let town: LocalSite | null = null;
+    for (const s of this.sites) if ((s.tier === 'town' || s.tier === 'city') && Math.hypot(s.x - mx, s.y - my) < s.radiusM * 1.15 && (!town || s.radiusM < town.radiusM)) town = s;
+    this.hud.town = town ? { id: town.id, name: town.name, tier: town.tier } : null;
     this.hud.settlement = inside ? { id: inside.id, name: inside.name, tier: inside.tier } : null;
     if (inside) this.hud.where = `${inside.name}, a ${inside.tier}`;
     else if (nearest) {

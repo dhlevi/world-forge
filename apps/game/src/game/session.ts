@@ -22,12 +22,12 @@ import { GROUND_TILES, OBJECT_TILES, type Season } from '@worldforge/core/local/
 import { BRUSH_TOOLS, clearBrush, usePortion } from '../rules/tasks';
 import { figureOf } from '../actors/figure';
 import { portraitOf, type PortraitSpec } from './portrait';
-import { residentCard, residentLines, type PersonCard } from './person-card';
+import { residentCard, residentLines, shownName, type PersonCard } from './person-card';
 import { makeItem, defOf, itemName, type Item } from '../actors/items/item';
 import type { WorldSettings } from '@worldforge/core/settings';
 import type { Weather } from '@worldforge/core/weather/weather';
 import type { MessageDispatcher } from '../engine/messages';
-import type { ChunkData, LocalSite, StartSite } from '../worker/protocol';
+import type { ChunkData, LocalSite, SiteInfo, SitePlace, StartSite } from '../worker/protocol';
 import type { RouteResult, WorkerClient } from '../app/worker-client';
 import { background, onError } from '../app/errors';
 import { desktop } from '../desktop';
@@ -51,6 +51,7 @@ import type { RouteOptions } from '@worldforge/core/local/travel';
 import { Travel } from './travel';
 import { Fights } from './fights';
 import { Justice } from './justice';
+import { Quests } from './quests';
 import { Population } from '../world/population';
 import { Fauna, animalLines, type Presence } from '../world/fauna';
 import { Snares, carcassOf } from '../world/hunting';
@@ -60,6 +61,7 @@ import { Woodcraft } from './woodcraft';
 import { Fishing } from './fishing';
 import { Lines } from '../world/fishing';
 import { CampsAway } from './camping/away';
+import { Conversation } from './conversation';
 import { dryRacks, Preserving } from './preserving';
 import { ageFood, spoilStage } from '../actors/items/spoil';
 import { type BlowId, type Stance } from '../rules/combat';
@@ -73,7 +75,8 @@ import { greeting, lineOf } from '../world/talk';
 import { sunTimes } from '@worldforge/core/weather/weather';
 import { WeatherService, type Sky, type SkyPicture } from './weather';
 import type { RoofMode } from './roofs-mode';
-import { cap, hash32 } from '../util';
+import { bearing, cap, compassWord, hash32 } from '../util';
+import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 
 /** What a game is begun or carried on from. */
 export interface PlayOptions {
@@ -103,12 +106,18 @@ export interface SessionWorld {
   /** Names of a people (for the watch sent for from their post). */
   names?: WorkerClient['names'];
   site: WorkerClient['site'];
+  /** The roads, settlements and lairs of a box of the world (for rumours of the country about: game/conversation.ts). */
+  requestArea?: WorkerClient['requestArea'];
+  /** The settlements about a point (none: the ones the game began with are kept). */
+  sitesNear?: WorkerClient['sitesNear'];
   /** The world's towns and cities that a game can begin in (for what the character knew). */
   starts(): StartSite[];
 }
 
 /** The screens about the game (screens/play.ts). */
 export interface SessionHost {
+  /** Talking with someone, on its screen (screens/talk.ts). */
+  converse?(c: Conversation): void;
   /** A town's or city's view, with the party at the place nearest `at` (or where it stands). */
   openCity(siteId: string, at?: { lon: number; lat: number }, arrived?: boolean): Promise<void>;
   /** Back to the title. */
@@ -172,6 +181,8 @@ export class PlaySession {
   readonly fights = new Fights(this);
   /** People struck and at the wanderer's mercy, and the law (game/justice.ts). */
   readonly justice = new Justice(this);
+  /** The town's troubles taken up, and the journal (game/quests.ts). */
+  readonly quests = new Quests(this);
   /** Fieldcraft on the local map: the skill menu, fires, roasting (game/fieldcraft.ts). */
   readonly field = new Fieldcraft(this);
   /** Hunting by tracking: signs of game on the travel map, trails on the local map (game/hunt.ts). */
@@ -192,6 +203,11 @@ export class PlaySession {
   private sneakAt = -1;
   /** When the tracks were last weathered; when each kind of noise was last told of (game seconds). */
   private lastTracksAt = -1;
+  /** The towns' places of note, as asked of the worker (by town), for using a place on foot. */
+  private siteCache = new Map<string, SiteInfo | null>();
+  private hereAt = '';
+  /** Where the settlements about were last asked for (local metres), so that far travel brings the towns there. */
+  private sitesAt: [number, number] | null = null;
   /** When food was last aged (actors/items/spoil.ts). */
   private spoiledAt = -1;
   private toldNoise = new Map<string, number>();
@@ -334,7 +350,7 @@ export class PlaySession {
     game.people = () => (this.state.mode === 'local' ? this.people.all() : []);
     game.personAt = (x, y, z) => {
       const r = this.state.mode === 'local' ? this.people.at(x, y, z) : null;
-      return r ? { name: r.p.name, lines: residentLines(r, this.people, game.time) } : null;
+      return r ? { name: shownName(r, this.people), lines: residentLines(r, this.people, game.time) } : null;
     };
     // The senses (world/senses.ts): the wanderer's noises heard by those about, their tracks, and walking into people.
     game.onBump = (x, y, z) => {
@@ -384,11 +400,13 @@ export class PlaySession {
     this.strife.onSee = (text) => game.say(text);
     this.strife.onDied = (r) => this.justice.personDied(r, game.isVisible(r.x, r.y) ? `${cap(callName(r, this.people.opinions))} dies.` : null);
     this.strife.onRob = (r) => this.justice.robbed(r);
+    this.law.onCrime = () => this.quests.onCrime();
     this.strife.onArrest = (r) => this.justice.arrest(r);
     this.strife.onCallWatch = (r) => this.justice.callWatch(r, 2);
     this.strife.onPickpocket = (r) => this.justice.pickpocket(r);
     // What people say is said in their language (world/speech.ts).
-    this.people.voice = (r, line, name) => speech(r, line, this.player?.get(Skills), this.townCulture(), name);
+    // A person is named in the telling once they have given their name (game/conversation.ts).
+    this.people.voice = (r, line, name) => speech(r, line, this.player?.get(Skills), this.townCulture(), name === r.p.name ? cap(callName(r, this.people.opinions)) : name);
     // The animals about (world/fauna.ts), their noises and tracks, and the wanderer's snares (world/hunting.ts).
     const askA = world.requestAnimals;
     this.fauna = new Fauna(askA ? (x, y, t, w) => askA(x, y, t, w) : () => Promise.resolve({ groups: [], radius: 0 }), this.people.tracks);
@@ -429,6 +447,7 @@ export class PlaySession {
       this.people.opinions.import(o.restore.people.opinions);
       for (const id of o.restore.people.dead ?? []) this.people.dead.add(id);
       this.law.import(o.restore.people.law);
+      this.quests.import(o.restore.people.quests);
       this.people.tracks.import(o.restore.people.tracks);
       this.snares.import(o.restore.people.snares);
       this.pits.import(o.restore.people.pits);
@@ -809,6 +828,8 @@ export class PlaySession {
   tick(t: number): void {
     const game = this.game;
     this.updateClimate();
+    this.updateSites();
+    this.lookHere();
     this.ageFood(t);
     if (this.state.mode === 'local' && !this.travel.running) {
       // The people about: the day's light for their plans, and the rain that sends them indoors.
@@ -824,6 +845,10 @@ export class PlaySession {
       this.justice.recognise();
       this.justice.watchArrives();
       this.justice.purseNotice();
+      // Work taken up: places reached, time run out, givers dead; and the country about asked after.
+      this.quests.run();
+      const asking = this.quests.prepareHere();
+      if (asking) background(asking, 'the game');
       // The animals, and the snares set for them.
       this.fauna.update(game, this.presence());
       this.hunt.update();
@@ -1042,6 +1067,119 @@ export class PlaySession {
     g.say(`You gather ${got.map((it) => `${it.qty} ${itemName(it)}`).join(' and ')}${left ? ', leaving on the ground what you cannot carry' : ''}.`);
     this.practice.flush();
     g.refresh();
+  }
+
+  /**
+   * The place of note the wanderer stands in or at, on foot in a town (from play, 27 November 2026):
+   * the nearest tavern, inn, market, shop, temple, bathhouse, guild or hall within 25 m, whose menu
+   * (as in the city view) can then be used without leaving the local map.
+   */
+  private lookHere(): void {
+    const g = this.game, town = g.hud.town;
+    if (this.state.mode !== 'local' || !town || (g.z !== null && g.z < 0)) {
+      if (g.hud.here) g.hud.here = null;
+      this.hereAt = '';
+      return;
+    }
+    const key = `${town.id}|${g.px},${g.py}`;
+    if (key === this.hereAt) return;
+    this.hereAt = key;
+    const best = this.placeNear(g.px, g.py, 25, true);
+    g.hud.here = best ? { id: best.id, name: best.name, kind: best.kind, lon: best.lon, lat: best.lat } : null;
+  }
+
+  /** The town's places of note (the worker's site, asked once a town and kept); null until it has answered (it is asked then). */
+  private townPlaces(): SitePlace[] | null {
+    const town = this.game.hud.town;
+    if (!town) return [];
+    if (this.siteCache.has(town.id)) return this.siteCache.get(town.id)?.places ?? [];
+    this.siteCache.set(town.id, null);
+    const [lon, lat] = this.travel.party();
+    background(this.world.site(town.id, { lon, lat }).then((r) => {
+      this.siteCache.set(town.id, r.site);
+      this.hereAt = '';
+      this.lookHere();
+    }), 'the game');
+    return null;
+  }
+
+  /** The people of the town about, as the worker names them (for the make of a stall's wares), if known. */
+  townMake(): string | undefined {
+    const town = this.game.hud.town;
+    return town ? this.siteCache.get(town.id)?.culture : undefined;
+  }
+
+  /** The places of note within `m` metres of a tile, nearest first (empty outside a town, or until known). */
+  placesNear(x: number, y: number, m: number, usable = false): SitePlace[] {
+    const list = this.townPlaces();
+    if (!list) return [];
+    const [lon, lat] = this.travel.frame.toLL([(x + 0.5) * TILE_M, -(y + 0.5) * TILE_M]);
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    return list.filter((p) => !usable || (p.kind !== 'gate' && p.kind !== 'district' && p.kind !== 'dock'))
+      .map((p) => ({ p, d: Math.hypot((p.lon - lon) * 111320 * cosLat, (p.lat - lat) * 110540) })).filter((x) => x.d < m).sort((a, b) => a.d - b.d).map((x) => x.p);
+  }
+
+  /** The place of note a tile is at (within `m` metres), if any. */
+  placeNear(x: number, y: number, m = 25, usable = true): SitePlace | null {
+    return this.placesNear(x, y, m, usable)[0] ?? null;
+  }
+
+  /** The lairs and ruins of the country about (the worker's travel area), by tenth of a degree. */
+  private lairCache = new Map<string, { name: string; kind?: string; lon: number; lat: number }[]>();
+
+  /**
+   * What people talk of (game/conversation.ts): the lairs and ruins of the country about, the law's
+   * hunt for the wanderer, what the person's neighbours are about (their ties), and the weather and
+   * the season. Shuffled for each person and day.
+   */
+  rumours(r: Resident): string[] {
+    const g = this.game, [lon, lat] = this.travel.party(), out: string[] = [];
+    const key = `${Math.round(lon * 10)},${Math.round(lat * 10)}`;
+    const lairs = this.lairCache.get(key);
+    if (!lairs && this.world.requestArea) {
+      this.lairCache.set(key, []);
+      const box = { west: lon - 0.2, east: lon + 0.2, south: lat - 0.15, north: lat + 0.15 };
+      background(this.world.requestArea(box, true).then((a) => this.lairCache.set(key, a.places.filter((p) => p.tier === 'lair').map((p) => ({ name: p.name, kind: p.kind, lon: p.lon, lat: p.lat })))), 'the game');
+    }
+    const cosLat = Math.cos((lat * Math.PI) / 180);
+    for (const l of (lairs ?? []).slice(0, 6)) {
+      const dx = (l.lon - lon) * 111320 * cosLat, dy = (l.lat - lat) * 110540, km = Math.max(1, Math.round(Math.hypot(dx, dy) / 1000));
+      const what = l.kind === 'cave' || l.kind === 'deep' ? 'caves' : 'an old place';
+      out.push(`They say there are ${what} out ${compassWord(bearing(dx, dy))}, ${km} km or so: ${l.name}. Folk keep away from it, and with reason.`);
+    }
+    const place = this.justice.settlement();
+    if (place && this.law.wanted(place.id)) out.push('The watch are asking after someone of your look. I would keep my head down, if I were them.');
+    for (const tie of r.p.ties.filter((x) => /feud|rival|debt|owe|quarrel/.test(`${x.kind} ${x.text}`)).slice(0, 2)) {
+      const t = `${tie.text.charAt(0).toLowerCase()}${tie.text.slice(1)}`;
+      out.push(`Between ourselves, ${/^(in|at|on|owed|owing) /.test(t) ? `I am ${t}` : t}`);
+    }
+    const sky = this.skyNow;
+    out.push(`The weather? ${cap(this.weather.forecast(g.time, 'success', () => 0.5).replace(/^You read the sky:\s*/, ''))}`);
+    if (sky.season === 'winter') out.push('Wood and bread are dear this winter; folk are going hungry in the poorer streets.');
+    else if (sky.season === 'autumn') out.push('The harvest is in, mostly. Prices should ease for a while.');
+    // A different order for each person and day.
+    const rnd = mulberry32(hashString(`${r.p.id}#rumours#${Math.floor(g.time / 86400)}`));
+    return out.map((x) => ({ x, k: rnd() })).sort((a, b) => a.k - b.k).map((x) => x.x);
+  }
+
+  /**
+   * The settlements about the wanderer (from play, 27 November 2026): the game begins with those
+   * within 40 km of its start; travelling more than 10 km from where they were last asked for asks
+   * again, so that the towns of far country have their city views and the location panel its names.
+   */
+  private updateSites(): void {
+    const ask = this.world.sitesNear;
+    if (!ask) return;
+    const g = this.game, x = (g.px + 0.5) * TILE_M, y = -(g.py + 0.5) * TILE_M;
+    // The first time (a game begun or loaded), and after each 10 km.
+    const at = this.sitesAt;
+    if (at && Math.hypot(at[0] - x, at[1] - y) < 10000) return;
+    this.sitesAt = [x, y];
+    background(ask(x, y, 40000).then((list) => {
+      if (!list.length) return;
+      g.sites.splice(0, g.sites.length, ...list);
+      g.updateHud();
+    }), 'the game');
   }
 
   /**
@@ -1407,8 +1545,17 @@ export class PlaySession {
     const tk = `${r.p.id}#${Math.floor(t / 86400)}`, said = this.talks.get(tk) ?? 0;
     if (!said && this.talks.size > 500) this.talks.clear();
     this.talks.set(tk, said + 1);
-    const me = this.player?.get(Identity)?.d.given ?? 'traveller';
-    g.say(this.people.voice(r, `${greeting(r, opinion, met, (t % 86400) / 3600, me)} ${lineOf(r, Math.floor(t / 86400), said, this.people.raining)}`, r.p.name));
+    // A conversation (game/conversation.ts): the greeting, then what the wanderer asks, on its screen;
+    // with no screen to show it (the tests), the greeting and a line in the log, as before.
+    const conv = new Conversation(this, r);
+    conv.begin(said);
+    if (this.host.converse) {
+      if (conv.lines[0]) g.say(conv.lines[0].text);
+      this.host.converse(conv);
+    } else {
+      const me = this.player?.get(Identity)?.d.given ?? 'traveller';
+      g.say(this.people.voice(r, `${greeting(r, opinion, met, (t % 86400) / 3600, me)} ${lineOf(r, Math.floor(t / 86400), said, this.people.raining)}`, r.p.name));
+    }
     // A civil word warms a little (no more than once a day); being pestered cools.
     if (said >= 4) ops.add(r.p.id, r.p.name, 'pestered me', -1, t, 1);
     else if (!met || ops.recent(r.p.id, 'spoke civilly', t, 86400) === 0) ops.add(r.p.id, r.p.name, 'spoke civilly', 3, t, 5);
@@ -1612,7 +1759,7 @@ export class PlaySession {
     const o = this.o;
     return makeSave(this.game, {
       id: o.gameId, settings: o.settings, siteId: o.site.id, siteName: o.site.name, zoom: this.state.zoom, roofs: this.state.roofs, character: this.player?.toJSON(),
-      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), pits: this.pits.export(), lines: this.lines.export(), gone: [...this.fauna.gone].slice(-500), wounded: this.fauna.exportWounded(), dead: [...this.people.dead], law: this.law.export() },
+      people: { opinions: this.people.opinions.export(), tracks: this.people.tracks.export(), snares: this.snares.export(), pits: this.pits.export(), lines: this.lines.export(), gone: [...this.fauna.gone].slice(-500), wounded: this.fauna.exportWounded(), dead: [...this.people.dead], law: this.law.export(), quests: this.quests.export() },
       ...(this.state.dead ? { dead: this.state.dead } : {}),
     });
   }

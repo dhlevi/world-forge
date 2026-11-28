@@ -62,7 +62,8 @@ console.log('who fights how well');
   ok(courage(guard) < courage(cooper), 'and hold their ground longer');
   ok(isWatch(guard) && !isWatch(cooper), 'the guard is of the watch');
   ok(folkFight(cooper, 'brawl').blows.every((b) => b.kind === 'bruise'), 'a brawl is fists');
-  ok(callName(cooper, { knows: () => false } as never) === 'the man', 'a stranger is "the man"');
+  ok(callName(cooper, { has: () => false } as never) === 'the man', 'a stranger is "the man" until he gives his name');
+  ok(callName(cooper, { has: () => true } as never) === cooper.p.given, 'and by name once he has');
   const h = healthOf(cooper, view.time);
   ok(h.planId === 'humanoid' && h.capacities().moving > 0.99, 'people have bodies of their own');
 }

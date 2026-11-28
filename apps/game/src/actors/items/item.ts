@@ -50,6 +50,8 @@ export interface Item {
   aged?: number;
   /** Hung on a rack to dry: hours of drying so far (game/preserving.ts). */
   drying?: number;
+  /** A quest's own thing (a letter carried, game/quests.ts): the quest's id. */
+  quest?: string;
 }
 
 let counter = 0;

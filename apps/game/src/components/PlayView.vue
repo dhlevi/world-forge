@@ -254,7 +254,7 @@ function onKey(e: KeyboardEvent): void {
     return;
   }
   if (dir) {
-    if (e.shiftKey) game.run(dir[0], dir[1]);
+    if (e.shiftKey) background(session.field.run(dir[0], dir[1]), 'running');
     else if (game.move(dir[0], dir[1])) game.refresh();
     else game.updateHud();
   } else if (e.code === 'Period' || e.code === 'Numpad5' || e.code === 'Clear') {
@@ -274,6 +274,9 @@ function onKey(e: KeyboardEvent): void {
     session.drinkHere();
   } else if (e.code === 'KeyW' && !e.ctrlKey && !e.metaKey) {
     session.washHere();
+  } else if (e.code === 'KeyV' && e.shiftKey && hud.town && hud.here) {
+    // The place the wanderer stands in: its menu, as in the city view.
+    background(screen.openCity(hud.town.id, { lon: hud.here.lon, lat: hud.here.lat }), 'the game');
   } else if (e.code === 'KeyV' && hud.town) {
     background(screen.openCity(hud.town.id), 'the game');
   } else if (e.code === 'KeyX') {
@@ -398,6 +401,7 @@ onBeforeUnmount(() => {
         <button v-if="screen.player" @click="screen.showInventory()">Inventory <kbd>I</kbd></button>
         <button v-if="screen.player" @click="screen.showHealth()">Health <kbd>D</kbd></button>
         <button v-if="screen.player && st.mode === 'local'" @click="screen.showCamp()">Camp <kbd>Shift+C</kbd></button>
+        <button v-if="st.mode === 'local' && hud.town && hud.here" @click="screen.openCity(hud.town.id, { lon: hud.here.lon, lat: hud.here.lat })">{{ hud.here.name }} <kbd>Shift+V</kbd></button>
         <button v-if="st.mode === 'local' && hud.town" @click="screen.openCity(hud.town.id)">View {{ hud.town.name }} <kbd>V</kbd></button>
         <button @click="screen.showKeys()">Keys <kbd>?</kbd></button>
       </div>

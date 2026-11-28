@@ -302,6 +302,37 @@ nations, regions and cities; factions. **Proposed:**
 - **Trespass:** walking into a home at night, or into rooms not open to the public, is noticed and
   remarked on (a door locked against the player is the first, simplest form of it).
 
+## Talking with people
+
+*Built (27 November 2026, from play; `game/conversation.ts`, `screens/talk.ts`, `talk-test.ts`).*
+Talking to someone (E beside them) opens a conversation: their portrait, how they regard the
+wanderer, what has been said, and what can be asked or tried (numbered, 1 to 9).
+
+- **Hidden until told** (`world/opinions.ts`, `told`): a person's name, trade, character, family
+  and ties, past, and opinions are their own to tell. Until they give their name they are known by
+  what they seem (the old woman, the guard, the robber), on their card, in the log and in speech.
+  Greeted, anyone not cool toward the wanderer gives their name.
+- **By regard** (their own opinion and half their town's): hostile (−40 and worse), they turn away
+  or insult; cool (to −12), only where this is; neutral, their name, their trade, what is near and
+  a rumour; well disposed (12 and up), their household, kin and character, and two rumours; warm
+  (35 and up), their past and what they think of their neighbours, and three rumours.
+- **Asked:** who are you; tell me about yourself; where is this (the town, its quarter, the
+  building); what is near (the places of note within 300 m, the nearest settlements and how far);
+  news and rumours (the lairs and ruins of the country about, the watch's hunt for the wanderer,
+  their neighbours' feuds and debts, the weather and the season); and of a seller at work (smith,
+  tailor, apothecary, butcher, baker, merchant, hawker, innkeeper and the like), their wares, which
+  opens their shop (their stall's place in the town, or one made for them).
+- **The social skills,** each once a conversation: *Persuasion* (their regard counts 20 more for
+  the talk, 30 on a fine check; a fumble offends); *Intimidation* (a new skill: 30 more, but they
+  think the worse of the wanderer, and the bold, the watch and robbers take offence and end it);
+  *Deception* (a new skill: claiming the town's business, 25 more; found out, they think much the
+  worse, and on a fumble end it); and *coin* (2, 5 or 10 copper: three times its value in regard,
+  twice for the poor, little for the rich; the watch take a small bribe amiss unless greedy).
+- **Work** (stage Q2; `game/quests.ts`, docs/design/quests.md): anyone not cool toward the
+  wanderer can be asked for work, and offers what their trade wants that week; work done for them
+  is handed back in a later talk, and a letter carried to their town can be left with them.
+- What they tell is remembered and shown when they are looked over (Shift+I).
+
 ## Animals
 
 *Fixes from play (24 November 2026; `world/fauna.ts`):* a beast struck or killed frightens the

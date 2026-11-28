@@ -529,6 +529,82 @@ role turned about.
 - This is the first step into management (hirelings, a household, a company), which follows from
   it later.
 
+## The quest engine, as built (stages Q2 and Q2b, 27 November 2026)
+
+Built in `apps/game/src/game/quests.ts` (the engine), `game/quests/model.ts` (the shape of a
+quest) and `game/quests/templates.ts` (the templates as typed data); tested by `quest-test.ts`.
+
+**The shape.** A quest has a level (Task to Epic), a giver, roles bound from the world, flags, a
+deadline or a fair time, a reward, plain facts, and its parts. A part is one beat of its template,
+made only when the wanderer reaches it, with one to three tasks; the parts of a Job are its steps,
+the parts of a Chapter are Jobs, and so on up. The parts not yet reached do not exist, so the
+length of a quest is hidden even from the game until it is decided.
+
+**Templates as data.** Each template names its premise (where it is posted or who asks it, and what
+the world must hold), its roles (each with where it comes from, `onMissing`, and `onInvalidated`),
+its beats (each with its tasks, the next beat, branches by how a talk went, a flag that turns it
+and grows the quest a level, a fallback, and the roles it needs), its clocks, and its reward. The
+names are fixed lists, and `checkTemplates` checks every template when the tests run: an unknown
+name, an undeclared role, a beat named that does not exist, a beat that cannot be reached, a way
+through that does not end in an aftermath, a beat needing an optional role without a fallback, or a
+task type the engine cannot yet check, each fails the test.
+
+**Task types checked:** Collect (things carried, handed over to the role named), Retrieve (beasts
+or a thing found, brought, and handed over), Deliver (a thing given into the wanderer's hands,
+handed to a person, or to anyone at an inn, tavern, market, hall or guild of a town), Explore (a
+place reached, or leads followed), Investigate (clues found by a check, every half hour at the
+place, until enough), Defeat (so many of a kind killed once the part has begun, dying of wounds
+dealt counting too), Talk (with a person, or at a place, with options that branch), and Survive (so
+long lived through). The others in the table (Make, Escort, Perform, Work, Protect, Sabotage,
+Rescue, Lift, Dispose) are named but not yet checked, so no template can use them yet.
+
+**Keeping quests whole.** Roles are checked each turn and so also on loading. A person dead is
+replaced by their household (Reassign; the giver's household is noted when the quest is made), or
+the quest closes (Overtaken), or a debt with no one left to claim it is waived. A role marked Pivot
+turns its task into what can still be done (beasts found dead: telling the giver their fate, for
+half the pay). A beat whose needed roles are missing takes its fallback. Leads may be wrong, but a
+false one gives a clue there that rules it out, and the journal shows it followed to its end.
+
+**Escalation and clocks.** A template's escalation chance is rolled when the quest is made (seeded),
+deciding whether a deeper cause exists; the flag that turns the quest onto the deeper beats is set
+only when the wanderer finds its sign. A clock changes the world while the wanderer is at work (the
+herd's beasts, left four days with a predator about, are dead).
+
+**Marks and pay.** Fast (done in under half the time allowed, or the fair time), Clean (no crime,
+seen or unseen, while it was in hand), and Thorough (every optional task and clue done) count where
+the task types allow, and each raises the pay a quarter, as far as the giver's means allow (a poor
+giver a quarter at most, a rich one double, a place three quarters). Secret is named but not yet
+judged (it needs the witnesses of a deed done for a quest).
+
+**The templates so far.**
+
+- **Seven single-step jobs** (stage Q2), posted by a town's places and asked by its people: game, fish, hides or
+  pelts of a regional beast, herbs, a bounty on a regional predator (the hunt, then the claim), a
+  letter to a town within 40 km, and a ruin within 15 km looked into (going, then the report).
+- **The missing herd** (template 1, settled as proposed in its notes): asked by those who keep
+  beasts. A trail with a sure lead and a neighbour's wrong one (Tracking or Survival, the better,
+  for the clue); the beasts found, rounded up (Animal handling, half an hour) and driven home, with
+  the culprit killed if the wanderer can (optional, for Thorough). A deeper cause (35 in 100) turns
+  it into a Chapter when its sign is found: what lairs at the nearby ruin found out, two of the
+  culprits killed, the beasts brought home. Left four days with a culprit about, they are dead.
+- **The creditor's terms** (template 2, settled as proposed): started by an obligation (stage Q3
+  makes these from character creation). Pay in full (only with the coin), ask what else would clear
+  it (a sealed note carried to the creditor's agent in a nearby town, then told), or refuse (three
+  days lived through; a feud may grow it to a Story, whose own beats are a later template).
+- **What lingers in the hollow** and **Ash on the trade road** (templates 3 and 4) wait on the
+  curses' lifting conditions in a checkable form, and on Big Bads and rivals.
+
+**What the player sees.** Notice boards (three to five notices a week, from the town's own places)
+and "Is there any work going?" in a talk; what can be said or handed over for a quest appears in
+talks and at places in the city view; rounding up beasts appears in the skill menu where they are
+found. The journal (Shift+Q) shows the work in hand and behind, its level, the part under way and
+what is left to do in it, the leads and what was found at them, the marks it was done with, and
+what has happened, told in the first person from the facts.
+
+**Not yet built:** the storyteller's pacing, Big Bads and their clocks, rivals, contracts the
+player posts, the four other task types' checks, and a grammar of telling chosen by the character's
+traits (the facts are kept apart from the telling, so it can come later).
+
 ## How it could be built (proposed)
 
 - **Data, not code:** premises (with the world conditions that allow them), roles, story

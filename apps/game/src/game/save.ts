@@ -7,6 +7,7 @@
  * Saves are kept in the desktop app's data folder (saves/<id>.json) or, in a browser, in the
  * page's local storage; either can be exported to a file and imported again.
  */
+import type { QuestsData } from './quests';
 import type { CampData } from './camp';
 import type { WorldSettings } from '@worldforge/core/settings';
 import { GENERATOR_VERSION } from '@worldforge/core/version';
@@ -77,7 +78,7 @@ export interface SaveFile {
    * The people of the bubble as they stand toward the wanderer, and the tracks about (world/
    * opinions.ts, world/senses.ts); none in games saved before people.
    */
-  people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][]; snares?: Snare[]; pits?: Pit[]; lines?: SetLine[]; gone?: string[]; wounded?: WoundedBeast[]; dead?: string[]; law?: LawData };
+  people?: { opinions: Record<string, OpinionData>; tracks: [number, number, number | null, Track[]][]; snares?: Snare[]; pits?: Pit[]; lines?: SetLine[]; gone?: string[]; wounded?: WoundedBeast[]; dead?: string[]; law?: LawData; quests?: QuestsData };
   /** The player's character (actors/actor.ts); none in games saved before characters. */
   character?: ActorData;
   /**

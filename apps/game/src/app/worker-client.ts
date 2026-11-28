@@ -137,6 +137,10 @@ export class WorkerClient {
     return p;
   };
 
+  /** The settlements within `half` metres of a point of the local frame (for the location panel and the city view). */
+  sitesNear = (x: number, y: number, half: number): Promise<LocalSite[]> =>
+    this.ask((id) => ({ type: 'sites', id, x, y, half }), (m) => (m.type === 'sites' ? m.sites : []));
+
   /** The climate at a place: its warmest and coldest months (°C), its rain by half-year (mm a year) and its prevailing wind. */
   climate = (lon: number, lat: number): Promise<PlaceClimate> =>
     this.ask((id) => ({ type: 'climate', id, lon, lat }), (m) =>

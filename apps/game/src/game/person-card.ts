@@ -7,7 +7,8 @@
 import { Body, beardText, hairText, type Tie } from '../actors/components';
 import { Inventory } from '../actors/items/inventory';
 import { defOf, itemName } from '../actors/items/item';
-import { opinionWords } from '../world/opinions';
+import { opinionWords, type Told } from '../world/opinions';
+import { seemName } from '../world/folk-fight';
 import { doingWords, type Population, type Resident } from '../world/population';
 import { portraitOf, portraitOfTie, type PortraitSpec } from './portrait';
 import { cap } from '../util';
@@ -62,10 +63,15 @@ function tradeWords(r: Resident): string {
   return p.trade === 'child' ? (p.female ? 'a girl' : 'a boy') : p.trade === 'retired' || p.trade === 'helps at home' ? '' : an(p.trade);
 }
 
-/** What the wanderer sees of a resident at a glance: who they are, what they are about, and (if met) how they stand toward the wanderer. */
+/** A resident's name as the wanderer knows it: their own once told, else what they seem ("An old woman"). */
+export function shownName(r: Resident, pop: Population): string {
+  return pop.opinions.has(r.p.id, 'name') ? r.p.name : cap(seemName(r).replace(/^the /, /^[aeiou]/.test(seemName(r).slice(4)) ? 'an ' : 'a '));
+}
+
+/** What the wanderer sees of a resident at a glance: who they are (as far as told), what they are about, and (if met) how they stand toward the wanderer. */
 export function residentLines(r: Resident, pop: Population, t: number): string[] {
-  const p = r.p, trade = tradeWords(r);
-  const out = [`${p.name}${trade ? `, ${trade}` : ''}.`];
+  const p = r.p, told = (w: Told) => pop.opinions.has(p.id, w), trade = told('trade') ? tradeWords(r) : '';
+  const out = [`${shownName(r, pop)}${trade ? `, ${trade}` : ''}.`];
   out.push(`One of ${p.people}${p.age >= 12 ? `, about ${Math.max(12, Math.round(p.age / 5) * 5)} years old` : ''}.`);
   const doing = doingWords(r);
   if (doing) out.push(doing);
@@ -73,9 +79,14 @@ export function residentLines(r: Resident, pop: Population, t: number): string[]
   return out;
 }
 
-/** A resident looked over: their portrait as they are dressed, their looks, and what has been learnt of them in talk. */
+/**
+ * A resident looked over: their portrait as they are dressed, their looks, and what they have told
+ * the wanderer of themselves (from play, 27 November 2026: their name, trade, traits, family, past
+ * and opinions are their own to tell, by how they regard the wanderer: game/conversation.ts).
+ */
 export function residentCard(r: Resident, pop: Population, t: number): PersonCard {
-  const p = r.p, met = pop.opinions.knows(p.id), body = r.actor.get(Body), trade = tradeWords(r);
+  const p = r.p, met = pop.opinions.knows(p.id), body = r.actor.get(Body), told = (w: Told) => pop.opinions.has(p.id, w);
+  const trade = told('trade') ? tradeWords(r) : '';
   const lines = [...(trade ? [`${cap(trade)}.`] : []), `One of ${p.people}${p.age >= 12 ? `, about ${Math.max(12, Math.round(p.age / 5) * 5)} years old` : ''}.`];
   const doing = doingWords(r);
   if (doing) lines.push(doing);
@@ -86,13 +97,12 @@ export function residentCard(r: Resident, pop: Population, t: number): PersonCar
   const worn = (r.actor.get(Inventory)?.worn() ?? []).filter((i) => shown.has(defOf(i).figure ?? '')).map((i) => itemName(i));
   if (worn.length) looks.push(`Wearing ${worn.length > 1 ? `${worn.slice(0, -1).join(', ')} and ${worn[worn.length - 1]}` : worn[0]}.`);
   sections.push({ label: 'Looks', lines: looks });
-  if (met) {
-    const known = [`${cap(p.role)} of ${p.household}${p.homeName ? `, at ${p.homeName}` : ''}.`];
-    if (p.traits.length) known.push(`${cap(p.traits.join(' and '))}.`);
-    if (p.note) known.push(cap(p.note));
-    sections.push({ label: 'What you know of them', lines: known });
-    if (p.ties.length) sections.push({ label: 'The people in their life', lines: p.ties.map((x) => x.text) });
-    sections.push({ label: 'Toward you', lines: [`${p.female ? 'She' : 'He'} is ${opinionWords(pop.opinions.of(p.id, t))}.`] });
-  } else sections.push({ label: 'What you know of them', lines: ['Nothing yet: you have not spoken (E, beside them).'] });
-  return { name: p.name, portrait: portraitOf(r.actor, r.figure), lines, sections };
+  const known: string[] = [];
+  if (told('family')) known.push(`${cap(p.role)} of ${p.household}${p.homeName ? `, at ${p.homeName}` : ''}.`);
+  if (told('traits') && p.traits.length) known.push(`${cap(p.traits.join(' and '))}.`);
+  if (told('history') && p.note) known.push(cap(p.note));
+  sections.push({ label: 'What you know of them', lines: known.length ? known : [met ? 'Little: ask them about themselves (E, beside them).' : 'Nothing yet: you have not spoken (E, beside them).'] });
+  if (told('family') && p.ties.length) sections.push({ label: 'The people in their life', lines: p.ties.map((x) => x.text) });
+  if (met) sections.push({ label: 'Toward you', lines: [`${p.female ? 'She' : 'He'} is ${opinionWords(pop.opinions.of(p.id, t))}.`] });
+  return { name: shownName(r, pop), portrait: portraitOf(r.actor, r.figure), lines, sections };
 }

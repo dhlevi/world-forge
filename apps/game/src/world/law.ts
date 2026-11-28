@@ -86,9 +86,12 @@ export function harshness(culture: number | undefined): number {
 export class Law {
   private records = new Map<string, LawRecord>();
   private standings = new Map<string, { name: string; deeds: Deed[] }>();
+  /** Told of every crime, seen or not (the quests' Clean mark, game/quests.ts). */
+  onCrime: (kind: CrimeKind, witnesses: number) => void = () => {};
 
   /** A crime, seen by so many (0: unseen, and so unknown to the law). Returns whether it is on the record. */
   crime(place: { id: string; name: string }, kind: CrimeKind, victim: string, witnesses: number, t: number, value?: number): boolean {
+    this.onCrime(kind, witnesses);
     if (witnesses <= 0) return false;
     const rec = this.recordOf(place);
     rec.crimes.push({ kind, at: t, victim, witnesses, ...(value ? { value } : {}) });

@@ -306,6 +306,8 @@ export type ToWorker =
   | { type: 'site'; id: number; siteId: string; lon?: number; lat?: number }
   /** The climate at a place: its warmest and coldest months (°C). */
   | { type: 'climate'; id: number; lon: number; lat: number }
+  /** The settlements within so many metres of a point of the local frame (as the game began with: worker/game.worker.ts). */
+  | { type: 'sites'; id: number; x: number; y: number; half: number }
   /** The wild game a place holds (worker/fauna.ts, gameAt). */
   | { type: 'game'; id: number; lon: number; lat: number; winter: boolean }
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
@@ -330,6 +332,7 @@ export type FromWorker =
   | { type: 'people'; id: number; people: PlacedPerson[]; radius: number }
   | { type: 'animals'; id: number; groups: AnimalGroup[]; radius: number }
   | { type: 'game'; id: number; species: { id: string; density: number }[] }
+  | { type: 'sites'; id: number; sites: LocalSite[] }
   | { type: 'climate'; id: number; warm: number; cold: number; precipSummer: number; precipWinter: number; windU: number; windV: number }
   /** Something went wrong: with the id of the request it answers, or none (making the world, starting, a chunk). */
   | { type: 'error'; message: string; id?: number };

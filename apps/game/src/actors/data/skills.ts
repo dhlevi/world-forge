@@ -58,6 +58,8 @@ export const SKILLS: SkillDef[] = [
   S('Social', 'dance', 'Dance', ['agility', 'charm']),
   S('Social', 'storytelling', 'Storytelling', ['charm', 'intelligence', 'aura']),
   S('Social', 'leadership', 'Leadership', ['gravitas', 'charm', 'willpower']),
+  S('Social', 'intimidation', 'Intimidation', ['strength', 'gravitas', 'willpower']),
+  S('Social', 'deception', 'Deception', ['charm', 'intelligence']),
   S('Knowledge', 'herbalism', 'Herbalism', ['wisdom', 'smell']),
   S('Knowledge', 'medicine', 'Medicine', ['intelligence', 'touch']),
   S('Knowledge', 'stewardship', 'Stewardship', ['intelligence', 'wisdom']),

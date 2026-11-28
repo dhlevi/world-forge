@@ -3,6 +3,7 @@
  * laid over it (the character sheet, the inventory, sleep, camp, a town's view).
  */
 import { background } from '../app/errors';
+import { TalkScreen } from './talk';
 import type { Grade } from '../actors/checks';
 import { reactive } from 'vue';
 import { Screen } from '../engine/screens';
@@ -18,6 +19,7 @@ import { InventoryScreen } from './inventory';
 import { HealthScreen } from './health';
 import { GroomScreen } from './groom';
 import { PersonScreen } from './person';
+import { JournalScreen } from './journal';
 import type { PersonCard } from '../game/person-card';
 import { Inventory } from '../actors/items/inventory';
 import { defOf } from '../actors/items/item';
@@ -47,8 +49,8 @@ export class PlayScreen extends Screen {
     super();
     const w = app.worker;
     this.session = new PlaySession(
-      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, game: w.game, names: (c, s, n) => w.names(c, s, n), site: w.site, starts: () => app.state.starts },
-      { openCity: (id, at, arrived) => this.openCity(id, at, arrived), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r), showCamp: () => this.showCamp() },
+      { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, game: w.game, names: (c, s, n) => w.names(c, s, n), site: w.site, sitesNear: w.sitesNear, requestArea: w.requestArea, starts: () => app.state.starts },
+      { openCity: (id, at, arrived) => this.openCity(id, at, arrived), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r), showCamp: () => this.showCamp(), converse: (c) => this.manager?.push(new TalkScreen(this, c)) },
       o,
     );
   }
@@ -92,6 +94,10 @@ export class PlayScreen extends Screen {
     }
     if (e.code === 'KeyZ' && e.shiftKey && this.player) {
       this.showSleep();
+      return true;
+    }
+    if (e.code === 'KeyQ' && e.shiftKey && !e.ctrlKey && !e.metaKey && this.player) {
+      this.manager?.push(new JournalScreen(this));
       return true;
     }
     if (e.code === 'KeyW' && e.shiftKey && this.player) {

@@ -21,6 +21,9 @@ import { taughtAt } from '../actors/learning';
 import { LessonsScreen } from './lessons';
 import { tidy } from '../game/grooming';
 import { perSecond, Stroll, type LonLat, type PaceId } from './stroll';
+import { BOARD_KINDS, HANDOVER_KINDS } from '../game/quests';
+import { NoticesScreen } from './notices';
+import { JournalScreen } from './journal';
 
 /** What asking for a better price at an inn does (Persuasion, once a day). */
 const INN_FACTOR: Record<Grade, number> = { fine: 0.7, success: 0.85, near: 1, fail: 1, fumble: 1.2 };
@@ -82,6 +85,15 @@ export class CityScreen extends Screen {
     return lines;
   }
 
+  /** Keys: the journal (Shift+Q). */
+  key(e: KeyboardEvent): boolean {
+    if (e.code === 'KeyQ' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
+      this.manager?.push(new JournalScreen(this.play));
+      return true;
+    }
+    return false;
+  }
+
   /** Puts the account aside. */
   dismiss(): void {
     this.state.arrival = [];
@@ -94,6 +106,8 @@ export class CityScreen extends Screen {
 
   enter(): void {
     const s = this.site;
+    // The country about the town, for its notice board (game/quests.ts).
+    background(this.play.session.quests.prepare(s.id, s.lon, s.lat), 'the city view');
     // Enough to take in every place of note, and the walls with some country about them.
     const far = Math.max(0, ...s.places.map((p) => this.metres(s.lon, s.lat, p.lon, p.lat)));
     const radius = Math.min(s.radiusM * 1.02, Math.max(300, s.coreM * 1.5 + 250, far + 300));
@@ -305,6 +319,10 @@ export class CityScreen extends Screen {
       out.push({ id: 'busk', label: ins ? `Play your ${itemName(ins)} for coin (an hour)` : 'Play for coin (you have no instrument)', disabled: ins ? undefined : 'You carry no instrument.' });
     }
     if (taughtAt(p.kind, p.role).length) out.push({ id: 'lessons', label: 'Seek someone to teach you' });
+    // Work: the town's notice board, work to hand in here, and a letter carried to this town.
+    const quests = this.play.session.quests;
+    if (BOARD_KINDS.has(p.kind)) out.push({ id: 'notices', label: 'Read the notice board' });
+    for (const o of quests.optionsFor({ placeId: p.id, siteId: this.site.id, handover: HANDOVER_KINDS.has(p.kind) })) out.push({ id: o.id, label: o.label, disabled: o.why ?? undefined });
     out.push({ id: 'look', label: 'Look around' });
     out.push({ id: 'walk', label: 'Walk in (the local map)' });
     return out;
@@ -432,6 +450,10 @@ export class CityScreen extends Screen {
         this.play.advance(5 * 60);
         say(this.lookAround(p));
         break;
+      case 'notices':
+        this.play.advance(5 * 60);
+        this.manager?.push(new NoticesScreen(this.play, this.site, p));
+        break;
       case 'walk':
         // After this input event is done with (the map underneath takes over the screen).
         setTimeout(() => {
@@ -441,6 +463,13 @@ export class CityScreen extends Screen {
         break;
       case 'leave':
         this.leaveTown();
+        break;
+      default:
+        if (id.startsWith('q:')) {
+          this.play.advance(10 * 60);
+          const said = this.play.session.quests.choose(id);
+          if (said) say(said);
+        }
         break;
     }
   }

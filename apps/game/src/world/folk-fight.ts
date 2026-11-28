@@ -100,13 +100,22 @@ export function healthOf(r: Resident, now: number): Health {
   return h;
 }
 
-/** What a person is called in the telling: by name if the wanderer knows them, else by what they seem. */
+/**
+ * What a person is called in the telling: by name once they have given it (from play, 27 November
+ * 2026: names are told, not known at sight), else by what they seem (the guard, an old woman).
+ */
 export function callName(r: Resident, opinions: Opinions): string {
-  if (opinions.knows(r.p.id)) return r.p.given;
+  if (opinions.has(r.p.id, 'name')) return r.p.given;
+  return seemName(r);
+}
+
+/** What a person seems, by sight, with "the": the robber, the guard, the girl, the old man, the woman. */
+export function seemName(r: Resident): string {
   if (r.p.template === 'bandit') return 'the robber';
   if (isWatch(r)) return /soldier|man-at-arms|woman-at-arms/.test(r.p.trade) ? 'the soldier' : 'the guard';
   if (r.p.age < 13) return r.p.female ? 'the girl' : 'the boy';
-  return r.p.female ? 'the woman' : 'the man';
+  const age = r.p.age >= 60 ? 'old ' : r.p.age < 20 ? 'young ' : '';
+  return `the ${age}${r.p.female ? 'woman' : 'man'}`;
 }
 
 /** The words for a weapon's blow at a part of the wanderer ("cuts your {part} with a sword"). */

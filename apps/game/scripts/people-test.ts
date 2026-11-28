@@ -169,11 +169,14 @@ for (const tier of ['city', 'town'] as const) {
     const card = residentCard(one, pop, view.time);
     const label = (c: typeof card) => c.sections.map((x) => x.label).join(', ');
     console.log(`  ${card.name}: ${card.lines.join(' ')} [${label(card)}] ${card.sections[0].lines.join(' ')}`);
-    ok(card.name === one.p.name && paintPortrait(card.portrait!).length === PORTRAIT_PX * PORTRAIT_PX * 4 && card.portrait!.kind === one.figure.kind, 'a resident looked over has a portrait');
+    ok(card.name !== one.p.name && paintPortrait(card.portrait!).length === PORTRAIT_PX * PORTRAIT_PX * 4 && card.portrait!.kind === one.figure.kind, `a resident looked over has a portrait, and is known by sight, not by name, until told it ("${card.name}")`);
     ok(!card.sections.some((x) => x.label === 'Toward you') && /have not spoken/.test(card.sections[1].lines[0]), 'a stranger\'s card tells only what is seen');
     pop.opinions.meet(one.p.id, one.p.name, view.time);
+    const met = residentCard(one, pop, view.time);
+    ok(met.sections.some((x) => x.label === 'Toward you') && !met.sections.some((x) => x.lines.some((l) => l.includes(one.p.household))), 'once met, it tells how they stand toward the wanderer, but not their household until they tell it');
+    pop.opinions.learn(one.p.id, one.p.name, ['name', 'family'], view.time);
     const known = residentCard(one, pop, view.time);
-    ok(known.sections.some((x) => x.label === 'Toward you') && known.sections.some((x) => x.lines.some((l) => l.includes(one.p.household))), `once met, it tells their household and how they stand toward the wanderer [${label(known)}]`);
+    ok(known.name === one.p.name && known.sections.some((x) => x.lines.some((l) => l.includes(one.p.household))), `told their name and family, the card has them [${label(known)}]`);
   }
 }
 

@@ -25,7 +25,12 @@ export interface OpinionData {
   /** Known of, not met: they think of the wanderer (struck by them, or saw them do wrong) but have not been introduced. */
   unmet?: boolean;
   causes: Cause[];
+  /** What they have told the wanderer of themselves (from play, 27 November 2026): name, trade, traits, family, history, opinions. */
+  told?: Told[];
 }
+
+/** The things a person keeps to themselves until asked, and willing to tell. */
+export type Told = 'name' | 'trade' | 'traits' | 'family' | 'history' | 'opinions';
 
 /** A cause smaller than this is let go. */
 const FADED = 0.25;
@@ -51,6 +56,20 @@ export class Opinions {
       o.unmet = undefined;
       o.met = t;
     }
+  }
+
+  /** Whether they have told the wanderer a thing of themselves. */
+  has(id: string, what: Told): boolean {
+    return !!this.d.get(id)?.told?.includes(what);
+  }
+
+  /** They tell the wanderer things of themselves (meeting them if not met). Returns what was new. */
+  learn(id: string, name: string, what: Told[], t: number): Told[] {
+    this.meet(id, name, t);
+    const o = this.d.get(id)!;
+    const fresh = what.filter((w) => !o.told?.includes(w));
+    if (fresh.length) o.told = [...(o.told ?? []), ...fresh];
+    return fresh;
   }
 
   /** Adds a cause (meeting them if not met; `meet` false: they think of the wanderer without having met). */
@@ -89,7 +108,7 @@ export class Opinions {
 
   export(): Record<string, OpinionData> {
     const out: Record<string, OpinionData> = {};
-    for (const [k, o] of this.d) out[k] = { name: o.name, met: o.met, ...(o.unmet ? { unmet: true } : {}), causes: o.causes.map((c) => ({ ...c })) };
+    for (const [k, o] of this.d) out[k] = { name: o.name, met: o.met, ...(o.unmet ? { unmet: true } : {}), causes: o.causes.map((c) => ({ ...c })), ...(o.told?.length ? { told: [...o.told] } : {}) };
     return out;
   }
 
@@ -97,7 +116,8 @@ export class Opinions {
     this.d.clear();
     for (const [k, o] of Object.entries(data ?? {})) {
       if (!o || typeof o.name !== 'string' || typeof o.met !== 'number' || !Array.isArray(o.causes)) continue;
-      this.d.set(k, { name: o.name, met: o.met, ...(o.unmet ? { unmet: true } : {}), causes: o.causes.filter((c) => c && typeof c.value === 'number' && typeof c.t === 'number').map((c) => ({ why: String(c.why), value: c.value, t: c.t, half: typeof c.half === 'number' && c.half > 0 ? c.half : 7 })) });
+      const told = Array.isArray(o.told) ? o.told.filter((x): x is Told => ['name', 'trade', 'traits', 'family', 'history', 'opinions'].includes(x)) : [];
+      this.d.set(k, { name: o.name, met: o.met, ...(o.unmet ? { unmet: true } : {}), ...(told.length ? { told } : {}), causes: o.causes.filter((c) => c && typeof c.value === 'number' && typeof c.t === 'number').map((c) => ({ why: String(c.why), value: c.value, t: c.t, half: typeof c.half === 'number' && c.half > 0 ? c.half : 7 })) });
     }
   }
 }

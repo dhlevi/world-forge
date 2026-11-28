@@ -20,6 +20,7 @@ import { check, DC, type Grade } from '../actors/checks';
 import { Health } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
 import { Needs } from '../actors/needs';
+import { Traits } from '../actors/components';
 import { defOf, itemName, makeItem, type Item } from '../actors/items/item';
 import { findPath } from '../world/paths';
 import { CAMP_R, campable, rateSite, townAt, type CampData } from './camp';
@@ -153,7 +154,7 @@ export class Fieldcraft {
       out.push({ id: 'wash', label: 'Wash' });
     }
     // Felling and stakes (game/woodcraft.ts), pits and fences (game/trapping.ts; stage 3).
-    out.push(...s.wood.actions(x, y), ...s.traps.actions(x, y), ...s.fishing.actions(x, y), ...s.preserve.actions(x, y));
+    out.push(...s.wood.actions(x, y), ...s.traps.actions(x, y), ...s.fishing.actions(x, y), ...s.preserve.actions(x, y), ...(x === s.game.px && y === s.game.py ? s.quests.fieldActions() : []));
     return out;
   }
 
@@ -167,6 +168,7 @@ export class Fieldcraft {
     if (Trapping.IDS.has(id)) await s.traps.act(id, x, y);
     if (Fishing.IDS.has(id)) await s.fishing.act(id, x, y);
     if (Preserving.IDS.has(id)) await s.preserve.act(id, x, y);
+    if (id.startsWith('quest:')) await s.quests.fieldAct(id);
     switch (id) {
       case 'walk':
         break;
@@ -231,6 +233,43 @@ export class Fieldcraft {
   /** Whether a walk or a spell of work is under way. */
   get busy(): boolean {
     return !!this.walking;
+  }
+
+  /**
+   * Runs in a direction (from play, 27 November 2026): a step at a time, each shown, faster for a
+   * nimble wanderer (agility), stopping as a run does (game/game.ts, runStep), when a beast or a
+   * person comes into sight that was not in sight before, on danger, or at any key or click.
+   */
+  async run(dx: number, dy: number): Promise<void> {
+    const g = this.g, s = this.s;
+    this.cancelWalk();
+    const job = { cancel: false };
+    this.walking = job;
+    const seen = (): Set<string> => {
+      const out = new Set<string>();
+      for (const a of s.fauna.all()) if (g.z === null && g.isVisible(a.x, a.y)) out.add(a.id);
+      for (const r of s.people.all()) if (r.z === g.z && g.isVisible(r.x, r.y)) out.add(r.p.id);
+      return out;
+    };
+    const before = seen();
+    const agility = s.player?.get(Traits)?.get('agility') ?? 10;
+    const ms = this.stepMs > 0 ? Math.max(35, Math.min(110, 75 - (agility - 10) * 4)) : 0;
+    try {
+      for (let n = 0; n < 60; n++) {
+        if (!g.runStep(dx, dy, n)) break;
+        g.refresh();
+        s.redraw();
+        const now = seen();
+        if ([...now].some((id) => !before.has(id))) break;
+        if (this.danger() || job.cancel || s.state.dead) break;
+        if (ms) await new Promise((r) => setTimeout(r, ms));
+        if (job.cancel) break;
+      }
+    } finally {
+      if (this.walking === job) this.walking = null;
+      g.refresh();
+      s.redraw();
+    }
   }
 
   /** Game seconds a step of work (longer for a long spell, so that it does not drag), and the least milliseconds a step is shown (none when walks take none: the tests). */

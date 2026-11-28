@@ -9,7 +9,7 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
     name: 'Getting about',
     keys: [
       ['Move', 'arrows, number pad, or h j k l y u b n'],
-      ['Run', 'Shift + direction'],
+      ['Run', 'Shift + direction: a step at a time, faster for the nimble; stops when something new comes into sight, and any key stops it'],
       ['Wait', '. or 5'],
       ['Doors', 'walk into one to open it; o / c then a direction'],
       ['Stairs', '< and > on stairs or a ladder go up and down (and down a cave mouth, a dungeon\'s steps, a grate, or a well beside you)'],
@@ -25,7 +25,7 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
       ['Levels', '< and > elsewhere look up and down'],
       ['Zoom', '+ and -'],
       ['Roofs', 'Shift+R: shown unless you are inside, always, or never'],
-      ['Town view', 'V, in a town or city'],
+      ['Town view', 'V, in a town or city; Shift+V uses the place you stand in (a tavern, an inn, a market, a shop, a temple) as from the town view'],
     ],
   },
   {
@@ -51,6 +51,7 @@ const GROUPS: { name: string; keys: [string, string][] }[] = [
     name: 'Yourself and the game',
     keys: [
       ['Character', '@'],
+      ['Journal', 'Shift+Q: the work you have taken up, and what is left to do'],
       ['Health', 'D: your wounds, blood and pain, and first aid (bandage, clean, stitch, splint, poultice)'],
       ['Inventory', 'I (G to pick up; eat and drink from it)'],
       ['Save', 'Ctrl+S (also saved every few minutes and on leaving)'],

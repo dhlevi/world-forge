@@ -169,6 +169,13 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       post({ type: 'site', id: m.id, site: { ...siteInfo(s, feats), culture: ci !== undefined ? CULTURES[ci]?.name : undefined, account: townAccount(world!, s) }, gates: gatesOf(s, feats) });
     } else if (m.type === 'game') {
       post({ type: 'game', id: m.id, species: world && local ? gameAt(world, local, m.lon, m.lat, m.winter) : [] });
+    } else if (m.type === 'sites') {
+      // The settlements about a point, for the location panel and the city view as the party travels.
+      const sites: LocalSite[] = local ? local.sitesNear(m.x - m.half, m.y - m.half, m.x + m.half, m.y + m.half, 0).map((x) => {
+        const p = local!.frame.fromLL(x.lon, x.lat);
+        return { id: x.id, name: x.name ?? x.id, tier: x.tier, x: p[0], y: p[1], radiusM: x.radiusM };
+      }) : [];
+      post({ type: 'sites', id: m.id, sites });
     } else if (m.type === 'climate') {
       if (!world) throw new Error('No world yet.');
       const r = world.raster;
