@@ -25,6 +25,11 @@ import { readSave } from '../src/game/save';
 import { PlaySession, type PlayOptions, type SessionHost, type SessionWorld } from '../src/game/session';
 import { Conversation } from '../src/game/conversation';
 import { Quests, type Country, type Quest, type RoleRef } from '../src/game/quests';
+import { objectId } from '@worldforge/core/local/tiles';
+import { CULTURES } from '@worldforge/core/names/cultures';
+import { generateWorld } from '@worldforge/core/gen/world';
+import { written } from '../src/game/writing';
+import type { SiteInfo as Site } from '../src/worker/protocol';
 import { checkTemplates, TEMPLATE_BY_ID, TEMPLATES, type Template } from '../src/game/quests/templates';
 import type { Resident } from '../src/world/population';
 import type { ChunkData, LocalSite, PlacedPerson, SiteInfo, StartSite } from '../src/worker/protocol';
@@ -348,6 +353,42 @@ async function main(): Promise<void> {
   const bad = texts.filter((t) => NO_CONTRACTIONS.test(t) || /\{|\}/.test(t));
   ok(bad.length === 0, `every text in plain words, with nothing left unfilled${bad.length ? `: ${bad.slice(0, 3).join(' | ')}` : ''}`);
   console.log(Q.tell(deep).map((l) => `     ${l}`).join('\n'));
+
+  // ---- Notices written in the town's language, and the board in the square ----
+  // The peoples of a world, and their languages and scripts.
+  generateWorld({ seed: 'forge', landFraction: 0.3, plates: 14, erosion: 0.5, settled: 0.6, drift: 0.3, races: true, resolution: 256 } as never, () => {});
+  const ci = CULTURES.findIndex((x) => !!x.language);
+  const langs = skills.d.languages;
+  const saved0 = JSON.parse(JSON.stringify(langs));
+  for (const k of Object.keys(langs)) delete langs[k];
+  const notice = board[0].text;
+  const w0 = written(notice, ci, skills);
+  ok(w0.reading === 'none' && w0.read === null && w0.svg.startsWith('<svg') && w0.said !== notice, `one who cannot read sees only the letters (in ${w0.tongue}: "${w0.said.slice(0, 40)}...")`);
+  langs['999'] = { name: 'Other', speak: 100, read: 80 };
+  langs[String(ci)] = { name: CULTURES[ci].name, speak: 100, read: 0 };
+  ok(written(notice, ci, skills).reading === 'none', 'one who reads another language, and speaks this one, cannot read it');
+  langs[String(ci)].read = 15;
+  const w1 = written(notice, ci, skills);
+  ok(w1.reading === 'some' && !!w1.read && w1.read !== notice, `one who reads a little makes out some words: "${w1.read}"`);
+  langs[String(ci)].read = 75;
+  ok(written(notice, ci, skills).read === notice, 'one who reads it well reads it all');
+  // A board on the ground beside the wanderer, in the town (its plan from the worker).
+  const bx = s.game.px + 1, by = s.game.py;
+  s.map.setObject(bx, by, objectId('notice_board')!);
+  (s.world as { site: SessionWorld['site'] }).site = async () => ({ site: { ...townSite, cultureIndex: ci } as Site, gates: [] });
+  s.game.updateHud();
+  (s as unknown as { siteCache: Map<string, unknown> }).siteCache.delete('c1');
+  s.field.actions(bx, by);
+  await new Promise((r) => setTimeout(r, 5));
+  let opened: Site | null = null;
+  (s.host as { notices?: (x: Site) => void }).notices = (x) => (opened = x);
+  const act = s.field.actions(bx, by).find((a) => a.id === 'notices');
+  ok(!!act && !act.why, `at a notice board: "${act?.label}"`);
+  await s.field.act('notices', bx, by);
+  ok((opened as Site | null)?.id === 'c1', 'reading it opens the notices of the town');
+  for (const k of Object.keys(langs)) delete langs[k];
+  ok(s.field.actions(bx, by).find((a) => a.id === 'notices')?.why === 'You cannot read.', 'one who cannot read cannot use the board, though they speak');
+  Object.assign(langs, saved0);
 
   // ---- Kept in a save, and an old quest brought forward ----
   const saved = s.snapshot();

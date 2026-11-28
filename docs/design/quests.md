@@ -594,6 +594,21 @@ judged (it needs the witnesses of a deed done for a quest).
 - **What lingers in the hollow** and **Ash on the trade road** (templates 3 and 4) wait on the
   curses' lifting conditions in a checkable form, and on Big Bads and rivals.
 
+**Notice boards** (from play, 27 November 2026) stand in every lived-in village, town and city:
+beside the well or fountain nearest the middle, and in a town or city beside its other wells and
+fountains too (up to three), on open ground clear of the buildings and the streets (core
+`towns/manager.ts`, a `notice_board` point on the plan; a `notice_board` object on the local map,
+which raised the local map's version to 11). On foot, the skill menu at a board reads it; in the city
+view, "Read the notice board" is offered at the places within 80 m of one. Every board in a
+settlement shows its notices.
+
+**Written in the town's language.** Each notice is written in the language of the settlement's
+people and drawn in its script (core `lang/script.ts`; `game/writing.ts`). The wanderer reads it by
+how well they read that language: 25 and over (a plain notice needs no scholar; a literate native
+reads it), all of it; 10 to 24, the words they know; less, only the letters, and it cannot be taken up. Speaking the language is not enough. One
+who cannot read at all cannot use the boards. Reading a notice takes a minute and teaches a little
+of the language's writing.
+
 **What the player sees.** Notice boards (three to five notices a week, from the town's own places)
 and "Is there any work going?" in a talk; what can be said or handed over for a quest appears in
 talks and at places in the city view; rounding up beasts appears in the skill menu where they are

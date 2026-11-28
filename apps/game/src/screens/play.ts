@@ -20,6 +20,7 @@ import { HealthScreen } from './health';
 import { GroomScreen } from './groom';
 import { PersonScreen } from './person';
 import { JournalScreen } from './journal';
+import { NoticesScreen } from './notices';
 import type { PersonCard } from '../game/person-card';
 import { Inventory } from '../actors/items/inventory';
 import { defOf } from '../actors/items/item';
@@ -50,7 +51,7 @@ export class PlayScreen extends Screen {
     const w = app.worker;
     this.session = new PlaySession(
       { bus: app.bus, requestChunk: (cx, cy) => w.requestChunk(cx, cy), climate: w.climate, requestRoute: w.requestRoute, requestPeople: w.requestPeople, requestAnimals: w.requestAnimals, game: w.game, names: (c, s, n) => w.names(c, s, n), site: w.site, sitesNear: w.sitesNear, requestArea: w.requestArea, starts: () => app.state.starts },
-      { openCity: (id, at, arrived) => this.openCity(id, at, arrived), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r), showCamp: () => this.showCamp(), converse: (c) => this.manager?.push(new TalkScreen(this, c)) },
+      { openCity: (id, at, arrived) => this.openCity(id, at, arrived), toTitle: () => app.toTitle(), onDeath: () => this.showDeath(), mercy: (r) => this.showMercy(r), showCamp: () => this.showCamp(), converse: (c) => this.manager?.push(new TalkScreen(this, c)), notices: (site) => this.manager?.push(new NoticesScreen(this, site)) },
       o,
     );
   }

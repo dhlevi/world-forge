@@ -1510,6 +1510,60 @@ export class TownManager {
     }
   }
 
+  /**
+   * Notice boards (the game's quests: docs/design/quests.md), where the people of a place gather:
+   * beside the well or fountain nearest its middle, and in a town or city beside the others too
+   * (its market squares), up to three; each on open ground a few metres from the water, clear of
+   * the buildings, the roads and the water.
+   */
+  private noticeBoards(s: Settlement, out: PlanOut, frame: LocalFrame, water: (p: Pt) => boolean): void {
+    const local = (c: number[]) => frame.fromLL(c[0], c[1]) as Pt;
+    const springs = out.features.filter((f) => f.geometry.type === 'Point' && /^(well|fountain)$/.test(String(f.properties.kind)))
+      .map((f) => ({ p: local((f.geometry as { coordinates: number[] }).coordinates), r: Number(f.properties.r ?? 1.4) }))
+      .sort((a, b) => DMath.hypot(a.p[0], a.p[1]) - DMath.hypot(b.p[0], b.p[1]));
+    const n = s.tier === 'village' ? 1 : 3;
+    const rings: Pt[][] = [], lines: Pt[][] = [], points: Pt[] = [];
+    for (const f of out.features) {
+      const kind = String(f.properties.kind);
+      if (f.geometry.type === 'Polygon' && /^(building|stall|wagon|pier|boat|grave|yard)$/.test(kind)) rings.push(f.geometry.coordinates[0].map(local));
+      else if (f.geometry.type === 'LineString' && /road|street|track|path|lane|alley|wall|hedge|fence/.test(kind)) lines.push(f.geometry.coordinates.map(local));
+      else if (f.geometry.type === 'Point' && /^(tree|well|fountain|tower|dentry|pump)$/.test(kind)) points.push(local(f.geometry.coordinates));
+    }
+    const inside = (p: Pt, r: Pt[]) => {
+      let c = false;
+      for (let i = 0, j = r.length - 1; i < r.length; j = i++) {
+        if (r[i][1] > p[1] !== r[j][1] > p[1] && p[0] < ((r[j][0] - r[i][0]) * (p[1] - r[i][1])) / (r[j][1] - r[i][1]) + r[i][0]) c = !c;
+      }
+      return c;
+    };
+    const nearLine = (p: Pt, l: Pt[], d: number) => {
+      for (let i = 1; i < l.length; i++) {
+        const [ax, ay] = l[i - 1], [bx, by] = l[i];
+        const vx = bx - ax, vy = by - ay, len = vx * vx + vy * vy || 1;
+        const t = Math.max(0, Math.min(1, ((p[0] - ax) * vx + (p[1] - ay) * vy) / len));
+        if (DMath.hypot(p[0] - ax - vx * t, p[1] - ay - vy * t) < d) return true;
+      }
+      return false;
+    };
+    const ok = (p: Pt) => !water(p) && !rings.some((r) => inside(p, r) || r.some((q) => DMath.hypot(q[0] - p[0], q[1] - p[1]) < 2)) && !lines.some((l) => nearLine(p, l, 5)) && !points.some((q) => DMath.hypot(q[0] - p[0], q[1] - p[1]) < 1.5);
+    let made = 0;
+    for (const w of springs) {
+      if (made >= n) break;
+      let spot: Pt | null = null;
+      for (let d = w.r + 2.5; d <= w.r + 7 && !spot; d += 1.5) {
+        for (let i = 0; i < 8 && !spot; i++) {
+          const a = (i / 8) * Math.PI * 2 + 0.4;
+          const p: Pt = [w.p[0] + DMath.cos(a) * d, w.p[1] + DMath.sin(a) * d];
+          if (ok(p)) spot = p;
+        }
+      }
+      if (!spot) continue;
+      out.point('notice_board', spot, { sid: s.id });
+      points.push(spot);
+      made++;
+    }
+  }
+
   /** The way into a mining camp's mine, marked at the mouth of its first adit on the camp's plan. */
   private mineEntry(s: Settlement, out: PlanOut, frame: LocalFrame, culture: number): void {
     let site: DungeonSite | undefined;
@@ -1875,6 +1929,8 @@ export class TownManager {
 
     // Buildings held back (round large squares) take the last ids.
     out.flushLater();
+    // The notice boards, beside the town's wells and fountains (after every id is given).
+    if (s.kind !== 'abandoned' && !s.delve) this.noticeBoards(s, out, frame, water);
     // An elvish town in the forest builds among the great trees (after every id is given).
     const treeMode = tpl === 'elvish' && s.kind !== 'abandoned' && !s.delve ? this.treeMode(s) : null;
     if (treeMode) treeTown(out.features, frame, treeMode, s.tier, pxPerMeterZ20(s.lat));

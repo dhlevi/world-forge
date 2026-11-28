@@ -29,7 +29,7 @@ import { dungeonSiteOf } from '../dungeons/core';
  * The local map's own version: raised whenever the same world would give different tiles (a game
  * saves its changes over the baseline of one version).
  */
-export const LOCAL_MAP_VERSION = 10;
+export const LOCAL_MAP_VERSION = 11;
 
 /** Metres in a level (a storey): the land's height and the floors of buildings go up in these. */
 export const LEVEL_M = 3;
@@ -463,7 +463,7 @@ export class LocalWorld {
           } else if (it.type === 'LineString' && it.kind === 'wall') blockers.push({ xy: it.xy, r: (Number(it.p.w ?? 2) / 2) * 1.07 });
           else if (it.type === 'Polygon' && it.kind === 'trunk') blockers.push({ xy: it.xy, r: 0, poly: true });
           else if (it.type === 'LineString' && (it.kind === 'hedge' || it.kind === 'picket')) blockers.push({ xy: it.xy, r: 0.4 });
-          else if (it.type === 'Point' && (it.kind === 'tree' || it.kind === 'well' || it.kind === 'tower')) blockers.push({ xy: it.xy, r: it.kind === 'tower' ? Math.min(Number(it.p.r ?? 0), 6) : 0 });
+          else if (it.type === 'Point' && (it.kind === 'tree' || it.kind === 'well' || it.kind === 'notice_board' || it.kind === 'tower')) blockers.push({ xy: it.xy, r: it.kind === 'tower' ? Math.min(Number(it.p.r ?? 0), 6) : 0 });
         }
       }
     }
@@ -1241,6 +1241,12 @@ export class LocalWorld {
               built[k] = 1;
             }); break;
             case 'well': disc(x, y, 0, setO('well')); break;
+            case 'notice_board': {
+              // On the one tile the point falls in (a disc of nought can fall between tile centres).
+              const bx = Math.floor(x / TILE_M) - tx0, by = Math.floor(-y / TILE_M) - ty0;
+              if (bx >= 0 && by >= 0 && bx < CHUNK && by < CHUNK) setO('notice_board')(by * CHUNK + bx);
+              break;
+            }
             case 'fountain': disc(x, y, Math.min(r, 4), setO('fountain')); break;
             case 'tower': {
               // Towers stand either side of a gate: they do not close the way through it.

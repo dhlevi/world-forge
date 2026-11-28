@@ -128,6 +128,8 @@ export interface SessionHost {
   mercy?(r: Resident): void;
   /** The camp screen (screens/camp.ts). */
   showCamp?(): void;
+  /** A settlement's notice board (screens/notices.ts). */
+  notices?(site: SiteInfo): void;
 }
 
 export interface SleepOptions {
@@ -1086,6 +1088,19 @@ export class PlaySession {
     this.hereAt = key;
     const best = this.placeNear(g.px, g.py, 25, true);
     g.hud.here = best ? { id: best.id, name: best.name, kind: best.kind, lon: best.lon, lat: best.lat } : null;
+  }
+
+  /** The settlement the wanderer is in (village, town or city) as the worker gives it, asked once and kept; null until it has answered. */
+  settlementSite(): SiteInfo | null {
+    const st = this.game.hud.settlement;
+    if (!st) return null;
+    if (this.siteCache.has(st.id)) return this.siteCache.get(st.id) ?? null;
+    this.siteCache.set(st.id, null);
+    const [lon, lat] = this.travel.party();
+    background(this.world.site(st.id, { lon, lat }).then((r) => {
+      this.siteCache.set(st.id, r.site);
+    }), 'the game');
+    return null;
   }
 
   /** The town's places of note (the worker's site, asked once a town and kept); null until it has answered (it is asked then). */

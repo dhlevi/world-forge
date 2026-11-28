@@ -57,15 +57,23 @@ export function speech(r: Resident, line: string, sk: Skills | undefined, townCu
   const tokens = translateText(L, line);
   const said = joinTokens(tokens);
   if (known < SOME) return `${name} (in ${tongue}): "${said}"`;
-  // What is caught: each word known by its sense, by how well the language is known.
+  const caught = caughtWords(tokens, c, known);
+  return `${name} (in ${tongue}): "${said}" You catch: "${caught}".`;
+}
+
+/** What is caught of words in a language known so well (0 to 100): each word known by its sense, or "…". */
+export function caughtWords(tokens: { punct?: string; gloss: string }[], c: number, known: number): string {
   const caught: string[] = [];
   for (const t of tokens) {
     if (t.punct || !t.gloss) continue;
-    const sense = t.gloss.split('-')[0].replace(/[._]/g, ' ');
+    // The word's sense, without its marks of grammar (want.PL: want).
+    const sense = t.gloss.split(/[-.]/)[0].replace(/_/g, ' ');
+    // Marks of grammar (PL, PST) are not words to catch.
+    if (/^[^a-z]*[A-Z][^a-z]*$/.test(sense)) continue;
     const knows = hashString(`${c}#${sense}`) % 100 < known * 1.4;
     const word = knows ? sense : '…';
     if (word === '…' && caught[caught.length - 1] === '…') continue;
     caught.push(word);
   }
-  return `${name} (in ${tongue}): "${said}" You catch: "${caught.join(' ')}".`;
+  return caught.join(' ');
 }

@@ -321,6 +321,7 @@ From the floor plans. Over the floor, transparent background, seen from straight
 | `brush_fence` | Cut brush piled between stakes, a drive fence to steer game. | blocks | join (16), group stakes | `*` #5a6a32 |
 | `fire_banked` | A ring of stones, the embers banked under ash: warm, and smoking a little (a camp left for a while). | blocks | 1 | `*` #8a4a30 |
 | `drying_rack` | Green sticks lashed into a rack, with strips of meat or split fish hung on it to dry in the wind. | walk | 1 | `#` #8a6a42 |
+| `notice_board` | A board on two posts under a little roof, with notices pinned to it, some fresh and some curling. | blocks | 1 | `=` #a07a4a |
 
 ## Ground edges
 
@@ -531,4 +532,4 @@ Small things scattered over open ground with no object on it, drawn only: they b
 
 ## Totals
 
-44 ground tiles, 136 objects and 16 decorations: 1300 frames in all with every variant and join drawn.
+44 ground tiles, 137 objects and 16 decorations: 1301 frames in all with every variant and join drawn.

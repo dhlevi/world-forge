@@ -85,6 +85,13 @@ export class CityScreen extends Screen {
     return lines;
   }
 
+  /** Whether a notice board stands at a place (within 80 m of it); by its kind if the plan gave none. */
+  boardAt(p: SitePlace): boolean {
+    const boards = this.site.boards;
+    if (!boards) return BOARD_KINDS.has(p.kind);
+    return boards.some((b) => this.metres(p.lon, p.lat, b.lon, b.lat) < 80);
+  }
+
   /** Keys: the journal (Shift+Q). */
   key(e: KeyboardEvent): boolean {
     if (e.code === 'KeyQ' && e.shiftKey && !e.ctrlKey && !e.metaKey) {
@@ -321,7 +328,7 @@ export class CityScreen extends Screen {
     if (taughtAt(p.kind, p.role).length) out.push({ id: 'lessons', label: 'Seek someone to teach you' });
     // Work: the town's notice board, work to hand in here, and a letter carried to this town.
     const quests = this.play.session.quests;
-    if (BOARD_KINDS.has(p.kind)) out.push({ id: 'notices', label: 'Read the notice board' });
+    if (this.boardAt(p)) out.push({ id: 'notices', label: 'Read the notice board', disabled: this.play.player?.get(Skills)?.literate() ? undefined : 'You cannot read.' });
     for (const o of quests.optionsFor({ placeId: p.id, siteId: this.site.id, handover: HANDOVER_KINDS.has(p.kind) })) out.push({ id: o.id, label: o.label, disabled: o.why ?? undefined });
     out.push({ id: 'look', label: 'Look around' });
     out.push({ id: 'walk', label: 'Walk in (the local map)' });

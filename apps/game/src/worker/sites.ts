@@ -149,6 +149,14 @@ const ABOUT: Partial<Record<PlaceKind, string>> = {
 };
 
 /** The places of note in a settlement's plan, and its quarters. */
+/** Where a settlement's notice boards stand (its plan's points; core towns/manager.ts). */
+export function boardsOf(feats: PlanFeature[]): { lon: number; lat: number }[] {
+  return feats.filter((f) => f.properties.kind === 'notice_board' && f.geometry.type === 'Point').map((f) => {
+    const c = (f.geometry as { coordinates: number[] }).coordinates;
+    return { lon: c[0], lat: c[1] };
+  });
+}
+
 export function siteInfo(s: Settlement, feats: PlanFeature[]): SiteInfo {
   const quarters = feats.filter((f) => f.properties.kind === 'qlabel' && f.geometry.type === 'Point').map((f) => {
     const c = (f.geometry as { coordinates: number[] }).coordinates;

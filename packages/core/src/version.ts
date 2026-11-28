@@ -5,5 +5,6 @@
  *   1  the original generator (engine maths: the same seed differed slightly between engines)
  *   2  deterministic maths (dmath.ts), shuffles and keyed sorts (gen/rng.ts): the same world in
  *      every engine
+ *   3  notice boards on the plans of villages, towns and cities (beside their wells and fountains)
  */
-export const GENERATOR_VERSION = 2;
+export const GENERATOR_VERSION = 3;

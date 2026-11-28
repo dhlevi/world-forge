@@ -273,6 +273,7 @@ const OBJECT: Def[] = [
   o('brush_fence', '*', '#5a6a32', 'a brush fence', 'Cut brush piled between stakes, a drive fence to steer game.', { group: 'stakes', join: 'mask4' }),
   o('fire_banked', '*', '#8a4a30', 'a banked fire', 'A ring of stones, the embers banked under ash: warm, and smoking a little (a camp left for a while).'),
   o('drying_rack', '#', '#8a6a42', 'a drying rack', 'Green sticks lashed into a rack, with strips of meat or split fish hung on it to dry in the wind.', { pass: true }),
+  o('notice_board', '=', '#a07a4a', 'a notice board', 'A board on two posts under a little roof, with notices pinned to it, some fresh and some curling.'),
 ];
 
 export const GROUND_TILES: readonly TileDef[] = GROUND.map((d) => ({ ...d, layer: 'ground' as const }));

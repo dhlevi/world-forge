@@ -12,7 +12,10 @@ import { MessageDispatcher } from '../src/engine/messages';
 import '../src/actors/cast';
 import { readSave } from '../src/game/save';
 import { PlaySession, type PlayOptions, type SessionHost, type SessionWorld } from '../src/game/session';
-import { townAccount } from '../src/worker/sites';
+import { boardsOf, townAccount } from '../src/worker/sites';
+import { TownManager } from '@worldforge/core/towns/manager';
+import { LocalWorld, CHUNK } from '@worldforge/core/local/chunk';
+import { OBJECT_TILES } from '@worldforge/core/local/tiles';
 import { Stroll, perSecond } from '../src/screens/stroll';
 import type { LocalSite, StartSite } from '../src/worker/protocol';
 
@@ -85,6 +88,31 @@ console.log('\narriving from the travel map');
   await new Promise((r) => setTimeout(r, 5));
   ok(opened.length === 0 && wilds.state.mode !== undefined, 'nor in the wilds');
   for (const s of [inTown, inVillage, wilds]) s.dispose();
+}
+
+console.log('notice boards in the square');
+{
+  const w = generateWorld({ seed: 'forge', landFraction: 0.3, plates: 14, erosion: 0.5, settled: 0.6, drift: 0.3, races: true, resolution: 512 } as never, () => {});
+  type S = (typeof w.settlements)[number];
+  const tm = new TownManager(w as never);
+  const towns = [...w.settlements.filter((s) => s.tier === 'city' && !s.delve && s.kind !== 'abandoned').slice(0, 4), ...w.settlements.filter((s) => s.tier === 'town' && !s.delve && s.kind !== 'abandoned').slice(0, 4)];
+  const counts = towns.map((s) => boardsOf(tm.planOf(s) as never).length);
+  ok(counts.every((n) => n >= 1 && n <= 3), `every town and city has one to three notice boards (${counts.join(', ')})`);
+  const t = w.settlements.find((s) => s.tier === 'town' && !s.delve && s.kind !== 'abandoned')!;
+  const box = { west: t.lon - 0.3, east: t.lon + 0.3, south: t.lat - 0.2, north: t.lat + 0.2 };
+  tm.update(box, 9, 1e6);
+  const villages = tm.regionSites(box, 400).filter((s) => s.tier === 'village' && !s.delve && s.kind !== 'abandoned').slice(0, 6) as S[];
+  const vc = villages.map((s) => boardsOf(tm.planOf(s) as never).length);
+  ok(villages.length > 0 && vc.every((n) => n === 1), `every village has one, by its well (${vc.join(', ')})`);
+  // On the local map: a board stands on its tile.
+  const city = towns[0];
+  const lw = new LocalWorld(w, city);
+  const standing = boardsOf(tm.planOf(city) as never).map((b) => {
+    const [x, y] = lw.tileAt(b.lon, b.lat);
+    const c = lw.chunk(Math.floor(x / CHUNK), Math.floor(y / CHUNK));
+    return OBJECT_TILES[c.object[(y - Math.floor(y / CHUNK) * CHUNK) * CHUNK + (x - Math.floor(x / CHUNK) * CHUNK)]]?.name;
+  });
+  ok(standing.every((n) => n === 'notice_board'), `on the local map each stands where the plan puts it (${standing.join(', ')})`);
 }
 
 console.log(failures ? `\n${failures} failed` : '\nall city tests passed');

@@ -3,6 +3,7 @@
  * routes, areas, the catalogue, names) as promises, and the worker's own news (progress, a world
  * made, a game started, chunks, errors) as messages on the bus.
  */
+import { setWorldCultures } from '@worldforge/core/names/world-cultures';
 import type { RouteOptions } from '@worldforge/core/local/travel';
 import type { PlaceClimate } from '../game/calendar';
 import type { MessageDispatcher } from '../engine/messages';
@@ -76,7 +77,11 @@ export class WorkerClient {
       return;
     }
     if (m.type === 'progress') this.bus.send('world.progress', { stage: m.stage, pct: m.pct });
-    else if (m.type === 'world') this.bus.send('world.ready', { starts: m.starts, summary: m.summary });
+    else if (m.type === 'world') {
+      // The page builds the same peoples and languages as the worker (their names, speech and writing).
+      setWorldCultures(m.cultures);
+      this.bus.send('world.ready', { starts: m.starts, summary: m.summary });
+    }
     else if (m.type === 'started') this.bus.send('world.started', { site: m.site, tile: m.tile, sites: m.sites });
     else if (m.type === 'chunk') this.bus.send('world.chunk', m.chunk);
     else if (m.type === 'error') this.bus.send('world.error', { message: m.message });

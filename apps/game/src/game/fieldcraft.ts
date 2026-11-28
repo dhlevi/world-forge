@@ -20,7 +20,7 @@ import { check, DC, type Grade } from '../actors/checks';
 import { Health } from '../actors/health';
 import { Inventory } from '../actors/items/inventory';
 import { Needs } from '../actors/needs';
-import { Traits } from '../actors/components';
+import { Skills, Traits } from '../actors/components';
 import { defOf, itemName, makeItem, type Item } from '../actors/items/item';
 import { findPath } from '../world/paths';
 import { CAMP_R, campable, rateSite, townAt, type CampData } from './camp';
@@ -149,6 +149,10 @@ export class Fieldcraft {
     if (seen && g.tracksText(x, y, g.z)) out.push({ id: 'tracks', label: 'Read the tracks (Tracking)' });
     if (seen && s.hunt.beastTrack(x, y)) out.push({ id: 'follow', label: 'Follow the trail (Tracking)' });
     if (outdoors && !gd.water && g.map.passable(x, y)) out.push({ id: 'snare', label: s.snares.at(x, y) ? 'Take up the snare' : 'Set a snare here (Trapping)', why: s.snares.at(x, y) || this.inv?.d.items.some((i) => i.def === 'snares') ? null : 'You have no snare wire.' });
+    if (on === 'notice_board') {
+      const site = s.settlementSite();
+      out.push({ id: 'notices', label: 'Read the notice board', why: !s.player?.get(Skills)?.literate() ? 'You cannot read.' : !site ? 'You are still looking it over. Try again in a moment.' : null });
+    }
     if (gd?.water || on === 'well' || on === 'fountain') {
       out.push({ id: 'drink', label: 'Drink, and fill your waterskins' });
       out.push({ id: 'wash', label: 'Wash' });
@@ -169,6 +173,10 @@ export class Fieldcraft {
     if (Fishing.IDS.has(id)) await s.fishing.act(id, x, y);
     if (Preserving.IDS.has(id)) await s.preserve.act(id, x, y);
     if (id.startsWith('quest:')) await s.quests.fieldAct(id);
+    if (id === 'notices') {
+      const site = s.settlementSite();
+      if (site) s.host.notices?.(site);
+    }
     switch (id) {
       case 'walk':
         break;

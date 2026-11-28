@@ -1,4 +1,5 @@
 /** Messages between the game and its worker (worker/game.worker.ts), which holds the world. */
+import type { CultureSet } from '@worldforge/core/names/world-cultures';
 import type { RouteOptions } from '@worldforge/core/local/travel';
 import type { Roof } from '@worldforge/core/local/roofs';
 import type { ChunkLayer } from '@worldforge/core/local/chunk';
@@ -272,6 +273,10 @@ export interface SiteInfo {
   walls: boolean;
   /** Its people's name ("Varskish"): who makes what is sold there. */
   culture?: string;
+  /** Its people's culture (an index into CULTURES): the language its notices are written in. */
+  cultureIndex?: number;
+  /** Where its notice boards stand. */
+  boards?: { lon: number; lat: number }[];
   quarters: { name: string; lon: number; lat: number }[];
   places: SitePlace[];
   /** What a visitor learns of it on arriving (worker/sites.ts, townAccount). */
@@ -319,7 +324,7 @@ export type ToWorker =
 
 export type FromWorker =
   | { type: 'progress'; stage: string; pct: number }
-  | { type: 'world'; ms: number; starts: StartSite[]; summary: WorldSummary }
+  | { type: 'world'; ms: number; starts: StartSite[]; summary: WorldSummary; cultures: CultureSet }
   | { type: 'started'; site: StartSite; tile: [number, number]; sites: LocalSite[]; ms: number }
   | { type: 'chunk'; chunk: ChunkData }
   | { type: 'tile'; id: number; bitmap: ImageBitmap | null }
