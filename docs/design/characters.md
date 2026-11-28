@@ -522,8 +522,13 @@ Characters from before this have the list without the portraits. **Anyone seen i
 looked over** the same way (`game/person-card.ts`): Shift+I for the nearest person in sight,
 Enter on one while looking about (X), or a click on their tile. A stranger shows their portrait,
 looks and dress and what they are doing; once spoken to, their household, manner, ties and how
-they regard the wanderer as well. Not yet: ties as residents placed in the world, when last seen,
-and their lives going on.
+they regard the wanderer as well.
+
+*Built (stage Q3, 27 November 2026; worker/ties.ts, game/life.ts):* the living ties are residents of
+the home town, family under one roof and the others in houses of their own, keeping a resident's day,
+looking as the character remembers them, known by name, and regarding the wanderer as the tie says;
+their obligations are in the journal (quests.md, The task log, as built). Not yet: when last seen,
+ties living elsewhere, and their lives going on.
 
 ## Mood
 

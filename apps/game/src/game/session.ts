@@ -52,6 +52,7 @@ import { Travel } from './travel';
 import { Fights } from './fights';
 import { Justice } from './justice';
 import { Quests } from './quests';
+import { Life } from './life';
 import { Population } from '../world/population';
 import { Fauna, animalLines, type Presence } from '../world/fauna';
 import { Snares, carcassOf } from '../world/hunting';
@@ -103,6 +104,8 @@ export interface SessionWorld {
   requestAnimals?: WorkerClient['requestAnimals'];
   /** The wild game a place holds (none: no signs of game on the travel map). */
   game?: WorkerClient['game'];
+  /** Places the people of the wanderer's life in their towns (worker/ties.ts). */
+  ties?: WorkerClient['ties'];
   /** Names of a people (for the watch sent for from their post). */
   names?: WorkerClient['names'];
   site: WorkerClient['site'];
@@ -185,6 +188,8 @@ export class PlaySession {
   readonly justice = new Justice(this);
   /** The town's troubles taken up, and the journal (game/quests.ts). */
   readonly quests = new Quests(this);
+  /** The people of the character's life in the world, and the obligations it began with (game/life.ts). */
+  readonly life = new Life(this);
   /** Fieldcraft on the local map: the skill menu, fires, roasting (game/fieldcraft.ts). */
   readonly field = new Fieldcraft(this);
   /** Hunting by tracking: signs of game on the travel map, trails on the local map (game/hunt.ts). */
@@ -519,6 +524,8 @@ export class PlaySession {
         this.redraw();
       }),
     );
+    // The people of the life in the world; for a new game, its first quest and obligations.
+    background(this.life.begin(!this.o.restore), 'the game');
     if (!this.o.restore) {
       background(this.applyKnowledge(), 'the game');
       // Setting out: a moodlet for the first day, sent through the messaging service.

@@ -33,7 +33,7 @@ const MARK: Record<string, string> = { fast: 'quickly', clean: 'cleanly', thorou
       <div v-if="q" class="body">
         <div class="title">{{ q.title }} <span class="dim">({{ STATE[q.state] }})</span></div>
         <p>{{ q.text }}</p>
-        <p class="dim">For {{ q.giver.kind === 'place' ? `${q.giver.name}, in ${q.giver.siteName}` : q.giver.kind === 'person' ? `${q.giver.given}, the ${q.giver.name}, of ${q.giver.siteName ?? 'the country'}` : q.giver.name }}<template v-if="q.reward.copper">; {{ q.reward.copper }} copper</template>. It is {{ LEVEL[q.level] }}.<template v-if="q.state === 'active' && q.deadline"> Wanted by {{ day(q.deadline) }}.</template></p>
+        <p class="dim">{{ q.reward.copper || q.giver.kind !== 'person' ? 'For' : 'With' }} {{ q.giver.kind === 'place' ? `${q.giver.name}, in ${q.giver.siteName}` : q.giver.kind === 'person' ? `${q.giver.given}, the ${q.giver.name}, of ${q.giver.siteName ?? 'the country'}` : q.giver.name }}<template v-if="q.reward.copper">; {{ q.reward.copper }} copper</template>. It is {{ LEVEL[q.level] }}.<template v-if="q.state === 'active' && q.deadline"> Wanted by {{ day(q.deadline) }}.</template></p>
         <p v-if="q.marks?.length" class="dim">Done {{ q.marks.map((m) => MARK[m]).join(', ') }}.</p>
         <template v-if="q.state === 'active'">
           <h3>{{ q.parts[q.parts.length - 1]?.title ?? 'To do' }}</h3>

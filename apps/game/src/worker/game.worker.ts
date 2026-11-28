@@ -20,6 +20,7 @@ import { streetFolkIn } from './streets';
 import { bandCell } from '../rules/bands';
 import { animalsIn, gameAt } from './fauna';
 import { seaOf } from './water';
+import { forgetTies, placeTies } from './ties';
 import { boardsOf, findSite, forgetSites, gatesOf, planImage, planOf, rememberSites, siteInfo, townAccount } from './sites';
 
 let world: GeneratedWorld | null = null;
@@ -57,6 +58,7 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       resetCatalogue();
       forgetSites();
       forgetPeople();
+      forgetTies();
       world = generateWorld(m.settings, (stage, pct) => post({ type: 'progress', stage, pct }));
       tiles = new TileRenderer(world.raster, world.rivers);
       rememberSites(world.settlements);
@@ -167,6 +169,12 @@ self.onmessage = (e: MessageEvent<ToWorker>) => {
       const feats = planOf(local.towns, s);
       const ci = cultureOf(world!, s);
       post({ type: 'site', id: m.id, site: { ...siteInfo(s, feats), culture: ci !== undefined ? CULTURES[ci]?.name : undefined, cultureIndex: ci, boards: boardsOf(feats), account: townAccount(world!, s) }, gates: gatesOf(s, feats) });
+    } else if (m.type === 'ties') {
+      if (!local || !world) throw new Error('No game started.');
+      const placed = placeTies(world, local, m.ties);
+      // The houses they live in are worked out again, with them in.
+      forgetPeople();
+      post({ type: 'ties', id: m.id, placed });
     } else if (m.type === 'game') {
       post({ type: 'game', id: m.id, species: world && local ? gameAt(world, local, m.lon, m.lat, m.winter) : [] });
     } else if (m.type === 'sites') {

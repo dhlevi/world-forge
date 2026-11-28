@@ -94,7 +94,7 @@ export interface QTask {
   /** A thing the quest gave into the wanderer's hands (its item's id), to carry and hand over. */
   item?: string;
   /** Talk: the ways it can go, and the way it went. */
-  options?: { id: string; label: string; needsCopper?: number }[];
+  options?: { id: string; label: string; needsCopper?: number; check?: { skill: string; dc: number }; gain?: number; regard?: number }[];
   outcome?: string;
   /** Explore or investigate: leads to follow, and the clue check made at a sure one (the better skill). */
   leads?: Lead[];
@@ -155,6 +155,10 @@ export interface Quest {
   deadline?: number;
   /** Fair time for the Fast mark when there is no deadline (s). */
   fair?: number;
+  /** When something is due (a debt): the clocks of the template may count from it. */
+  due?: number;
+  /** The quest a life began with (stage Q3), shown first in the journal. */
+  featured?: boolean;
   reward: { copper: number; regard: number };
   /** Marks spoilt along the way (Clean, Secret), and marks met at the end. */
   spoilt: Mark[];

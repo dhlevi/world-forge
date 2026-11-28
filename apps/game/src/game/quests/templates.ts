@@ -15,8 +15,8 @@ import { BUILT_TYPES, TASK_TYPES, type Level, type TaskType } from './model';
 /** Where a role is taken from in the world. */
 export type RoleSource =
   | 'giver' | 'regionPredator' | 'regionHide' | 'nearTown' | 'nearLair' | 'giverBeasts' | 'deepLair'
-  | 'obligationParty' | 'obligationRecord';
-export const ROLE_SOURCES: readonly RoleSource[] = ['giver', 'regionPredator', 'regionHide', 'nearTown', 'nearLair', 'giverBeasts', 'deepLair', 'obligationParty', 'obligationRecord'];
+  | 'obligationParty' | 'obligationRecord' | 'obligationKin';
+export const ROLE_SOURCES: readonly RoleSource[] = ['giver', 'regionPredator', 'regionHide', 'nearTown', 'nearLair', 'giverBeasts', 'deepLair', 'obligationParty', 'obligationRecord', 'obligationKin'];
 
 /** What to do if a role cannot be filled when the quest is made. */
 export type OnMissing = 'abort' | 'skip';
@@ -54,8 +54,12 @@ export interface TaskSpec {
   deliverTo?: string;
   /** A thing given into the wanderer's hands to carry (an item id, and its name). */
   item?: { def: string; name: string };
-  /** Talk: the ways it can go; an option may need coin (the debt) or a role filled. */
-  options?: { id: string; label: string; needs?: 'debt' | string }[];
+  /**
+   * Talk: the ways it can go. An option may need coin (the debt) or a role filled, be tried with a
+   * skill (failing, its outcome is "<id>:fail"), give coin (a number, or 'amount': the obligation's),
+   * and change how the one talked to regards the wanderer.
+   */
+  options?: { id: string; label: string; needs?: 'debt' | string; check?: { skill: string; dc: number }; gain?: number | 'amount'; regard?: number }[];
   /** Explore or investigate: leads at the role's place ('role'), or a trail with a false lead besides ('trail'). */
   leads?: 'role' | 'trail';
   clue?: { skills: string[]; dc: number; flag?: string; need?: number };
@@ -108,8 +112,13 @@ export interface Template {
   /** Places that post it (their role or kind, a pattern), and trades that ask it. */
   posts?: string;
   asks?: string;
-  /** Changes to the world on a clock, counted from when it was taken. */
-  clocks?: { days: number; flag: string; role?: string; state?: 'dead'; ifRole?: string; whileState?: string }[];
+  /** Days until something is due (a debt), from when it was taken (an obligation may set its own). */
+  dueDays?: number;
+  /**
+   * Changes to the world on a clock, counted from when it was taken (or from when it is due): a
+   * role's state, or an effect (a debt's interest, the creditor's men, the law).
+   */
+  clocks?: { days: number; flag: string; role?: string; state?: 'dead'; ifRole?: string; whileState?: string; fromDue?: boolean; effect?: 'interest' | 'dun' | 'law' }[];
 }
 
 const GIVER: RoleSpec = { source: 'giver', onMissing: 'abort', onInvalidated: 'overtaken' };
@@ -228,6 +237,16 @@ const CREDITOR: Template = {
   id: 'tpl_creditor_terms', title: 'What I owe {creditor}', text: 'I owe {creditor} {amount}, and {creditor} will want it.',
   baseLevel: 'job', escalatesTo: 'story', escalationChance: 0.15, preconditions: ['obligation'], start: 'demand', fairDays: 14,
   reward: { base: 0, regard: 10 },
+  // Left unpaid (stage Q3): due in three weeks; then a tenth more each week, the creditor's men a
+  // week after it falls due, and the law a fortnight after that.
+  dueDays: 21,
+  clocks: [
+    { days: 0, fromDue: true, flag: 'overdue', effect: 'interest' },
+    { days: 7, fromDue: true, flag: 'dunned', effect: 'dun' },
+    { days: 7, fromDue: true, flag: 'interest2', effect: 'interest' },
+    { days: 14, fromDue: true, flag: 'interest3', effect: 'interest' },
+    { days: 21, fromDue: true, flag: 'law', effect: 'law' },
+  ],
   roles: {
     creditor: { source: 'obligationParty', onMissing: 'abort', onInvalidated: 'reassign' },
     debt: { source: 'obligationRecord', onMissing: 'abort', onInvalidated: 'waive' },
@@ -259,7 +278,108 @@ const CREDITOR: Template = {
   ],
 };
 
-export const TEMPLATES: readonly Template[] = [...JOBS, MISSING_HERD, CREDITOR];
+/** A tie's own person, for the templates of a life (stage Q3): lost if they die. */
+const TIE: RoleSpec = { source: 'obligationParty', onMissing: 'abort', onInvalidated: 'overtaken' };
+const KIN: RoleSpec = { source: 'obligationKin', onMissing: 'abort', onInvalidated: 'reassign' };
+const DONE: BeatSpec = { id: 'done', kind: 'aftermath', title: 'Done', tasks: [], next: null };
+
+/**
+ * The quests of a life (stage Q3; docs/design/quests.md, The task log): from the ties made at
+ * character creation, each person a resident of their town (worker/ties.ts).
+ */
+const LIFE: Template[] = [
+  {
+    id: 'tpl_love_waits', title: 'Word for {love}', text: '{love} waits for word of me in {town}{why}.',
+    baseLevel: 'task', preconditions: ['obligation'], start: 'go', fairDays: 10, reward: { base: 0, regard: 20 },
+    roles: { love: TIE },
+    beats: [{ id: 'go', kind: 'hook', title: 'Going back', tasks: [{ type: 'talk', role: 'love', label: 'Go back to {love} in {town}' }], next: 'done' }, DONE],
+  },
+  {
+    id: 'tpl_lost_love', title: 'What became of {love}', text: 'I loved {love}, and lost them. {kin} may know what became of them.',
+    baseLevel: 'job', preconditions: ['obligation'], start: 'ask', fairDays: 10, reward: { base: 0, regard: 10 },
+    roles: { love: { source: 'obligationParty', onMissing: 'abort', onInvalidated: 'ignore' }, kin: KIN },
+    beats: [
+      { id: 'ask', kind: 'investigate', title: 'Asking after them', tasks: [{ type: 'talk', role: 'kin', label: 'Ask {kin} what became of {love}' }], onComplete: { ifFlag: 'alive', next: 'find' }, next: 'grief' },
+      { id: 'find', kind: 'confrontation', title: 'Finding them', needs: ['love'], fallback: 'grief', tasks: [{ type: 'talk', role: 'love', label: 'Find {love} in {town}' }], next: 'done' },
+      { id: 'grief', kind: 'aftermath', title: 'Their grave', tasks: [], next: null },
+      DONE,
+    ],
+  },
+  {
+    id: 'tpl_family_visit', title: 'Home to {kin}', text: '{why} The family is in {town}.',
+    baseLevel: 'task', preconditions: ['obligation'], start: 'visit', fairDays: 7, reward: { base: 0, regard: 15 },
+    roles: { kin: KIN },
+    beats: [{ id: 'visit', kind: 'hook', title: 'Home', tasks: [{ type: 'talk', role: 'kin', label: 'Go home to {kin} in {town}' }], next: 'done' }, DONE],
+  },
+  {
+    id: 'tpl_parent_affairs', title: 'The affairs of {parent}', text: '{parent} is dead, and what was left is still to be settled with {kin} in {town}.',
+    baseLevel: 'task', preconditions: ['obligation'], start: 'settle', fairDays: 14, reward: { base: 0, regard: 10 },
+    roles: { kin: KIN },
+    beats: [{
+      id: 'settle', kind: 'hook', title: 'Settling it', next: 'done',
+      tasks: [{ type: 'talk', role: 'kin', label: 'Settle the affairs of {parent} with {kin}', options: [
+        { id: 'inherit', label: 'Take what was left to you ({amount})', gain: 'amount' },
+        { id: 'waive', label: 'Leave it all to the family', regard: 15 },
+      ] }],
+    }, DONE],
+  },
+  {
+    id: 'tpl_favour', title: 'What {contact} owes me', text: '{contact} owes me a favour, from the old days. It can be called in once.',
+    baseLevel: 'task', preconditions: ['obligation'], start: 'call', reward: { base: 0, regard: 0 },
+    roles: { contact: TIE },
+    beats: [{
+      id: 'call', kind: 'hook', title: 'Calling it in', next: 'done',
+      tasks: [{ type: 'talk', role: 'contact', label: 'Call in the favour from {contact}', options: [
+        { id: 'coin', label: 'Ask for coin to set you on your way ({amount})', gain: 'amount' },
+        { id: 'word', label: 'Ask them to speak well of you about the town' },
+      ] }],
+    }, DONE],
+  },
+  {
+    id: 'tpl_rival', title: 'The matter of {rival}', text: '{rival} has hated me since {since}, and {s:speaks|speaks} against me in {town}{why}.',
+    baseLevel: 'task', preconditions: ['obligation'], start: 'face', fairDays: 14, reward: { base: 0, regard: 0 },
+    roles: { rival: TIE },
+    beats: [
+      {
+        id: 'face', kind: 'confrontation', title: 'Facing {rival}',
+        tasks: [{ type: 'talk', role: 'rival', label: 'Have it out with {rival}', options: [
+          { id: 'peace', label: 'Offer to put the past behind you (Persuasion)', check: { skill: 'persuasion', dc: 50 }, regard: 50 },
+          { id: 'warn', label: 'Warn them off (Intimidation)', check: { skill: 'intimidation', dc: 50 }, regard: -10 },
+          { id: 'leave', label: 'Walk away' },
+        ] }],
+        branches: { peace: 'done', 'peace:fail': 'standing', warn: 'done', 'warn:fail': 'standing', leave: 'standing' },
+      },
+      { id: 'standing', kind: 'aftermath', title: 'The rivalry stands', tasks: [], next: null },
+      DONE,
+    ],
+  },
+  {
+    id: 'tpl_feud', title: 'The feud with {house}', text: 'My family and {house} of {town} have been at feud over a death neither side forgives{why}.',
+    baseLevel: 'job', preconditions: ['obligation'], start: 'face', fairDays: 21, reward: { base: 0, regard: 0 },
+    roles: { head: TIE },
+    beats: [
+      {
+        id: 'face', kind: 'confrontation', title: 'The feud',
+        tasks: [{ type: 'talk', role: 'head', label: 'Speak with {head}, head of {house}', options: [
+          { id: 'peace', label: 'Seek an end to it (Persuasion)', check: { skill: 'persuasion', dc: 65 }, regard: 60 },
+          { id: 'wergild', label: 'Offer blood money ({amount})', needs: 'debt', regard: 60 },
+          { id: 'defy', label: 'Tell them it will never be forgiven', regard: -20 },
+        ] }],
+        branches: { peace: 'done', 'peace:fail': 'standing', wergild: 'done', defy: 'standing' },
+      },
+      { id: 'standing', kind: 'aftermath', title: 'The feud goes on', tasks: [], next: null },
+      DONE,
+    ],
+  },
+  {
+    id: 'tpl_omen', title: 'The sign in the cards', text: 'The cards said: {omen} {ruin}, {km} km to the {dir}, seems to answer them.',
+    baseLevel: 'task', preconditions: ['country.lair'], start: 'go', fairDays: 7, reward: { base: 0, regard: 0 },
+    roles: { giver: GIVER, ruin: { source: 'nearLair', onMissing: 'abort', onInvalidated: 'ignore' } },
+    beats: [{ id: 'go', kind: 'investigate', title: 'The sign', tasks: [{ type: 'explore', role: 'ruin', label: '{ruin} seen' }], next: 'done' }, DONE],
+  },
+];
+
+export const TEMPLATES: readonly Template[] = [...JOBS, MISSING_HERD, CREDITOR, ...LIFE];
 export const TEMPLATE_BY_ID: ReadonlyMap<string, Template> = new Map(TEMPLATES.map((t) => [t.id, t]));
 
 /**
@@ -282,7 +402,7 @@ export function checkTemplates(list: readonly Template[] = TEMPLATES): string[] 
       if (!ON_INVALIDATED.includes(r.onInvalidated)) at(`role ${k}: unknown onInvalidated "${r.onInvalidated}"`);
       if (r.optional && r.onMissing !== 'skip') at(`role ${k}: optional, so it must be skipped when missing`);
     }
-    if (!t.roles.giver && !t.roles.creditor) at('no one to give it (a giver or a creditor)');
+    if (!Object.values(t.roles).some((r) => r.source === 'giver' || r.source === 'obligationParty' || r.source === 'obligationKin')) at('no one to give it (a giver, or the person of an obligation)');
     const beats = new Map(t.beats.map((b) => [b.id, b]));
     if (beats.size !== t.beats.length) at('a beat id is used twice');
     if (!beats.has(t.start)) at(`the start beat "${t.start}" does not exist`);
@@ -307,8 +427,14 @@ export function checkTemplates(list: readonly Template[] = TEMPLATES): string[] 
         if (k.role && t.roles[k.role]?.optional && !k.when && !k.optional && !(b.needs ?? []).includes(k.role)) at(`beat ${b.id}: a task on the optional role ${k.role} must be optional, or made only when it is filled`);
         if (k.pivot && !BUILT_TYPES.has(k.pivot.type)) at(`beat ${b.id}: pivots to "${k.pivot.type}", which is not checked yet`);
         if (k.options && k.type !== 'talk') at(`beat ${b.id}: only a talk has options`);
-        for (const o of k.options ?? []) if (o.needs && o.needs !== 'debt') role(`beat ${b.id} option ${o.id}`, o.needs);
-        if (b.branches) for (const o of k.options ?? []) if (!b.branches[o.id]) at(`beat ${b.id}: option ${o.id} has no branch`);
+        for (const o of k.options ?? []) {
+          if (o.needs && o.needs !== 'debt') role(`beat ${b.id} option ${o.id}`, o.needs);
+          if (o.needs === 'debt' && !t.roles.debt && !t.preconditions.includes('obligation')) at(`beat ${b.id} option ${o.id}: needs the debt, but there is none`);
+        }
+        if (b.branches) for (const o of k.options ?? []) {
+          if (!b.branches[o.id]) at(`beat ${b.id}: option ${o.id} has no branch`);
+          if (o.check && !b.branches[`${o.id}:fail`]) at(`beat ${b.id}: option ${o.id} can fail, but has no branch for it`);
+        }
       }
     }
     // Every way through ends in an aftermath, and every beat can be reached.

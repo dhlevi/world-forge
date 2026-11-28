@@ -1,6 +1,7 @@
 /** The life before play: its story, the fate cards, ranks reached, and the people in it. */
 import { Component } from '../actor';
 import type { BodyType } from './body';
+import type { StartHook } from '../creation/hooks';
 
 // ---- History -------------------------------------------------------------------------------------
 
@@ -18,8 +19,9 @@ export interface TieWho {
   beard: string;
   type: BodyType;
   cloth: string;
-  /** Where they were last known to live. */
+  /** Where they were last known to live, and that settlement's id (for finding them in the world). */
   home?: string;
+  site?: string;
 }
 
 export interface Tie {
@@ -41,6 +43,8 @@ export interface HistoryData {
   ranks: Record<string, number>;
   ties: Tie[];
   omen?: string;
+  /** How the life began in play (actors/creation/hooks.ts): the start chosen at creation. */
+  start?: StartHook;
 }
 
 export class History extends Component {

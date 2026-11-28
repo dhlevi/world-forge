@@ -255,6 +255,12 @@ function onMother(e: Event): void {
           <h4>What you know of the world</h4>
           <p class="dim">The country within {{ (res.knowledge.homeRadiusM / 1000).toFixed(0) }} km of {{ res.home.name }}<span v-if="res.knowledge.roads.length">, the roads to {{ res.knowledge.roads.length }} other place{{ res.knowledge.roads.length === 1 ? '' : 's' }}</span><span v-if="res.knowledge.places.length">, and {{ res.knowledge.places.length }} place{{ res.knowledge.places.length === 1 ? '' : 's' }} further off</span>.</p>
           <p v-for="(n, i) in res.knowledge.notes" :key="'n' + i" class="dim">{{ n }}</p>
+          <h4>How it begins</h4>
+          <div class="cc-starts">
+            <button v-for="h in res.hooks" :key="h.id" :class="{ on: res.begin.id === h.id }" :title="h.about" @click="screen.setStart(h.id)">
+              <b>{{ h.label }}</b><span class="dim">{{ h.about }}</span>
+            </button>
+          </div>
           <div class="row"><button class="primary" @click="screen.begin()">Begin in {{ res.home.name }}</button></div>
         </section>
 
@@ -352,4 +358,7 @@ function onMother(e: Event): void {
 .cc-name { font-size: 1.2em; color: var(--accent); }
 .cc-mini { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px 8px; font-size: 0.92em; }
 .cc-skill { display: flex; justify-content: space-between; gap: 8px; font-size: 0.92em; }
+.cc-starts { display: flex; flex-direction: column; gap: 4px; margin-bottom: 8px; }
+.cc-starts button { text-align: left; display: flex; flex-direction: column; gap: 2px; }
+.cc-starts button.on { border-color: var(--accent); }
 </style>

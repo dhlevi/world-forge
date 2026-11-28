@@ -227,6 +227,12 @@ export class CreationScreen extends Screen {
     this.go(STEPS[j].id);
   }
 
+  /** Chooses how the life begins (a start offered at the finish). */
+  setStart(id: string): void {
+    const ch = this.state.choices;
+    if (ch) this.state.choices = { ...ch, start: id };
+  }
+
   begin(): void {
     const res = this.resolved();
     if (!res || !this.drawn) return;

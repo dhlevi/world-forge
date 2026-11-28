@@ -20,6 +20,7 @@ import { CULTURES } from '@worldforge/core/names/cultures';
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import { DMath } from '@worldforge/core/dmath';
 import type { PlacedPerson, PlanStop, Spot } from './protocol';
+import { tieOf, withTies } from './ties';
 
 /** The bubble's reach (tiles) in open country, in a town and in a city (docs/design/npcs.md). */
 export const BUBBLE = { open: 128, town: 96, city: 64 };
@@ -67,7 +68,7 @@ function homeOf(w: GeneratedWorld, b: PlanBuilding): Home {
   let households: Household[] = [];
   let kind: RKind = 'home';
   try {
-    households = householdsFor(w, b.f, b.plan, v);
+    households = withTies(b.bid, householdsFor(w, b.f, b.plan, v));
     const ring = b.f.geometry.type === 'Polygon' ? b.f.geometry.coordinates[0] : [[b.site.lon, b.site.lat]];
     kind = kindOf(residentBuilding(b.f, new LocalFrame(ring[0][0], ring[0][1]), w.raster.seed));
   } catch (err) {
@@ -177,7 +178,7 @@ export function peopleIn(w: GeneratedWorld, local: LocalWorld, x: number, y: num
     // The tavern: one of the three nearest (a house's people do not all drink in one place).
     const taverns = nearestOf(b, isTavern, 3), temple = nearestOf(b, isTemple)[0] ?? null;
     home.households.forEach((h, hi) => h.members.forEach((p, mi) => {
-      const id = `${b.bid}#${hi}#${mi}`;
+      const id = tieOf(p)?.key ?? `${b.bid}#${hi}#${mi}`;
       const r = mulberry32(hashString(`${seed}#place#${id}`));
       const pickOf = <T>(xs: T[]): T | null => (xs.length ? xs[Math.floor(r() * xs.length) % xs.length] : null);
       const tavern = pickOf(taverns);
@@ -429,7 +430,10 @@ function outdoors(local: LocalWorld, b: PlanBuilding, r: () => number): Building
 /** A resident as the game gets them: who they are, their looks, where they stand. */
 function person(seed: string, id: string, p: Household['members'][number], h: Household, b: PlanBuilding, work: Work, kind: RKind, day: number, plan: PlanStop[], home: Spot, at: Spot | null, r: () => number): PlacedPerson {
   const rich = h.means === 'rich' || h.means === 'comfortable';
-  const look = lookFor(seed, p.culture, p, rich ? 'fine' : 'plain', mulberry32(hashString(`${seed}#looks#${id}`)));
+  const tf = tieOf(p);
+  const base = lookFor(seed, p.culture, p, rich ? 'fine' : 'plain', mulberry32(hashString(`${seed}#looks#${id}`)));
+  // One of the wanderer's people looks as the wanderer remembers them.
+  const look = tf?.look ? { ...base, skin: tf.look.skin, hair: tf.look.hair, hairStyle: tf.look.hairStyle, beard: tf.look.beard, cloth: [tf.look.cloth, base.cloth[1], base.cloth[2]] as [string, string, string] } : base;
   const facings = ['n', 'e', 's', 'w'] as const;
   return {
     id, name: p.name, given: p.given, female: p.female, age: p.age, culture: p.culture, people: p.people, trade: p.trade, role: p.role, traits: [...p.traits],
@@ -437,6 +441,7 @@ function person(seed: string, id: string, p: Household['members'][number], h: Ho
     ...(typeof b.f.properties.label === 'string' ? { homeName: b.f.properties.label } : {}),
     ties: p.ties.map((t) => ({ kind: t.kind, text: t.text })),
     template: templateOf(p, work, kind), day, plan, home, at, facing: facings[Math.floor(r() * 4) % 4],
+    ...(tf ? { tie: tf.kind } : {}),
     look,
   };
 }

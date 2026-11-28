@@ -451,6 +451,50 @@ or owing, a feud, a rival, a promise) should appear as tasks in a task log, alon
   share the journal, written in the character's own words as above, with what is known, who is
   involved and where they were last heard of.
 
+### The task log, as built (stage Q3, 27 November 2026)
+
+Built in `apps/game/src/game/life.ts`, `actors/creation/hooks.ts` and `worker/ties.ts`; tested by
+`life-test.ts`.
+
+- **The start, chosen at creation.** The Finish step offers up to three starts drawn from the
+  character's own life and the Omen card (a debt called in, a letter from a love, what became of a
+  love lost, a rival's move, the feud flaring, word that a parent is ill, a dead parent's affairs, the
+  sign in the cards, or looking for work), then two that begin with nothing in hand: **no starting
+  quest** (the obligations of the life are kept) and **a clean slate** (no quest and no obligations;
+  the people of the life are still in the world). The first offered is chosen until the player picks
+  another.
+- **The people of the life are residents of their town** (characters.md, People in your life):
+  family under one roof, every other named person in a household of their own, a feuding family and
+  the family's creditor households of the town as it is, each house chosen from the plan by the tie's
+  key. They keep a resident's day, look as the character remembers them, and are known by name, with
+  what they think of the wanderer (family and a love well, a rival and a feud ill).
+- **Two to four obligations** besides the first quest (at most four in all), in this order: debts,
+  one favour owed, a love who waits or was lost, a rival or a feud, and family at home (a visit, or a
+  dead parent's affairs). They are quests of the templates of a life:
+
+  | Template | Tasks | Ways it ends |
+  | --- | --- | --- |
+  | The creditor's terms | talk to the creditor; an errand; or three days lived through | paid, cleared by the errand, refused |
+  | Word for a love | go back to them | done |
+  | What became of a love lost | ask kin, then find them (if living) | found, or their grave |
+  | Home to the family | go home | done |
+  | A dead parent's affairs | settle them with kin | take what was left, or leave it to the family |
+  | A favour owed | call it in once | coin, or a good word about the town (regard) |
+  | A rival | have it out | peace (Persuasion), warned off (Intimidation), walked away; a failed check leaves it standing |
+  | A feud | speak with the head of the other house | peace (Persuasion, hard), blood money, defiance |
+  | The sign in the cards | see the ruin nearest home | done |
+
+- **A debt left unpaid.** A debt is due in three weeks (seven days if it was called in at the start).
+  When it falls due a tenth more is owed, and again each week after; a week after, the creditor sends
+  men asking after the wanderer and thinks the worse of them; three weeks after, the creditor goes to
+  the law in their town, and the wanderer is wanted there for a debt unpaid (a fine of the debt and a
+  fifth more). A creditor who dies is followed by their household, or the debt is waived.
+- **Options with a skill** (Persuasion, Intimidation) can fail, and a failure leads elsewhere
+  (`<option>:fail` in the template's branches, checked when templates are loaded).
+- **Not yet:** rivals and feuding families appearing on the roads and in other towns (stage Q4), ties
+  whose lives took them to other towns, word sent by letter, and the people of a life moving,
+  prospering, falling ill or dying in the world's ticks.
+
 ## Rewards
 
 **Decided:** a reward has a type and tiers, perhaps by performance.

@@ -8,7 +8,7 @@ import type { RouteOptions } from '@worldforge/core/local/travel';
 import type { PlaceClimate } from '../game/calendar';
 import type { MessageDispatcher } from '../engine/messages';
 import type { WorldSettings } from '@worldforge/core/settings';
-import type { AnimalGroup, Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlacedPerson, PlanImage, RouteStep, SiteInfo, StartSite, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
+import type { AnimalGroup, Catalogue, ChunkData, FromWorker, Gate, LocalSite, PersonName, PlacedPerson, PlanImage, RouteStep, SiteInfo, StartSite, TieFolk, TiePlaced, ToWorker, TravelArea, ViewLayer, WorldSummary } from '../worker/protocol';
 
 /** How long a request may take before it is given up (ms): long enough for a city's illustrated plan. */
 export const ASK_TIMEOUT_MS = 120_000;
@@ -152,6 +152,10 @@ export class WorkerClient {
       m.type === 'climate' ? { warm: m.warm, cold: m.cold, precipSummer: m.precipSummer, precipWinter: m.precipWinter, windU: m.windU, windV: m.windV } : { warm: 20, cold: 0, precipSummer: 600, precipWinter: 600, windU: 0.5, windV: 0 });
 
   /** The wild game a place holds: species, and groups to a chunk (fieldcraft.md, stage 2). */
+  /** Places the people of the wanderer's life in their towns (worker/ties.ts), and says where. */
+  ties = (ties: TieFolk[]): Promise<TiePlaced[]> =>
+    this.ask((id) => ({ type: 'ties', id, ties }), (m) => (m.type === 'ties' ? m.placed : []));
+
   game = (lon: number, lat: number, winter: boolean): Promise<{ id: string; density: number }[]> =>
     this.ask((id) => ({ type: 'game', id, lon, lat, winter }), (m) => (m.type === 'game' ? m.species : []));
 

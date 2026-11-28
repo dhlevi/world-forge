@@ -80,6 +80,8 @@ export interface PlacedPerson {
   /** Where the plan has them at the hour asked (null: away beyond the bubble). */
   at: Spot | null;
   facing: 'n' | 'e' | 's' | 'w';
+  /** One of the people of the wanderer's life (worker/ties.ts): the kind of tie. */
+  tie?: string;
   look: {
     kind: string;
     skin: string;
@@ -91,6 +93,39 @@ export interface PlacedPerson {
     /** The people's headwear, as a garment shape (none: bare-headed). */
     head?: string;
   };
+}
+
+/**
+ * One of the people of the wanderer's life (actors/components/history.ts, Tie) to be placed in the
+ * world as a resident of their settlement (worker/ties.ts). Unnamed ties (a feuding family, the
+ * family's creditor) are given a household of the town.
+ */
+export interface TieFolk {
+  /** The tie's key (actors/creation/hooks.ts, tieKey): the person's id in the world. */
+  key: string;
+  kind: string;
+  siteId: string;
+  name?: string;
+  given?: string;
+  female?: boolean;
+  age?: number;
+  trade?: string;
+  /** Kin of the wanderer (parents and siblings), who share one household. */
+  family?: boolean;
+  look?: { skin: string; hair: string; hairStyle: string; beard: string; cloth: string };
+}
+
+/** Where a person of the wanderer's life lives, as placed. */
+export interface TiePlaced {
+  key: string;
+  name: string;
+  given: string;
+  trade: string;
+  siteId: string;
+  siteName: string;
+  household: string;
+  lon: number;
+  lat: number;
 }
 
 /**
@@ -315,6 +350,7 @@ export type ToWorker =
   | { type: 'sites'; id: number; x: number; y: number; half: number }
   /** The wild game a place holds (worker/fauna.ts, gameAt). */
   | { type: 'game'; id: number; lon: number; lat: number; winter: boolean }
+  | { type: 'ties'; id: number; ties: TieFolk[] }
   /** A settlement's plan as an image: metres per pixel, the radius drawn, and the style. */
   | { type: 'plan'; id: number; siteId: string; lon?: number; lat?: number; mpp: number; radius: number; illustrated: boolean }
   /** The residents about a tile at a time (game seconds), placed by their day plan (worker/people.ts). */
@@ -337,6 +373,7 @@ export type FromWorker =
   | { type: 'people'; id: number; people: PlacedPerson[]; radius: number }
   | { type: 'animals'; id: number; groups: AnimalGroup[]; radius: number }
   | { type: 'game'; id: number; species: { id: string; density: number }[] }
+  | { type: 'ties'; id: number; placed: TiePlaced[] }
   | { type: 'sites'; id: number; sites: LocalSite[] }
   | { type: 'climate'; id: number; warm: number; cold: number; precipSummer: number; precipWinter: number; windU: number; windV: number }
   /** Something went wrong: with the id of the request it answers, or none (making the world, starting, a chunk). */

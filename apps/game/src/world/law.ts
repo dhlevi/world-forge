@@ -21,8 +21,8 @@
  */
 import { CULTURES } from '@worldforge/core/names/cultures';
 
-export type CrimeKind = 'assault' | 'theft' | 'murder' | 'livestock' | 'resisting';
-export const CRIME_WORDS: Record<CrimeKind, string> = { assault: 'assault', theft: 'theft', murder: 'murder', livestock: 'killing another\'s beast', resisting: 'resisting arrest' };
+export type CrimeKind = 'assault' | 'theft' | 'murder' | 'livestock' | 'resisting' | 'debt';
+export const CRIME_WORDS: Record<CrimeKind, string> = { assault: 'assault', theft: 'theft', murder: 'murder', livestock: 'killing another\'s beast', resisting: 'resisting arrest', debt: 'a debt unpaid' };
 
 export interface Crime {
   kind: CrimeKind;
@@ -96,7 +96,7 @@ export class Law {
     const rec = this.recordOf(place);
     rec.crimes.push({ kind, at: t, victim, witnesses, ...(value ? { value } : {}) });
     rec.wanted = true;
-    this.deed(place, `${CRIME_WORDS[kind]} of ${victim}`, { assault: -10, theft: -15, murder: -40, livestock: -8, resisting: -10 }[kind], t);
+    this.deed(place, `${CRIME_WORDS[kind]} of ${victim}`, { assault: -10, theft: -15, murder: -40, livestock: -8, resisting: -10, debt: -12 }[kind], t);
     return true;
   }
 
@@ -165,6 +165,10 @@ export class Law {
           break;
         case 'resisting':
           s.days += Math.round(3 * harsh);
+          break;
+        case 'debt':
+          // The debt itself, and a fifth more for the court's trouble.
+          s.fine += Math.round((c.value ?? 50) * 1.2);
           break;
       }
     }

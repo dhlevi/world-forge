@@ -20,7 +20,7 @@ export class JournalScreen extends Screen {
 
   get inHand(): Quest[] {
     void this.state.version;
-    return this.play.session.quests.active();
+    return [...this.play.session.quests.active()].sort((a, b) => Number(!!b.featured) - Number(!!a.featured));
   }
 
   get past(): Quest[] {

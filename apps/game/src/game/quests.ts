@@ -73,10 +73,18 @@ export interface Country {
 export interface Obligation {
   id: string;
   template: string;
+  /** The person it is with (a creditor, a love, a rival), and kin who stand in for them or know of them. */
   party: RoleRef;
-  /** What is owed (copper), and in words. */
+  kin?: RoleRef;
+  /** What is owed or at stake (copper), and in words. */
   amount: number;
   what: string;
+  /** Words for its text ({town}, {why}, {since}), flags it begins with, and days until it is due. */
+  words?: Record<string, string>;
+  flags?: string[];
+  dueDays?: number;
+  /** The quest the life began with (shown first in the journal). */
+  featured?: boolean;
 }
 
 /** Something the wanderer can say or do for a quest (in a talk, or at a place). */
@@ -213,13 +221,13 @@ export class Quests {
    * A quest from a template for a giver, its roles bound from the country about (by a seeded roll);
    * null if a role it must have cannot be filled. Offered, not yet taken.
    */
-  make(t: Template, giver: RoleRef, c: Country | null, seed: number, at: { lon: number; lat: number }, o: { ob?: Obligation; heirs?: RoleRef['heirs'] } = {}): Quest | null {
+  make(t: Template, giver: RoleRef, c: Country | null, seed: number, at: { lon: number; lat: number }, o: { ob?: Obligation; heirs?: RoleRef['heirs']; words?: Record<string, string> } = {}): Quest | null {
     if (!this.holds(t, giver, c, o.ob)) return null;
     const rnd = mulberry32(seed);
     const pick = <T>(xs: T[]): T | undefined => xs[Math.floor(rnd() * xs.length)];
     const n = t.n ? t.n[0] + Math.floor(rnd() * (t.n[1] - t.n[0] + 1)) : 1;
     const deep = rnd() < (t.escalationChance ?? 0);
-    const words: Record<string, string> = { n: num(n), days: String(t.days ?? ''), giver: whoOf(giver) };
+    const words: Record<string, string> = { n: num(n), days: String(t.days ?? ''), giver: whoOf(giver), ...(o.ob?.words ?? {}), ...(o.words ?? {}), ...(o.ob?.dueDays !== undefined ? { dueDays: String(o.ob.dueDays) } : {}) };
     const roles: Record<string, RoleRef | null> = {};
     const g = { ...giver, ...(o.heirs ? { heirs: o.heirs } : {}) };
     let n2 = n;
@@ -284,12 +292,19 @@ export class Quests {
         case 'obligationParty':
           r = o.ob ? { ...o.ob.party } : null;
           break;
+        case 'obligationKin':
+          r = o.ob?.kin ? { ...o.ob.kin } : null;
+          break;
         case 'obligationRecord':
           r = o.ob ? { kind: 'debt', id: o.ob.id, name: o.ob.what, count: o.ob.amount } : null;
           if (o.ob) words.amount = moneyWords(o.ob.amount);
           break;
       }
       if (!r && spec.onMissing === 'abort') return null;
+      if (o.ob) {
+        words.amount ??= moneyWords(o.ob.amount);
+        words.amountN = String(o.ob.amount);
+      }
       roles[key] = r;
       if (r) {
         words[key] = whoOf(r);
@@ -316,7 +331,8 @@ export class Quests {
       id: `q${hashString(`${giver.kind}:${giverKey}:${t.id}:${o.ob?.id ?? `${Math.floor(this.g.time / WEEK)}:${seed}`}`).toString(36)}`,
       template: t.id, level: t.baseLevel, title: cap(fill(t.title, words)),
       text: cap(fill(t.text, { ...words, giver: me ? 'I' : whoOf(giver) }, me)),
-      giver: roles.giver ?? roles.creditor ?? g, roles, parts: [], beat: null, flags: [], state: 'offered', posted: this.g.time,
+      giver: roles.giver ?? roles.creditor ?? Object.entries(t.roles).map(([k, r2]) => (r2.source === 'obligationParty' || r2.source === 'obligationKin' ? roles[k] : null)).find((x) => !!x) ?? g,
+      roles, parts: [], beat: null, flags: [...(o.ob?.flags ?? [])], state: 'offered', posted: this.g.time,
       reward: { copper, regard: t.reward.regard }, spoilt: [], facts: [], seed, n: prey && t.reward.perPrey ? n2 : n, deep, words,
     };
     if (prey) q.words.preyCount = String(n2);
@@ -377,7 +393,9 @@ export class Quests {
     if (!t) return null;
     const h = this.hereKey();
     const q = this.make(t, ob.party, this.countryOf(h.key), hashString(`${ob.id}#${ob.template}`), h, { ob });
-    if (q && !this.list.some((x) => x.id === q.id)) this.take(q);
+    if (!q || this.list.some((x) => x.id === q.id)) return q;
+    if (ob.featured) q.featured = true;
+    this.take(q);
     return q;
   }
 
@@ -392,7 +410,9 @@ export class Quests {
     q.took = now;
     q.deadline = t.days ? now + t.days * 86400 : undefined;
     q.fair = t.fairDays ? t.fairDays * 86400 : undefined;
-    this.fact(q, { act: 'took', who: whoOf(q.giver), what: q.title, pay: q.reward.copper });
+    const dueDays = q.words.dueDays !== undefined ? Number(q.words.dueDays) : t.dueDays;
+    if (dueDays !== undefined) q.due = now + dueDays * 86400;
+    this.fact(q, { act: t.preconditions.includes('obligation') ? 'carried' : 'took', who: whoOf(q.giver), what: q.title, pay: q.reward.copper });
     if (!this.list.includes(q)) this.list.push(q);
     this.enter(q, t.start);
     return `You take on the work: "${q.title}". (Shift+Q: your journal.)`;
@@ -454,8 +474,15 @@ export class Quests {
       out.got = 0;
       if (r?.species) out.species = [r.species];
     }
-    if (k.options) out.options = k.options.map((o) => ({ id: o.id, label: fill(o.label, w), ...(o.needs === 'debt' ? { needsCopper: q.roles.debt?.count ?? 0 } : {}) }))
-      .filter((o) => !k.options!.find((x) => x.id === o.id)!.needs || k.options!.find((x) => x.id === o.id)!.needs === 'debt' || this.valid(q, k.options!.find((x) => x.id === o.id)!.needs!));
+    if (k.options) {
+      out.options = k.options.filter((o) => !o.needs || o.needs === 'debt' || this.valid(q, o.needs)).map((o) => ({
+        id: o.id, label: fill(o.label, w),
+        ...(o.needs === 'debt' ? { needsCopper: q.roles.debt?.count ?? Number(w.amountN ?? 0) } : {}),
+        ...(o.check ? { check: { ...o.check } } : {}),
+        ...(o.gain !== undefined ? { gain: o.gain === 'amount' ? Number(w.amountN ?? 0) : o.gain } : {}),
+        ...(o.regard ? { regard: o.regard } : {}),
+      }));
+    }
     if (k.clue) out.clue = { ...k.clue };
     if (k.pivot) out.pivot = { type: k.pivot.type, label: cap(fill(k.pivot.label, w)) };
     if (k.hours) {
@@ -695,13 +722,39 @@ export class Quests {
   private clocks(q: Quest): void {
     const t = TEMPLATE_BY_ID.get(q.template);
     for (const c of t?.clocks ?? []) {
-      if (q.flags.includes(c.flag) || this.g.time - (q.took ?? this.g.time) < c.days * 86400) continue;
+      const from = c.fromDue ? q.due : q.took;
+      if (from === undefined || q.flags.includes(c.flag) || this.g.time - from < c.days * 86400) continue;
       if (c.ifRole && !q.roles[c.ifRole]) continue;
       const r = c.role ? q.roles[c.role] : null;
       if (c.whileState && r?.state !== c.whileState) continue;
       q.flags.push(c.flag);
       if (r && c.state) r.state = c.state;
-      this.fact(q, { act: 'clock', what: c.flag });
+      if (c.effect) this.effect(q, c.effect);
+      else this.fact(q, { act: 'clock', what: c.flag });
+    }
+  }
+
+  /** What a clock does to the world: a debt grows, the creditor's men come, the creditor goes to the law. */
+  private effect(q: Quest, e: 'interest' | 'dun' | 'law'): void {
+    const debt = q.roles.debt, who = q.roles.creditor ?? q.giver, now = this.g.time;
+    if (e === 'interest' && debt?.count) {
+      debt.count = Math.round(debt.count * 1.1);
+      q.words.amount = moneyWords(debt.count);
+      q.words.amountN = String(debt.count);
+      for (const p of q.parts) for (const k of p.tasks) for (const o of k.options ?? []) if (o.needsCopper) {
+        o.needsCopper = debt.count;
+        o.label = o.label.replace(/\(([^()]*)\)$/, `(${q.words.amount})`);
+      }
+      this.fact(q, { act: 'interest', who: whoOf(who), what: q.words.amount });
+      this.g.say(`What you owe ${whoOf(who)} has grown to ${q.words.amount}.`);
+    } else if (e === 'dun') {
+      if (who.kind === 'person') this.s.people.opinions.add(who.id, who.name, 'will not pay what is owed', -15, now, 60);
+      this.fact(q, { act: 'dunned', who: whoOf(who) });
+      this.g.say(`Word reaches you that ${whoOf(who)} has sent men asking after you, and after what you owe.`);
+    } else if (e === 'law' && who.siteId) {
+      this.s.law.crime({ id: who.siteId, name: who.siteName ?? '' }, 'debt', whoOf(who), 1, now, debt?.count ?? 50);
+      this.fact(q, { act: 'law', who: whoOf(who), where: who.siteName });
+      this.g.say(`${whoOf(who)} has gone to the law in ${who.siteName}: you are wanted there for a debt unpaid.`);
     }
   }
 
@@ -827,10 +880,25 @@ export class Quests {
           inv.d.copper -= o.needsCopper;
           this.s.player?.changed();
         }
-        k.outcome = o?.id;
+        const them = k.role ? q.roles[k.role] : q.giver;
+        let outcome = o?.id;
+        // An option tried with a skill: failing, it goes another way.
+        if (o?.check && this.s.player) {
+          const r = check(this.s.player, o.check.skill, { difficulty: o.check.dc, now: this.g.time });
+          if (!r.ok) outcome = `${o.id}:fail`;
+        }
+        k.outcome = outcome;
         k.done = true;
-        this.fact(q, { act: 'talked', who: whoOf(k.role ? q.roles[k.role] : q.giver), what: o?.label ?? k.label });
-        if (o?.id === 'refuseAndDefy') this.say(`${whoOf(q.roles[k.role ?? 'giver'])} will not forget this.`);
+        this.fact(q, { act: 'talked', who: whoOf(them), what: o?.label ?? k.label, why: outcome?.endsWith(':fail') ? 'failed' : undefined });
+        if (o?.gain && inv && !outcome?.endsWith(':fail')) {
+          inv.earn(o.gain);
+          this.s.player?.changed();
+          this.say(`${cap(whoOf(them))} gives you ${moneyWords(o.gain)}.`);
+        }
+        if (o?.regard && them?.kind === 'person' && !outcome?.endsWith(':fail')) this.s.people.opinions.add(them.id, them.name, o.regard > 0 ? 'we have made our peace' : 'threatened me', o.regard, this.g.time, 120);
+        if (o?.id === 'word' && them?.siteId) this.s.law.deed({ id: them.siteId, name: them.siteName ?? '' }, `${whoOf(them)} speaks well of you`, 10, this.g.time);
+        if (outcome?.endsWith(':fail')) this.say(`${cap(whoOf(them))} will have none of it.`);
+        if (o?.id === 'refuseAndDefy') this.say(`${cap(whoOf(them))} will not forget this.`);
         break;
       }
       case 'collect': {
@@ -958,6 +1026,14 @@ export class Quests {
   }
 }
 
+/** How a quest ended, by the way its last talk went. */
+const OUTCOME_WORDS: Record<string, string> = {
+  payInFull: '; the debt is paid', refuseAndDefy: '; I paid nothing', negotiateTerms: '; the debt is cleared by the errand',
+  peace: '; we have made our peace', 'peace:fail': '; there is no peace between us', warn: '; they will keep their distance', 'warn:fail': '; they were not frightened off',
+  leave: '; I walked away, and nothing is settled', inherit: '; I took what was left to me', waive: '; I left it all to the family', coin: '; the favour is spent', word: '; the favour is spent',
+  wergild: '; the blood money is paid, and the feud is ended', defy: '; the feud goes on',
+};
+
 const MARK_WORDS: Record<Mark, string> = { fast: 'quickly done', clean: 'cleanly done', thorough: 'thoroughly done', secret: 'done unseen' };
 
 const isPredator = (s: Species) => s.diet === 'predator' && s.home === 'wild';
@@ -970,6 +1046,7 @@ function bearingOf(a: { lon: number; lat: number }, b: { lon: number; lat: numbe
 /** One fact in words. */
 function tellFact(f: Fact): string {
   switch (f.act) {
+    case 'carried': return `I carry this from my old life: "${f.what}".`;
     case 'took': return `I took on the work "${f.what}" for ${f.who}${f.pay ? `, for ${moneyWords(f.pay)}` : ''}.`;
     case 'part': return `${f.what}.`;
     case 'skipped': return `${f.what} came to nothing.`;
@@ -982,13 +1059,16 @@ function tellFact(f: Fact): string {
     case 'brought': return `I brought ${f.what} home.`;
     case 'handed': return `I handed over ${f.what?.charAt(0).toLowerCase()}${f.what?.slice(1)} to ${f.who}.`;
     case 'delivered': return `I handed over what I carried in ${f.where}.`;
-    case 'talked': return `I spoke with ${f.who}: "${f.what}"`;
+    case 'talked': return `I spoke with ${f.who}: "${f.what}"${f.why === 'failed' ? ', but it did not go as I hoped.' : ''}`;
+    case 'interest': return `What I owe ${f.who} has grown to ${f.what}.`;
+    case 'dunned': return `${f.who} sent men asking after me.`;
+    case 'law': return `${f.who} went to the law in ${f.where}: I am wanted there for the debt.`;
     case 'survived': return `${f.what}: I lived through it.`;
     case 'pivot': return `${f.why}, so there is no more to "${f.what}".`;
     case 'grew': return `It is more than it seemed (now a ${f.what}).`;
     case 'clock': return f.what === 'herdLost' ? 'Too long has passed: whatever took them will not have left them alive.' : 'Time has passed.';
     case 'reassigned': return `${f.what} is dead, and ${f.who} has taken the matter up.`;
-    case 'done': return `Done${f.pay ? `, and paid ${moneyWords(f.pay)}` : ''}${f.why === 'payInFull' ? '; the debt is paid' : f.why === 'refuseAndDefy' ? '; I paid nothing' : f.why === 'negotiateTerms' ? '; the debt is cleared by the errand' : ''}.`;
+    case 'done': return `Done${f.pay ? `, and paid ${moneyWords(f.pay)}` : ''}${OUTCOME_WORDS[f.why ?? ''] ?? ''}.`;
     case 'gave-up': return 'I gave it up.';
     case 'overtaken': return `${f.why}, and the work with them.`;
     case 'waived': return `${f.why}; the debt is no more.`;

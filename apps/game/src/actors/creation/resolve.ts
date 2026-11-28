@@ -8,6 +8,7 @@
  *
  * `buildActor` makes the finished Actor.
  */
+import { startHooks, type StartHook } from './hooks';
 import { hashString, mulberry32 } from '@worldforge/core/gen/rng';
 import { Actor } from '../actor';
 import {
@@ -52,6 +53,8 @@ export interface Choices {
   /** The parents' trades, if chosen rather than drawn. */
   trades?: [string, string];
   spread: CardDraw[] | null;
+  /** The start chosen at the finish (a StartHook id); the first offered if none. */
+  start?: string;
   /** Cards redrawn (each costs a little luck). */
   redraws: number;
   /** Trait points spent (plus) or taken back (minus). */
@@ -132,6 +135,15 @@ export interface Resolved {
   omen?: string;
   /** The track a Path card leans toward. */
   path?: TrackId;
+  /** The starts offered, and the one chosen. */
+  hooks: StartHook[];
+  begin: StartHook;
+}
+
+/** The starts offered for a life, and the one chosen (the first, unless the player chose another). */
+function hooksFor(ch: Choices, ties: Tie[], omen: string | undefined, home: string): { hooks: StartHook[]; begin: StartHook } {
+  const hooks = startHooks(ties, omen, home);
+  return { hooks, begin: hooks.find((h) => h.id === ch.start) ?? hooks[0] };
 }
 
 const rngOf = (seed: string, tag: string) => mulberry32(hashString(`${seed}|${tag}`));
@@ -555,7 +567,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
       hairStyle: styles.length ? pickOf(wr, styles) : 'short',
       beard: known.female || theirAge < folk.adult || !L.beards.length ? 'none' : pickOf(wr, L.beards),
       type: kin && wr() < 0.5 ? type.id : pickOf(wr, BODY_TYPES).id,
-      cloth: pickOf(wr, CLOTH), home: home.name,
+      cloth: pickOf(wr, CLOTH), home: home.name, site: home.id,
     };
   }
 
@@ -596,6 +608,7 @@ export function resolve(ch: Choices, w: CreationWorld): Resolved {
     biography: bio,
     omen: omen ? (omen.draw.reversed ? omen.card.omenDown : omen.card.omenUp) : undefined,
     path: path && !path.draw.reversed ? path.card.track : path?.card.track,
+    ...hooksFor(ch, ties, omen ? (omen.draw.reversed ? omen.card.omenDown : omen.card.omenUp) : undefined, home.name),
   };
 }
 
@@ -686,7 +699,7 @@ export function buildActor(r: Resolved): Actor {
   actor.add(new History({
     lines: r.biography.map((b) => ({ ...b })),
     spread: r.cards.map((c) => ({ position: c.draw.position, card: c.card.name, reversed: c.draw.reversed })),
-    ranks: { ...r.ranks }, ties: r.ties.map((t) => ({ ...t })), omen: r.omen,
+    ranks: { ...r.ranks }, ties: r.ties.map((t) => ({ ...t })), omen: r.omen, start: { ...r.begin },
   }));
   actor.add(new Knowledge(JSON.parse(JSON.stringify(r.knowledge))));
   return actor;
